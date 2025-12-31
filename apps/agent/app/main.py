@@ -41,6 +41,7 @@ async def root():
         "docs": "/docs"
     }
 
-# Import and include routers here
-# from app.api import chat
-# app.include_router(chat.router, prefix="/api", tags=["chat"])
+# Import and include routers
+from app.api.chat import router as chat_router
+
+app.include_router(chat_router, prefix="/api", tags=["chat"])

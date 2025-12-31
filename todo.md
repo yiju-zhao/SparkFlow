@@ -73,21 +73,23 @@
 
 ---
 
-## Phase 3: Agent API Endpoints
+## Phase 3: Agent API Endpoints ✓ COMPLETED
 
-### 3.1 Chat Streaming Endpoint
-- [ ] Create `/api/chat` in `apps/agent/app/api/chat.py`
-- [ ] Accept: `notebook_id`, `session_id`, `message`, `user_id`
-- [ ] Load notebook config and validate access
-- [ ] Initialize LangGraph agent with notebook context
-- [ ] Stream via `StreamingResponse` (SSE)
-- [ ] Format for Vercel AI SDK compatibility
+### 3.1 Chat Streaming Endpoint ✓
+- [x] Create `/api/chat` in `apps/agent/app/api/chat.py`
+- [x] Create `app/models/chat.py` with request/response models
+- [x] Accept: `notebook_id`, `session_id`, `message`, `user_id` (from JWT)
+- [x] Initialize LangGraph agent with notebook config
+- [x] Stream via `StreamingResponse` (SSE)
+- [x] Format for Vercel AI SDK compatibility (data: JSON events)
+- [x] Include chat router in main.py
 
-### 3.2 Remove Legacy Dependencies
-- [ ] Remove all `copilotkit` imports
-- [ ] Remove Django session auth from `server.py`
-- [ ] Remove `verify_django_session()` function
-- [ ] Remove ingestion logic references
+### 3.2 Simplified LangGraph Agent ✓
+- [x] Create `apps/agent/app/agents/graph.py` (SparkFlowRAGAgent)
+- [x] Remove CopilotKit dependencies (no adispatch_custom_event)
+- [x] Simplified workflow: initialize → generate
+- [x] Async streaming via astream() method
+- [x] Factory function create_agent()
 
 ---
 
@@ -241,12 +243,12 @@
 
 **Phase 1:** ✅ Complete (100%)
 **Phase 2:** ✅ Complete (100%)
-**Phase 3:** ⬜ Not Started
+**Phase 3:** ✅ Complete (100%)
 **Phase 4:** ⬜ Not Started
 **Phase 5:** ⬜ Not Started
 **Phase 6:** ⬜ Not Started
 
-**Overall:** ~33% Complete (2/6 phases)
+**Overall:** ~50% Complete (3/6 phases)
 
 ---
 
@@ -298,7 +300,26 @@ _This section will be populated with summaries of changes, decisions, and learni
 - `apps/agent/app/agents/tools.py` - MCP retrieval tools
 
 **Next Steps:**
-- Phase 3: Create chat streaming endpoint
+- Phase 4: Frontend implementation (Dashboard, Studio, Chat, Sources, Notes)
+
+**Phase 3 - Agent API Endpoints (COMPLETED):**
+- Created chat API endpoint at `/api/chat`:
+  - SSE streaming with Vercel AI SDK format
+  - JWT authentication via get_current_user()
+  - Accepts notebook_id, session_id, message, messages
+- Created Pydantic models for requests/responses:
+  - `app/models/chat.py` - ChatRequest, ChatResponse, NotebookConfig
+- Created simplified LangGraph agent:
+  - `app/agents/graph.py` - SparkFlowRAGAgent class
+  - Removed CopilotKit dependencies
+  - Simplified workflow: initialize → generate
+  - Async streaming via astream() method
+- Integrated chat router in main.py
+
+**Files Created:**
+- `apps/agent/app/models/chat.py` - Request/response models
+- `apps/agent/app/api/chat.py` - Chat endpoint with SSE streaming
+- `apps/agent/app/agents/graph.py` - Simplified LangGraph agent
 
 **Phase 2 - Database & Authentication (COMPLETED):**
 - Created Prisma schema with 7 models:
