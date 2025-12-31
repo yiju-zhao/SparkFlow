@@ -1,0 +1,24 @@
+# FastAPI and server
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+
+# LangChain and LangGraph
+langgraph==0.2.55
+langchain==0.3.13
+langchain-openai==0.2.13
+langchain-core==0.3.28
+langchain-mcp-adapters==0.1.2
+
+# AI/ML providers
+openai==1.57.2
+google-generativeai==0.8.3
+
+# Utilities
+pydantic==2.10.3
+python-dotenv==1.0.1
+httpx==0.28.1
+
+# Auth
+pyjwt==2.10.1
+python-jose[cryptography]==3.3.0

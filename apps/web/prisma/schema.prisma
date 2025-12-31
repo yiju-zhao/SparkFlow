@@ -1,0 +1,181 @@
+// SparkFlow Database Schema
+// PostgreSQL with Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// User & Authentication
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  notebooks     Notebook[]
+  notes         Note[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+// NextAuth.js session storage
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============================================
+// Notebook & Sources
+// ============================================
+
+model Notebook {
+  id                String   @id @default(cuid())
+  userId            String
+  name              String
+  description       String?
+
+  // RagFlow Integration
+  ragflowDatasetId  String?
+  ragflowAgentId    String?
+  ragflowChatId     String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources           Source[]
+  chatSessions      ChatSession[]
+  messages          ChatMessage[]
+  notes             Note[]
+
+  // Unique constraint: one notebook name per user
+  @@unique([userId, name])
+  @@map("notebooks")
+}
+
+enum SourceType {
+  DOCUMENT
+  WEBPAGE
+}
+
+enum SourceStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Source {
+  id                String       @id @default(cuid())
+  notebookId        String
+  title             String
+  sourceType        SourceType
+  url               String?      // For webpages
+  fileKey           String?      // For documents (storage key)
+  ragflowDocumentId String?
+  status            SourceStatus @default(UPLOADING)
+  errorMessage      String?
+  metadata          Json?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  notebook          Notebook     @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@map("sources")
+}
+
+// ============================================
+// Chat Sessions & Messages
+// ============================================
+
+enum SessionStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+model ChatSession {
+  id               String        @id @default(cuid())
+  notebookId       String
+  title            String        @default("New Chat")
+  status           SessionStatus @default(ACTIVE)
+
+  // RagFlow Integration
+  ragflowSessionId String?
+  ragflowAgentId   String?
+
+  // Timestamps
+  startedAt        DateTime      @default(now())
+  lastActivity     DateTime      @default(now())
+  endedAt          DateTime?
+
+  // Relations
+  notebook         Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  messages         ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+enum MessageSender {
+  USER
+  ASSISTANT
+}
+
+model ChatMessage {
+  id           String        @id @default(cuid())
+  sessionId    String
+  notebookId   String
+  sender       MessageSender
+  content      String
+  metadata     Json?         // sources, confidence, tokens, etc.
+  messageOrder Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  // Relations
+  session      ChatSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  notebook     Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, messageOrder])
+  @@map("chat_messages")
+}
+
+// ============================================
+// Notes
+// ============================================
+
+model Note {
+  id          String   @id @default(cuid())
+  notebookId  String
+  createdById String
+  title       String
+  content     String   @db.Text
+  tags        String[] @default([])
+  metadata    Json?    // source message ID, etc.
+  isPinned    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  notebook    Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@map("notes")
+}
