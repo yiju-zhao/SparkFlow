@@ -1,0 +1,94 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+// GET /api/notebooks/[id] - Get a single notebook
+export async function GET(req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const notebook = await prisma.notebook.findFirst({
+    where: { id, userId: session.user.id },
+    include: {
+      sources: { orderBy: { createdAt: "desc" } },
+      notes: { orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }] },
+      _count: { select: { sources: true, notes: true } },
+    },
+  });
+
+  if (!notebook) {
+    return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(notebook);
+}
+
+// PUT /api/notebooks/[id] - Update a notebook
+export async function PUT(req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    // Verify ownership
+    const existing = await prisma.notebook.findFirst({
+      where: { id, userId: session.user.id },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
+    }
+
+    const { name, description } = await req.json();
+
+    const notebook = await prisma.notebook.update({
+      where: { id },
+      data: {
+        ...(name?.trim() && { name: name.trim() }),
+        ...(description !== undefined && { description: description?.trim() || null }),
+      },
+    });
+
+    return NextResponse.json(notebook);
+  } catch (error) {
+    console.error("Update notebook error:", error);
+    return NextResponse.json(
+      { error: "Failed to update notebook" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/notebooks/[id] - Delete a notebook
+export async function DELETE(req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Verify ownership
+  const notebook = await prisma.notebook.findFirst({
+    where: { id, userId: session.user.id },
+  });
+
+  if (!notebook) {
+    return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
+  }
+
+  await prisma.notebook.delete({ where: { id } });
+
+  return NextResponse.json({ success: true });
+}

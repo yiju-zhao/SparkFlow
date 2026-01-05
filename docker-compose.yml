@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: sparkflow-postgres
+    environment:
+      POSTGRES_USER: sparkflow
+      POSTGRES_PASSWORD: sparkflow
+      POSTGRES_DB: sparkflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sparkflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Agent
+  agent:
+    build:
+      context: ./apps/agent
+      dockerfile: Dockerfile
+    container_name: sparkflow-agent
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - MCP_SERVER_URL=${MCP_SERVER_URL:-http://ragflow:9382/mcp/}
+      - JWT_SECRET=${JWT_SECRET}
+      - HOST=0.0.0.0
+      - PORT=8101
+    ports:
+      - "8101:8101"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8101/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Web App (for production)
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: sparkflow-web
+    environment:
+      - NEXTAUTH_SECRET=${JWT_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3001}
+      - DATABASE_URL=postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
+      - AGENT_API_URL=http://agent:8101
+      - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL:-http://ragflow:9380}
+      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - agent
+
+volumes:
+  postgres_data:
