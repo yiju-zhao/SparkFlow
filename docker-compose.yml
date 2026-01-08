@@ -43,6 +43,20 @@ services:
       timeout: 10s
       retries: 3
 
+  # Crawl4AI - Webpage to Markdown Converter
+  crawl4ai:
+    image: unclecode/crawl4ai:latest
+    container_name: sparkflow-crawl4ai
+    environment:
+      - CRAWL4AI_API_TOKEN=${CRAWL4AI_API_TOKEN:-}
+    ports:
+      - "9000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Next.js Web App (for production)
   web:
     build:
@@ -56,11 +70,14 @@ services:
       - AGENT_API_URL=http://agent:8101
       - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL:-http://ragflow:9380}
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
+      - CRAWL4AI_BASE_URL=http://crawl4ai:8000
+      - CRAWL4AI_API_KEY=${CRAWL4AI_API_TOKEN:-}
     ports:
       - "3001:3001"
     depends_on:
       - postgres
       - agent
+      - crawl4ai
 
 volumes:
   postgres_data:
