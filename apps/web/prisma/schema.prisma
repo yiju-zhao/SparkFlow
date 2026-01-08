@@ -91,6 +91,7 @@ model Source {
   sourceType        SourceType
   url               String?      // For webpages
   fileKey           String?      // For documents (storage key)
+  content           String?      @db.Text // Markdown content
   ragflowDocumentId String?
   status            SourceStatus @default(UPLOADING)
   errorMessage      String?

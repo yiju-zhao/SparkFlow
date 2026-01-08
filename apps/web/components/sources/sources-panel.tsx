@@ -36,8 +36,13 @@ import {
   uploadDocumentSource,
   deleteSource,
 } from "@/lib/actions/sources";
-import type { Source } from "@prisma/client";
+import type { Source as PrismaSource } from "@prisma/client";
 import ReactMarkdown from "react-markdown";
+
+// Extended Source type with the new content field (until Prisma client is regenerated)
+type Source = PrismaSource & {
+  content?: string | null;
+};
 
 // Hook to safely format time on client only (avoids hydration mismatch)
 function useRelativeTime(date: Date): string {
@@ -218,12 +223,8 @@ function SourceContentView({
   source: Source;
   onBack: () => void;
 }) {
-  // Extract markdown content from metadata
-  const metadata = source.metadata as Record<string, unknown> | null;
-  const markdownContent =
-    (metadata?.markdown as string) ||
-    (metadata?.content as string) ||
-    "No content available";
+  // Get markdown content from the content column
+  const markdownContent = source.content || "No content available";
 
   return (
     <div className="flex h-full flex-col">

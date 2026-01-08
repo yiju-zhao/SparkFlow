@@ -80,11 +80,12 @@ export async function addWebpageSource(
           file.name
         );
 
-        // Update source with RagFlow document ID
+        // Update source with RagFlow document ID and markdown content
         await prisma.source.update({
           where: { id: source.id },
           data: {
             ragflowDocumentId: doc.id,
+            content: markdown,
             status: "PROCESSING",
             metadata: {
               markdownLength: markdown.length,
@@ -107,6 +108,7 @@ export async function addWebpageSource(
         await prisma.source.update({
           where: { id: source.id },
           data: {
+            content: markdown,
             status: "READY",
             metadata: {
               markdownLength: markdown.length,
@@ -121,6 +123,7 @@ export async function addWebpageSource(
       await prisma.source.update({
         where: { id: source.id },
         data: {
+          content: markdown,
           status: "READY",
           metadata: {
             markdownLength: markdown.length,
