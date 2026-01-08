@@ -3,27 +3,42 @@
  *
  * Converts webpages to markdown using self-hosted Crawl4AI server.
  * Uses the /crawl endpoint with PruningContentFilter for clean, LLM-ready markdown.
+ *
+ * Compatible with Crawl4AI Docker server API.
  */
 
-const CRAWL4AI_BASE_URL = process.env.CRAWL4AI_BASE_URL || "http://localhost:11235";
+const CRAWL4AI_BASE_URL =
+  process.env.CRAWL4AI_BASE_URL || "http://localhost:11235";
 const CRAWL4AI_API_KEY = process.env.CRAWL4AI_API_KEY || "";
 
 // Content filter types
 export type ContentFilterType = "pruning" | "bm25" | "none";
 
-// Pruning content filter configuration
-interface PruningContentFilter {
-  type: "PruningContentFilter";
-  threshold?: number; // Default: 0.48
-  threshold_type?: "fixed" | "dynamic"; // Default: "fixed"
-  min_word_threshold?: number; // Default: 0
+// Filter types for /md endpoint
+export type MdFilterType = "raw" | "fit" | "bm25";
+
+// Browser configuration (matches BrowserConfig.dump() output)
+interface BrowserConfig {
+  headless?: boolean;
+  verbose?: boolean;
+  extra_args?: string[];
+  user_agent?: string;
+  proxy?: string;
+  viewport?: { width: number; height: number };
 }
 
-// BM25 content filter configuration (for query-based filtering)
+// Content filter configuration (matches Python class serialization)
+interface PruningContentFilter {
+  type: "PruningContentFilter";
+  threshold?: number;
+  threshold_type?: "fixed" | "dynamic";
+  min_word_threshold?: number;
+}
+
 interface BM25ContentFilter {
   type: "BM25ContentFilter";
   user_query: string;
-  bm25_threshold?: number; // Default: 1.0
+  bm25_threshold?: number;
 }
 
 type ContentFilter = PruningContentFilter | BM25ContentFilter;
@@ -34,27 +49,47 @@ interface MarkdownGenerator {
   content_filter?: ContentFilter;
 }
 
-// Browser configuration
-interface BrowserConfig {
-  headless?: boolean;
-  verbose?: boolean;
-  extra_args?: string[];
-}
-
-// Crawler run configuration
+// Crawler run configuration (matches CrawlerRunConfig.dump() output)
 interface CrawlerRunConfig {
-  cache_mode?: "ENABLED" | "DISABLED" | "BYPASS";
+  cache_mode?: "enabled" | "disabled" | "bypass" | "write_only" | "read_only";
   markdown_generator?: MarkdownGenerator;
   wait_until?: "load" | "domcontentloaded" | "networkidle0" | "networkidle2";
   page_timeout?: number;
   verbose?: boolean;
+  screenshot?: boolean;
+  pdf?: boolean;
+  wait_for?: string;
+  js_code?: string | string[];
+  css_selector?: string;
+  excluded_tags?: string[];
+  exclude_external_links?: boolean;
+  exclude_social_media_links?: boolean;
+  process_iframes?: boolean;
 }
 
-// Crawl request body
+// Crawl request body (matches CrawlRequestWithHooks schema)
 interface CrawlRequest {
   urls: string[];
   crawler_config?: CrawlerRunConfig;
   browser_config?: BrowserConfig;
+}
+
+// Markdown request body for /md endpoint
+interface MarkdownRequest {
+  url: string;
+  f?: MdFilterType; // Filter type: raw, fit, or bm25
+  q?: string; // Query for bm25 filtering
+  c?: boolean; // Use cache
+}
+
+// Markdown response from /md endpoint
+interface MarkdownResponse {
+  url: string;
+  filter: MdFilterType;
+  query: string | null;
+  cache: boolean;
+  markdown: string;
+  success: boolean;
 }
 
 // Markdown result from crawl
@@ -98,6 +133,7 @@ interface GetMarkdownOptions {
   bm25Query?: string;
   bm25Threshold?: number;
   useCache?: boolean;
+  useMdEndpoint?: boolean; // Use simpler /md endpoint instead of /crawl
 }
 
 class Crawl4AIClient {
@@ -141,7 +177,38 @@ class Crawl4AIClient {
   }
 
   /**
-   * Crawl a URL with content filtering and get markdown
+   * Get markdown using the simple /md endpoint
+   * This is the recommended approach for basic webpage-to-markdown conversion.
+   *
+   * @param url - URL to convert
+   * @param filter - Filter type: "raw" (full), "fit" (heuristic filtered), "bm25" (query-based)
+   * @param query - Query string for bm25 filtering
+   * @param useCache - Whether to use cached results
+   */
+  async getMarkdown(
+    url: string,
+    filter: MdFilterType = "fit",
+    query?: string,
+    useCache: boolean = true
+  ): Promise<MarkdownResponse> {
+    const body: MarkdownRequest = {
+      url,
+      f: filter,
+      c: useCache,
+    };
+
+    if (query && filter === "bm25") {
+      body.q = query;
+    }
+
+    return this.request<MarkdownResponse>("/md", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * Crawl URLs with content filtering and get markdown
    *
    * @param urls - URLs to crawl
    * @param crawlerConfig - Crawler configuration
@@ -183,7 +250,7 @@ class Crawl4AIClient {
     useCache: boolean = true
   ): Promise<CrawlResult> {
     const crawlerConfig: CrawlerRunConfig = {
-      cache_mode: useCache ? "ENABLED" : "DISABLED",
+      cache_mode: useCache ? "enabled" : "disabled",
       markdown_generator: {
         type: "DefaultMarkdownGenerator",
         content_filter: {
@@ -229,7 +296,7 @@ class Crawl4AIClient {
     useCache: boolean = true
   ): Promise<CrawlResult> {
     const crawlerConfig: CrawlerRunConfig = {
-      cache_mode: useCache ? "ENABLED" : "DISABLED",
+      cache_mode: useCache ? "enabled" : "disabled",
       markdown_generator: {
         type: "DefaultMarkdownGenerator",
         content_filter: {
@@ -262,7 +329,11 @@ class Crawl4AIClient {
   /**
    * Health check
    */
-  async health(): Promise<{ status: string; timestamp: number; version: string }> {
+  async health(): Promise<{
+    status: string;
+    timestamp: number;
+    version: string;
+  }> {
     return this.request("/health");
   }
 
@@ -275,31 +346,77 @@ class Crawl4AIClient {
   async getMarkdownAsFile(
     url: string,
     options: GetMarkdownOptions = {}
-  ): Promise<{ file: File; title: string; markdown: string; rawMarkdown: string }> {
+  ): Promise<{
+    file: File;
+    title: string;
+    markdown: string;
+    rawMarkdown: string;
+  }> {
     const {
       filename,
       filterType = "pruning",
-      pruningThreshold = 0.45,
+      pruningThreshold = 0.48,
       bm25Query,
       bm25Threshold = 1.0,
       useCache = true,
+      useMdEndpoint = true, // Default to /md endpoint for simplicity
     } = options;
 
-    // Crawl with appropriate filter
-    let result: CrawlResult;
-    if (filterType === "bm25" && bm25Query) {
-      result = await this.crawlWithBM25(url, bm25Query, bm25Threshold, useCache);
+    let markdown: string;
+    let rawMarkdown: string;
+    let pageTitle: string | undefined;
+
+    if (useMdEndpoint) {
+      // Use the simpler /md endpoint
+      const mdFilter: MdFilterType =
+        filterType === "bm25" ? "bm25" : filterType === "none" ? "raw" : "fit";
+      const response = await this.getMarkdown(
+        url,
+        mdFilter,
+        bm25Query,
+        useCache
+      );
+
+      if (!response.success || !response.markdown) {
+        throw new Error("Failed to convert webpage to markdown");
+      }
+
+      markdown = response.markdown;
+      rawMarkdown = response.markdown; // /md endpoint returns the filtered version directly
     } else {
-      result = await this.crawlWithPruning(url, pruningThreshold, useCache);
-    }
+      // Use /crawl endpoint with full config
+      let result: CrawlResult;
+      if (filterType === "bm25" && bm25Query) {
+        result = await this.crawlWithBM25(
+          url,
+          bm25Query,
+          bm25Threshold,
+          useCache
+        );
+      } else if (filterType === "pruning") {
+        result = await this.crawlWithPruning(url, pruningThreshold, useCache);
+      } else {
+        // No filter - just crawl with default config
+        const response = await this.crawl([url], { cache_mode: "enabled" });
+        if (!response.results || response.results.length === 0) {
+          throw new Error("No results returned from crawl");
+        }
+        result = response.results[0];
+        if (!result.success) {
+          throw new Error(result.error_message || "Crawl failed");
+        }
+      }
 
-    if (!result.markdown) {
-      throw new Error("No markdown content returned from crawl");
-    }
+      if (!result.markdown) {
+        throw new Error("No markdown content returned from crawl");
+      }
 
-    // Use fit_markdown if available (filtered), otherwise raw_markdown
-    const markdown = result.markdown.fit_markdown || result.markdown.raw_markdown;
-    const rawMarkdown = result.markdown.raw_markdown;
+      // Use fit_markdown if available (filtered), otherwise raw_markdown
+      markdown =
+        result.markdown.fit_markdown || result.markdown.raw_markdown;
+      rawMarkdown = result.markdown.raw_markdown;
+      pageTitle = result.metadata?.title;
+    }
 
     if (!markdown) {
       throw new Error("Failed to convert webpage to markdown");
@@ -321,7 +438,7 @@ class Crawl4AIClient {
     const file = new File([blob], finalFilename, { type: "text/markdown" });
 
     // Extract title from metadata, markdown heading, or use hostname
-    let title = result.metadata?.title;
+    let title = pageTitle;
     if (!title) {
       const titleMatch = markdown.match(/^#\s+(.+)$/m);
       title = titleMatch?.[1] || urlObj.hostname;
@@ -348,6 +465,7 @@ export type {
   CrawlerRunConfig,
   BrowserConfig,
   MarkdownResult,
+  MarkdownResponse,
   GetMarkdownOptions,
   ContentFilter,
   PruningContentFilter,
