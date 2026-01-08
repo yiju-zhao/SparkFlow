@@ -79,7 +79,7 @@ interface MarkdownRequest {
   url: string;
   f?: MdFilterType; // Filter type: raw, fit, or bm25
   q?: string; // Query for bm25 filtering
-  c?: boolean; // Use cache
+  c?: string; // Use cache: "true" or "false" (API expects string)
 }
 
 // Markdown response from /md endpoint
@@ -194,7 +194,7 @@ class Crawl4AIClient {
     const body: MarkdownRequest = {
       url,
       f: filter,
-      c: useCache,
+      c: useCache ? "true" : "false",
     };
 
     if (query && filter === "bm25") {
