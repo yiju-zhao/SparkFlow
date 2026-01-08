@@ -24,6 +24,10 @@ interface StudioLayoutProps {
   activeSession: ChatSession | null;
 }
 
+// Panel widths
+const SOURCES_LIST_WIDTH = 280;
+const SOURCES_EXPANDED_WIDTH = 480;
+
 export function StudioLayout({
   notebook,
   sources,
@@ -32,6 +36,12 @@ export function StudioLayout({
 }: StudioLayoutProps) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [selectedSource, setSelectedSource] = useState<Source | null>(null);
+
+  // Determine the width of the sources panel based on whether a source is selected
+  const sourcesPanelWidth = selectedSource
+    ? SOURCES_EXPANDED_WIDTH
+    : SOURCES_LIST_WIDTH;
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -88,12 +98,17 @@ export function StudioLayout({
           {leftPanelOpen && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
+              animate={{ width: sourcesPanelWidth, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="shrink-0 overflow-hidden border-r border-border"
             >
-              <SourcesPanel notebookId={notebook.id} sources={sources} />
+              <SourcesPanel
+                notebookId={notebook.id}
+                sources={sources}
+                selectedSource={selectedSource}
+                onSelectSource={setSelectedSource}
+              />
             </motion.div>
           )}
         </AnimatePresence>

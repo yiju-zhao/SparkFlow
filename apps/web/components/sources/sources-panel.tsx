@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   FileText,
@@ -13,6 +13,7 @@ import {
   Trash2,
   Upload,
   Link,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,14 +37,48 @@ import {
   deleteSource,
 } from "@/lib/actions/sources";
 import type { Source } from "@prisma/client";
+import ReactMarkdown from "react-markdown";
+
+// Hook to safely format time on client only (avoids hydration mismatch)
+function useRelativeTime(date: Date): string {
+  const [timeString, setTimeString] = useState<string>("");
+
+  useEffect(() => {
+    setTimeString(formatDistanceToNow(date, { addSuffix: true }));
+    // Update every minute
+    const interval = setInterval(() => {
+      setTimeString(formatDistanceToNow(date, { addSuffix: true }));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [date]);
+
+  return timeString;
+}
 
 interface SourcesPanelProps {
   notebookId: string;
   sources: Source[];
+  selectedSource: Source | null;
+  onSelectSource: (source: Source | null) => void;
 }
 
-export function SourcesPanel({ notebookId, sources }: SourcesPanelProps) {
+export function SourcesPanel({
+  notebookId,
+  sources,
+  selectedSource,
+  onSelectSource,
+}: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Show source content view when a source is selected
+  if (selectedSource) {
+    return (
+      <SourceContentView
+        source={selectedSource}
+        onBack={() => onSelectSource(null)}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -74,7 +109,11 @@ export function SourcesPanel({ notebookId, sources }: SourcesPanelProps) {
         ) : (
           <div className="space-y-1">
             {sources.map((source) => (
-              <SourceItem key={source.id} source={source} />
+              <SourceItem
+                key={source.id}
+                source={source}
+                onSelect={() => onSelectSource(source)}
+              />
             ))}
           </div>
         )}
@@ -90,10 +129,18 @@ export function SourcesPanel({ notebookId, sources }: SourcesPanelProps) {
   );
 }
 
-function SourceItem({ source }: { source: Source }) {
+function SourceItem({
+  source,
+  onSelect,
+}: {
+  source: Source;
+  onSelect: () => void;
+}) {
   const [isPending, startTransition] = useTransition();
+  const relativeTime = useRelativeTime(new Date(source.createdAt));
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     startTransition(async () => {
       await deleteSource(source.id);
     });
@@ -108,9 +155,10 @@ function SourceItem({ source }: { source: Source }) {
 
   return (
     <div
-      className={`group flex items-start gap-3 rounded-lg px-3 py-2 hover:bg-accent ${
+      className={`group flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:bg-accent ${
         isPending ? "opacity-50" : ""
       }`}
+      onClick={onSelect}
     >
       <div className="mt-0.5">
         {source.sourceType === "DOCUMENT" ? (
@@ -128,11 +176,7 @@ function SourceItem({ source }: { source: Source }) {
           <Badge variant="secondary" className="h-4 px-1 text-[10px]">
             {source.sourceType}
           </Badge>
-          <span>
-            {formatDistanceToNow(new Date(source.createdAt), {
-              addSuffix: true,
-            })}
-          </span>
+          {relativeTime && <span>{relativeTime}</span>}
         </div>
         {source.status === "FAILED" && source.errorMessage && (
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
@@ -146,6 +190,7 @@ function SourceItem({ source }: { source: Source }) {
               size="icon"
               className="h-6 w-6"
               disabled={isPending}
+              onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="h-3.5 w-3.5" />
             </Button>
@@ -160,6 +205,60 @@ function SourceItem({ source }: { source: Source }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
+// Source content viewer - shows title and markdown content
+function SourceContentView({
+  source,
+  onBack,
+}: {
+  source: Source;
+  onBack: () => void;
+}) {
+  // Extract markdown content from metadata
+  const metadata = source.metadata as Record<string, unknown> | null;
+  const markdownContent =
+    (metadata?.markdown as string) ||
+    (metadata?.content as string) ||
+    "No content available";
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header with back button */}
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={onBack}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-medium">{source.title}</h2>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {source.sourceType === "WEBPAGE" && source.url && (
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate hover:underline"
+              >
+                {source.url}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Markdown content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <article className="prose prose-sm dark:prose-invert max-w-none">
+          <ReactMarkdown>{markdownContent}</ReactMarkdown>
+        </article>
       </div>
     </div>
   );
