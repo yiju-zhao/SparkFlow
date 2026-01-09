@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { Send, Loader2, Sparkles, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +36,7 @@ export function ChatPanel({ notebookId, sessionId }: ChatPanelProps) {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       role: "user",
       content: input.trim(),
     };
@@ -65,7 +66,7 @@ export function ChatPanel({ notebookId, sessionId }: ChatPanelProps) {
       }
 
       const assistantMessage: Message = {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         role: "assistant",
         content: "",
       };
@@ -108,7 +109,7 @@ export function ChatPanel({ notebookId, sessionId }: ChatPanelProps) {
       setMessages((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id: uuidv4(),
           role: "assistant",
           content: "Sorry, there was an error processing your message.",
         },
