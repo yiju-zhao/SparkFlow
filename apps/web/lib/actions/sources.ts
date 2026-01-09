@@ -97,7 +97,8 @@ export async function addWebpageSource(
         },
       });
 
-        // Auto-parse is requested via upload; rely on RagFlow to start parsing
+        // Ensure parsing/indexing starts
+        await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
       } catch (ragflowError) {
         console.error("RagFlow upload error:", ragflowError);
         // Store markdown locally but mark as ready

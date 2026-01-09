@@ -230,8 +230,10 @@ class RagFlowClient {
    * Delete a document from a dataset
    */
   async deleteDocument(datasetId: string, documentId: string): Promise<void> {
-    await this.request(`/v1/datasets/${datasetId}/documents/${documentId}`, {
+    // Newer API uses bulk delete
+    await this.request(`/v1/datasets/${datasetId}/documents`, {
       method: "DELETE",
+      body: JSON.stringify({ ids: [documentId] }),
     });
   }
 
@@ -239,7 +241,7 @@ class RagFlowClient {
    * Parse/process documents (trigger chunking and indexing)
    */
   async parseDocuments(datasetId: string, documentIds: string[]): Promise<void> {
-    await this.request(`/v1/datasets/${datasetId}/documents/parse`, {
+    await this.request(`/v1/datasets/${datasetId}/chunks`, {
       method: "POST",
       body: JSON.stringify({ document_ids: documentIds }),
     });
@@ -249,7 +251,7 @@ class RagFlowClient {
    * Stop parsing documents
    */
   async stopParsing(datasetId: string, documentIds: string[]): Promise<void> {
-    await this.request(`/v1/datasets/${datasetId}/documents/parse/stop`, {
+    await this.request(`/v1/datasets/${datasetId}/chunks/stop`, {
       method: "POST",
       body: JSON.stringify({ document_ids: documentIds }),
     });

@@ -342,10 +342,54 @@ function SourceContentView({
         </div>
       </div>
 
-      {/* Markdown content */}
+      {/* Markdown content with richer styles */}
       <div className="flex-1 overflow-y-auto p-4">
-        <article className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown>{markdownContent}</ReactMarkdown>
+        <article className="prose prose-sm dark:prose-invert max-w-none space-y-3">
+          <ReactMarkdown
+            components={{
+              h1: ({ node, ...props }) => (
+                <h1 className="text-xl font-semibold" {...props} />
+              ),
+              h2: ({ node, ...props }) => (
+                <h2 className="text-lg font-semibold text-primary" {...props} />
+              ),
+              p: ({ node, ...props }) => (
+                <p className="leading-relaxed text-muted-foreground" {...props} />
+              ),
+              code: ({ node, className, children, ...props }) => (
+                <pre className="overflow-auto rounded-lg bg-muted p-3 text-xs">
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                </pre>
+              ),
+              ul: ({ node, ...props }) => (
+                <ul className="list-disc space-y-1 pl-5" {...props} />
+              ),
+              ol: ({ node, ...props }) => (
+                <ol className="list-decimal space-y-1 pl-5" {...props} />
+              ),
+              blockquote: ({ node, ...props }) => (
+                <blockquote
+                  className="border-l-2 border-primary/40 bg-muted/50 px-3 py-2 text-muted-foreground"
+                  {...props}
+                />
+              ),
+              table: ({ node, ...props }) => (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm" {...props} />
+                </div>
+              ),
+              th: ({ node, ...props }) => (
+                <th className="border-b border-border px-2 py-1 text-left" {...props} />
+              ),
+              td: ({ node, ...props }) => (
+                <td className="border-b border-border px-2 py-1 align-top" {...props} />
+              ),
+            }}
+          >
+            {markdownContent}
+          </ReactMarkdown>
         </article>
       </div>
     </div>
@@ -405,10 +449,10 @@ function AddSourceDialog({
               item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
             )
         );
+        onOpenChange(false);
       } finally {
         await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
         setUrl("");
-        onOpenChange(false);
       }
     });
   };
@@ -457,13 +501,13 @@ function AddSourceDialog({
               item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
             )
         );
+        onOpenChange(false);
       } finally {
         await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
         setSelectedFile(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
-        onOpenChange(false);
       }
     });
   };
