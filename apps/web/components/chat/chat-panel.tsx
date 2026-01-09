@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface ChatPanelProps {
   notebookId: string;
   sessionId: string | null;
+  datasetId?: string | null;
 }
 
 interface Message {
@@ -17,7 +18,7 @@ interface Message {
   content: string;
 }
 
-export function ChatPanel({ notebookId, sessionId }: ChatPanelProps) {
+export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +54,7 @@ export function ChatPanel({ notebookId, sessionId }: ChatPanelProps) {
           messages: [...messages, userMessage],
           notebookId,
           sessionId,
+          datasetIds: datasetId ? [datasetId] : [],
         }),
       });
 

@@ -118,6 +118,7 @@ export function StudioLayout({
           <ChatPanel
             notebookId={notebook.id}
             sessionId={activeSession?.id || null}
+            datasetId={notebook.ragflowDatasetId}
           />
         </div>
 
