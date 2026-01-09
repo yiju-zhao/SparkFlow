@@ -10,6 +10,8 @@
 
 const RAGFLOW_BASE_URL = process.env.RAGFLOW_BASE_URL || "http://localhost:9380";
 const RAGFLOW_API_KEY = process.env.RAGFLOW_API_KEY || "";
+const RAGFLOW_EMBEDDING_MODEL =
+  process.env.RAGFLOW_EMBEDDING_MODEL || "BAAI/bge-large-en-v1.5@BAAI";
 
 interface RagFlowResponse<T = unknown> {
   code: number;
@@ -88,8 +90,8 @@ class RagFlowClient {
       body: JSON.stringify({
         name,
         description,
-        embedding_model: "BAAI/bge-large-en-v1.5", // Default embedding model
-        chunk_method: "naive", // Simple chunking
+        embedding_model: RAGFLOW_EMBEDDING_MODEL,
+        chunk_method: "naive",
       }),
     });
 
