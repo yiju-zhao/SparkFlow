@@ -187,7 +187,10 @@ function SourceItem({
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}
       </div>
-      <div className="opacity-0 transition-opacity group-hover:opacity-100">
+      <div
+        className="opacity-0 transition-opacity group-hover:opacity-100"
+        suppressHydrationWarning
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -196,6 +199,7 @@ function SourceItem({
               className="h-6 w-6"
               disabled={isPending}
               onClick={(e) => e.stopPropagation()}
+              suppressHydrationWarning
             >
               <MoreVertical className="h-3.5 w-3.5" />
             </Button>
