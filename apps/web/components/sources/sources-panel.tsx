@@ -75,6 +75,7 @@ export function SourcesPanel({
   onSelectSource,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
   const { data: liveSources = sources } = useQuery<Source[]>({
     queryKey: ["notebook-sources", notebookId],
     queryFn: async () => {
@@ -94,8 +95,11 @@ export function SourcesPanel({
             sourceItem.status === "UPLOADING") &&
           sourceItem.ragflowDocumentId
       );
-      return shouldPoll ? 5000 : false;
+      return shouldPoll ? 5000 : 15000;
     },
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // Show source content view when a source is selected
@@ -170,6 +174,7 @@ function SourceItem({
     () => (source.metadata as Record<string, unknown> | null) || {},
     [source.metadata]
   );
+  const queryClient = useQueryClient();
 
   const ragflowRun =
     (ragflowMeta.ragflowRun as string | undefined)?.toString().toUpperCase() ||
@@ -191,7 +196,14 @@ function SourceItem({
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     startTransition(async () => {
+      queryClient.setQueryData<Source[] | undefined>(
+        ["notebook-sources", source.notebookId],
+        (current) => (current || []).filter((item) => item.id !== source.id)
+      );
       await deleteSource(source.id);
+      await queryClient.invalidateQueries({
+        queryKey: ["notebook-sources", source.notebookId],
+      });
     });
   };
 
@@ -361,11 +373,43 @@ function AddSourceDialog({
     e.preventDefault();
     if (!url.trim()) return;
 
+    const tempId = `optimistic-${Date.now()}`;
+    const optimistic: Source = {
+      id: tempId,
+      notebookId,
+      title: url.trim(),
+      sourceType: "WEBPAGE",
+      url: url.trim(),
+      status: "PROCESSING",
+      content: null,
+      fileKey: null,
+      ragflowDocumentId: null,
+      errorMessage: null,
+      metadata: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     startTransition(async () => {
-      await addWebpageSource(notebookId, url.trim());
-      await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
-      setUrl("");
-      onOpenChange(false);
+      queryClient.setQueryData<Source[] | undefined>(
+        ["notebook-sources", notebookId],
+        (current) => [optimistic, ...(current || [])]
+      );
+
+      try {
+        const created = await addWebpageSource(notebookId, url.trim());
+        queryClient.setQueryData<Source[] | undefined>(
+          ["notebook-sources", notebookId],
+          (current) =>
+            (current || []).map((item) =>
+              item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
+            )
+        );
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
+        setUrl("");
+        onOpenChange(false);
+      }
     });
   };
 
@@ -380,15 +424,47 @@ function AddSourceDialog({
     if (!selectedFile) return;
 
     startTransition(async () => {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      await uploadDocumentSource(notebookId, formData);
-      await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      const tempId = `optimistic-${Date.now()}`;
+      const optimistic: Source = {
+        id: tempId,
+        notebookId,
+        title: selectedFile.name,
+        sourceType: "DOCUMENT",
+        url: null,
+        status: "UPLOADING",
+        content: null,
+        fileKey: null,
+        ragflowDocumentId: null,
+        errorMessage: null,
+        metadata: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      queryClient.setQueryData<Source[] | undefined>(
+        ["notebook-sources", notebookId],
+        (current) => [optimistic, ...(current || [])]
+      );
+
+      try {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        const created = await uploadDocumentSource(notebookId, formData);
+        queryClient.setQueryData<Source[] | undefined>(
+          ["notebook-sources", notebookId],
+          (current) =>
+            (current || []).map((item) =>
+              item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
+            )
+        );
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        onOpenChange(false);
       }
-      onOpenChange(false);
     });
   };
 
