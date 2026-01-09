@@ -344,7 +344,7 @@ function SourceContentView({
 
       {/* Markdown content with richer styles */}
       <div className="flex-1 overflow-y-auto p-4">
-        <article className="prose prose-sm dark:prose-invert max-w-none space-y-3">
+        <article className="prose prose-[13px] dark:prose-invert max-w-none space-y-3">
           <ReactMarkdown
             components={{
               h1: ({ node, ...props }) => (
