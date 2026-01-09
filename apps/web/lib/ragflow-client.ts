@@ -33,6 +33,8 @@ interface Document {
   type?: string;
   status?: string;
   progress?: number;
+  run?: string;
+  progress_msg?: string[] | string;
   created_at?: string;
 }
 
@@ -160,11 +162,39 @@ class RagFlowClient {
   /**
    * List documents in a dataset
    */
-  async listDocuments(datasetId: string): Promise<Document[]> {
-    const response = await this.request<Document[]>(
-      `/v1/datasets/${datasetId}/documents`
-    );
-    return response.data || [];
+  async listDocuments(
+    datasetId: string,
+    params: {
+      id?: string;
+      page?: number;
+      pageSize?: number;
+      run?: string[];
+    } = {}
+  ): Promise<Document[]> {
+    const searchParams = new URLSearchParams();
+    if (params.id) searchParams.set("id", params.id);
+    if (params.page) searchParams.set("page", params.page.toString());
+    if (params.pageSize) searchParams.set("page_size", params.pageSize.toString());
+    if (params.run?.length) searchParams.set("run", params.run.join(","));
+
+    const query = searchParams.toString();
+    const endpoint = `/v1/datasets/${datasetId}/documents${query ? `?${query}` : ""}`;
+
+    const response = await this.request<
+      Document[] | { docs?: Document[]; total_datasets?: number }
+    >(endpoint);
+
+    // The API may return either a flat array or a wrapped { docs } structure
+    const data = response.data;
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    if (data?.docs && Array.isArray(data.docs)) {
+      return data.docs;
+    }
+
+    return [];
   }
 
   /**
@@ -175,7 +205,11 @@ class RagFlowClient {
     documentId: string
   ): Promise<Document | null> {
     try {
-      const documents = await this.listDocuments(datasetId);
+      const documents = await this.listDocuments(datasetId, {
+        id: documentId,
+        page: 1,
+        pageSize: 10,
+      });
       return documents.find((d) => d.id === documentId) || null;
     } catch {
       return null;

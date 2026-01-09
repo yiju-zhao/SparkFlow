@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   FileText,
@@ -15,6 +15,7 @@ import {
   Link,
   ArrowLeft,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -74,6 +75,28 @@ export function SourcesPanel({
   onSelectSource,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { data: liveSources = sources } = useQuery<Source[]>({
+    queryKey: ["notebook-sources", notebookId],
+    queryFn: async () => {
+      const res = await fetch(`/api/notebooks/${notebookId}/sources/status`);
+      if (!res.ok) {
+        throw new Error("Failed to fetch source status");
+      }
+      const json = (await res.json()) as { sources: Source[] };
+      return json.sources || sources;
+    },
+    initialData: sources,
+    refetchInterval: (query) => {
+      const list = query.state.data || sources;
+      const shouldPoll = list.some(
+        (sourceItem) =>
+          (sourceItem.status === "PROCESSING" ||
+            sourceItem.status === "UPLOADING") &&
+          sourceItem.ragflowDocumentId
+      );
+      return shouldPoll ? 5000 : false;
+    },
+  });
 
   // Show source content view when a source is selected
   if (selectedSource) {
@@ -103,7 +126,7 @@ export function SourcesPanel({
 
       {/* Sources List */}
       <div className="flex-1 overflow-y-auto p-2">
-        {sources.length === 0 ? (
+        {liveSources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/50" />
             <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
@@ -113,7 +136,7 @@ export function SourcesPanel({
           </div>
         ) : (
           <div className="space-y-1">
-            {sources.map((source) => (
+            {liveSources.map((source) => (
               <SourceItem
                 key={source.id}
                 source={source}
@@ -143,6 +166,27 @@ function SourceItem({
 }) {
   const [isPending, startTransition] = useTransition();
   const relativeTime = useRelativeTime(new Date(source.createdAt));
+  const ragflowMeta = useMemo(
+    () => (source.metadata as Record<string, unknown> | null) || {},
+    [source.metadata]
+  );
+
+  const ragflowRun =
+    (ragflowMeta.ragflowRun as string | undefined)?.toString().toUpperCase() ||
+    null;
+  const ragflowProgress =
+    typeof ragflowMeta.ragflowProgress === "number"
+      ? ragflowMeta.ragflowProgress
+      : null;
+
+  const isRunning =
+    ragflowRun === "RUNNING" || ragflowRun === "1" || source.status === "PROCESSING";
+  const isFailed =
+    ragflowRun === "FAIL" ||
+    ragflowRun === "4" ||
+    ragflowRun === "-1" ||
+    source.status === "FAILED";
+  const isDone = ragflowRun === "DONE" || ragflowRun === "3";
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -151,12 +195,23 @@ function SourceItem({
     });
   };
 
-  const statusIcon = {
-    UPLOADING: <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />,
-    PROCESSING: <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />,
-    READY: <CheckCircle className="h-3.5 w-3.5 text-green-500" />,
-    FAILED: <XCircle className="h-3.5 w-3.5 text-destructive" />,
-  }[source.status];
+  const statusIcon =
+    (isRunning && (
+      <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+      </span>
+    )) ||
+    (isFailed && <XCircle className="h-3.5 w-3.5 text-destructive" />) ||
+    ((source.status === "READY" || isDone) && (
+      <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+    )) ||
+    {
+      UPLOADING: <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />,
+      PROCESSING: <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />,
+      READY: <CheckCircle className="h-3.5 w-3.5 text-green-500" />,
+      FAILED: <XCircle className="h-3.5 w-3.5 text-destructive" />,
+    }[source.status];
 
   return (
     <div
@@ -183,6 +238,24 @@ function SourceItem({
           </Badge>
           {relativeTime && <span>{relativeTime}</span>}
         </div>
+        {isRunning && (
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300">
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-1 dark:bg-amber-900/50">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+              </span>
+              {typeof ragflowProgress === "number"
+                ? `Indexing on RagFlow · ${Math.round(ragflowProgress * 100)}%`
+                : "Indexing on RagFlow"}
+            </span>
+          </div>
+        )}
+        {isDone && (
+          <div className="mt-1 text-[11px] text-green-600 dark:text-green-300">
+            Indexed on RagFlow
+          </div>
+        )}
         {source.status === "FAILED" && source.errorMessage && (
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}

@@ -81,27 +81,23 @@ export async function addWebpageSource(
         );
 
         // Update source with RagFlow document ID and markdown content
-        await prisma.source.update({
-          where: { id: source.id },
-          data: {
-            ragflowDocumentId: doc.id,
-            content: markdown,
-            status: "PROCESSING",
-            metadata: {
-              markdownLength: markdown.length,
-              convertedAt: new Date().toISOString(),
-            },
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          ragflowDocumentId: doc.id,
+          content: markdown,
+          status: "PROCESSING",
+          metadata: {
+            markdownLength: markdown.length,
+            convertedAt: new Date().toISOString(),
+            ragflowRun: "RUNNING",
+            ragflowProgress: doc.progress ?? 0,
           },
-        });
+        },
+      });
 
         // Trigger parsing/indexing
         await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
-
-        // Mark as ready (in production, you'd poll for status)
-        await prisma.source.update({
-          where: { id: source.id },
-          data: { status: "READY" },
-        });
       } catch (ragflowError) {
         console.error("RagFlow upload error:", ragflowError);
         // Store markdown locally but mark as ready
@@ -207,17 +203,17 @@ export async function uploadDocumentSource(
           data: {
             ragflowDocumentId: doc.id,
             status: "PROCESSING",
+            metadata: {
+              ...(source.metadata as Record<string, unknown> | null),
+              ragflowRun: "RUNNING",
+              ragflowProgress: doc.progress ?? 0,
+              uploadStartedAt: new Date().toISOString(),
+            },
           },
         });
 
         // Trigger parsing
         await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
-
-        // For now, mark as ready (in production, you'd poll for status)
-        await prisma.source.update({
-          where: { id: source.id },
-          data: { status: "READY" },
-        });
       } catch (ragflowError) {
         console.error("RagFlow upload error:", ragflowError);
         // Continue without RagFlow
@@ -311,20 +307,35 @@ export async function syncSourceStatus(sourceId: string) {
 
     if (doc) {
       // Map RagFlow status to our status
+      const runValue = (doc.run || doc.status || "").toString().toUpperCase();
       let status: "UPLOADING" | "PROCESSING" | "READY" | "FAILED" = "PROCESSING";
 
-      if (doc.status === "1" || doc.status === "done") {
+      if (runValue === "DONE" || runValue === "3") {
         status = "READY";
-      } else if (doc.status === "0" || doc.status === "pending") {
-        status = "PROCESSING";
-      } else if (doc.status === "-1" || doc.status === "error") {
+      } else if (
+        runValue === "FAIL" ||
+        runValue === "4" ||
+        runValue === "-1" ||
+        runValue === "ERROR"
+      ) {
         status = "FAILED";
+      } else {
+        status = "PROCESSING";
       }
 
       if (source.status !== status) {
         await prisma.source.update({
           where: { id: sourceId },
-          data: { status },
+          data: {
+            status,
+            metadata: {
+              ...(source.metadata as Record<string, unknown> | null),
+              ragflowRun: doc.run ?? runValue,
+              ragflowStatus: doc.status,
+              ragflowProgress: doc.progress,
+              ragflowUpdatedAt: new Date().toISOString(),
+            },
+          },
         });
       }
     }
