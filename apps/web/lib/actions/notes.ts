@@ -53,7 +53,7 @@ export async function createNote(
     },
   });
 
-  revalidatePath(`/studio/${notebookId}`);
+  revalidatePath(`/deepdive/${notebookId}`);
   return note;
 }
 
@@ -84,7 +84,7 @@ export async function updateNote(
     },
   });
 
-  revalidatePath(`/studio/${note.notebookId}`);
+  revalidatePath(`/deepdive/${note.notebookId}`);
   return updated;
 }
 
@@ -105,7 +105,7 @@ export async function deleteNote(noteId: string) {
   }
 
   await prisma.note.delete({ where: { id: noteId } });
-  revalidatePath(`/studio/${note.notebookId}`);
+  revalidatePath(`/deepdive/${note.notebookId}`);
 }
 
 export async function togglePinNote(noteId: string) {
@@ -129,6 +129,6 @@ export async function togglePinNote(noteId: string) {
     data: { isPinned: !note.isPinned },
   });
 
-  revalidatePath(`/studio/${note.notebookId}`);
+  revalidatePath(`/deepdive/${note.notebookId}`);
   return updated;
 }

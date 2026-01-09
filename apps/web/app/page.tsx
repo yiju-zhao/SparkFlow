@@ -5,7 +5,7 @@ export default async function Home() {
   const session = await auth();
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect("/deepdive");
   } else {
     redirect("/login");
   }

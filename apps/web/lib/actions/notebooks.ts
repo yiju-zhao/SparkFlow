@@ -37,25 +37,20 @@ export async function createNotebook(name: string, description?: string) {
     },
   });
 
-  // Try to create RagFlow dataset (non-blocking)
+  // Ensure RagFlow dataset exists; if it fails, clean up notebook and surface error
   try {
-    const dataset = await ragflowClient.createDataset(
-      `sparkflow_${notebook.id}`,
-      `SparkFlow notebook: ${name}`
-    );
-
-    // Update notebook with RagFlow dataset ID
-    await prisma.notebook.update({
-      where: { id: notebook.id },
-      data: { ragflowDatasetId: dataset.id },
-    });
+    const updatedNotebook = await ensureRagFlowDataset(notebook.id);
+    revalidatePath("/deepdive");
+    return updatedNotebook;
   } catch (error) {
     console.error("RagFlow dataset creation failed:", error);
-    // Continue without RagFlow - notebook still works
+    await prisma.notebook.delete({ where: { id: notebook.id } });
+    throw new Error(
+      error instanceof Error
+        ? `Failed to create RagFlow dataset: ${error.message}`
+        : "Failed to create RagFlow dataset"
+    );
   }
-
-  revalidatePath("/dashboard");
-  return notebook;
 }
 
 export async function deleteNotebook(id: string) {
@@ -84,7 +79,7 @@ export async function deleteNotebook(id: string) {
   }
 
   await prisma.notebook.delete({ where: { id } });
-  revalidatePath("/dashboard");
+  revalidatePath("/deepdive");
 }
 
 export async function updateNotebook(
@@ -110,7 +105,7 @@ export async function updateNotebook(
     data,
   });
 
-  revalidatePath("/dashboard");
+  revalidatePath("/deepdive");
   return updated;
 }
 

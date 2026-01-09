@@ -19,10 +19,10 @@ export function proxy(request: NextRequest) {
 
   // Redirect logged-in users away from auth pages
   if (isLoggedIn && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/deepdive", request.url));
   }
 
-  // Protect dashboard and studio routes
+  // Protect app routes
   if (!isLoggedIn && !isAuthPage && !isPublicPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

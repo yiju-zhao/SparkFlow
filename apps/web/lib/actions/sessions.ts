@@ -51,7 +51,7 @@ export async function createSession(notebookId: string, title?: string) {
     },
   });
 
-  revalidatePath(`/studio/${notebookId}`);
+  revalidatePath(`/deepdive/${notebookId}`);
   return chatSession;
 }
 
@@ -117,7 +117,7 @@ export async function closeSession(sessionId: string) {
     },
   });
 
-  revalidatePath(`/studio/${chatSession.notebookId}`);
+  revalidatePath(`/deepdive/${chatSession.notebookId}`);
   return updated;
 }
 
@@ -142,7 +142,7 @@ export async function archiveSession(sessionId: string) {
     data: { status: "ARCHIVED" },
   });
 
-  revalidatePath(`/studio/${chatSession.notebookId}`);
+  revalidatePath(`/deepdive/${chatSession.notebookId}`);
   return updated;
 }
 

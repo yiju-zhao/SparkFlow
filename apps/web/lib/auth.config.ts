@@ -35,7 +35,7 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname === "/api/signup";
 
       if (isLoggedIn && isAuthPage) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
+        return Response.redirect(new URL("/deepdive", nextUrl));
       }
 
       if (!isLoggedIn && !isAuthPage && !isPublicPage) {

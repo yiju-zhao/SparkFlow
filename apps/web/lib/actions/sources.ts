@@ -139,7 +139,7 @@ export async function addWebpageSource(
     });
   }
 
-  revalidatePath(`/studio/${notebookId}`);
+  revalidatePath(`/deepdive/${notebookId}`);
   return source;
 }
 
@@ -240,7 +240,7 @@ export async function uploadDocumentSource(
     throw error;
   }
 
-  revalidatePath(`/studio/${notebookId}`);
+  revalidatePath(`/deepdive/${notebookId}`);
   return source;
 }
 
@@ -274,7 +274,7 @@ export async function deleteSource(sourceId: string) {
   }
 
   await prisma.source.delete({ where: { id: sourceId } });
-  revalidatePath(`/studio/${source.notebookId}`);
+  revalidatePath(`/deepdive/${source.notebookId}`);
 }
 
 /**

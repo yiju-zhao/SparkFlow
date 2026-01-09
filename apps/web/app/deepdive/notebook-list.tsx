@@ -84,7 +84,7 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
         </DropdownMenu>
       </div>
 
-      <Link href={`/studio/${notebook.id}`} className="block">
+      <Link href={`/deepdive/${notebook.id}`} className="block">
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10">
           <Book className="h-5 w-5 text-accent-red" />
         </div>

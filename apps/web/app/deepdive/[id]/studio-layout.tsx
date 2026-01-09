@@ -48,7 +48,7 @@ export function StudioLayout({
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard">
+          <Link href="/deepdive">
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
