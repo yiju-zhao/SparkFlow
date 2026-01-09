@@ -77,7 +77,8 @@ export async function addWebpageSource(
         const doc = await ragflowClient.uploadDocument(
           notebook.ragflowDatasetId,
           file,
-          file.name
+          file.name,
+          { autoParse: true }
         );
 
         // Update source with RagFlow document ID and markdown content
@@ -96,8 +97,7 @@ export async function addWebpageSource(
         },
       });
 
-        // Trigger parsing/indexing
-        await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
+        // Auto-parse is requested via upload; rely on RagFlow to start parsing
       } catch (ragflowError) {
         console.error("RagFlow upload error:", ragflowError);
         // Store markdown locally but mark as ready
@@ -192,7 +192,8 @@ export async function uploadDocumentSource(
         const doc = await ragflowClient.uploadDocument(
           notebook.ragflowDatasetId,
           file,
-          file.name
+          file.name,
+          { autoParse: true }
         );
 
         ragflowDocumentId = doc.id;

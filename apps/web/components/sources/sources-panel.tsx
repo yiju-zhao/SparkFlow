@@ -15,7 +15,7 @@ import {
   Link,
   ArrowLeft,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -203,15 +203,18 @@ function SourceItem({
       </span>
     )) ||
     (isFailed && <XCircle className="h-3.5 w-3.5 text-destructive" />) ||
-    ((source.status === "READY" || isDone) && (
-      <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-    )) ||
-    {
-      UPLOADING: <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />,
-      PROCESSING: <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />,
-      READY: <CheckCircle className="h-3.5 w-3.5 text-green-500" />,
-      FAILED: <XCircle className="h-3.5 w-3.5 text-destructive" />,
-    }[source.status];
+    (() => {
+      switch (source.status) {
+        case "UPLOADING":
+          return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />;
+        case "PROCESSING":
+          return <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />;
+        case "FAILED":
+          return <XCircle className="h-3.5 w-3.5 text-destructive" />;
+        default:
+          return null; // READY shows no icon
+      }
+    })();
 
   return (
     <div
@@ -249,11 +252,6 @@ function SourceItem({
                 ? `Indexing on RagFlow · ${Math.round(ragflowProgress * 100)}%`
                 : "Indexing on RagFlow"}
             </span>
-          </div>
-        )}
-        {isDone && (
-          <div className="mt-1 text-[11px] text-green-600 dark:text-green-300">
-            Indexed on RagFlow
           </div>
         )}
         {source.status === "FAILED" && source.errorMessage && (
@@ -357,6 +355,7 @@ function AddSourceDialog({
   const [url, setUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const queryClient = useQueryClient();
 
   const handleWebpageSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -364,6 +363,7 @@ function AddSourceDialog({
 
     startTransition(async () => {
       await addWebpageSource(notebookId, url.trim());
+      await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
       setUrl("");
       onOpenChange(false);
     });
@@ -383,6 +383,7 @@ function AddSourceDialog({
       const formData = new FormData();
       formData.append("file", selectedFile);
       await uploadDocumentSource(notebookId, formData);
+      await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";

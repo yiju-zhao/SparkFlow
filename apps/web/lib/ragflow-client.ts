@@ -141,13 +141,21 @@ class RagFlowClient {
   async uploadDocument(
     datasetId: string,
     file: File,
-    filename: string
+    filename: string,
+    options: { autoParse?: boolean } = {}
   ): Promise<Document> {
     const formData = new FormData();
     formData.append("file", file, filename);
 
+    const searchParams = new URLSearchParams();
+    if (options.autoParse) {
+      searchParams.set("auto_parse", "true");
+    }
+    const query = searchParams.toString();
+    const endpoint = `/v1/datasets/${datasetId}/documents${query ? `?${query}` : ""}`;
+
     const response = await this.request<Document[]>(
-      `/v1/datasets/${datasetId}/documents`,
+      endpoint,
       {
         method: "POST",
         body: formData,
