@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 
 const RAGFLOW_MCP_URL =
-  process.env.RAGFLOW_MCP_URL || "http://localhost:9382/mcp/";
+  process.env.RAGFLOW_MCP_URL ||
+  "http://localhost:9382/mcp/";
 
 /**
  * Get or create the default chat session for a notebook.
@@ -65,6 +66,29 @@ export async function POST(req: NextRequest) {
 
     if (!datasetIds || !Array.isArray(datasetIds) || datasetIds.length === 0) {
       return new Response("datasetIds is required", { status: 400 });
+    }
+
+    // Quick MCP reachability check to surface clear errors
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const probe = await fetch(RAGFLOW_MCP_URL, {
+        method: "HEAD",
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!probe.ok) {
+        return new Response(
+          `RAGFlow MCP not reachable at ${RAGFLOW_MCP_URL} (status ${probe.status})`,
+          { status: 503 }
+        );
+      }
+    } catch (err) {
+      console.error("MCP reachability check failed:", err);
+      return new Response(
+        `Cannot reach RAGFlow MCP at ${RAGFLOW_MCP_URL}. Ensure the URL is accessible from the Next.js server.`,
+        { status: 503 }
+      );
     }
 
     // Get or create chat session for this notebook
