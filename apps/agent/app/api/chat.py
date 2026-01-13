@@ -71,7 +71,11 @@ async def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_use
     return StreamingResponse(
         stream_chat_response(request.dataset_id, request.message, session_id, messages),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx/proxy buffering for real-time SSE
+        },
     )
 
 

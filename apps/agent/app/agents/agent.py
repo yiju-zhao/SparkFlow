@@ -74,17 +74,35 @@ class SparkFlowRAGAgent:
         )
 
     async def astream(self, messages: list, thread_id: str = "default"):
-        """Stream agent responses token by token."""
+        """Stream agent responses token by token.
+        
+        Filters out tool call chunks and only yields actual text content.
+        """
         config = {"configurable": {"thread_id": thread_id}}
         
         # Use stream_mode="messages" for token-by-token streaming
-        async for event in self.agent.astream({"messages": messages}, config, stream_mode="messages"):
-            # event is tuple: (message_chunk, metadata)
-            if isinstance(event, tuple) and len(event) >= 1:
-                chunk = event[0]
-                # AIMessageChunk has content attribute
-                if hasattr(chunk, "content") and chunk.content:
-                    yield {"type": "text", "content": chunk.content}
+        async for token, metadata in self.agent.astream({"messages": messages}, config, stream_mode="messages"):
+            # Skip tool call chunks
+            if hasattr(token, "tool_call_chunks") and token.tool_call_chunks:
+                continue
+            
+            # Check for text content in content_blocks (new API)
+            if hasattr(token, "content_blocks"):
+                for block in token.content_blocks:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("text", "")
+                        if text:
+                            yield {"type": "text", "content": text}
+                continue
+            
+            # Fallback: check text attribute
+            if hasattr(token, "text") and token.text:
+                yield {"type": "text", "content": token.text}
+                continue
+            
+            # Fallback: check content attribute (string only)
+            if hasattr(token, "content") and isinstance(token.content, str) and token.content:
+                yield {"type": "text", "content": token.content}
 
     async def ainvoke(self, messages: list, thread_id: str = "default") -> str:
         """Invoke agent and return response."""
