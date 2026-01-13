@@ -25,9 +25,10 @@ async def stream_chat_response(
 ) -> AsyncGenerator[str, None]:
     """Stream chat responses from the RAG agent."""
     try:
-        agent = SparkFlowRAGAgent(RAGAgentConfig(
-            dataset_ids=[dataset_id],
-        ))
+        agent = SparkFlowRAGAgent(
+            RAGAgentConfig(dataset_ids=[dataset_id]),
+            session_id=session_id,
+        )
 
         # Build message history
         langchain_messages = []

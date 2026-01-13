@@ -16,12 +16,35 @@ from .tools import create_retrieval_tool
 
 logger = logging.getLogger(__name__)
 
+# Module-level session memory store for per-session isolation
+_session_memory_store: dict[str, MemorySaver] = {}
+
+
+def get_session_checkpointer(session_id: str) -> MemorySaver:
+    """Get or create a checkpointer for the given session.
+    
+    Each session gets its own MemorySaver instance, ensuring
+    conversation history is isolated between different sessions.
+    """
+    if session_id not in _session_memory_store:
+        _session_memory_store[session_id] = MemorySaver()
+        logger.debug(f"Created new checkpointer for session: {session_id}")
+    return _session_memory_store[session_id]
+
+
+def clear_session_memory(session_id: str) -> None:
+    """Clear memory for a session (e.g., when session is deleted)."""
+    if session_id in _session_memory_store:
+        del _session_memory_store[session_id]
+        logger.debug(f"Cleared memory for session: {session_id}")
+
 
 class SparkFlowRAGAgent:
     """RAG Agent for SparkFlow."""
 
-    def __init__(self, config: RAGAgentConfig):
+    def __init__(self, config: RAGAgentConfig, session_id: str = "default"):
         self.config = config
+        self.session_id = session_id
         
         # Create retrieval tool if datasets configured
         tools = []
@@ -39,12 +62,15 @@ class SparkFlowRAGAgent:
             api_key=config.api_key or os.getenv("OPENAI_API_KEY"),
         )
         
+        # Use session-scoped checkpointer for memory isolation
+        checkpointer = get_session_checkpointer(session_id)
+        
         # Create agent with LangChain 1.0 API
         self.agent = create_agent(
             model,
             tools,
             system_prompt=RAG_AGENT_SYSTEM_PROMPT,
-            checkpointer=MemorySaver(),
+            checkpointer=checkpointer,
         )
 
     async def astream(self, messages: list, thread_id: str = "default"):
@@ -69,3 +95,4 @@ class SparkFlowRAGAgent:
             if isinstance(msg, AIMessage) and msg.content:
                 return msg.content
         return ""
+
