@@ -78,3 +78,12 @@ async def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_use
 @router.get("/chat/health")
 async def chat_health():
     return {"status": "healthy"}
+
+
+@router.delete("/chat/session/{session_id}")
+async def delete_session_memory(session_id: str, user: CurrentUser = Depends(get_current_user)):
+    """Clear agent memory for a deleted session."""
+    from app.agents.agent import clear_session_memory
+    clear_session_memory(session_id)
+    return {"status": "cleared", "session_id": session_id}
+

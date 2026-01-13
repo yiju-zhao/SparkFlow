@@ -97,6 +97,19 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
             return new Response("Unauthorized", { status: 403 });
         }
 
+        // Clear agent memory for this session
+        try {
+            await fetch(`${process.env.AGENT_API_URL || "http://localhost:8000"}/api/chat/session/${sessionId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${session.user.id}`,
+                },
+            });
+        } catch (agentError) {
+            // Log but don't fail - agent memory cleanup is best-effort
+            console.warn("Failed to clear agent memory:", agentError);
+        }
+
         // Delete session (messages cascade delete via schema)
         await prisma.chatSession.delete({
             where: { id: sessionId },
