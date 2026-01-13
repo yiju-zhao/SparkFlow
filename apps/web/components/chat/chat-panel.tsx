@@ -236,6 +236,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
           <Button
             variant="ghost"
             size="sm"
+            className="h-7 w-7"
             onClick={handleNewChat}
             title="New Chat"
           >
@@ -244,6 +245,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
           <Button
             variant="ghost"
             size="sm"
+            className="h-7 w-7"
             onClick={() => setShowHistory(!showHistory)}
             title="Chat History"
           >
