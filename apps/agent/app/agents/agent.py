@@ -6,6 +6,7 @@ import logging
 import os
 
 from langchain.agents import create_agent
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -31,16 +32,19 @@ class SparkFlowRAGAgent:
                 top_k=config.top_k,
             )]
         
-        # Create agent
+        # Create model instance
+        model = ChatOpenAI(
+            model=config.model_name,
+            temperature=config.synthesis_temperature,
+            api_key=config.api_key or os.getenv("OPENAI_API_KEY"),
+        )
+        
+        # Create agent with LangChain 1.0 API
         self.agent = create_agent(
-            model=f"openai:{config.model_name}",
-            tools=tools,
-            checkpointer=MemorySaver(),
+            model,
+            tools,
             system_prompt=RAG_AGENT_SYSTEM_PROMPT,
-            model_config={
-                "temperature": config.synthesis_temperature,
-                "api_key": config.api_key or os.getenv("OPENAI_API_KEY"),
-            },
+            checkpointer=MemorySaver(),
         )
 
     async def astream(self, messages: list, thread_id: str = "default"):
