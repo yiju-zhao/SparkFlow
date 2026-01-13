@@ -117,7 +117,6 @@ export function StudioLayout({
         <div className="flex flex-1 flex-col overflow-hidden">
           <ChatPanel
             notebookId={notebook.id}
-            sessionId={activeSession?.id || null}
             datasetId={notebook.ragflowDatasetId}
           />
         </div>

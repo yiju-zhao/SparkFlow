@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { messages, notebookId, datasetIds, documentIds } = body;
+    const { messages, notebookId, datasetId, sessionId, newSession } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response("Invalid message format", { status: 400 });
@@ -62,12 +62,33 @@ export async function POST(req: NextRequest) {
       return new Response("notebookId is required", { status: 400 });
     }
 
-    if (!datasetIds || !Array.isArray(datasetIds) || datasetIds.length === 0) {
-      return new Response("datasetIds is required", { status: 400 });
+    if (!datasetId) {
+      return new Response("datasetId is required", { status: 400 });
     }
 
-    // Get or create chat session for this notebook
-    const chatSession = await getOrCreateChatSession(notebookId);
+    // Determine which session to use
+    let chatSession;
+    if (newSession) {
+      // Create a brand new session
+      chatSession = await prisma.chatSession.create({
+        data: {
+          notebookId,
+          title: "New Chat",
+          status: "ACTIVE",
+        },
+      });
+    } else if (sessionId) {
+      // Use specified session
+      chatSession = await prisma.chatSession.findUnique({
+        where: { id: sessionId },
+      });
+      if (!chatSession) {
+        return new Response("Session not found", { status: 404 });
+      }
+    } else {
+      // Resume or create default session
+      chatSession = await getOrCreateChatSession(notebookId);
+    }
 
     // Get the latest user message
     const userMessage = messages[messages.length - 1];
@@ -102,14 +123,13 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${session.user.id}`,
       },
       body: JSON.stringify({
-        notebook_id: notebookId,
+        dataset_id: datasetId,
+        session_id: chatSession.id,
         message: userMessage.content,
         messages: messages.map((m: { role: string; content: string }) => ({
           role: m.role,
           content: m.content,
         })),
-        dataset_ids: datasetIds,
-        document_ids: documentIds || [],
       }),
     });
 
@@ -136,6 +156,11 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // Emit session ID first so frontend knows which session this is
+          controller.enqueue(
+            encoder.encode(`d:${JSON.stringify({ sessionId: chatSession.id })}\n`)
+          );
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;

@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Send, Loader2, Sparkles, Plus } from "lucide-react";
+import { Send, Loader2, Sparkles, Plus, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 interface ChatPanelProps {
   notebookId: string;
-  sessionId: string | null;
   datasetId?: string | null;
 }
 
@@ -18,10 +17,21 @@ interface Message {
   content: string;
 }
 
-export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) {
+interface ChatSession {
+  id: string;
+  title: string;
+  lastActivity: string;
+  _count: { messages: number };
+}
+
+export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [isNewSession, setIsNewSession] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,6 +41,55 @@ export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Fetch sessions list
+  const fetchSessions = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/chat/sessions?notebookId=${notebookId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data);
+        // Auto-select most recent if no current session
+        if (!currentSessionId && data.length > 0 && !isNewSession) {
+          loadSession(data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch sessions:", error);
+    }
+  }, [notebookId, currentSessionId, isNewSession]);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  // Load a specific session's messages
+  const loadSession = async (sessionId: string) => {
+    try {
+      const res = await fetch(`/api/chat/${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.map((m: { id: string; role: string; content: string }) => ({
+          id: m.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })));
+        setCurrentSessionId(sessionId);
+        setIsNewSession(false);
+        setShowHistory(false);
+      }
+    } catch (error) {
+      console.error("Failed to load session:", error);
+    }
+  };
+
+  // Start a new chat
+  const handleNewChat = () => {
+    setMessages([]);
+    setCurrentSessionId(null);
+    setIsNewSession(true);
+    setShowHistory(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,8 +112,9 @@ export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) 
         body: JSON.stringify({
           messages: [...messages, userMessage],
           notebookId,
-          sessionId,
-          datasetIds: datasetId ? [datasetId] : [],
+          datasetId,
+          sessionId: currentSessionId,
+          newSession: isNewSession,
         }),
       });
 
@@ -84,11 +144,11 @@ export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) 
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Parse streaming format: 0:"text"\n
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
         for (const line of lines) {
+          // Handle text chunks
           if (line.startsWith("0:")) {
             try {
               const text = JSON.parse(line.slice(2));
@@ -100,6 +160,20 @@ export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) 
                 }
                 return updated;
               });
+            } catch {
+              // Skip malformed lines
+            }
+          }
+          // Handle data events (session ID, finish)
+          if (line.startsWith("d:")) {
+            try {
+              const data = JSON.parse(line.slice(2));
+              if (data.sessionId) {
+                setCurrentSessionId(data.sessionId);
+                setIsNewSession(false);
+                // Refresh sessions list
+                fetchSessions();
+              }
             } catch {
               // Skip malformed lines
             }
@@ -128,8 +202,67 @@ export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) 
     }
   };
 
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col relative">
+      {/* Header with actions */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+        <h2 className="text-sm font-medium">Chat</h2>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewChat}
+            title="New Chat"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowHistory(!showHistory)}
+            title="Chat History"
+          >
+            <History className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* History Panel */}
+      {showHistory && (
+        <div className="absolute top-12 right-2 z-10 w-64 rounded-lg border bg-background shadow-lg">
+          <div className="flex items-center justify-between border-b p-2">
+            <span className="text-sm font-medium">History</span>
+            <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="max-h-64 overflow-y-auto p-2">
+            {sessions.length === 0 ? (
+              <p className="text-xs text-muted-foreground p-2">No chat history</p>
+            ) : (
+              sessions.map((session) => (
+                <button
+                  key={session.id}
+                  onClick={() => loadSession(session.id)}
+                  className={`w-full text-left p-2 rounded text-sm hover:bg-accent ${currentSessionId === session.id ? "bg-accent" : ""
+                    }`}
+                >
+                  <div className="font-medium truncate">{session.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(session.lastActivity)} · {session._count.messages} msgs
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
@@ -147,16 +280,14 @@ export function ChatPanel({ notebookId, sessionId, datasetId }: ChatPanelProps) 
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    message.role === "user"
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-accent"
-                  }`}
+                    }`}
                 >
                   <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                   {message.role === "assistant" && message.content && (

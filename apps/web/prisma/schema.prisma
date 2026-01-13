@@ -16,17 +16,17 @@ datasource db {
 // ============================================
 
 model User {
-  id            String    @id @default(cuid())
-  username      String    @unique
-  email         String    @unique
-  passwordHash  String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  notebooks     Notebook[]
-  notes         Note[]
-  sessions      Session[]
+  notebooks Notebook[]
+  notes     Note[]
+  sessions  Session[]
 
   @@map("users")
 }
@@ -47,25 +47,25 @@ model Session {
 // ============================================
 
 model Notebook {
-  id                String   @id @default(cuid())
-  userId            String
-  name              String
-  description       String?
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  description String?
 
   // RagFlow Integration
-  ragflowDatasetId  String?
-  ragflowAgentId    String?
-  ragflowChatId     String?
+  ragflowDatasetId String?
+  ragflowAgentId   String?
+  ragflowChatId    String?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sources           Source[]
-  chatSessions      ChatSession[]
-  messages          ChatMessage[]
-  notes             Note[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources      Source[]
+  chatSessions ChatSession[]
+  messages     ChatMessage[]
+  notes        Note[]
 
   // Unique constraint: one notebook name per user
   @@unique([userId, name])
@@ -89,8 +89,8 @@ model Source {
   notebookId        String
   title             String
   sourceType        SourceType
-  url               String?      // For webpages
-  fileKey           String?      // For documents (storage key)
+  url               String? // For webpages
+  fileKey           String? // For documents (storage key)
   content           String?      @db.Text // Markdown content
   ragflowDocumentId String?
   status            SourceStatus @default(UPLOADING)
@@ -100,7 +100,7 @@ model Source {
   updatedAt         DateTime     @updatedAt
 
   // Relations
-  notebook          Notebook     @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
 
   @@map("sources")
 }
@@ -116,23 +116,22 @@ enum SessionStatus {
 }
 
 model ChatSession {
-  id               String        @id @default(cuid())
-  notebookId       String
-  title            String        @default("New Chat")
-  status           SessionStatus @default(ACTIVE)
+  id         String        @id @default(cuid())
+  notebookId String
+  title      String        @default("New Chat")
+  status     SessionStatus @default(ACTIVE)
 
   // RagFlow Integration
-  ragflowSessionId String?
-  ragflowAgentId   String?
+  ragflowAgentId String?
 
   // Timestamps
-  startedAt        DateTime      @default(now())
-  lastActivity     DateTime      @default(now())
-  endedAt          DateTime?
+  startedAt    DateTime  @default(now())
+  lastActivity DateTime  @default(now())
+  endedAt      DateTime?
 
   // Relations
-  notebook         Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
-  messages         ChatMessage[]
+  notebook Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
 
   @@map("chat_sessions")
 }
@@ -148,13 +147,13 @@ model ChatMessage {
   notebookId   String
   sender       MessageSender
   content      String
-  metadata     Json?         // sources, confidence, tokens, etc.
+  metadata     Json? // sources, confidence, tokens, etc.
   messageOrder Int           @default(0)
   createdAt    DateTime      @default(now())
 
   // Relations
-  session      ChatSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  notebook     Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  session  ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  notebook Notebook    @relation(fields: [notebookId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, messageOrder])
   @@map("chat_messages")
@@ -171,14 +170,14 @@ model Note {
   title       String
   content     String   @db.Text
   tags        String[] @default([])
-  metadata    Json?    // source message ID, etc.
+  metadata    Json? // source message ID, etc.
   isPinned    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  notebook    Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
-  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  notebook  Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@map("notes")
 }
