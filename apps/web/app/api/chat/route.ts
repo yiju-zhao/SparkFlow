@@ -1,11 +1,9 @@
 import { auth } from "@/lib/auth";
-import { createRAGAgent } from "@/lib/agent";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 
-const RAGFLOW_MCP_URL =
-  process.env.RAGFLOW_MCP_URL ||
-  "http://localhost:9382/mcp/";
+const AGENT_API_URL =
+  process.env.AGENT_API_URL || "http://localhost:8000";
 
 /**
  * Get or create the default chat session for a notebook.
@@ -68,29 +66,6 @@ export async function POST(req: NextRequest) {
       return new Response("datasetIds is required", { status: 400 });
     }
 
-    // Quick MCP reachability check to surface clear errors
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-      const probe = await fetch(RAGFLOW_MCP_URL, {
-        method: "HEAD",
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      if (!probe.ok) {
-        return new Response(
-          `RAGFlow MCP not reachable at ${RAGFLOW_MCP_URL} (status ${probe.status})`,
-          { status: 503 }
-        );
-      }
-    } catch (err) {
-      console.error("MCP reachability check failed:", err);
-      return new Response(
-        `Cannot reach RAGFlow MCP at ${RAGFLOW_MCP_URL}. Ensure the URL is accessible from the Next.js server.`,
-        { status: 503 }
-      );
-    }
-
     // Get or create chat session for this notebook
     const chatSession = await getOrCreateChatSession(notebookId);
 
@@ -118,53 +93,118 @@ export async function POST(req: NextRequest) {
       data: { lastActivity: new Date() },
     });
 
-    // Create agent
-    const agent = await createRAGAgent({
-      ragflowMcpUrl: RAGFLOW_MCP_URL,
-      datasetIds,
-      documentIds,
+    // Proxy request to FastAPI agent backend
+    const agentResponse = await fetch(`${AGENT_API_URL}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Forward auth token for backend validation
+        Authorization: `Bearer ${session.user.id}`,
+      },
+      body: JSON.stringify({
+        notebook_id: notebookId,
+        message: userMessage.content,
+        messages: messages.map((m: { role: string; content: string }) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        dataset_ids: datasetIds,
+        document_ids: documentIds || [],
+      }),
     });
 
-    // Collect full response for saving
-    let fullResponse = "";
+    if (!agentResponse.ok) {
+      const errorText = await agentResponse.text();
+      console.error("Agent API error:", errorText);
+      return new Response(`Agent error: ${errorText}`, {
+        status: agentResponse.status,
+      });
+    }
 
+    // Stream the response from the agent backend
+    const agentBody = agentResponse.body;
+    if (!agentBody) {
+      return new Response("No response from agent", { status: 500 });
+    }
+
+    // Collect full response for saving to DB
+    let fullResponse = "";
+    const reader = agentBody.getReader();
     const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const agentStream = await agent.stream(
-            { messages },
-            {
-              configurable: { thread_id: notebookId },
-              streamMode: "messages",
-            }
-          );
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          for await (const [message] of agentStream) {
-            if (message.text) {
-              fullResponse += message.text;
-              // Vercel AI SDK data stream format
-              const data = `0:${JSON.stringify(message.text)}\n`;
-              controller.enqueue(encoder.encode(data));
+            const chunk = decoder.decode(value, { stream: true });
+
+            // Parse SSE data to extract text for DB saving
+            const lines = chunk.split("\n");
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                if (data !== "[DONE]") {
+                  try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.type === "text" && parsed.text) {
+                      fullResponse += parsed.text;
+                    }
+                  } catch {
+                    // Not JSON, skip
+                  }
+                }
+              }
+            }
+
+            // Forward to client in Vercel AI SDK format
+            // Convert SSE text events to Vercel AI SDK format
+            const convertedChunks: string[] = [];
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                if (data === "[DONE]") {
+                  convertedChunks.push(`d:{"finishReason":"stop"}\n`);
+                } else {
+                  try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.type === "text" && parsed.text) {
+                      convertedChunks.push(`0:${JSON.stringify(parsed.text)}\n`);
+                    } else if (parsed.type === "error") {
+                      convertedChunks.push(`0:${JSON.stringify(`Error: ${parsed.error}`)}\n`);
+                    }
+                  } catch {
+                    // Not JSON, skip
+                  }
+                }
+              }
+            }
+
+            if (convertedChunks.length > 0) {
+              controller.enqueue(encoder.encode(convertedChunks.join("")));
             }
           }
 
           // Save assistant message to database
-          const assistantMsgOrder = await getNextMessageOrder(chatSession.id);
-          await prisma.chatMessage.create({
-            data: {
-              sessionId: chatSession.id,
-              notebookId,
-              sender: "ASSISTANT",
-              content: fullResponse,
-              messageOrder: assistantMsgOrder,
-            },
-          });
+          if (fullResponse) {
+            const assistantMsgOrder = await getNextMessageOrder(chatSession.id);
+            await prisma.chatMessage.create({
+              data: {
+                sessionId: chatSession.id,
+                notebookId,
+                sender: "ASSISTANT",
+                content: fullResponse,
+                messageOrder: assistantMsgOrder,
+              },
+            });
+          }
 
-          controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`));
           controller.close();
         } catch (error) {
-          console.error("Agent stream error:", error);
+          console.error("Stream error:", error);
           const errorMsg =
             error instanceof Error ? error.message : "Unknown error";
 

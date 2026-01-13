@@ -1,77 +1,59 @@
 """
-LangChain tools for RAG agent using MCP (Model Context Protocol).
-
-Provides tool wrappers around RAGFlow MCP server following LangGraph
-best practices. Uses langchain-mcp-adapters to connect to the RAGFlow
-MCP server at http://localhost:9382/mcp/.
+RAGFlow retrieval tool for LangChain agents.
 """
 
 import logging
-from typing import Any
+import os
 
-from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain.tools import tool
+from ragflow_sdk import RAGFlow
 
 logger = logging.getLogger(__name__)
 
+# Module-level client cache
+_ragflow_client = None
 
-async def create_mcp_retrieval_tools(
-    dataset_ids: list[str],
-    mcp_server_url: str = "http://localhost:9382/mcp/",
-    document_ids: list[str] | None = None,
-):
-    """
-    Factory function to create MCP-based retrieval tools.
 
-    Creates LangChain tools that connect to the RAGFlow MCP server and use
-    the ragflow_retrieval tool provided by the server.
+def _get_client():
+    """Get or create RAGFlow client."""
+    global _ragflow_client
+    if _ragflow_client is None:
+        api_key = os.getenv("RAGFLOW_API_KEY")
+        base_url = os.getenv("RAGFLOW_BASE_URL", "http://localhost:9380")
+        if api_key:
+            _ragflow_client = RAGFlow(api_key=api_key, base_url=base_url)
+    return _ragflow_client
 
-    Args:
-        dataset_ids: List of dataset IDs to search
-        mcp_server_url: URL of the RAGFlow MCP server (default: http://localhost:9382/mcp/)
-        document_ids: Optional list of specific document IDs to search within
 
-    Returns:
-        List of LangChain tools from the MCP server that can be used with LangGraph agents
-
-    Example:
-        >>> tools = await create_mcp_retrieval_tools(
-        ...     dataset_ids=["bc4177924a7a11f09eff238aa5c10c94"]
-        ... )
-        >>> # Use tools with LangGraph agent
-        >>> agent = create_agent("claude-sonnet-4-5-20250929", tools)
-    """
-    logger.info(
-        f"[create_mcp_retrieval_tools] Connecting to MCP server: {mcp_server_url}"
-    )
-    logger.info(f"[create_mcp_retrieval_tools] Dataset IDs: {dataset_ids}")
-
-    # Configure MCP client for RAGFlow server
-    client = MultiServerMCPClient(
-        {
-            "ragflow": {
-                "transport": "http",  # HTTP-based remote server
-                "url": mcp_server_url,
-            }
-        }
-    )
-
-    try:
-        # Get all available tools from the MCP server
-        tools = await client.get_tools()
-        logger.info(
-            f"[create_mcp_retrieval_tools] Retrieved {len(tools)} tools from MCP server"
-        )
-
-        # Store metadata on tools for later use
-        for tool in tools:
-            # Store default parameters that will be used during invocations
-            tool._default_dataset_ids = dataset_ids
-            tool._default_document_ids = document_ids or []
-
-        return tools
-
-    except Exception as e:
-        logger.error(
-            f"[create_mcp_retrieval_tools] Failed to connect to MCP server: {e}"
-        )
-        raise
+def create_retrieval_tool(dataset_ids: list[str], document_ids: list[str] = None, top_k: int = 10):
+    """Create a retrieval tool bound to specific datasets."""
+    
+    @tool
+    def retrieve_documents(query: str) -> str:
+        """Search the knowledge base for relevant documents."""
+        client = _get_client()
+        if not client:
+            return "RAGFlow not configured. Set RAGFLOW_API_KEY."
+        
+        try:
+            chunks = client.retrieve(
+                question=query,
+                dataset_ids=dataset_ids,
+                document_ids=document_ids,
+                page_size=top_k,
+            )
+            if not chunks:
+                return "No relevant documents found."
+            
+            results = []
+            for chunk in chunks:
+                content = getattr(chunk, 'content', str(chunk))
+                doc = getattr(chunk, 'document_name', '')
+                results.append(f"[{doc}]\n{content}" if doc else content)
+            
+            return "\n\n---\n\n".join(results)
+        except Exception as e:
+            logger.error(f"Retrieval error: {e}")
+            return f"Error: {e}"
+    
+    return retrieve_documents
