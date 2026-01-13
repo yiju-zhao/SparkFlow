@@ -1,25 +1,25 @@
 # FastAPI and server
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
-python-multipart==0.0.12
+fastapi
+uvicorn[standard]
+python-multipart
 
-# LangChain v1 and LangGraph v1
-langgraph>=1.0.0
-langchain>=1.0.0
-langchain-openai>=0.3.0
-langchain-core>=0.4.0
+# LangChain
+langgraph
+langchain
+langchain-openai
+langchain-core
 
 # RAGFlow Python SDK
-ragflow-sdk>=0.16.0
+ragflow-sdk
 
 # AI/ML providers
-openai>=1.57.2
+openai
 
 # Utilities
-pydantic>=2.10.3
-python-dotenv>=1.0.1
-httpx>=0.28.1
+pydantic
+python-dotenv
+httpx
 
 # Auth
-pyjwt>=2.10.1
-python-jose[cryptography]>=3.3.0
+pyjwt
+python-jose[cryptography]
