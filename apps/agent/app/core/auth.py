@@ -38,28 +38,23 @@ class CurrentUser(BaseModel):
 
 def decode_token(token: str) -> TokenData:
     """
-    Decode and validate a JWT token.
+    Decode and validate a token.
 
-    Args:
-        token: JWT token string
-
-    Returns:
-        TokenData with user information
-
-    Raises:
-        HTTPException: If token is invalid or expired
+    Accepts simple user ID (internal Next.js calls) or JWT (external calls).
     """
+    # Simple user ID from Next.js (no dots = not a JWT)
+    if "." not in token:
+        return TokenData(user_id=token)
+    
+    # Decode as JWT
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-
-        # NextAuth.js JWT structure
         user_id = payload.get("id") or payload.get("sub")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing user ID",
             )
-
         return TokenData(
             user_id=user_id,
             email=payload.get("email"),
@@ -75,17 +70,9 @@ def decode_token(token: str) -> TokenData:
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> CurrentUser:
-    """
-    FastAPI dependency to get the current authenticated user.
-
-    Usage:
-        @app.get("/protected")
-        async def protected_route(user: CurrentUser = Depends(get_current_user)):
-            return {"user_id": user.id}
-    """
+    """FastAPI dependency to get the current authenticated user."""
     token = credentials.credentials
     token_data = decode_token(token)
-
     return CurrentUser(
         id=token_data.user_id,
         email=token_data.email,
@@ -98,14 +85,9 @@ async def get_optional_user(
         HTTPBearer(auto_error=False)
     ),
 ) -> Optional[CurrentUser]:
-    """
-    FastAPI dependency for optional authentication.
-
-    Returns None if no valid token is provided, instead of raising an exception.
-    """
+    """Optional authentication - returns None if no valid token."""
     if credentials is None:
         return None
-
     try:
         token_data = decode_token(credentials.credentials)
         return CurrentUser(

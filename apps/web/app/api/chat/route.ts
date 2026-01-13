@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Forward auth token for backend validation
         Authorization: `Bearer ${session.user.id}`,
       },
       body: JSON.stringify({
