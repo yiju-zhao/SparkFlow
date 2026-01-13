@@ -25,7 +25,6 @@ async def stream_chat_response(
 ) -> AsyncGenerator[str, None]:
     """Stream chat responses from the RAG agent."""
     try:
-        logger.info(f"Creating agent with dataset_id: {dataset_id}")
         agent = SparkFlowRAGAgent(RAGAgentConfig(
             dataset_ids=[dataset_id],
         ))
@@ -38,23 +37,16 @@ async def stream_chat_response(
             elif msg.get("role") == "assistant":
                 langchain_messages.append(AIMessage(content=msg.get("content", "")))
         langchain_messages.append(HumanMessage(content=message))
-        
-        logger.info(f"Starting stream with {len(langchain_messages)} messages")
 
-        # Stream responses (use session_id for conversation persistence)
-        event_count = 0
+        # Stream responses
         async for event in agent.astream(langchain_messages, thread_id=session_id):
-            event_count += 1
-            logger.debug(f"Event {event_count}: {type(event)} - keys: {event.keys() if isinstance(event, dict) else 'N/A'}")
             if event.get("content"):
-                logger.info(f"Yielding content: {event['content'][:50]}...")
                 yield f"data: {json.dumps({'type': 'text', 'text': event['content']})}\n\n"
 
-        logger.info(f"Stream complete, {event_count} events received")
         yield "data: [DONE]\n\n"
 
     except Exception as e:
-        logger.error(f"Chat error: {e}", exc_info=True)
+        logger.error(f"Chat error: {e}")
         yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
         yield "data: [DONE]\n\n"
 

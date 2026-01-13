@@ -48,19 +48,17 @@ class SparkFlowRAGAgent:
         )
 
     async def astream(self, messages: list, thread_id: str = "default"):
-        """Stream agent responses."""
+        """Stream agent responses token by token."""
         config = {"configurable": {"thread_id": thread_id}}
         
-        async for event in self.agent.astream({"messages": messages}, config, stream_mode="values"):
-            logger.debug(f"Stream event: {type(event)} - {event.keys() if isinstance(event, dict) else event}")
-            
-            # Handle different event formats
-            if isinstance(event, dict):
-                # Standard state update with messages
-                if "messages" in event:
-                    last_msg = event["messages"][-1] if event["messages"] else None
-                    if last_msg and isinstance(last_msg, AIMessage) and last_msg.content:
-                        yield {"type": "text", "content": last_msg.content}
+        # Use stream_mode="messages" for token-by-token streaming
+        async for event in self.agent.astream({"messages": messages}, config, stream_mode="messages"):
+            # event is tuple: (message_chunk, metadata)
+            if isinstance(event, tuple) and len(event) >= 1:
+                chunk = event[0]
+                # AIMessageChunk has content attribute
+                if hasattr(chunk, "content") and chunk.content:
+                    yield {"type": "text", "content": chunk.content}
 
     async def ainvoke(self, messages: list, thread_id: str = "default") -> str:
         """Invoke agent and return response."""
