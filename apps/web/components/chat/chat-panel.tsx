@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Send, Loader2, Sparkles, Plus, History, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Markdown } from "@/components/ui/markdown";
 
 interface ChatPanelProps {
   notebookId: string;
@@ -316,7 +317,9 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
                     : "bg-accent"
                     }`}
                 >
-                  <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                  <div className="text-sm leading-relaxed">
+                    <Markdown>{message.content}</Markdown>
+                  </div>
                   {message.role === "assistant" && message.content && (
                     <div className="mt-2 flex gap-1">
                       <Button

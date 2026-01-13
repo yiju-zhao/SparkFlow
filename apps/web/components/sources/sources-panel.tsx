@@ -38,7 +38,7 @@ import {
   deleteSource,
 } from "@/lib/actions/sources";
 import type { Source as PrismaSource } from "@prisma/client";
-import ReactMarkdown from "react-markdown";
+import { Markdown } from "@/components/ui/markdown";
 
 // Extended Source type with the new content field (until Prisma client is regenerated)
 type Source = PrismaSource & {
@@ -343,53 +343,9 @@ function SourceContentView({
 
       {/* Markdown content with richer styles */}
       <div className="flex-1 overflow-y-auto p-4">
-        <article className="prose dark:prose-invert max-w-none space-y-3 text-[14px] leading-5">
-          <ReactMarkdown
-            components={{
-              h1: ({ node, ...props }) => (
-                <h1 className="text-xl font-semibold" {...props} />
-              ),
-              h2: ({ node, ...props }) => (
-                <h2 className="text-lg font-semibold text-primary" {...props} />
-              ),
-              p: ({ node, ...props }) => (
-                <p className="leading-relaxed text-muted-foreground" {...props} />
-              ),
-              code: ({ node, className, children, ...props }) => (
-                <pre className="overflow-auto rounded-lg bg-muted p-3 text-xs">
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                </pre>
-              ),
-              ul: ({ node, ...props }) => (
-                <ul className="list-disc space-y-1 pl-5" {...props} />
-              ),
-              ol: ({ node, ...props }) => (
-                <ol className="list-decimal space-y-1 pl-5" {...props} />
-              ),
-              blockquote: ({ node, ...props }) => (
-                <blockquote
-                  className="border-l-2 border-primary/40 bg-muted/50 px-3 py-2 text-muted-foreground"
-                  {...props}
-                />
-              ),
-              table: ({ node, ...props }) => (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-sm" {...props} />
-                </div>
-              ),
-              th: ({ node, ...props }) => (
-                <th className="border-b border-border px-2 py-1 text-left" {...props} />
-              ),
-              td: ({ node, ...props }) => (
-                <td className="border-b border-border px-2 py-1 align-top" {...props} />
-              ),
-            }}
-          >
-            {markdownContent}
-          </ReactMarkdown>
-        </article>
+        <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+          {markdownContent}
+        </Markdown>
       </div>
     </div>
   );
