@@ -36,7 +36,7 @@ class SparkFlowRAGAgent:
             model=f"openai:{config.model_name}",
             tools=tools,
             checkpointer=MemorySaver(),
-            prompt=RAG_AGENT_SYSTEM_PROMPT,
+            system_prompt=RAG_AGENT_SYSTEM_PROMPT,
             model_config={
                 "temperature": config.synthesis_temperature,
                 "api_key": config.api_key or os.getenv("OPENAI_API_KEY"),
