@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
   experimental: {
     turbopackUseSystemTlsCerts: true,
   },
-  // Allow dev server access from any origin (for remote development)
-  allowedDevOrigins: ["*"],
+  // Allow dev server access from local network IPs (for remote development)
+  allowedDevOrigins: ["10.218.163.144", "*.local"],
 };
 
 export default nextConfig;
