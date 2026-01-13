@@ -10,7 +10,7 @@ interface MarkdownProps {
 
 export function Markdown({ children, className }: MarkdownProps) {
     return (
-        <div className={cn("prose prose-sm dark:prose-invert max-w-none break-words", className)}>
+        <div className={cn("max-w-none break-words", className)}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{

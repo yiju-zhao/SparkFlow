@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -36,30 +35,41 @@
 
 :root {
   /* Huawei Design System - Light Mode */
-  --background: oklch(1 0 0);           /* #FFFFFF */
-  --foreground: oklch(0 0 0);           /* #000000 */
+  --background: oklch(1 0 0);
+  /* #FFFFFF */
+  --foreground: oklch(0 0 0);
+  /* #000000 */
 
-  --card: oklch(1 0 0);                 /* #FFFFFF */
-  --card-foreground: oklch(0.118 0 0);  /* #1E1E1E */
+  --card: oklch(1 0 0);
+  /* #FFFFFF */
+  --card-foreground: oklch(0.118 0 0);
+  /* #1E1E1E */
 
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0 0 0);
 
   /* Primary - Black/White for strong contrast */
-  --primary: oklch(0 0 0);              /* #000000 */
-  --primary-foreground: oklch(1 0 0);   /* #FFFFFF */
+  --primary: oklch(0 0 0);
+  /* #000000 */
+  --primary-foreground: oklch(1 0 0);
+  /* #FFFFFF */
 
   /* Secondary - Light gray backgrounds */
-  --secondary: oklch(0.961 0 0);        /* #F5F5F5 */
+  --secondary: oklch(0.961 0 0);
+  /* #F5F5F5 */
   --secondary-foreground: oklch(0 0 0);
 
   /* Muted - For disabled/secondary text */
-  --muted: oklch(0.961 0 0);            /* #F5F5F5 */
-  --muted-foreground: oklch(0.4 0 0);   /* #666666 */
+  --muted: oklch(0.961 0 0);
+  /* #F5F5F5 */
+  --muted-foreground: oklch(0.4 0 0);
+  /* #666666 */
 
   /* Accent - Huawei Red */
-  --accent-red: oklch(0.44 0.19 16);    /* #CE0E2D */
-  --accent-red-hover: oklch(0.34 0.19 16); /* #A20A22 */
+  --accent-red: oklch(0.44 0.19 16);
+  /* #CE0E2D */
+  --accent-red-hover: oklch(0.34 0.19 16);
+  /* #A20A22 */
   --accent: oklch(0.961 0 0);
   --accent-foreground: oklch(0 0 0);
 
@@ -68,12 +78,14 @@
   --destructive-foreground: oklch(1 0 0);
 
   /* Borders - Light gray */
-  --border: oklch(0.89 0 0);            /* #E3E3E3 */
+  --border: oklch(0.89 0 0);
+  /* #E3E3E3 */
   --input: oklch(0.89 0 0);
   --ring: oklch(0 0 0);
 
   /* Border Radius System */
-  --radius: 0.5rem;                     /* 8px - default */
+  --radius: 0.5rem;
+  /* 8px - default */
 }
 
 .dark {
@@ -174,6 +186,7 @@
     opacity: 0;
     transform: translateY(40px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -185,9 +198,11 @@
     transform: translateX(-100%);
     opacity: 0;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     transform: translateX(100%);
     opacity: 0;
