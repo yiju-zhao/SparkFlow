@@ -66,3 +66,45 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         return new Response("Internal server error", { status: 500 });
     }
 }
+
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return new Response("Unauthorized", { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const { sessionId } = resolvedParams;
+
+    if (!sessionId) {
+        return new Response("sessionId is required", { status: 400 });
+    }
+
+    try {
+        // Verify ownership
+        const chatSession = await prisma.chatSession.findUnique({
+            where: { id: sessionId },
+            include: {
+                notebook: { select: { userId: true } },
+            },
+        });
+
+        if (!chatSession) {
+            return new Response("Session not found", { status: 404 });
+        }
+
+        if (chatSession.notebook.userId !== session.user.id) {
+            return new Response("Unauthorized", { status: 403 });
+        }
+
+        // Delete session (messages cascade delete via schema)
+        await prisma.chatSession.delete({
+            where: { id: sessionId },
+        });
+
+        return new Response(null, { status: 204 });
+    } catch (error) {
+        console.error("Error deleting chat session:", error);
+        return new Response("Internal server error", { status: 500 });
+    }
+}

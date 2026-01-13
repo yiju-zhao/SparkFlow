@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Send, Loader2, Sparkles, Plus, History, X } from "lucide-react";
+import { Send, Loader2, Sparkles, Plus, History, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -89,6 +89,25 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     setCurrentSessionId(null);
     setIsNewSession(true);
     setShowHistory(false);
+  };
+
+  // Delete a session
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation(); // Prevent triggering loadSession
+    if (!confirm("Delete this chat history?")) return;
+
+    try {
+      const res = await fetch(`/api/chat/${sessionId}`, { method: "DELETE" });
+      if (res.ok) {
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        // If we deleted the current session, start fresh
+        if (currentSessionId === sessionId) {
+          handleNewChat();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -246,17 +265,25 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
               <p className="text-xs text-muted-foreground p-2">No chat history</p>
             ) : (
               sessions.map((session) => (
-                <button
+                <div
                   key={session.id}
+                  className={`flex items-center justify-between p-2 rounded text-sm hover:bg-accent cursor-pointer ${currentSessionId === session.id ? "bg-accent" : ""}`}
                   onClick={() => loadSession(session.id)}
-                  className={`w-full text-left p-2 rounded text-sm hover:bg-accent ${currentSessionId === session.id ? "bg-accent" : ""
-                    }`}
                 >
-                  <div className="font-medium truncate">{session.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatDate(session.lastActivity)} · {session._count.messages} msgs
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{session.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDate(session.lastActivity)} · {session._count.messages} msgs
+                    </div>
                   </div>
-                </button>
+                  <button
+                    onClick={(e) => handleDeleteSession(e, session.id)}
+                    className="ml-2 p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                    title="Delete chat"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -285,8 +312,8 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
               >
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-accent"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-accent"
                     }`}
                 >
                   <p className="whitespace-pre-wrap text-sm">{message.content}</p>
