@@ -65,7 +65,7 @@ export function NotesPanel({ notebookId, notes }: NotesPanelProps) {
       ) : (
         <>
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2">
             <h2 className="text-sm font-medium">Notes</h2>
             <Button
               size="sm"
@@ -140,9 +140,8 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group cursor-pointer rounded-lg border p-3 transition-all ${
-        isPending ? "opacity-50" : ""
-      } border-border hover:border-accent-red/50 hover:bg-accent`}
+      className={`group cursor-pointer rounded-lg border p-3 transition-all ${isPending ? "opacity-50" : ""
+        } border-border hover:border-accent-red/50 hover:bg-accent`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -244,7 +243,7 @@ function NoteViewer({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <Button
           variant="ghost"
           size="icon"

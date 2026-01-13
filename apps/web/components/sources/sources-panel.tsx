@@ -115,7 +115,7 @@ export function SourcesPanel({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <h2 className="text-sm font-medium">Sources</h2>
         <Button
           size="sm"
@@ -315,7 +315,7 @@ function SourceContentView({
   return (
     <div className="flex h-full flex-col">
       {/* Header with back button */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
         <Button
           size="sm"
           variant="ghost"
