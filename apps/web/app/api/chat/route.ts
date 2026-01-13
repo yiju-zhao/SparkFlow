@@ -66,14 +66,30 @@ export async function POST(req: NextRequest) {
       return new Response("datasetId is required", { status: 400 });
     }
 
+    // Get the latest user message
+    const userMessage = messages[messages.length - 1];
+    if (userMessage.role !== "user") {
+      return new Response("Last message must be from user", { status: 400 });
+    }
+
     // Determine which session to use
     let chatSession;
     if (newSession) {
       // Create a brand new session
+      // Use the first user message for the title
+      const firstUserMsg = messages.find((m: any) => m.role === "user");
+      let title = "New Chat";
+      if (firstUserMsg && firstUserMsg.content) {
+        title = firstUserMsg.content.trim();
+        if (title.length > 50) {
+          title = title.substring(0, 50) + "...";
+        }
+      }
+
       chatSession = await prisma.chatSession.create({
         data: {
           notebookId,
-          title: "New Chat",
+          title,
           status: "ACTIVE",
         },
       });
@@ -88,12 +104,6 @@ export async function POST(req: NextRequest) {
     } else {
       // Resume or create default session
       chatSession = await getOrCreateChatSession(notebookId);
-    }
-
-    // Get the latest user message
-    const userMessage = messages[messages.length - 1];
-    if (userMessage.role !== "user") {
-      return new Response("Last message must be from user", { status: 400 });
     }
 
     // Save user message to database
