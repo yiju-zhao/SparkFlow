@@ -5,7 +5,7 @@ RAG Agent using LangChain create_agent.
 import logging
 import os
 
-from langchain import create_agent
+from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 
