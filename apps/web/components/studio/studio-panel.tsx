@@ -317,7 +317,9 @@ function NoteViewer({
           <div>
             <div className="mb-4 flex items-center gap-2">
               {note.isPinned && <Pin className="h-4 w-4 text-accent-red" />}
-              <h2 className="text-lg font-medium">{note.title}</h2>
+              <h2 className="truncate text-sm font-medium" title={note.title}>
+                {note.title}
+              </h2>
             </div>
             {note.tags.length > 0 && (
               <div className="mb-4 flex flex-wrap gap-1">
@@ -328,8 +330,10 @@ function NoteViewer({
                 ))}
               </div>
             )}
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <Markdown>{note.content}</Markdown>
+            <div className="flex-1">
+              <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+                {note.content}
+              </Markdown>
             </div>
           </div>
         )}
