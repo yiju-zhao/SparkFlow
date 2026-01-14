@@ -246,8 +246,14 @@
   display: none;
 }
 
-/* KaTeX overflow fix - minimal overrides */
+/* KaTeX overflow fix */
 .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+.katex-display > .katex {
   overflow-x: auto;
   overflow-y: hidden;
 }
