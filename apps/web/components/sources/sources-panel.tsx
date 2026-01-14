@@ -287,7 +287,7 @@ function SourceItem({
   );
 }
 
-// Source content viewer - shows title and markdown content
+// Source content viewer - shows title and markdown content with floating TOC
 function SourceContentView({
   source,
   onBack,
@@ -295,8 +295,73 @@ function SourceContentView({
   source: Source;
   onBack: () => void;
 }) {
+  const [showToc, setShowToc] = useState(false);
+  const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
+
+  // Extract headings from markdown
+  useEffect(() => {
+    const extractedHeadings: { id: string; text: string; level: number }[] = [];
+    const lines = markdownContent.split('\n');
+
+    for (const line of lines) {
+      const match = line.match(/^(#{1,3})\s+(.+)$/);
+      if (match) {
+        const level = match[1].length;
+        const text = match[2].trim();
+        // Generate ID similar to rehype-slug
+        const id = text
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-');
+        extractedHeadings.push({ id, text, level });
+      }
+    }
+
+    setHeadings(extractedHeadings);
+  }, [markdownContent]);
+
+  // Handle scroll to show/hide TOC
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowToc(true);
+
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Hide TOC after 2 seconds of no scrolling
+      scrollTimeoutRef.current = setTimeout(() => {
+        setShowToc(false);
+      }, 2000);
+    };
+
+    const contentEl = contentRef.current;
+    if (contentEl) {
+      contentEl.addEventListener('scroll', handleScroll);
+    }
+
+    return () => {
+      if (contentEl) {
+        contentEl.removeEventListener('scroll', handleScroll);
+      }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const scrollToHeading = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -327,11 +392,37 @@ function SourceContentView({
         </div>
       </div>
 
-      {/* Markdown content with richer styles */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-          {markdownContent}
-        </Markdown>
+      {/* Markdown content with floating TOC */}
+      <div className="relative flex-1 overflow-y-auto" ref={contentRef}>
+        <div className="p-4">
+          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+            {markdownContent}
+          </Markdown>
+        </div>
+
+        {/* Floating TOC */}
+        {headings.length > 0 && (
+          <div
+            className={`fixed right-4 top-20 max-w-xs rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur transition-opacity duration-300 ${showToc ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+          >
+            <h3 className="mb-2 text-xs font-semibold text-foreground">Table of Contents</h3>
+            <nav className="space-y-1">
+              {headings.map((heading, index) => (
+                <button
+                  key={index}
+                  onClick={() => scrollToHeading(heading.id)}
+                  className={`block w-full text-left text-xs hover:text-accent-blue transition-colors ${heading.level === 1 ? 'font-medium' : ''
+                    } ${heading.level === 2 ? 'pl-2' : ''
+                    } ${heading.level === 3 ? 'pl-4 text-muted-foreground' : ''
+                    }`}
+                >
+                  {heading.text}
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
     </div>
   );
