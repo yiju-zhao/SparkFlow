@@ -155,9 +155,9 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
             {note.isPinned && (
               <Pin className="h-3 w-3 shrink-0 text-accent-red" />
             )}
-            <h3 className="truncate text-sm font-medium">{note.title}</h3>
+            <h3 className="line-clamp-1 text-sm font-medium">{note.title}</h3>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+          <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">
             {note.content}
           </p>
         </div>
