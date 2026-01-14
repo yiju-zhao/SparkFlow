@@ -53,7 +53,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         });
 
         // Transform for frontend
-        const formattedMessages = messages.map((msg) => ({
+        const formattedMessages = messages.map((msg: { id: string; sender: string; content: string; createdAt: Date }) => ({
             id: msg.id,
             role: msg.sender === "USER" ? "user" : "assistant",
             content: msg.content,
@@ -136,9 +136,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const { ragflowAgentId } = await req.json();
-        if (!ragflowAgentId) {
-            return new Response("ragflowAgentId is required", { status: 400 });
+        const { ragflowAgentId, langgraphThreadId } = await req.json();
+
+        // At least one field must be provided
+        if (!ragflowAgentId && !langgraphThreadId) {
+            return new Response("ragflowAgentId or langgraphThreadId is required", { status: 400 });
         }
 
         const chatSession = await prisma.chatSession.findUnique({
@@ -154,14 +156,18 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
             return new Response("Unauthorized", { status: 403 });
         }
 
+        const updateData: { ragflowAgentId?: string; langgraphThreadId?: string } = {};
+        if (ragflowAgentId) updateData.ragflowAgentId = ragflowAgentId;
+        if (langgraphThreadId) updateData.langgraphThreadId = langgraphThreadId;
+
         const updated = await prisma.chatSession.update({
             where: { id: sessionId },
-            data: { ragflowAgentId },
+            data: updateData,
         });
 
         return NextResponse.json(updated);
     } catch (error) {
-        console.error("Error updating session thread id:", error);
+        console.error("Error updating session:", error);
         return new Response("Internal server error", { status: 500 });
     }
 }

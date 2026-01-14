@@ -120,6 +120,9 @@ model ChatSession {
   title      String        @default("New Chat")
   status     SessionStatus @default(ACTIVE)
 
+  // LangGraph Integration
+  langgraphThreadId String? @unique // Separate from session ID, can be regenerated
+
   // RagFlow Integration
   ragflowAgentId String?
 

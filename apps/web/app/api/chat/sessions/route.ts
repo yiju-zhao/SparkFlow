@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
                 id: true,
                 title: true,
                 lastActivity: true,
+                langgraphThreadId: true,
                 ragflowAgentId: true,
                 startedAt: true,
                 _count: {

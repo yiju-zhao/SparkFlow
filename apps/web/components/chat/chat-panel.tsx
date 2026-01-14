@@ -17,6 +17,7 @@ interface ChatSession {
   id: string;
   title: string;
   lastActivity: string;
+  langgraphThreadId?: string | null;
   _count: { messages: number };
 }
 
@@ -24,23 +25,40 @@ const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://l
 
 export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [threadId, setThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [isNewSession, setIsNewSession] = useState(false);
   const [pendingAssistantSave, setPendingAssistantSave] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const ensuredThreadsRef = useRef<Set<string>>(new Set());
 
-  const isValidUUID = useCallback((id: string) => {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-  }, []);
+  // Save thread ID to database when LangGraph creates it
+  const handleThreadId = useCallback(
+    async (newThreadId: string) => {
+      setThreadId(newThreadId);
+      // If we have an active session, save the thread ID to it
+      if (activeSessionId) {
+        try {
+          await fetch(`/api/chat/${activeSessionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ langgraphThreadId: newThreadId }),
+          });
+        } catch (error) {
+          console.error("Failed to save thread ID:", error);
+        }
+      }
+    },
+    [activeSessionId]
+  );
 
-  // LangGraph stream hook
+  // LangGraph stream hook - let it auto-create threads
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
     assistantId: "agent",
-    threadId: activeSessionId && isValidUUID(activeSessionId) ? activeSessionId : undefined,
+    threadId: threadId ?? undefined,
+    onThreadId: handleThreadId,
     onError: (error) => {
       console.error("Stream error:", error);
     },
@@ -62,51 +80,6 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     }
     return "";
   }, []);
-
-  const ensureThread = useCallback(
-    async (threadId: string) => {
-      if (ensuredThreadsRef.current.has(threadId)) return;
-
-      ensuredThreadsRef.current.add(threadId);
-      try {
-        // First check if thread already exists
-        await stream.client.threads.get(threadId);
-        // Thread exists, no need to create
-        return;
-      } catch (error) {
-        const status =
-          (error as { status?: number }).status ??
-          (error as { status_code?: number }).status_code ??
-          (error as { statusCode?: number }).statusCode ??
-          (error as { response?: { status?: number } }).response?.status;
-
-        // Only proceed to create if thread was not found (404)
-        if (status !== 404) {
-          console.error("Failed to check thread existence:", error);
-          ensuredThreadsRef.current.delete(threadId);
-          return;
-        }
-      }
-
-      // Thread doesn't exist, create it
-      try {
-        await stream.client.threads.create({ threadId });
-      } catch (error) {
-        const status =
-          (error as { status?: number }).status ??
-          (error as { status_code?: number }).status_code ??
-          (error as { statusCode?: number }).statusCode ??
-          (error as { response?: { status?: number } }).response?.status;
-
-        // Ignore conflict if thread was created between our check and create call
-        if (status === 409) return;
-
-        console.error("Failed to create thread:", error);
-        ensuredThreadsRef.current.delete(threadId);
-      }
-    },
-    [stream.client]
-  );
 
   const saveMessages = useCallback(
     async (
@@ -162,18 +135,13 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     }
   }, [stream.error, pendingAssistantSave]);
 
-  const loadSession = useCallback(
-    async (sessionId: string) => {
-      setActiveSessionId(sessionId);
-      setIsNewSession(false);
-      setPendingAssistantSave(null);
-      setShowHistory(false);
-      if (isValidUUID(sessionId)) {
-        ensureThread(sessionId);
-      }
-    },
-    [ensureThread, isValidUUID]
-  );
+  const loadSession = useCallback((session: ChatSession) => {
+    setActiveSessionId(session.id);
+    setThreadId(session.langgraphThreadId || null);
+    setIsNewSession(false);
+    setPendingAssistantSave(null);
+    setShowHistory(false);
+  }, []);
 
   // Fetch sessions list from our backend (for history)
   const fetchSessions = useCallback(async () => {
@@ -184,7 +152,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
         setSessions(data);
         // Auto-select most recent if no current session
         if (!activeSessionId && data.length > 0 && !isNewSession) {
-          loadSession(data[0].id);
+          loadSession(data[0]);
         }
       }
     } catch (error) {
@@ -235,6 +203,8 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
       const created = await res.json();
       setSessions((prev) => [created, ...prev]);
       setActiveSessionId(created.id);
+      // Don't set threadId here - let LangGraph create it via onThreadId
+      setThreadId(null);
       setIsNewSession(false);
       return created;
     },
@@ -244,6 +214,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   // Start a new chat
   const handleNewChat = () => {
     setActiveSessionId(null);
+    setThreadId(null);
     setIsNewSession(true);
     setPendingAssistantSave(null);
     setShowHistory(false);
@@ -277,10 +248,8 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     try {
       let sessionId = activeSessionId;
 
+      // Create a new session if needed
       if (!sessionId) {
-        const session = await createSession(message);
-        sessionId = session.id;
-      } else if (!isValidUUID(sessionId)) {
         const session = await createSession(message);
         sessionId = session.id;
       }
@@ -289,18 +258,15 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
         throw new Error("Unable to determine session");
       }
 
-      await ensureThread(sessionId);
-
       // Save the user message immediately
       await saveMessages(sessionId, [{ sender: "USER", content: message }]);
 
       setPendingAssistantSave(sessionId);
 
-      // Submit to LangGraph stream with dataset config
+      // Submit to LangGraph stream - it will auto-create thread if needed
       await stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
-          threadId: sessionId,
           config: {
             configurable: {
               dataset_ids: datasetId ? [datasetId] : [],
@@ -369,7 +335,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
                     key={session.id}
                     className={`group flex items-center justify-between rounded-md px-2 py-1.5 cursor-pointer hover:bg-muted ${activeSessionId === session.id ? "bg-muted" : ""
                       }`}
-                    onClick={() => loadSession(session.id)}
+                    onClick={() => loadSession(session)}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{session.title}</p>
