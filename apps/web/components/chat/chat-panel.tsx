@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import { Send, Loader2, Sparkles, Plus, History, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,12 @@ const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://l
 
 export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [isNewSession, setIsNewSession] = useState(false);
+  const [pendingAssistantSave, setPendingAssistantSave] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // LangGraph stream hook
@@ -37,6 +39,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     threadId: threadId ?? undefined,
     onThreadId: (id) => {
       setThreadId(id);
+      setActiveSessionId(id);
       setIsNewSession(false);
       fetchSessions();
     },
@@ -45,13 +48,103 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     },
   });
 
+  const normalizeContent = useCallback((content: unknown) => {
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (typeof item === "object" && item && "text" in item && typeof item.text === "string") {
+            return item.text;
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+    return "";
+  }, []);
+
+  const ensureThread = useCallback(
+    async (sessionId: string) => {
+      try {
+        await stream.client.threads.getState(sessionId);
+      } catch {
+        try {
+          await stream.client.threads.create({ threadId: sessionId });
+        } catch (error) {
+          console.error("Failed to ensure thread exists:", error);
+        }
+      }
+    },
+    [stream.client]
+  );
+
+  const saveMessages = useCallback(
+    async (
+      sessionId: string,
+      messagesToSave: { sender: "USER" | "ASSISTANT"; content: string; metadata?: Record<string, unknown> }[]
+    ) => {
+      if (!messagesToSave.length) return;
+      try {
+        const res = await fetch("/api/chat/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            notebookId,
+            messages: messagesToSave,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText || "Failed to save chat history");
+        }
+      } catch (error) {
+        console.error("Unable to save chat history:", error);
+      }
+    },
+    [notebookId]
+  );
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const visibleMessages = useMemo(
+    () =>
+      stream.messages
+        .filter((message) => message.type === "human" || message.type === "ai")
+        .map((message) => ({
+          ...message,
+          content: normalizeContent(message.content),
+        }))
+        .filter((message) => typeof message.content === "string" && message.content.trim().length > 0),
+    [normalizeContent, stream.messages]
+  );
+
   useEffect(() => {
     scrollToBottom();
-  }, [stream.messages]);
+  }, [visibleMessages]);
+
+  useEffect(() => {
+    if (stream.error && pendingAssistantSave) {
+      setPendingAssistantSave(null);
+    }
+  }, [stream.error, pendingAssistantSave]);
+
+  const loadSession = useCallback(
+    async (sessionId: string) => {
+      setThreadId(sessionId);
+      setActiveSessionId(sessionId);
+      setIsNewSession(false);
+      setPendingAssistantSave(null);
+      setShowHistory(false);
+      ensureThread(sessionId);
+    },
+    [ensureThread]
+  );
 
   // Fetch sessions list from our backend (for history)
   const fetchSessions = useCallback(async () => {
@@ -68,23 +161,61 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
     }
-  }, [notebookId, threadId, isNewSession]);
+  }, [notebookId, threadId, isNewSession, loadSession]);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Load a specific session
-  const loadSession = async (sessionId: string) => {
-    setThreadId(sessionId);
-    setIsNewSession(false);
-    setShowHistory(false);
-  };
+  useEffect(() => {
+    if (!pendingAssistantSave || stream.isLoading) return;
+    if (pendingAssistantSave !== activeSessionId) return;
+
+    const assistantMessages = visibleMessages.filter((message) => message.type === "ai");
+    const latestAssistant = assistantMessages[assistantMessages.length - 1];
+    const assistantContent =
+      latestAssistant && typeof latestAssistant.content === "string"
+        ? latestAssistant.content.trim()
+        : "";
+
+    if (!assistantContent) {
+      setPendingAssistantSave(null);
+      return;
+    }
+
+    saveMessages(pendingAssistantSave, [
+      { sender: "ASSISTANT", content: assistantContent },
+    ]).then(() => {
+      fetchSessions();
+      setPendingAssistantSave(null);
+    });
+  }, [pendingAssistantSave, stream.isLoading, visibleMessages, saveMessages, fetchSessions, activeSessionId]);
+
+  const createSession = useCallback(
+    async (title?: string) => {
+      const res = await fetch(`/api/notebooks/${notebookId}/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to create chat session");
+      }
+
+      const created = await res.json();
+      setSessions((prev) => [created, ...prev]);
+      return created;
+    },
+    [notebookId]
+  );
 
   // Start a new chat
   const handleNewChat = () => {
     setThreadId(null);
+    setActiveSessionId(null);
     setIsNewSession(true);
+    setPendingAssistantSave(null);
     setShowHistory(false);
   };
 
@@ -113,18 +244,46 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     const message = input.trim();
     setInput("");
 
-    // Submit to LangGraph stream with dataset config
-    stream.submit(
-      { messages: [{ type: "human", content: message }] },
-      {
-        config: {
-          configurable: {
-            dataset_ids: datasetId ? [datasetId] : [],
-            notebook_id: notebookId,
-          },
-        },
+    try {
+      let sessionId = threadId;
+
+      if (!sessionId) {
+        const newSession = await createSession(message);
+        sessionId = newSession.id;
+        setThreadId(sessionId);
+        setActiveSessionId(sessionId);
+        setIsNewSession(false);
       }
-    );
+
+      if (!sessionId) {
+        throw new Error("Unable to determine session");
+      }
+
+      await ensureThread(sessionId);
+
+      // Save the user message immediately
+      await saveMessages(sessionId, [{ sender: "USER", content: message }]);
+
+      setPendingAssistantSave(sessionId);
+
+      // Submit to LangGraph stream with dataset config
+      await stream.submit(
+        { messages: [{ type: "human", content: message }] },
+        {
+          threadId: sessionId,
+          config: {
+            configurable: {
+              dataset_ids: datasetId ? [datasetId] : [],
+              notebook_id: notebookId,
+            },
+          },
+        }
+      );
+
+      fetchSessions();
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -206,7 +365,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {stream.messages.length === 0 ? (
+        {visibleMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
               <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
@@ -214,7 +373,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
             </div>
           </div>
         ) : (
-          stream.messages.map((message, idx) => (
+          visibleMessages.map((message, idx) => (
             <div
               key={message.id ?? idx}
               className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}
