@@ -321,7 +321,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   };
 
   return (
-    <div className="flex h-full flex-col relative">
+    <div className="flex h-full min-w-0 flex-col relative overflow-hidden">
       {/* Header with actions */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <h2 className="text-sm font-medium">Chat</h2>
@@ -386,7 +386,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
         {visibleMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
