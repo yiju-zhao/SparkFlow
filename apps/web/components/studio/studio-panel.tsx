@@ -39,13 +39,19 @@ import {
 } from "@/lib/actions/notes";
 import type { Note } from "@prisma/client";
 
-interface StudioPanelProps {
+export interface StudioPanelProps {
   notebookId: string;
   notes: Note[];
+  selectedNote: Note | null;
+  onSelectNote: (note: Note | null) => void;
 }
 
-export function StudioPanel({ notebookId, notes }: StudioPanelProps) {
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+export function StudioPanel({
+  notebookId,
+  notes,
+  selectedNote,
+  onSelectNote,
+}: StudioPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
@@ -56,7 +62,7 @@ export function StudioPanel({ notebookId, notes }: StudioPanelProps) {
           note={selectedNote}
           isEditing={isEditing}
           onBack={() => {
-            setSelectedNote(null);
+            onSelectNote(null);
             setIsEditing(false);
           }}
           onEdit={() => setIsEditing(true)}
@@ -96,7 +102,7 @@ export function StudioPanel({ notebookId, notes }: StudioPanelProps) {
                   <NoteCard
                     key={note.id}
                     note={note}
-                    onSelect={() => setSelectedNote(note)}
+                    onSelect={() => onSelectNote(note)}
                   />
                 ))}
               </div>

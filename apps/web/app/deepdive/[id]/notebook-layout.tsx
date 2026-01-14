@@ -26,6 +26,8 @@ interface NotebookLayoutProps {
 // Panel widths
 const SOURCES_LIST_WIDTH = 280;
 const SOURCES_EXPANDED_WIDTH = 480;
+const STUDIO_LIST_WIDTH = 320;
+const STUDIO_EXPANDED_WIDTH = 480;
 
 export function NotebookLayout({
   notebook,
@@ -35,11 +37,17 @@ export function NotebookLayout({
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
   // Determine the width of the sources panel based on whether a source is selected
   const sourcesPanelWidth = selectedSource
     ? SOURCES_EXPANDED_WIDTH
     : SOURCES_LIST_WIDTH;
+
+  // Determine the width of the studio panel based on whether a note is selected
+  const studioPanelWidth = selectedNote
+    ? STUDIO_EXPANDED_WIDTH
+    : STUDIO_LIST_WIDTH;
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -124,12 +132,17 @@ export function NotebookLayout({
           {rightPanelOpen && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 320, opacity: 1 }}
+              animate={{ width: studioPanelWidth, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="shrink-0 overflow-hidden border-l border-border"
             >
-              <StudioPanel notebookId={notebook.id} notes={notes} />
+              <StudioPanel
+                notebookId={notebook.id}
+                notes={notes}
+                selectedNote={selectedNote}
+                onSelectNote={setSelectedNote}
+              />
             </motion.div>
           )}
         </AnimatePresence>
