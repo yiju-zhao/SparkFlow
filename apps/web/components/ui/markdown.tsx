@@ -87,7 +87,7 @@ export function Markdown({ children, className }: MarkdownProps) {
     };
 
     return (
-        <div className={cn("max-w-none break-words", className)}>
+        <div className={cn("max-w-none break-words overflow-hidden", className)}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeRaw, rehypeKatex, rehypeSlug]}
