@@ -244,3 +244,19 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* KaTeX overflow fix */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+.katex {
+  max-width: 100%;
+}
+
+.katex-html {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
