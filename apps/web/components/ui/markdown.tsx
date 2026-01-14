@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-// import remarkMath from "remark-math"; // Disabled for testing
+import remarkMath from "remark-math";
 // import rehypeKatex from "rehype-katex"; // Disabled for testing
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
@@ -10,7 +10,7 @@ import type { Components } from "react-markdown";
 // import "katex/dist/katex.min.css"; // Disabled for testing
 
 // Static plugin arrays - created once
-const remarkPlugins = [remarkGfm]; // remarkMath disabled for testing
+const remarkPlugins = [remarkGfm, remarkMath];
 const rehypePlugins = [rehypeRaw, rehypeSlug]; // Testing: rehype-raw + rehype-slug
 
 // Static components - created once
