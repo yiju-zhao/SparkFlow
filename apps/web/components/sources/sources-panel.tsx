@@ -257,17 +257,15 @@ function SourceItem({
       </div>
       <div
         className="opacity-0 transition-opacity group-hover:opacity-100"
-        suppressHydrationWarning
       >
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger asChild suppressHydrationWarning>
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6"
               disabled={isPending}
               onClick={(e) => e.stopPropagation()}
-              suppressHydrationWarning
             >
               <MoreVertical className="h-3.5 w-3.5" />
             </Button>
