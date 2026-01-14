@@ -46,7 +46,6 @@ class MineRUClient {
 
         // MineRU API parameters
         formData.append("output_dir", "./output");
-        formData.append("lang_list", JSON.stringify([]));
         formData.append("backend", "pipeline");
         formData.append("parse_method", "auto");
         formData.append("formula_enable", "true");
