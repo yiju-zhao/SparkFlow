@@ -66,12 +66,24 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     async (threadId: string) => {
       try {
         await stream.client.threads.getState(threadId);
+        return;
       } catch {
-        try {
-          await stream.client.threads.create({ threadId });
-        } catch (error) {
-          console.error("Failed to ensure thread exists:", error);
-        }
+        // If not found, we'll try to create below.
+      }
+
+      try {
+        await stream.client.threads.create({ threadId });
+      } catch (error) {
+        const status =
+          (error as { status?: number }).status ??
+          (error as { status_code?: number }).status_code ??
+          (error as { statusCode?: number }).statusCode ??
+          (error as { response?: { status?: number } }).response?.status;
+
+        // Ignore conflict if thread already exists; any other error should be logged.
+        if (status === 409) return;
+
+        console.error("Failed to ensure thread exists:", error);
       }
     },
     [stream.client]
