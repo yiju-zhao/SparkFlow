@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { formatDistanceToNow } from "date-fns";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Markdown } from "@/components/ui/markdown";
 import {
   Plus,
   StickyNote,
@@ -157,9 +156,11 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
             )}
             <h3 className="line-clamp-1 text-sm font-medium">{note.title}</h3>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">
-            {note.content}
-          </p>
+          <div className="mt-1 h-[28px] overflow-hidden text-[10px] text-muted-foreground">
+            <Markdown className="text-[10px] [&_p]:mb-0 [&_p]:leading-tight">
+              {note.content}
+            </Markdown>
+          </div>
         </div>
         <div className="opacity-0 transition-opacity group-hover:opacity-100">
           <DropdownMenu>
@@ -328,9 +329,7 @@ function NoteViewer({
               </div>
             )}
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {note.content}
-              </ReactMarkdown>
+              <Markdown>{note.content}</Markdown>
             </div>
           </div>
         )}
