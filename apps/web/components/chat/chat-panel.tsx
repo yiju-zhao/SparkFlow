@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
-import { Send, Loader2, Sparkles, Plus, History, X, Trash2 } from "lucide-react";
+import { Send, Loader2, Sparkles, Plus, History, X, Trash2, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
+import { createNote } from "@/lib/actions/notes";
 import type { AgentState } from "./types";
 
 interface ChatPanelProps {
@@ -31,7 +32,32 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [isNewSession, setIsNewSession] = useState(false);
   const [pendingAssistantSave, setPendingAssistantSave] = useState<string | null>(null);
+  const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Save AI response to Notes panel
+  const handleSaveToNotes = useCallback(
+    async (messageId: string, content: string) => {
+      if (savingNoteId) return;
+      setSavingNoteId(messageId);
+      try {
+        // Create a title from the first line or first 50 chars
+        const firstLine = content.split("\n")[0].replace(/^#+\s*/, "").trim();
+        const title = firstLine.length > 50 ? firstLine.slice(0, 50) + "..." : firstLine || "Chat Note";
+
+        await createNote(notebookId, {
+          title,
+          content,
+          tags: ["from-chat"],
+        });
+      } catch (error) {
+        console.error("Failed to save note:", error);
+      } finally {
+        setSavingNoteId(null);
+      }
+    },
+    [notebookId, savingNoteId]
+  );
 
   // Save thread ID to database when LangGraph creates it
   const handleThreadId = useCallback(
@@ -369,25 +395,48 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
             </div>
           </div>
         ) : (
-          visibleMessages.map((message, idx) => (
-            <div
-              key={message.id ?? idx}
-              className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}
-            >
+          visibleMessages.map((message, idx) => {
+            const messageKey = message.id ?? `msg-${idx}`;
+            return (
               <div
-                className={`max-w-[85%] rounded-lg px-3 py-2 ${message.type === "human"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
-                  }`}
+                key={messageKey}
+                className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}
               >
-                {message.type === "human" ? (
-                  <p className="text-sm whitespace-pre-wrap">{message.content as string}</p>
-                ) : (
-                  <Markdown className="text-sm">{message.content as string}</Markdown>
-                )}
+                <div
+                  className={`max-w-[85%] rounded-lg px-3 py-2 ${message.type === "human"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
+                    }`}
+                >
+                  {message.type === "human" ? (
+                    <p className="text-sm whitespace-pre-wrap">{message.content as string}</p>
+                  ) : (
+                    <>
+                      <Markdown className="text-sm">{message.content as string}</Markdown>
+                      {/* Save to Notes button */}
+                      <div className="mt-2 flex justify-end border-t border-border/50 pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => handleSaveToNotes(messageKey, message.content as string)}
+                          disabled={savingNoteId === messageKey}
+                          title="Save to Notes"
+                        >
+                          {savingNoteId === messageKey ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <StickyNote className="h-3 w-3" />
+                          )}
+                          <span>Save to Notes</span>
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         {stream.isLoading && (
           <div className="flex justify-start">

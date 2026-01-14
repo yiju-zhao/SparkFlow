@@ -39,12 +39,12 @@ import {
 } from "@/lib/actions/notes";
 import type { Note } from "@prisma/client";
 
-interface NotesPanelProps {
+interface StudioPanelProps {
   notebookId: string;
   notes: Note[];
 }
 
-export function NotesPanel({ notebookId, notes }: NotesPanelProps) {
+export function StudioPanel({ notebookId, notes }: StudioPanelProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -66,7 +66,7 @@ export function NotesPanel({ notebookId, notes }: NotesPanelProps) {
         <>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-2">
-            <h2 className="text-sm font-medium">Notes</h2>
+            <h2 className="text-sm font-medium">Studio</h2>
             <Button
               size="sm"
               variant="ghost"

@@ -14,10 +14,10 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SourcesPanel } from "@/components/sources/sources-panel";
 import { ChatPanel } from "@/components/chat/chat-panel";
-import { NotesPanel } from "@/components/notes/notes-panel";
+import { StudioPanel } from "@/components/studio/studio-panel";
 import type { Source, Note, Notebook } from "@prisma/client";
 
-interface StudioLayoutProps {
+interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
@@ -27,11 +27,11 @@ interface StudioLayoutProps {
 const SOURCES_LIST_WIDTH = 280;
 const SOURCES_EXPANDED_WIDTH = 480;
 
-export function StudioLayout({
+export function NotebookLayout({
   notebook,
   sources,
   notes,
-}: StudioLayoutProps) {
+}: NotebookLayoutProps) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
@@ -119,7 +119,7 @@ export function StudioLayout({
           />
         </div>
 
-        {/* Notes Panel (Right) */}
+        {/* Studio Panel (Right) */}
         <AnimatePresence initial={false}>
           {rightPanelOpen && (
             <motion.div
@@ -129,7 +129,7 @@ export function StudioLayout({
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="shrink-0 overflow-hidden border-l border-border"
             >
-              <NotesPanel notebookId={notebook.id} notes={notes} />
+              <StudioPanel notebookId={notebook.id} notes={notes} />
             </motion.div>
           )}
         </AnimatePresence>

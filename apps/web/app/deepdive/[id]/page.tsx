@@ -1,13 +1,13 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { StudioLayout } from "./studio-layout";
+import { NotebookLayout } from "./notebook-layout";
 
-interface StudioPageProps {
+interface NotebookPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function StudioPage({ params }: StudioPageProps) {
+export default async function NotebookPage({ params }: NotebookPageProps) {
   const { id } = await params;
 
   const session = await auth();
@@ -40,7 +40,7 @@ export default async function StudioPage({ params }: StudioPageProps) {
   }
 
   return (
-    <StudioLayout
+    <NotebookLayout
       notebook={notebook}
       sources={notebook.sources}
       notes={notebook.notes}
