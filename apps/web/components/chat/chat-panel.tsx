@@ -1,21 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { v4 as uuidv4 } from "uuid";
+import { useStream } from "@langchain/langgraph-sdk/react";
 import { Send, Loader2, Sparkles, Plus, History, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
+import type { AgentState } from "./types";
 
 interface ChatPanelProps {
   notebookId: string;
   datasetId?: string | null;
-}
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
 }
 
 interface ChatSession {
@@ -25,15 +20,30 @@ interface ChatSession {
   _count: { messages: number };
 }
 
+const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
+
 export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [isNewSession, setIsNewSession] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // LangGraph stream hook
+  const stream = useStream<AgentState>({
+    apiUrl: LANGGRAPH_API_URL,
+    assistantId: "agent",
+    threadId: threadId ?? undefined,
+    onThreadId: (id) => {
+      setThreadId(id);
+      setIsNewSession(false);
+      fetchSessions();
+    },
+    onError: (error) => {
+      console.error("Stream error:", error);
+    },
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,9 +51,9 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [stream.messages]);
 
-  // Fetch sessions list
+  // Fetch sessions list from our backend (for history)
   const fetchSessions = useCallback(async () => {
     try {
       const res = await fetch(`/api/chat/sessions?notebookId=${notebookId}`);
@@ -51,58 +61,43 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
         const data = await res.json();
         setSessions(data);
         // Auto-select most recent if no current session
-        if (!currentSessionId && data.length > 0 && !isNewSession) {
+        if (!threadId && data.length > 0 && !isNewSession) {
           loadSession(data[0].id);
         }
       }
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
     }
-  }, [notebookId, currentSessionId, isNewSession]);
+  }, [notebookId, threadId, isNewSession]);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Load a specific session's messages
+  // Load a specific session
   const loadSession = async (sessionId: string) => {
-    try {
-      const res = await fetch(`/api/chat/${sessionId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data.map((m: { id: string; role: string; content: string }) => ({
-          id: m.id,
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })));
-        setCurrentSessionId(sessionId);
-        setIsNewSession(false);
-        setShowHistory(false);
-      }
-    } catch (error) {
-      console.error("Failed to load session:", error);
-    }
+    setThreadId(sessionId);
+    setIsNewSession(false);
+    setShowHistory(false);
   };
 
   // Start a new chat
   const handleNewChat = () => {
-    setMessages([]);
-    setCurrentSessionId(null);
+    setThreadId(null);
     setIsNewSession(true);
     setShowHistory(false);
   };
 
   // Delete a session
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation(); // Prevent triggering loadSession
+    e.stopPropagation();
     if (!confirm("Delete this chat history?")) return;
 
     try {
       const res = await fetch(`/api/chat/${sessionId}`, { method: "DELETE" });
       if (res.ok) {
         setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-        // If we deleted the current session, start fresh
-        if (currentSessionId === sessionId) {
+        if (threadId === sessionId) {
           handleNewChat();
         }
       }
@@ -113,106 +108,15 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || stream.isLoading) return;
 
-    const userMessage: Message = {
-      id: uuidv4(),
-      role: "user",
-      content: input.trim(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const message = input.trim();
     setInput("");
-    setIsLoading(true);
 
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          notebookId,
-          datasetId,
-          sessionId: currentSessionId,
-          newSession: isNewSession,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to send message");
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No response body");
-      }
-
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        role: "assistant",
-        content: "",
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          // Handle text chunks
-          if (line.startsWith("0:")) {
-            try {
-              const text = JSON.parse(line.slice(2));
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last.role === "assistant") {
-                  last.content += text;
-                }
-                return updated;
-              });
-            } catch {
-              // Skip malformed lines
-            }
-          }
-          // Handle data events (session ID, finish)
-          if (line.startsWith("d:")) {
-            try {
-              const data = JSON.parse(line.slice(2));
-              if (data.sessionId) {
-                setCurrentSessionId(data.sessionId);
-                setIsNewSession(false);
-                // Refresh sessions list
-                fetchSessions();
-              }
-            } catch {
-              // Skip malformed lines
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Chat error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: uuidv4(),
-          role: "assistant",
-          content: "Sorry, there was an error processing your message.",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    // Submit to LangGraph stream
+    stream.submit({
+      messages: [{ type: "human", content: message }],
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -249,129 +153,118 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
             onClick={() => setShowHistory(!showHistory)}
             title="Chat History"
           >
-            <History className="h-4 w-4" />
+            {showHistory ? <X className="h-4 w-4" /> : <History className="h-4 w-4" />}
           </Button>
         </div>
       </div>
 
       {/* History Panel */}
       {showHistory && (
-        <div className="absolute top-12 right-2 z-10 w-64 rounded-lg border bg-background shadow-lg">
-          <div className="flex items-center justify-between border-b p-2">
-            <span className="text-sm font-medium">History</span>
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="max-h-64 overflow-y-auto p-2">
+        <div className="absolute top-10 right-2 z-10 w-64 max-h-80 overflow-y-auto rounded-lg border border-border bg-background shadow-lg">
+          <div className="p-2">
+            <h3 className="text-xs font-medium text-muted-foreground mb-2">Recent Chats</h3>
             {sessions.length === 0 ? (
-              <p className="text-xs text-muted-foreground p-2">No chat history</p>
+              <p className="text-xs text-muted-foreground">No chat history</p>
             ) : (
-              sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className={`flex items-center justify-between p-2 rounded text-sm hover:bg-accent cursor-pointer ${currentSessionId === session.id ? "bg-accent" : ""}`}
-                  onClick={() => loadSession(session.id)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{session.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(session.lastActivity)} · {session._count.messages} msgs
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => handleDeleteSession(e, session.id)}
-                    className="ml-2 p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
-                    title="Delete chat"
+              <div className="space-y-1">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className={`group flex items-center justify-between rounded-md px-2 py-1.5 cursor-pointer hover:bg-muted ${threadId === session.id ? "bg-muted" : ""
+                      }`}
+                    onClick={() => loadSession(session.id)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{session.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(session.lastActivity)} · {session._count.messages} msgs
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                      onClick={(e) => handleDeleteSession(e, session.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="mb-4 rounded-full bg-accent-red/10 p-4">
-              <Sparkles className="h-8 w-8 text-accent-red" />
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {stream.messages.length === 0 ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
+              <p className="text-sm">Start a conversation</p>
             </div>
-            <h3 className="text-lg font-medium">Start a conversation</h3>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Ask questions about your sources or get help with your research
-            </p>
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl space-y-4">
-            {messages.map((message) => (
+          stream.messages.map((message, idx) => (
+            <div
+              key={message.id ?? idx}
+              className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}
+            >
               <div
-                key={message.id}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"
+                className={`max-w-[85%] rounded-lg px-3 py-2 ${message.type === "human"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
                   }`}
               >
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-accent"
-                    }`}
-                >
-                  <div className="text-sm leading-relaxed">
-                    <Markdown>{message.content}</Markdown>
-                  </div>
-                  {message.role === "assistant" && message.content && (
-                    <div className="mt-2 flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add to Notes
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                {message.type === "human" ? (
+                  <p className="text-sm whitespace-pre-wrap">{message.content as string}</p>
+                ) : (
+                  <Markdown className="text-sm">{message.content as string}</Markdown>
+                )}
               </div>
-            ))}
-            {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+            </div>
+          ))
+        )}
+        {stream.isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-muted rounded-lg px-3 py-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
           </div>
         )}
+        {stream.error && (
+          <div className="flex justify-start">
+            <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2">
+              <p className="text-sm">Error: {stream.error.message}</p>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* Input */}
       <div className="border-t border-border p-4">
-        <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
-          <div className="flex gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question..."
-              className="max-h-32 min-h-[44px] resize-none"
-              rows={1}
-              disabled={isLoading}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="h-11 w-11 shrink-0 bg-accent-red hover:bg-accent-red-hover"
-              disabled={!input.trim() || isLoading}
-            >
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question..."
+            className="min-h-[40px] max-h-[120px] resize-none"
+            disabled={stream.isLoading}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!input.trim() || stream.isLoading}
+          >
+            {stream.isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
               <Send className="h-4 w-4" />
-            </Button>
-          </div>
+            )}
+          </Button>
         </form>
       </div>
     </div>
