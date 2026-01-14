@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Markdown } from "@/components/ui/markdown";
 import {
@@ -17,6 +17,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+// Hook to safely format time on client only (avoids hydration mismatch)
+function useRelativeTime(date: Date): string {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return "";
+  }
+
+  return formatDistanceToNow(date, { addSuffix: true });
+}
+
+// Component wrapper for relative time
+function RelativeTime({ date }: { date: Date }) {
+  const timeString = useRelativeTime(date);
+  return (
+    <div className="mt-2 text-[10px] text-muted-foreground">
+      {timeString}
+    </div>
+  );
+}
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -164,7 +189,7 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
         </div>
         <div className="opacity-0 transition-opacity group-hover:opacity-100">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger asChild suppressHydrationWarning>
               <Button
                 variant="ghost"
                 size="icon"
@@ -211,9 +236,7 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
         </div>
       )}
 
-      <div className="mt-2 text-[10px] text-muted-foreground">
-        {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
-      </div>
+      <RelativeTime date={new Date(note.updatedAt)} />
     </div>
   );
 }
