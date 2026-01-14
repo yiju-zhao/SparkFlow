@@ -14,7 +14,26 @@ const remarkPlugins = [remarkGfm, remarkMath];
 const rehypePlugins = [rehypeRaw, rehypeKatex, rehypeSlug];
 
 // Static components - created once
+// Handles both markdown elements and raw HTML from rehype-raw
 const markdownComponents: Components = {
+    // Raw HTML element handlers (for rehype-raw)
+    div: ({ children, style, ...props }) => (
+        <div className="max-w-full overflow-hidden" style={{ ...style, maxWidth: '100%' }} {...props}>
+            {children}
+        </div>
+    ),
+    img: ({ src, alt, ...props }) => (
+        <img src={src} alt={alt || ''} className="max-w-full h-auto" loading="lazy" {...props} />
+    ),
+    iframe: ({ ...props }) => (
+        <div className="max-w-full overflow-hidden">
+            <iframe className="max-w-full" {...props} />
+        </div>
+    ),
+    video: ({ ...props }) => (
+        <video className="max-w-full h-auto" {...props} />
+    ),
+    // Standard markdown elements
     a: ({ ...props }) => (
         <a
             target="_blank"
@@ -31,14 +50,14 @@ const markdownComponents: Components = {
                 {children}
             </code>
         ) : (
-            <div className="relative my-4 rounded-lg bg-zinc-950 p-4 overflow-x-auto">
-                <code className={cn("text-xs font-mono text-zinc-50 block", className)} {...props}>
+            <div className="relative my-4 rounded-lg bg-zinc-950 p-4 overflow-x-auto max-w-full">
+                <code className={cn("text-xs font-mono text-zinc-50 block whitespace-pre-wrap break-all", className)} {...props}>
                     {children}
                 </code>
             </div>
         );
     },
-    pre: ({ children }) => <>{children}</>,
+    pre: ({ children }) => <div className="max-w-full overflow-x-auto">{children}</div>,
     ul: ({ children }) => <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>,
     ol: ({ children }) => <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>,
     li: ({ children }) => <li className="my-0.5">{children}</li>,
@@ -105,7 +124,10 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
     );
 
     return (
-        <div className={cn("max-w-none break-words overflow-hidden", className)}>
+        <div
+            className={cn("break-words overflow-hidden", className)}
+            style={{ contain: 'inline-size', maxWidth: '100%' }}
+        >
             {content}
         </div>
     );
