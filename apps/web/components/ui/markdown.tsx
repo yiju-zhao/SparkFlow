@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import rehypeRaw from "rehype-raw";
+// import rehypeRaw from "rehype-raw"; // Disabled - causes overflow issues
 import rehypeSlug from "rehype-slug";
 import { cn } from "@/lib/utils";
 import type { Components } from "react-markdown";
@@ -11,7 +11,7 @@ import "katex/dist/katex.min.css";
 
 // Static plugin arrays - created once
 const remarkPlugins = [remarkGfm, remarkMath];
-const rehypePlugins = [rehypeRaw, rehypeKatex, rehypeSlug];
+const rehypePlugins = [rehypeKatex, rehypeSlug];
 
 // Static components - created once
 // Handles both markdown elements and raw HTML from rehype-raw
