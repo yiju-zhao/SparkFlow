@@ -121,7 +121,7 @@
 
 @layer base {
   html {
-    scrollbar-gutter: stable;
+    overflow-x: hidden;
   }
 
   /* Global Custom Scrollbar */
@@ -246,19 +246,3 @@
   display: none;
 }
 
-/* KaTeX overflow fix */
-.katex-display {
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  max-width: 100% !important;
-}
-
-.katex {
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.katex-html {
-  overflow-x: auto;
-  overflow-y: hidden;
-}
