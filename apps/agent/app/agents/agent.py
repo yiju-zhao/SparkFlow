@@ -2,8 +2,12 @@
 RAG Agent using LangChain create_agent.
 """
 
+import os
+from typing import Annotated
+
 from langchain.agents import create_agent
 from langchain.tools import tool
+from langchain_core.tools import InjectedToolArg
 
 
 # System prompt for RAG agent
@@ -28,7 +32,10 @@ When answering questions, use the retrieve_documents tool strategically:
 
 
 @tool
-def retrieve_documents(query: str) -> str:
+def retrieve_documents(
+    query: str,
+    dataset_ids: Annotated[list[str], InjectedToolArg] = None,
+) -> str:
     """Search the knowledge base for relevant documents.
     
     Args:
@@ -37,7 +44,6 @@ def retrieve_documents(query: str) -> str:
     Returns:
         Relevant document content from the knowledge base.
     """
-    import os
     from ragflow_sdk import RAGFlow
     
     api_key = os.getenv("RAGFLOW_API_KEY")
@@ -46,12 +52,16 @@ def retrieve_documents(query: str) -> str:
     if not api_key:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
     
-    try:
-        client = RAGFlow(api_key=api_key, base_url=base_url)
-        # Note: dataset_ids will need to be passed via config in production
+    # Fallback to env var if not passed via config
+    if not dataset_ids:
         dataset_ids = os.getenv("RAGFLOW_DATASET_IDS", "").split(",")
         dataset_ids = [d.strip() for d in dataset_ids if d.strip()]
-        
+    
+    if not dataset_ids:
+        return "No datasets configured for retrieval."
+    
+    try:
+        client = RAGFlow(api_key=api_key, base_url=base_url)
         chunks = client.retrieve(
             question=query,
             dataset_ids=dataset_ids,
@@ -77,3 +87,4 @@ agent = create_agent(
     tools=[retrieve_documents],
     system_prompt=RAG_AGENT_SYSTEM_PROMPT,
 )
+

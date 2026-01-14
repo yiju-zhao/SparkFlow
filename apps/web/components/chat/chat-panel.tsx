@@ -113,10 +113,18 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     const message = input.trim();
     setInput("");
 
-    // Submit to LangGraph stream
-    stream.submit({
-      messages: [{ type: "human", content: message }],
-    });
+    // Submit to LangGraph stream with dataset config
+    stream.submit(
+      { messages: [{ type: "human", content: message }] },
+      {
+        config: {
+          configurable: {
+            dataset_ids: datasetId ? [datasetId] : [],
+            notebook_id: notebookId,
+          },
+        },
+      }
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
