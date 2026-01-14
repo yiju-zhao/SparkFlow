@@ -213,8 +213,8 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
             >
               <div
                 className={`max-w-[85%] rounded-lg px-3 py-2 ${message.type === "human"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
                   }`}
               >
                 {message.type === "human" ? (
@@ -233,13 +233,13 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
             </div>
           </div>
         )}
-        {stream.error && (
+        {stream.error ? (
           <div className="flex justify-start">
             <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2">
-              <p className="text-sm">Error: {stream.error.message}</p>
+              <p className="text-sm">Error: {stream.error instanceof Error ? stream.error.message : String(stream.error)}</p>
             </div>
           </div>
-        )}
+        ) : null}
         <div ref={messagesEndRef} />
       </div>
 
