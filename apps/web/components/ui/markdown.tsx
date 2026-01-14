@@ -51,19 +51,34 @@ export function Markdown({ children, className }: MarkdownProps) {
             </blockquote>
         ),
         table: ({ children }) => (
-            <div className="my-4 w-full overflow-y-auto">
-                <table className="w-full text-sm">
+            <div className="my-4 w-full overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
                     {children}
                 </table>
             </div>
         ),
+        thead: ({ children }) => (
+            <thead className="bg-muted">
+                {children}
+            </thead>
+        ),
+        tbody: ({ children }) => (
+            <tbody className="divide-y divide-border">
+                {children}
+            </tbody>
+        ),
+        tr: ({ children }) => (
+            <tr className="hover:bg-muted/50 transition-colors">
+                {children}
+            </tr>
+        ),
         th: ({ children }) => (
-            <th className="border border-border bg-muted px-4 py-2 text-left font-bold">
+            <th className="border border-border bg-muted px-3 py-2 text-left font-semibold text-xs">
                 {children}
             </th>
         ),
         td: ({ children }) => (
-            <td className="border border-border px-4 py-2 text-left">
+            <td className="border border-border px-3 py-2 text-left text-xs font-mono tabular-nums">
                 {children}
             </td>
         ),
