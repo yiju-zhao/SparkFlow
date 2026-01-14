@@ -8,6 +8,7 @@ langgraph
 langchain
 langchain-openai
 langchain-core
+langgraph-cli[inmem]
 
 # RAGFlow Python SDK
 ragflow-sdk
