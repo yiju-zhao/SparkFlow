@@ -69,6 +69,27 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
       ensuredThreadsRef.current.add(threadId);
       try {
+        // First check if thread already exists
+        await stream.client.threads.get(threadId);
+        // Thread exists, no need to create
+        return;
+      } catch (error) {
+        const status =
+          (error as { status?: number }).status ??
+          (error as { status_code?: number }).status_code ??
+          (error as { statusCode?: number }).statusCode ??
+          (error as { response?: { status?: number } }).response?.status;
+
+        // Only proceed to create if thread was not found (404)
+        if (status !== 404) {
+          console.error("Failed to check thread existence:", error);
+          ensuredThreadsRef.current.delete(threadId);
+          return;
+        }
+      }
+
+      // Thread doesn't exist, create it
+      try {
         await stream.client.threads.create({ threadId });
       } catch (error) {
         const status =
@@ -77,10 +98,10 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
           (error as { statusCode?: number }).statusCode ??
           (error as { response?: { status?: number } }).response?.status;
 
-        // Ignore conflict if thread already exists; any other error should be logged and allow retry.
+        // Ignore conflict if thread was created between our check and create call
         if (status === 409) return;
 
-        console.error("Failed to ensure thread exists:", error);
+        console.error("Failed to create thread:", error);
         ensuredThreadsRef.current.delete(threadId);
       }
     },
