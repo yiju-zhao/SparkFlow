@@ -30,6 +30,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [isNewSession, setIsNewSession] = useState(false);
   const [pendingAssistantSave, setPendingAssistantSave] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const ensuredThreadsRef = useRef<Set<string>>(new Set());
 
   const isValidUUID = useCallback((id: string) => {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
@@ -64,13 +65,9 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
   const ensureThread = useCallback(
     async (threadId: string) => {
-      try {
-        await stream.client.threads.getState(threadId);
-        return;
-      } catch {
-        // If not found, we'll try to create below.
-      }
+      if (ensuredThreadsRef.current.has(threadId)) return;
 
+      ensuredThreadsRef.current.add(threadId);
       try {
         await stream.client.threads.create({ threadId });
       } catch (error) {
@@ -80,10 +77,11 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
           (error as { statusCode?: number }).statusCode ??
           (error as { response?: { status?: number } }).response?.status;
 
-        // Ignore conflict if thread already exists; any other error should be logged.
+        // Ignore conflict if thread already exists; any other error should be logged and allow retry.
         if (status === 409) return;
 
         console.error("Failed to ensure thread exists:", error);
+        ensuredThreadsRef.current.delete(threadId);
       }
     },
     [stream.client]
