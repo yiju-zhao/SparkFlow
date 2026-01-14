@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 // import remarkMath from "remark-math"; // Disabled for testing
 // import rehypeKatex from "rehype-katex"; // Disabled for testing
-// import rehypeRaw from "rehype-raw"; // Disabled for testing
+import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import { cn } from "@/lib/utils";
 import type { Components } from "react-markdown";
@@ -11,7 +11,7 @@ import type { Components } from "react-markdown";
 
 // Static plugin arrays - created once
 const remarkPlugins = [remarkGfm]; // remarkMath disabled for testing
-const rehypePlugins = [rehypeSlug]; // Testing: only rehype-slug enabled
+const rehypePlugins = [rehypeRaw, rehypeSlug]; // Testing: rehype-raw + rehype-slug
 
 // Static components - created once
 // Handles both markdown elements and raw HTML from rehype-raw
