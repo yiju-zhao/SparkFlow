@@ -245,18 +245,32 @@
   display: none;
 }
 
-/* KaTeX overflow fix */
+/* KaTeX overflow fix - override katex.min.css */
 .katex-display {
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
 }
 
 .katex {
-  max-width: 100%;
+  max-width: 100% !important;
+  display: inline-block !important;
 }
 
 .katex-html {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
+}
+
+.katex .base {
+  max-width: 100%;
+}
+
+/* Prevent KaTeX from affecting global layout */
+.katex-display > .katex {
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  display: block;
 }
