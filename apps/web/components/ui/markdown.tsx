@@ -1,13 +1,13 @@
 import { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
+// import remarkMath from "remark-math"; // Disabled for testing
 // import rehypeKatex from "rehype-katex"; // Disabled for testing
 // import rehypeRaw from "rehype-raw"; // Disabled for testing
 // import rehypeSlug from "rehype-slug"; // Disabled for testing
 import { cn } from "@/lib/utils";
 import type { Components } from "react-markdown";
-import "katex/dist/katex.min.css";
+// import "katex/dist/katex.min.css"; // Disabled for testing
 
 // Static plugin arrays - created once
 const remarkPlugins = [remarkGfm]; // remarkMath disabled for testing
@@ -133,10 +133,7 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
     );
 
     return (
-        <div
-            className={cn("break-words overflow-hidden", className)}
-            style={{ contain: 'inline-size', maxWidth: '100%' }}
-        >
+        <div className={cn("break-words", className)}>
             {content}
         </div>
     );
