@@ -82,20 +82,20 @@ export async function addWebpageSource(
         );
 
         // Update source with RagFlow document ID and markdown content
-      await prisma.source.update({
-        where: { id: source.id },
-        data: {
-          ragflowDocumentId: doc.id,
-          content: markdown,
-          status: "PROCESSING",
-          metadata: {
-            markdownLength: markdown.length,
-            convertedAt: new Date().toISOString(),
-            ragflowRun: "RUNNING",
-            ragflowProgress: doc.progress ?? 0,
+        await prisma.source.update({
+          where: { id: source.id },
+          data: {
+            ragflowDocumentId: doc.id,
+            content: markdown,
+            status: "PROCESSING",
+            metadata: {
+              markdownLength: markdown.length,
+              convertedAt: new Date().toISOString(),
+              ragflowRun: "RUNNING",
+              ragflowProgress: doc.progress ?? 0,
+            },
           },
-        },
-      });
+        });
 
         // Ensure parsing/indexing starts
         await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
@@ -167,6 +167,9 @@ export async function uploadDocumentSource(
     throw new Error("No file provided");
   }
 
+  // Detect file type
+  const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+
   // Create source with UPLOADING status
   const source = await prisma.source.create({
     data: {
@@ -178,54 +181,19 @@ export async function uploadDocumentSource(
   });
 
   try {
-    // Upload to RagFlow if dataset exists
-    if (notebook.ragflowDatasetId) {
-      try {
-        // Update status to uploading
-        await prisma.source.update({
-          where: { id: source.id },
-          data: { status: "UPLOADING" },
-        });
-
-        // Upload document to RagFlow
-        const doc = await ragflowClient.uploadDocument(
-          notebook.ragflowDatasetId,
-          file,
-          file.name,
-          { autoParse: true }
-        );
-
-        // Update status to processing
-        await prisma.source.update({
-          where: { id: source.id },
-          data: {
-            ragflowDocumentId: doc.id,
-            status: "PROCESSING",
-            metadata: {
-              ...(source.metadata as Record<string, unknown> | null),
-              ragflowRun: "RUNNING",
-              ragflowProgress: doc.progress ?? 0,
-              uploadStartedAt: new Date().toISOString(),
-            },
-          },
-        });
-
-        // Trigger parsing
-        await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
-      } catch (ragflowError) {
-        console.error("RagFlow upload error:", ragflowError);
-        // Continue without RagFlow
-        await prisma.source.update({
-          where: { id: source.id },
-          data: { status: "READY" },
-        });
-      }
+    // Route by file type
+    if (fileExtension === 'txt' || fileExtension === 'md') {
+      // TXT/MD: Save content directly without preprocessing
+      await handleTextDocument(file, source, notebook);
+    } else if (fileExtension === 'pdf') {
+      // PDF: Parse with MineRU, upload markdown to RagFlow
+      await handlePdfDocument(file, source, notebook);
+    } else if (fileExtension === 'docx' || fileExtension === 'doc') {
+      // DOCX: TODO - For now, just upload to RagFlow directly
+      await handleDocxDocument(file, source, notebook);
     } else {
-      // No RagFlow dataset configured, just mark as ready
-      await prisma.source.update({
-        where: { id: source.id },
-        data: { status: "READY" },
-      });
+      // Unsupported file type - try direct RagFlow upload as fallback
+      await handleFallbackDocument(file, source, notebook);
     }
   } catch (error) {
     await prisma.source.update({
@@ -241,6 +209,192 @@ export async function uploadDocumentSource(
   revalidatePath(`/deepdive/${notebookId}`);
   return source;
 }
+
+/**
+ * Handle TXT/MD files - save content directly without preprocessing
+ */
+async function handleTextDocument(
+  file: File,
+  source: { id: string },
+  notebook: { ragflowDatasetId: string | null }
+) {
+  // Read file content directly
+  const content = await file.text();
+
+  // Save content directly - no RagFlow upload needed for simple text
+  await prisma.source.update({
+    where: { id: source.id },
+    data: {
+      content,
+      status: "READY",
+      metadata: {
+        fileType: file.name.endsWith('.md') ? 'markdown' : 'text',
+        contentLength: content.length,
+        processedAt: new Date().toISOString(),
+      },
+    },
+  });
+}
+
+/**
+ * Handle PDF files - parse with MineRU, upload markdown to RagFlow
+ */
+async function handlePdfDocument(
+  file: File,
+  source: { id: string },
+  notebook: { ragflowDatasetId: string | null }
+) {
+  // Update status to processing
+  await prisma.source.update({
+    where: { id: source.id },
+    data: { status: "PROCESSING" },
+  });
+
+  // Parse PDF with MineRU
+  const { mineruClient } = await import("@/lib/mineru-client");
+  const parseResult = await mineruClient.parseDocument(file);
+  const markdown = parseResult.markdown;
+
+  // Upload markdown to RagFlow if dataset exists
+  if (notebook.ragflowDatasetId) {
+    try {
+      // Create a markdown file from the parsed content
+      const mdBlob = new Blob([markdown], { type: "text/markdown" });
+      const mdFile = new File(
+        [mdBlob],
+        file.name.replace(/\.pdf$/i, ".md"),
+        { type: "text/markdown" }
+      );
+
+      // Upload to RagFlow
+      const doc = await ragflowClient.uploadDocument(
+        notebook.ragflowDatasetId,
+        mdFile,
+        mdFile.name,
+        { autoParse: true }
+      );
+
+      // Update source with content and RagFlow ID
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          ragflowDocumentId: doc.id,
+          content: markdown,
+          status: "PROCESSING",
+          metadata: {
+            fileType: 'pdf',
+            markdownLength: markdown.length,
+            mineruVersion: parseResult.metadata.version,
+            processedAt: new Date().toISOString(),
+            ragflowRun: "RUNNING",
+            ragflowProgress: doc.progress ?? 0,
+          },
+        },
+      });
+
+      // Trigger RagFlow parsing
+      await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
+    } catch (ragflowError) {
+      console.error("RagFlow upload error:", ragflowError);
+      // Store content locally but mark as ready
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          content: markdown,
+          status: "READY",
+          metadata: {
+            fileType: 'pdf',
+            markdownLength: markdown.length,
+            processedAt: new Date().toISOString(),
+            ragflowError: ragflowError instanceof Error ? ragflowError.message : "Upload failed",
+          },
+        },
+      });
+    }
+  } else {
+    // No RagFlow dataset, just save content
+    await prisma.source.update({
+      where: { id: source.id },
+      data: {
+        content: markdown,
+        status: "READY",
+        metadata: {
+          fileType: 'pdf',
+          markdownLength: markdown.length,
+          processedAt: new Date().toISOString(),
+        },
+      },
+    });
+  }
+}
+
+/**
+ * Handle DOCX files - TODO: convert to PDF and parse
+ * For now, upload directly to RagFlow
+ */
+async function handleDocxDocument(
+  file: File,
+  source: { id: string },
+  notebook: { ragflowDatasetId: string | null }
+) {
+  // TODO: Convert DOCX to PDF and parse with MineRU
+  // For now, fall back to direct RagFlow upload
+  console.warn("DOCX parsing not yet implemented, using RagFlow fallback");
+  await handleFallbackDocument(file, source, notebook);
+}
+
+/**
+ * Fallback handler - upload directly to RagFlow
+ */
+async function handleFallbackDocument(
+  file: File,
+  source: { id: string },
+  notebook: { ragflowDatasetId: string | null }
+) {
+  if (notebook.ragflowDatasetId) {
+    try {
+      // Upload document to RagFlow
+      const doc = await ragflowClient.uploadDocument(
+        notebook.ragflowDatasetId,
+        file,
+        file.name,
+        { autoParse: true }
+      );
+
+      // Update status to processing
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          ragflowDocumentId: doc.id,
+          status: "PROCESSING",
+          metadata: {
+            fileType: file.name.split('.').pop()?.toLowerCase() || 'unknown',
+            ragflowRun: "RUNNING",
+            ragflowProgress: doc.progress ?? 0,
+            uploadStartedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // Trigger parsing
+      await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
+    } catch (ragflowError) {
+      console.error("RagFlow upload error:", ragflowError);
+      // Continue without RagFlow
+      await prisma.source.update({
+        where: { id: source.id },
+        data: { status: "READY" },
+      });
+    }
+  } else {
+    // No RagFlow dataset configured, just mark as ready
+    await prisma.source.update({
+      where: { id: source.id },
+      data: { status: "READY" },
+    });
+  }
+}
+
 
 export async function deleteSource(sourceId: string) {
   const session = await auth();
