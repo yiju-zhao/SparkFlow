@@ -7,7 +7,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import { cn } from "@/lib/utils";
 import type { Components } from "react-markdown";
-import "katex/dist/katex.min.css";
+// KaTeX CSS imported via globals.css @import to control scope
 
 // Static plugin arrays - created once
 const remarkPlugins = [remarkGfm, remarkMath];
