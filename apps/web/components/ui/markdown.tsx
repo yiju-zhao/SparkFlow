@@ -2,16 +2,16 @@ import { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import rehypeRaw from "rehype-raw";
-import rehypeSlug from "rehype-slug";
+// import rehypeKatex from "rehype-katex"; // Disabled for testing
+// import rehypeRaw from "rehype-raw"; // Disabled for testing
+// import rehypeSlug from "rehype-slug"; // Disabled for testing
 import { cn } from "@/lib/utils";
 import type { Components } from "react-markdown";
 import "katex/dist/katex.min.css";
 
 // Static plugin arrays - created once
-const remarkPlugins = [remarkGfm, remarkMath];
-const rehypePlugins = [rehypeRaw, rehypeKatex, rehypeSlug];
+const remarkPlugins = [remarkGfm]; // remarkMath disabled for testing
+const rehypePlugins: never[] = []; // All rehype plugins disabled for testing
 
 // Static components - created once
 // Handles both markdown elements and raw HTML from rehype-raw
