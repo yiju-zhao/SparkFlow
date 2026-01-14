@@ -7,7 +7,7 @@ from typing import Annotated
 
 from langchain.agents import create_agent
 from langchain.tools import tool
-from langchain_core.tools import InjectedToolArg
+from langchain_core.runnables import RunnableConfig
 
 
 # System prompt for RAG agent
@@ -34,7 +34,7 @@ When answering questions, use the retrieve_documents tool strategically:
 @tool
 def retrieve_documents(
     query: str,
-    dataset_ids: Annotated[list[str], InjectedToolArg] = None,
+    config: RunnableConfig,
 ) -> str:
     """Search the knowledge base for relevant documents.
     
@@ -52,7 +52,8 @@ def retrieve_documents(
     if not api_key:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
     
-    # Fallback to env var if not passed via config
+    # Get dataset_ids from runtime config or fallback to env var
+    dataset_ids = config.get("configurable", {}).get("dataset_ids", [])
     if not dataset_ids:
         dataset_ids = os.getenv("RAGFLOW_DATASET_IDS", "").split(",")
         dataset_ids = [d.strip() for d in dataset_ids if d.strip()]
