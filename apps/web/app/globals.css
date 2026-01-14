@@ -248,12 +248,17 @@
 
 /* KaTeX overflow fix */
 .katex-display {
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
 }
 
-.katex-display > .katex {
+.katex {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex-html {
   overflow-x: auto;
   overflow-y: hidden;
 }
