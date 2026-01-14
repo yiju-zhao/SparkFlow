@@ -57,25 +57,36 @@ export async function addWebpageSource(
     },
   });
 
+  // Revalidate immediately so it shows up in the list
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  // Process in the background (fire and forget)
+  processWebpage(source.id, url, title, notebook.ragflowDatasetId, notebookId).catch(console.error);
+
+  return source;
+}
+
+// Background processing function for webpage
+async function processWebpage(
+  sourceId: string,
+  url: string,
+  title: string | undefined,
+  ragflowDatasetId: string | null,
+  notebookId: string
+) {
   try {
     // Step 1: Convert webpage to markdown using Crawl4AI
     const { file, title: extractedTitle, markdown } = await crawl4aiClient.getMarkdownAsFile(url);
 
     // Update title if we extracted a better one
     const finalTitle = title || extractedTitle;
-    if (finalTitle !== source.title) {
-      await prisma.source.update({
-        where: { id: source.id },
-        data: { title: finalTitle },
-      });
-    }
 
     // Step 2: Upload the markdown file to RagFlow if dataset exists
-    if (notebook.ragflowDatasetId) {
+    if (ragflowDatasetId) {
       try {
         // Upload markdown document to RagFlow
         const doc = await ragflowClient.uploadDocument(
-          notebook.ragflowDatasetId,
+          ragflowDatasetId,
           file,
           file.name,
           { autoParse: true }
@@ -83,8 +94,9 @@ export async function addWebpageSource(
 
         // Update source with RagFlow document ID and markdown content
         await prisma.source.update({
-          where: { id: source.id },
+          where: { id: sourceId },
           data: {
+            title: finalTitle,
             ragflowDocumentId: doc.id,
             content: markdown,
             status: "PROCESSING",
@@ -98,13 +110,14 @@ export async function addWebpageSource(
         });
 
         // Ensure parsing/indexing starts
-        await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
+        await ragflowClient.parseDocuments(ragflowDatasetId, [doc.id]);
       } catch (ragflowError) {
         console.error("RagFlow upload error:", ragflowError);
         // Store markdown locally but mark as ready
         await prisma.source.update({
-          where: { id: source.id },
+          where: { id: sourceId },
           data: {
+            title: finalTitle,
             content: markdown,
             status: "READY",
             metadata: {
@@ -118,8 +131,9 @@ export async function addWebpageSource(
     } else {
       // No RagFlow dataset, store conversion info and mark as ready
       await prisma.source.update({
-        where: { id: source.id },
+        where: { id: sourceId },
         data: {
+          title: finalTitle,
           content: markdown,
           status: "READY",
           metadata: {
@@ -132,7 +146,7 @@ export async function addWebpageSource(
   } catch (error) {
     console.error("Webpage conversion error:", error);
     await prisma.source.update({
-      where: { id: source.id },
+      where: { id: sourceId },
       data: {
         status: "FAILED",
         errorMessage: error instanceof Error ? error.message : "Webpage conversion failed",
@@ -140,9 +154,10 @@ export async function addWebpageSource(
     });
   }
 
+  // Final revalidate to update status
   revalidatePath(`/deepdive/${notebookId}`);
-  return source;
 }
+
 
 export async function uploadDocumentSource(
   notebookId: string,
@@ -180,35 +195,52 @@ export async function uploadDocumentSource(
     },
   });
 
+  // Revalidate immediately so it shows up in the list
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  // Process in the background (fire and forget)
+  processDocument(source.id, file, fileExtension, notebook.ragflowDatasetId, notebookId).catch(console.error);
+
+  return source;
+}
+
+// Background processing function for documents
+async function processDocument(
+  sourceId: string,
+  file: File,
+  fileExtension: string,
+  ragflowDatasetId: string | null,
+  notebookId: string
+) {
   try {
     // Route by file type
     if (fileExtension === 'txt' || fileExtension === 'md') {
       // TXT/MD: Save content directly without preprocessing
-      await handleTextDocument(file, source, notebook);
+      await handleTextDocument(file, { id: sourceId }, { ragflowDatasetId });
     } else if (fileExtension === 'pdf') {
       // PDF: Parse with MineRU, upload markdown to RagFlow
-      await handlePdfDocument(file, source, notebook);
+      await handlePdfDocument(file, { id: sourceId }, { ragflowDatasetId });
     } else if (fileExtension === 'docx' || fileExtension === 'doc') {
       // DOCX: TODO - For now, just upload to RagFlow directly
-      await handleDocxDocument(file, source, notebook);
+      await handleDocxDocument(file, { id: sourceId }, { ragflowDatasetId });
     } else {
       // Unsupported file type - try direct RagFlow upload as fallback
-      await handleFallbackDocument(file, source, notebook);
+      await handleFallbackDocument(file, { id: sourceId }, { ragflowDatasetId });
     }
   } catch (error) {
     await prisma.source.update({
-      where: { id: source.id },
+      where: { id: sourceId },
       data: {
         status: "FAILED",
         errorMessage: error instanceof Error ? error.message : "Upload failed",
       },
     });
-    throw error;
   }
 
+  // Final revalidate to update status
   revalidatePath(`/deepdive/${notebookId}`);
-  return source;
 }
+
 
 /**
  * Handle TXT/MD files - save content directly without preprocessing
