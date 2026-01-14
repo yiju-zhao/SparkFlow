@@ -107,7 +107,7 @@ export function NotebookLayout({
               animate={{ width: sourcesPanelWidth, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="shrink-0 overflow-hidden border-r border-border"
+              className="h-full shrink-0 overflow-hidden border-r border-border"
             >
               <SourcesPanel
                 notebookId={notebook.id}
@@ -135,7 +135,7 @@ export function NotebookLayout({
               animate={{ width: studioPanelWidth, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="shrink-0 overflow-hidden border-l border-border"
+              className="h-full shrink-0 overflow-hidden border-l border-border"
             >
               <StudioPanel
                 notebookId={notebook.id}
