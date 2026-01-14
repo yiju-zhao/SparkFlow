@@ -80,7 +80,7 @@ export function StudioPanel({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {selectedNote ? (
         <NoteViewer
           note={selectedNote}
@@ -271,7 +271,7 @@ function NoteViewer({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <Button
