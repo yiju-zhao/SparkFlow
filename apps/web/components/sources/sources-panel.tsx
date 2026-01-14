@@ -330,7 +330,7 @@ function SourceContentView({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header with back button and TOC button */}
       <div className="flex items-center gap-2 border-b border-border px-4 py-2">
         <Button
