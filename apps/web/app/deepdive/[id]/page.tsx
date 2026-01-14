@@ -44,7 +44,6 @@ export default async function StudioPage({ params }: StudioPageProps) {
       notebook={notebook}
       sources={notebook.sources}
       notes={notebook.notes}
-      activeSession={notebook.chatSessions[0] || null}
     />
   );
 }

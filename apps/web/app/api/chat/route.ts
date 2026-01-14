@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
+import { randomUUID } from "crypto";
 
 const AGENT_API_URL =
   process.env.AGENT_API_URL || "http://localhost:8000";
@@ -20,12 +21,20 @@ async function getOrCreateChatSession(notebookId: string) {
 
   // Create one if none exists
   if (!session) {
+    const newId = randomUUID();
     session = await prisma.chatSession.create({
       data: {
+        id: newId,
         notebookId,
         title: "Chat",
         status: "ACTIVE",
+        ragflowAgentId: newId,
       },
+    });
+  } else if (!session.ragflowAgentId) {
+    session = await prisma.chatSession.update({
+      where: { id: session.id },
+      data: { ragflowAgentId: session.id },
     });
   }
 
@@ -50,6 +59,11 @@ export async function POST(req: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  type IncomingMessage = {
+    role: "user" | "assistant";
+    content: string;
+  };
+
   try {
     const body = await req.json();
     const { messages, notebookId, datasetId, sessionId, newSession } = body;
@@ -67,7 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the latest user message
-    const userMessage = messages[messages.length - 1];
+    const userMessage = messages[messages.length - 1] as IncomingMessage;
     if (userMessage.role !== "user") {
       return new Response("Last message must be from user", { status: 400 });
     }
@@ -77,7 +91,7 @@ export async function POST(req: NextRequest) {
     if (newSession) {
       // Create a brand new session
       // Use the first user message for the title
-      const firstUserMsg = messages.find((m: any) => m.role === "user");
+      const firstUserMsg = (messages as IncomingMessage[]).find((m) => m.role === "user");
       let title = "New Chat";
       if (firstUserMsg && firstUserMsg.content) {
         title = firstUserMsg.content.trim();
@@ -86,11 +100,14 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const newId = sessionId || randomUUID();
       chatSession = await prisma.chatSession.create({
         data: {
+          id: newId,
           notebookId,
           title,
           status: "ACTIVE",
+          ragflowAgentId: newId,
         },
       });
     } else if (sessionId) {
@@ -101,9 +118,22 @@ export async function POST(req: NextRequest) {
       if (!chatSession) {
         return new Response("Session not found", { status: 404 });
       }
+      // Backfill ragflowAgentId if missing
+      if (!chatSession.ragflowAgentId) {
+        await prisma.chatSession.update({
+          where: { id: chatSession.id },
+          data: { ragflowAgentId: chatSession.id },
+        });
+      }
     } else {
       // Resume or create default session
       chatSession = await getOrCreateChatSession(notebookId);
+      if (!chatSession.ragflowAgentId) {
+        await prisma.chatSession.update({
+          where: { id: chatSession.id },
+          data: { ragflowAgentId: chatSession.id },
+        });
+      }
     }
 
     // Save user message to database

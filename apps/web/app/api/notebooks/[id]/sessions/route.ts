@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
@@ -54,13 +55,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 
   try {
-    const { title } = await req.json();
+    const { title, id, ragflowAgentId } = await req.json();
+    const sessionId = id || randomUUID();
 
     const chatSession = await prisma.chatSession.create({
       data: {
+        id: sessionId,
         notebookId,
         title: title?.trim() || "New Chat",
         status: "ACTIVE",
+        ragflowAgentId: ragflowAgentId || sessionId,
       },
     });
 

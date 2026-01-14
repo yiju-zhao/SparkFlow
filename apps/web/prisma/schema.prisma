@@ -116,7 +116,7 @@ enum SessionStatus {
 }
 
 model ChatSession {
-  id         String        @id @default(cuid())
+  id         String        @id @default(uuid())
   notebookId String
   title      String        @default("New Chat")
   status     SessionStatus @default(ACTIVE)

@@ -178,8 +178,6 @@ export async function uploadDocumentSource(
   });
 
   try {
-    let ragflowDocumentId: string | undefined;
-
     // Upload to RagFlow if dataset exists
     if (notebook.ragflowDatasetId) {
       try {
@@ -196,8 +194,6 @@ export async function uploadDocumentSource(
           file.name,
           { autoParse: true }
         );
-
-        ragflowDocumentId = doc.id;
 
         // Update status to processing
         await prisma.source.update({

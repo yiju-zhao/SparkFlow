@@ -121,3 +121,47 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         return new Response("Internal server error", { status: 500 });
     }
 }
+
+export async function PATCH(req: NextRequest, { params }: RouteParams) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return new Response("Unauthorized", { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const { sessionId } = resolvedParams;
+
+    if (!sessionId) {
+        return new Response("sessionId is required", { status: 400 });
+    }
+
+    try {
+        const { ragflowAgentId } = await req.json();
+        if (!ragflowAgentId) {
+            return new Response("ragflowAgentId is required", { status: 400 });
+        }
+
+        const chatSession = await prisma.chatSession.findUnique({
+            where: { id: sessionId },
+            include: { notebook: { select: { userId: true } } },
+        });
+
+        if (!chatSession) {
+            return new Response("Session not found", { status: 404 });
+        }
+
+        if (chatSession.notebook.userId !== session.user.id) {
+            return new Response("Unauthorized", { status: 403 });
+        }
+
+        const updated = await prisma.chatSession.update({
+            where: { id: sessionId },
+            data: { ragflowAgentId },
+        });
+
+        return NextResponse.json(updated);
+    } catch (error) {
+        console.error("Error updating session thread id:", error);
+        return new Response("Internal server error", { status: 500 });
+    }
+}

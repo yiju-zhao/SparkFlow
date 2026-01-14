@@ -15,13 +15,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SourcesPanel } from "@/components/sources/sources-panel";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { NotesPanel } from "@/components/notes/notes-panel";
-import type { Source, Note, ChatSession, Notebook } from "@prisma/client";
+import type { Source, Note, Notebook } from "@prisma/client";
 
 interface StudioLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
-  activeSession: ChatSession | null;
 }
 
 // Panel widths
@@ -32,7 +31,6 @@ export function StudioLayout({
   notebook,
   sources,
   notes,
-  activeSession,
 }: StudioLayoutProps) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);

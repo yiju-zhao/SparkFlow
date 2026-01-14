@@ -2,19 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatDistanceToNow } from "date-fns";
-import {
-  FileText,
-  Globe,
-  Plus,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  MoreVertical,
-  Trash2,
-  Upload,
-  Link,
-  ArrowLeft,
-} from "lucide-react";
+import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,11 +35,11 @@ type Source = PrismaSource & {
 
 // Hook to safely format time on client only (avoids hydration mismatch)
 function useRelativeTime(date: Date): string {
-  const [timeString, setTimeString] = useState<string>("");
+  const [timeString, setTimeString] = useState<string>(() =>
+    formatDistanceToNow(date, { addSuffix: true })
+  );
 
   useEffect(() => {
-    setTimeString(formatDistanceToNow(date, { addSuffix: true }));
-    // Update every minute
     const interval = setInterval(() => {
       setTimeString(formatDistanceToNow(date, { addSuffix: true }));
     }, 60000);
@@ -75,7 +63,6 @@ export function SourcesPanel({
   onSelectSource,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
   const { data: liveSources = sources } = useQuery<Source[]>({
     queryKey: ["notebook-sources", notebookId],
     queryFn: async () => {
@@ -191,7 +178,6 @@ function SourceItem({
     ragflowRun === "4" ||
     ragflowRun === "-1" ||
     source.status === "FAILED";
-  const isDone = ragflowRun === "DONE" || ragflowRun === "3";
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();

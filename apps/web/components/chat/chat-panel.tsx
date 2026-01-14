@@ -23,7 +23,6 @@ interface ChatSession {
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
 export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
-  const [threadId, setThreadId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -32,17 +31,15 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [pendingAssistantSave, setPendingAssistantSave] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const isValidUUID = useCallback((id: string) => {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+  }, []);
+
   // LangGraph stream hook
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
     assistantId: "agent",
-    threadId: threadId ?? undefined,
-    onThreadId: (id) => {
-      setThreadId(id);
-      setActiveSessionId(id);
-      setIsNewSession(false);
-      fetchSessions();
-    },
+    threadId: activeSessionId && isValidUUID(activeSessionId) ? activeSessionId : undefined,
     onError: (error) => {
       console.error("Stream error:", error);
     },
@@ -66,12 +63,12 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   }, []);
 
   const ensureThread = useCallback(
-    async (sessionId: string) => {
+    async (threadId: string) => {
       try {
-        await stream.client.threads.getState(sessionId);
+        await stream.client.threads.getState(threadId);
       } catch {
         try {
-          await stream.client.threads.create({ threadId: sessionId });
+          await stream.client.threads.create({ threadId });
         } catch (error) {
           console.error("Failed to ensure thread exists:", error);
         }
@@ -136,14 +133,15 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
   const loadSession = useCallback(
     async (sessionId: string) => {
-      setThreadId(sessionId);
       setActiveSessionId(sessionId);
       setIsNewSession(false);
       setPendingAssistantSave(null);
       setShowHistory(false);
-      ensureThread(sessionId);
+      if (isValidUUID(sessionId)) {
+        ensureThread(sessionId);
+      }
     },
-    [ensureThread]
+    [ensureThread, isValidUUID]
   );
 
   // Fetch sessions list from our backend (for history)
@@ -154,14 +152,14 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
         const data = await res.json();
         setSessions(data);
         // Auto-select most recent if no current session
-        if (!threadId && data.length > 0 && !isNewSession) {
+        if (!activeSessionId && data.length > 0 && !isNewSession) {
           loadSession(data[0].id);
         }
       }
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
     }
-  }, [notebookId, threadId, isNewSession, loadSession]);
+  }, [notebookId, activeSessionId, isNewSession, loadSession]);
 
   useEffect(() => {
     fetchSessions();
@@ -205,6 +203,8 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
       const created = await res.json();
       setSessions((prev) => [created, ...prev]);
+      setActiveSessionId(created.id);
+      setIsNewSession(false);
       return created;
     },
     [notebookId]
@@ -212,7 +212,6 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
 
   // Start a new chat
   const handleNewChat = () => {
-    setThreadId(null);
     setActiveSessionId(null);
     setIsNewSession(true);
     setPendingAssistantSave(null);
@@ -228,7 +227,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
       const res = await fetch(`/api/chat/${sessionId}`, { method: "DELETE" });
       if (res.ok) {
         setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-        if (threadId === sessionId) {
+        if (activeSessionId === sessionId) {
           handleNewChat();
         }
       }
@@ -245,14 +244,14 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     setInput("");
 
     try {
-      let sessionId = threadId;
+      let sessionId = activeSessionId;
 
       if (!sessionId) {
-        const newSession = await createSession(message);
-        sessionId = newSession.id;
-        setThreadId(sessionId);
-        setActiveSessionId(sessionId);
-        setIsNewSession(false);
+        const session = await createSession(message);
+        sessionId = session.id;
+      } else if (!isValidUUID(sessionId)) {
+        const session = await createSession(message);
+        sessionId = session.id;
       }
 
       if (!sessionId) {
@@ -337,7 +336,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
                 {sessions.map((session) => (
                   <div
                     key={session.id}
-                    className={`group flex items-center justify-between rounded-md px-2 py-1.5 cursor-pointer hover:bg-muted ${threadId === session.id ? "bg-muted" : ""
+                    className={`group flex items-center justify-between rounded-md px-2 py-1.5 cursor-pointer hover:bg-muted ${activeSessionId === session.id ? "bg-muted" : ""
                       }`}
                     onClick={() => loadSession(session.id)}
                   >
