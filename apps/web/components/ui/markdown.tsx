@@ -1,8 +1,11 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { cn } from "@/lib/utils";
 import type { Components } from "react-markdown";
+import "katex/dist/katex.min.css";
 
 interface MarkdownProps {
     children: string;
@@ -69,7 +72,8 @@ export function Markdown({ children, className }: MarkdownProps) {
     return (
         <div className={cn("max-w-none break-words", className)}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
                 components={components}
             >
                 {children}
