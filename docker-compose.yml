@@ -93,8 +93,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9002:9000"  # API
-      - "9003:9001"  # Console
+      - "9004:9000"  # API
+      - "9005:9001"  # Console
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
