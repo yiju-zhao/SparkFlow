@@ -204,8 +204,8 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             ),
                         },
                         td: {
-                            component: ({ children: tdChildren }) => (
-                                <td className="border border-border px-3 py-2 text-left text-xs">
+                            component: ({ children: tdChildren, ...props }) => (
+                                <td className="border border-border px-3 py-2 text-left text-xs" {...props}>
                                     {tdChildren}
                                 </td>
                             ),
