@@ -330,20 +330,31 @@ function SourceContentView({
     setHeadings(extractedHeadings);
   }, [markdownContent]);
 
-  const scrollToHeading = (id: string) => {
+  const scrollToHeading = (headingText: string) => {
     const container = scrollRef.current;
-    const element = document.getElementById(id);
-    if (container && element) {
-      // Calculate relative position within the scrollable container
+    if (!container) return;
+
+    // Find all headings in the container and match by text content
+    const headings = container.querySelectorAll('h1, h2, h3');
+    let targetElement: Element | null = null;
+
+    for (const heading of headings) {
+      if (heading.textContent?.trim() === headingText.trim()) {
+        targetElement = heading;
+        break;
+      }
+    }
+
+    if (targetElement) {
       const containerRect = container.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
+      const elementRect = targetElement.getBoundingClientRect();
       const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
 
       container.scrollTo({
-        top: relativeTop - 16, // Small offset from top
+        top: relativeTop - 16,
         behavior: 'smooth'
       });
-      setShowToc(false); // Close TOC after clicking
+      setShowToc(false);
     }
   };
 
@@ -397,7 +408,7 @@ function SourceContentView({
                     {headings.map((heading, index) => (
                       <button
                         key={index}
-                        onClick={() => scrollToHeading(heading.id)}
+                        onClick={() => scrollToHeading(heading.text)}
                         className={`block w-full text-left text-xs hover:text-accent-blue transition-colors ${heading.level === 1 ? 'font-medium' : ''
                           } ${heading.level === 2 ? 'pl-2' : ''
                           } ${heading.level === 3 ? 'pl-4 text-muted-foreground' : ''

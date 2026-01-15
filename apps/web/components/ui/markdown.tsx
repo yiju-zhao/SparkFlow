@@ -147,48 +147,18 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             },
                         },
                         h1: {
-                            component: ({ children, ...props }: { children?: React.ReactNode }) => {
-                                const extractText = (node: React.ReactNode): string => {
-                                    if (typeof node === 'string') return node;
-                                    if (Array.isArray(node)) return node.map(extractText).join('');
-                                    if (node && typeof node === 'object' && 'props' in node) {
-                                        return extractText((node as React.ReactElement<{ children?: React.ReactNode }>).props?.children);
-                                    }
-                                    return '';
-                                };
-                                const text = extractText(children);
-                                const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-                                return <h1 id={id || undefined} className="text-lg font-bold mt-4 mb-2" {...props}>{children}</h1>;
+                            props: {
+                                className: "text-lg font-bold mt-4 mb-2",
                             },
                         },
                         h2: {
-                            component: ({ children, ...props }: { children?: React.ReactNode }) => {
-                                const extractText = (node: React.ReactNode): string => {
-                                    if (typeof node === 'string') return node;
-                                    if (Array.isArray(node)) return node.map(extractText).join('');
-                                    if (node && typeof node === 'object' && 'props' in node) {
-                                        return extractText((node as React.ReactElement<{ children?: React.ReactNode }>).props?.children);
-                                    }
-                                    return '';
-                                };
-                                const text = extractText(children);
-                                const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-                                return <h2 id={id || undefined} className="text-base font-bold mt-3 mb-2" {...props}>{children}</h2>;
+                            props: {
+                                className: "text-base font-bold mt-3 mb-2",
                             },
                         },
                         h3: {
-                            component: ({ children, ...props }: { children?: React.ReactNode }) => {
-                                const extractText = (node: React.ReactNode): string => {
-                                    if (typeof node === 'string') return node;
-                                    if (Array.isArray(node)) return node.map(extractText).join('');
-                                    if (node && typeof node === 'object' && 'props' in node) {
-                                        return extractText((node as React.ReactElement<{ children?: React.ReactNode }>).props?.children);
-                                    }
-                                    return '';
-                                };
-                                const text = extractText(children);
-                                const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-                                return <h3 id={id || undefined} className="text-sm font-bold mt-2 mb-1" {...props}>{children}</h3>;
+                            props: {
+                                className: "text-sm font-bold mt-2 mb-1",
                             },
                         },
                         blockquote: {
