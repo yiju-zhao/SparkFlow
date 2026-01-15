@@ -24,14 +24,16 @@ const markdownComponents: Components = {
         />
     ),
     img: ({ src, alt, width, height }) => (
-        <img
-            src={src}
-            alt={alt || ''}
-            width={width}
-            height={height}
-            className="max-w-full h-auto"
-            loading="lazy"
-        />
+        <span className="block">
+            <img
+                src={src}
+                alt={alt || ''}
+                width={width}
+                height={height}
+                className="max-w-full h-auto"
+                loading="lazy"
+            />
+        </span>
     ),
     code: ({ className, children, ...props }) => {
         const match = /language-(\w+)/.exec(className || "");
