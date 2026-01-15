@@ -1,18 +1,66 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import MarkdownToJsx from "markdown-to-jsx";
+import TeX from "@matejmazur/react-katex";
 import { cn } from "@/lib/utils";
+import "katex/dist/katex.min.css";
 
 interface MarkdownProps {
     children: string;
     className?: string;
 }
 
+// Custom component for rendering math blocks
+function MathBlock({ math }: { math: string }) {
+    return (
+        <div className="my-4 overflow-x-auto">
+            <TeX block>{math}</TeX>
+        </div>
+    );
+}
+
+// Custom component for rendering inline math
+function MathInline({ math }: { math: string }) {
+    return <TeX>{math}</TeX>;
+}
+
+// Preprocess markdown to convert LaTeX delimiters to custom components
+function preprocessMath(content: string): string {
+    // Replace block math $$...$$ with a custom marker
+    let processed = content.replace(
+        /\$\$([\s\S]*?)\$\$/g,
+        (_, math) => `<math-block math="${encodeURIComponent(math.trim())}"></math-block>`
+    );
+
+    // Replace inline math $...$ (but not $$)
+    // Use negative lookbehind/lookahead to avoid matching $$
+    processed = processed.replace(
+        /(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)/g,
+        (_, math) => `<math-inline math="${encodeURIComponent(math.trim())}"></math-inline>`
+    );
+
+    return processed;
+}
+
 export const Markdown = memo(function Markdown({ children, className }: MarkdownProps) {
+    // Preprocess content to handle math
+    const processedContent = useMemo(() => preprocessMath(children), [children]);
+
     return (
         <div className={cn("break-words", className)}>
             <MarkdownToJsx
                 options={{
                     overrides: {
+                        // Custom math components
+                        "math-block": {
+                            component: ({ math }: { math: string }) => (
+                                <MathBlock math={decodeURIComponent(math)} />
+                            ),
+                        },
+                        "math-inline": {
+                            component: ({ math }: { math: string }) => (
+                                <MathInline math={decodeURIComponent(math)} />
+                            ),
+                        },
                         a: {
                             props: {
                                 target: "_blank",
@@ -138,7 +186,7 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                     forceBlock: true,
                 }}
             >
-                {children}
+                {processedContent}
             </MarkdownToJsx>
         </div>
     );
