@@ -285,7 +285,45 @@ async function handlePdfDocument(
   // Parse PDF with MineRU
   const { mineruClient } = await import("@/lib/mineru-client");
   const parseResult = await mineruClient.parseDocument(file);
-  const markdown = parseResult.markdown;
+  let markdown = parseResult.markdown;
+  const extractedImages = parseResult.images || {};
+
+  // Process images if any were extracted
+  const imageMapping: Record<string, string> = {}; // originalName -> imageId
+  if (Object.keys(extractedImages).length > 0) {
+    const { uploadSourceImages } = await import("@/lib/s3-client");
+
+    // Upload images to S3
+    const uploadedImages = await uploadSourceImages(source.id, extractedImages);
+
+    // Create SourceImage records for each uploaded image
+    for (const img of uploadedImages) {
+      const sourceImage = await prisma.sourceImage.create({
+        data: {
+          sourceId: source.id,
+          originalName: img.originalName,
+          storageKey: img.storageKey,
+          contentType: img.contentType,
+        },
+      });
+      imageMapping[img.originalName] = sourceImage.id;
+    }
+
+    // Rewrite markdown to use API URLs for images
+    // MinerU typically outputs: ![](images/image_name.png) or ![](image_name.png)
+    for (const [originalName, imageId] of Object.entries(imageMapping)) {
+      // Replace various possible image path formats
+      const patterns = [
+        new RegExp(`!\\[([^\\]]*)\\]\\(images/${escapeRegExp(originalName)}\\)`, 'g'),
+        new RegExp(`!\\[([^\\]]*)\\]\\(${escapeRegExp(originalName)}\\)`, 'g'),
+        new RegExp(`!\\[([^\\]]*)\\]\\([^)]*/${escapeRegExp(originalName)}\\)`, 'g'),
+      ];
+
+      for (const pattern of patterns) {
+        markdown = markdown.replace(pattern, `![$1](/api/images/${imageId})`);
+      }
+    }
+  }
 
   // Upload markdown to RagFlow if dataset exists
   if (notebook.ragflowDatasetId) {
@@ -316,6 +354,7 @@ async function handlePdfDocument(
           metadata: {
             fileType: 'pdf',
             markdownLength: markdown.length,
+            imageCount: Object.keys(imageMapping).length,
             mineruVersion: parseResult.metadata.version,
             processedAt: new Date().toISOString(),
             ragflowRun: "RUNNING",
@@ -337,6 +376,7 @@ async function handlePdfDocument(
           metadata: {
             fileType: 'pdf',
             markdownLength: markdown.length,
+            imageCount: Object.keys(imageMapping).length,
             processedAt: new Date().toISOString(),
             ragflowError: ragflowError instanceof Error ? ragflowError.message : "Upload failed",
           },
@@ -353,11 +393,19 @@ async function handlePdfDocument(
         metadata: {
           fileType: 'pdf',
           markdownLength: markdown.length,
+          imageCount: Object.keys(imageMapping).length,
           processedAt: new Date().toISOString(),
         },
       },
     });
   }
+}
+
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

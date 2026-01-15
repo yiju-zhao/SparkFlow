@@ -54,7 +54,7 @@ class MineRUClient {
         formData.append("return_middle_json", "false");
         formData.append("return_model_output", "false");
         formData.append("return_content_list", "false");
-        formData.append("return_images", "false"); // Skip images for now to reduce response size
+        formData.append("return_images", "true"); // Extract images from PDF
         formData.append("response_format_zip", "false");
         formData.append("start_page_id", "0");
         formData.append("end_page_id", "99999");

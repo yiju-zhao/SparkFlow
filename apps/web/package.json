@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.970.0",
     "@langchain/core": "^1.1.13",
     "@langchain/langgraph-sdk": "^1.5.3",
     "@matejmazur/react-katex": "^3.1.3",
