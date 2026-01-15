@@ -331,9 +331,18 @@ function SourceContentView({
   }, [markdownContent]);
 
   const scrollToHeading = (id: string) => {
+    const container = scrollRef.current;
     const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (container && element) {
+      // Calculate relative position within the scrollable container
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+
+      container.scrollTo({
+        top: relativeTop - 16, // Small offset from top
+        behavior: 'smooth'
+      });
       setShowToc(false); // Close TOC after clicking
     }
   };

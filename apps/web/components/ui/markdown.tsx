@@ -9,12 +9,12 @@ interface MarkdownProps {
     className?: string;
 }
 
-// Custom component for rendering math blocks
+// Custom component for rendering math blocks (uses span to avoid div-in-p hydration errors)
 function MathBlock({ math }: { math: string }) {
     return (
-        <div className="my-4 overflow-x-auto">
+        <span className="block my-4 overflow-x-auto">
             <TeX block>{math}</TeX>
-        </div>
+        </span>
     );
 }
 
@@ -147,18 +147,24 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             },
                         },
                         h1: {
-                            props: {
-                                className: "text-lg font-bold mt-4 mb-2",
+                            component: ({ children, ...props }: { children?: React.ReactNode }) => {
+                                const text = typeof children === 'string' ? children : '';
+                                const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+                                return <h1 id={id || undefined} className="text-lg font-bold mt-4 mb-2" {...props}>{children}</h1>;
                             },
                         },
                         h2: {
-                            props: {
-                                className: "text-base font-bold mt-3 mb-2",
+                            component: ({ children, ...props }: { children?: React.ReactNode }) => {
+                                const text = typeof children === 'string' ? children : '';
+                                const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+                                return <h2 id={id || undefined} className="text-base font-bold mt-3 mb-2" {...props}>{children}</h2>;
                             },
                         },
                         h3: {
-                            props: {
-                                className: "text-sm font-bold mt-2 mb-1",
+                            component: ({ children, ...props }: { children?: React.ReactNode }) => {
+                                const text = typeof children === 'string' ? children : '';
+                                const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+                                return <h3 id={id || undefined} className="text-sm font-bold mt-2 mb-1" {...props}>{children}</h3>;
                             },
                         },
                         blockquote: {
