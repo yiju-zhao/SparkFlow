@@ -295,6 +295,14 @@ function SourceContentView({
 }) {
   const [showToc, setShowToc] = useState(false);
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset scroll when source changes
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [source.id]);
 
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
@@ -397,7 +405,10 @@ function SourceContentView({
       </div>
 
       {/* Markdown content */}
-      <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div
+        ref={scrollRef}
+        className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
+      >
         <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
           {markdownContent}
         </Markdown>
