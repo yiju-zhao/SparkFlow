@@ -64,6 +64,14 @@ function HtmlTable({ html }: { html: string }) {
     );
 }
 
+// Helper to generate IDs for headings (matches logic in sources-panel.tsx)
+function generateId(text: string): string {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-');
+}
+
 export const Markdown = memo(function Markdown({ children, className }: MarkdownProps) {
     // Extract HTML tables first, then process math
     const { processed: contentWithoutTables, tables } = useMemo(
@@ -147,19 +155,25 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             },
                         },
                         h1: {
-                            props: {
-                                className: "text-lg font-bold mt-4 mb-2",
-                            },
+                            component: ({ children, ...props }) => (
+                                <h1 id={typeof children === 'string' ? generateId(children) : undefined} className="text-lg font-bold mt-4 mb-2" {...props}>
+                                    {children}
+                                </h1>
+                            ),
                         },
                         h2: {
-                            props: {
-                                className: "text-base font-bold mt-3 mb-2",
-                            },
+                            component: ({ children, ...props }) => (
+                                <h2 id={typeof children === 'string' ? generateId(children) : undefined} className="text-base font-bold mt-3 mb-2" {...props}>
+                                    {children}
+                                </h2>
+                            ),
                         },
                         h3: {
-                            props: {
-                                className: "text-sm font-bold mt-2 mb-1",
-                            },
+                            component: ({ children, ...props }) => (
+                                <h3 id={typeof children === 'string' ? generateId(children) : undefined} className="text-sm font-bold mt-2 mb-1" {...props}>
+                                    {children}
+                                </h3>
+                            ),
                         },
                         blockquote: {
                             props: {
