@@ -250,29 +250,3 @@
   display: none;
 }
 
-/* Table rendering fixes for markdown-to-jsx */
-table {
-  display: table;
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: auto;
-}
-
-thead {
-  display: table-header-group;
-}
-
-tbody {
-  display: table-row-group;
-}
-
-tr {
-  display: table-row;
-}
-
-th,
-td {
-  display: table-cell;
-  text-align: left;
-  vertical-align: top;
-}
