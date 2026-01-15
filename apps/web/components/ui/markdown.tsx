@@ -102,7 +102,7 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             props: {
                                 target: "_blank",
                                 rel: "noopener noreferrer",
-                                className: "text-accent-blue hover:underline cursor-pointer",
+                                className: "text-blue-600 dark:text-blue-400 font-medium hover:underline hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer",
                             },
                         },
                         code: {
