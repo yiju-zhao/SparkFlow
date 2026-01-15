@@ -30,7 +30,7 @@ function useRelativeTime(date: Date): string {
     return "";
   }
 
-  return formatDistanceToNow(date, { addSuffix: true });
+  return formatDistanceToNow(date, { addSuffix: true }).replace(/^about /, '');
 }
 
 // Component wrapper for relative time

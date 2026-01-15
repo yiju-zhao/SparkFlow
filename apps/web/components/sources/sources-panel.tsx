@@ -35,13 +35,14 @@ type Source = PrismaSource & {
 
 // Hook to safely format time on client only (avoids hydration mismatch)
 function useRelativeTime(date: Date): string {
-  const [timeString, setTimeString] = useState<string>(() =>
-    formatDistanceToNow(date, { addSuffix: true })
-  );
+  const formatTime = (d: Date) =>
+    formatDistanceToNow(d, { addSuffix: true }).replace(/^about /, '');
+
+  const [timeString, setTimeString] = useState<string>(() => formatTime(date));
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeString(formatDistanceToNow(date, { addSuffix: true }));
+      setTimeString(formatTime(date));
     }, 60000);
     return () => clearInterval(interval);
   }, [date]);
