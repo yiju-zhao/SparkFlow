@@ -162,7 +162,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     [normalizeContent, stream.messages]
   );
 
-  // Combine historical messages with stream messages
+  // Combine historical messages with stream messages, deduplicating
   const visibleMessages = useMemo(() => {
     // Convert historical messages to unified format
     const historical = historicalMessages.map((msg) => ({
@@ -171,8 +171,18 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
       content: msg.content,
     }));
 
-    // Combine: historical first, then stream messages
-    return [...historical, ...streamMessages];
+    // Create a Set of historical content for deduplication
+    const historicalContentSet = new Set(
+      historicalMessages.map((msg) => `${msg.role}:${msg.content.trim()}`)
+    );
+
+    // Filter stream messages to only include new ones not in historical
+    const newStreamMessages = streamMessages.filter(
+      (msg) => !historicalContentSet.has(`${msg.type}:${msg.content.trim()}`)
+    );
+
+    // Combine: historical first, then only NEW stream messages
+    return [...historical, ...newStreamMessages];
   }, [historicalMessages, streamMessages]);
 
   useEffect(() => {
