@@ -24,6 +24,14 @@ interface ChatSession {
 
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
+// Interface for historical messages from database
+interface HistoricalMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
 export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
@@ -33,6 +41,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
   const [isNewSession, setIsNewSession] = useState(false);
   const [pendingAssistantSave, setPendingAssistantSave] = useState<string | null>(null);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+  const [historicalMessages, setHistoricalMessages] = useState<HistoricalMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Save AI response to Notes panel
@@ -139,17 +148,32 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const visibleMessages = useMemo(
+  // Convert stream messages format for consistent display
+  const streamMessages = useMemo(
     () =>
       stream.messages
         .filter((message) => message.type === "human" || message.type === "ai")
         .map((message) => ({
-          ...message,
+          id: message.id ?? `stream-${Date.now()}-${Math.random()}`,
+          type: message.type === "human" ? "user" : "assistant",
           content: normalizeContent(message.content),
         }))
         .filter((message) => typeof message.content === "string" && message.content.trim().length > 0),
     [normalizeContent, stream.messages]
   );
+
+  // Combine historical messages with stream messages
+  const visibleMessages = useMemo(() => {
+    // Convert historical messages to unified format
+    const historical = historicalMessages.map((msg) => ({
+      id: msg.id,
+      type: msg.role === "user" ? "user" : "assistant",
+      content: msg.content,
+    }));
+
+    // Combine: historical first, then stream messages
+    return [...historical, ...streamMessages];
+  }, [historicalMessages, streamMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -161,13 +185,31 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     }
   }, [stream.error, pendingAssistantSave]);
 
-  const loadSession = useCallback((session: ChatSession) => {
+  // Fetch historical messages for a session
+  const fetchSessionMessages = useCallback(async (sessionId: string) => {
+    try {
+      const res = await fetch(`/api/chat/${sessionId}`);
+      if (res.ok) {
+        const messages: HistoricalMessage[] = await res.json();
+        setHistoricalMessages(messages);
+      } else {
+        setHistoricalMessages([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch session messages:", error);
+      setHistoricalMessages([]);
+    }
+  }, []);
+
+  const loadSession = useCallback(async (session: ChatSession) => {
     setActiveSessionId(session.id);
     setThreadId(session.langgraphThreadId || null);
     setIsNewSession(false);
     setPendingAssistantSave(null);
     setShowHistory(false);
-  }, []);
+    // Fetch historical messages for this session
+    await fetchSessionMessages(session.id);
+  }, [fetchSessionMessages]);
 
   // Fetch sessions list from our backend (for history)
   const fetchSessions = useCallback(async () => {
@@ -194,7 +236,8 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     if (!pendingAssistantSave || stream.isLoading) return;
     if (pendingAssistantSave !== activeSessionId) return;
 
-    const assistantMessages = visibleMessages.filter((message) => message.type === "ai");
+    // Use streamMessages (not visibleMessages which includes historical) to find new assistant response
+    const assistantMessages = streamMessages.filter((message) => message.type === "assistant");
     const latestAssistant = assistantMessages[assistantMessages.length - 1];
     const assistantContent =
       latestAssistant && typeof latestAssistant.content === "string"
@@ -212,7 +255,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
       fetchSessions();
       setPendingAssistantSave(null);
     });
-  }, [pendingAssistantSave, stream.isLoading, visibleMessages, saveMessages, fetchSessions, activeSessionId]);
+  }, [pendingAssistantSave, stream.isLoading, streamMessages, saveMessages, fetchSessions, activeSessionId]);
 
   const createSession = useCallback(
     async (title?: string) => {
@@ -244,6 +287,7 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     setIsNewSession(true);
     setPendingAssistantSave(null);
     setShowHistory(false);
+    setHistoricalMessages([]); // Clear historical messages for new chat
   };
 
   // Delete a session
@@ -397,18 +441,19 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
         ) : (
           visibleMessages.map((message, idx) => {
             const messageKey = message.id ?? `msg-${idx}`;
+            const isUser = message.type === "user";
             return (
               <div
                 key={messageKey}
-                className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}
+                className={`flex ${isUser ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 ${message.type === "human"
+                  className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted"
                     }`}
                 >
-                  {message.type === "human" ? (
+                  {isUser ? (
                     <p className="text-sm whitespace-pre-wrap">{message.content as string}</p>
                   ) : (
                     <>
