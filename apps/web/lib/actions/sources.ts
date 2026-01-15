@@ -154,8 +154,12 @@ async function processWebpage(
     });
   }
 
-  // Final revalidate to update status
-  revalidatePath(`/deepdive/${notebookId}`);
+  // Final revalidate to update status (wrapped in try-catch for background execution)
+  try {
+    revalidatePath(`/deepdive/${notebookId}`);
+  } catch {
+    // Ignore revalidation errors in background context
+  }
 }
 
 
@@ -237,8 +241,12 @@ async function processDocument(
     });
   }
 
-  // Final revalidate to update status
-  revalidatePath(`/deepdive/${notebookId}`);
+  // Final revalidate to update status (wrapped in try-catch for background execution)
+  try {
+    revalidatePath(`/deepdive/${notebookId}`);
+  } catch {
+    // Ignore revalidation errors in background context
+  }
 }
 
 
