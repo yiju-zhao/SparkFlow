@@ -130,38 +130,48 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             },
                         },
                         table: {
-                            component: ({ children: tableChildren }) => (
+                            component: ({ children: tableChildren, ...props }) => (
                                 <div className="my-4 w-full overflow-x-auto">
-                                    <table className="w-full text-sm border-collapse">
+                                    <table className="w-full text-sm border-collapse border border-border" {...props}>
                                         {tableChildren}
                                     </table>
                                 </div>
                             ),
                         },
                         thead: {
-                            props: {
-                                className: "bg-muted",
-                            },
+                            component: ({ children: theadChildren, ...props }) => (
+                                <thead className="bg-muted" {...props}>
+                                    {theadChildren}
+                                </thead>
+                            ),
                         },
                         tbody: {
-                            props: {
-                                className: "divide-y divide-border",
-                            },
+                            component: ({ children: tbodyChildren, ...props }) => (
+                                <tbody className="divide-y divide-border" {...props}>
+                                    {tbodyChildren}
+                                </tbody>
+                            ),
                         },
                         tr: {
-                            props: {
-                                className: "hover:bg-muted/50 transition-colors",
-                            },
+                            component: ({ children: trChildren, ...props }) => (
+                                <tr className="hover:bg-muted/50 transition-colors" {...props}>
+                                    {trChildren}
+                                </tr>
+                            ),
                         },
                         th: {
-                            props: {
-                                className: "border border-border bg-muted px-3 py-2 text-left font-semibold text-xs",
-                            },
+                            component: ({ children: thChildren, ...props }) => (
+                                <th className="border border-border bg-muted px-3 py-2 text-left font-semibold text-xs" {...props}>
+                                    {thChildren}
+                                </th>
+                            ),
                         },
                         td: {
-                            props: {
-                                className: "border border-border px-3 py-2 text-left text-xs font-mono tabular-nums",
-                            },
+                            component: ({ children: tdChildren, ...props }) => (
+                                <td className="border border-border px-3 py-2 text-left text-xs" {...props}>
+                                    {tdChildren}
+                                </td>
+                            ),
                         },
                         img: {
                             component: ({ src, alt, width, height }) => (
