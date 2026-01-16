@@ -30,7 +30,7 @@ interface AgentState {
 
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
-export function ChatPanel({ notebookId, datasetId: _datasetId, initialSessions = [] }: ChatPanelProps) {
+export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatPanelProps) {
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0 ? (initialSessions[0].langgraphThreadId || null) : null
@@ -154,10 +154,18 @@ export function ChatPanel({ notebookId, datasetId: _datasetId, initialSessions =
         await createSession(message);
       }
 
-      // Submit to LangGraph - simple format from docs
-      stream.submit({
-        messages: [{ type: "human", content: message }],
-      });
+      // Submit to LangGraph with config for dataset
+      stream.submit(
+        { messages: [{ type: "human", content: message }] },
+        {
+          config: {
+            configurable: {
+              dataset_ids: datasetId ? [datasetId] : [],
+              notebook_id: notebookId,
+            },
+          },
+        }
+      );
     } catch (error) {
       console.error("Failed to send message:", error);
     }
