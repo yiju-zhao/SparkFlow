@@ -40,7 +40,7 @@ def create_retrieval_tool(dataset_ids: list[str], document_ids: list[str] = None
                 question=query,
                 dataset_ids=dataset_ids,
                 document_ids=document_ids,
-                page_size=top_k,
+                # page_size=top_k,
             )
             if not chunks:
                 return "No relevant documents found."

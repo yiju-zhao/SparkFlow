@@ -256,40 +256,70 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
             </div>
           </div>
         ) : (
-          stream.messages.map((message, idx) => {
-            const messageKey = message.id ?? `msg-${idx}`;
-            const isUser = message.type === "human";
-            const content = getMessageContent(message);
+          // Filter to show human messages, tool calls, and final AI responses
+          (() => {
+            // Get messages to display: human messages + AI messages (with or without tool_calls)
+            const displayMessages = stream.messages.filter((message) => {
+              // Always show human messages
+              if (message.type === "human") return true;
 
-            return (
-              <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                  {isUser ? (
-                    <p className="text-sm whitespace-pre-wrap">{content}</p>
-                  ) : (
-                    <>
-                      <Markdown className="text-sm">{content}</Markdown>
-                      {!stream.isLoading && content && (
-                        <div className="mt-2 flex justify-end border-t border-border/50 pt-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => handleSaveToNotes(messageKey, content)}
-                            disabled={savingNoteId === messageKey}
-                            title="Save to Notes"
-                          >
-                            {savingNoteId === messageKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <StickyNote className="h-3 w-3" />}
-                            <span>Save to Notes</span>
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
+              // For AI messages, show if they have content OR tool_calls
+              if (message.type === "ai") {
+                const toolCalls = (message as unknown as { tool_calls?: { name: string }[] }).tool_calls;
+                const hasToolCalls = Boolean(toolCalls?.length);
+                const content = getMessageContent(message);
+                // Show AI message if it has tool calls or has content
+                return hasToolCalls || content.trim().length > 0;
+              }
+
+              // Hide tool response messages and other types
+              return false;
+            });
+
+            return displayMessages.map((message, idx) => {
+              const messageKey = message.id ?? `msg-${idx}`;
+              const isUser = message.type === "human";
+              const content = getMessageContent(message);
+              const toolCalls = (message as unknown as { tool_calls?: { name: string }[] }).tool_calls;
+              const hasToolCalls = Boolean(toolCalls?.length);
+
+              return (
+                <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                    {isUser ? (
+                      <p className="text-sm whitespace-pre-wrap">{content}</p>
+                    ) : hasToolCalls ? (
+                      // Tool call indicator
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Using {toolCalls?.map(tc => tc.name).join(", ")}...</span>
+                      </div>
+                    ) : (
+                      // Final AI response
+                      <>
+                        <Markdown className="text-sm">{content}</Markdown>
+                        {!stream.isLoading && content && (
+                          <div className="mt-2 flex justify-end border-t border-border/50 pt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() => handleSaveToNotes(messageKey, content)}
+                              disabled={savingNoteId === messageKey}
+                              title="Save to Notes"
+                            >
+                              {savingNoteId === messageKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <StickyNote className="h-3 w-3" />}
+                              <span>Save to Notes</span>
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            });
+          })()
         )}
 
         {/* Loading indicator */}
