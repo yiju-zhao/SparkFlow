@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import type { Message } from "@langchain/langgraph-sdk";
-import { Send, Loader2, Sparkles, Plus, History, X, Trash2, StickyNote } from "lucide-react";
+import { Send, Loader2, Sparkles, Plus, History, X, Trash2, StickyNote, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
@@ -46,6 +46,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   // Input state
   const [input, setInput] = useState("");
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // LangGraph stream hook - follows docs pattern
@@ -91,6 +92,20 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       }
     },
     [notebookId, savingNoteId]
+  );
+
+  // Copy message content to clipboard
+  const handleCopy = useCallback(
+    async (messageId: string, content: string) => {
+      try {
+        await navigator.clipboard.writeText(content);
+        setCopiedMessageId(messageId);
+        setTimeout(() => setCopiedMessageId(null), 2000);
+      } catch (error) {
+        console.error("Failed to copy:", error);
+      }
+    },
+    []
   );
 
   // Create new session in database
@@ -325,6 +340,16 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
                             >
                               {savingNoteId === messageKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <StickyNote className="h-3 w-3" />}
                               <span>Save to Notes</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() => handleCopy(messageKey, content)}
+                              title="Copy Markdown"
+                            >
+                              {copiedMessageId === messageKey ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                              <span>{copiedMessageId === messageKey ? "Copied" : "Copy"}</span>
                             </Button>
                           </div>
                         )}
