@@ -8,7 +8,7 @@ AI-powered research notebook with RAG (Retrieval-Augmented Generation) capabilit
 SparkFlow/
 ├── apps/
 │   ├── web/          # Next.js 15 frontend (port 3001)
-│   └── agent/        # FastAPI backend with LangGraph (port 8101)
+│   └── agent/        # LangGraph dev server (port 2024)
 └── todo.md           # Migration tracking
 ```
 
@@ -22,10 +22,9 @@ SparkFlow/
 - **Styling**: Huawei Design System tokens
 
 ### Backend (`apps/agent`)
-- **Framework**: FastAPI
+- **Framework**: LangGraph Dev Server (LangGraph CLI)
 - **AI**: LangGraph, LangChain, OpenAI
-- **RAG**: RagFlow MCP integration
-- **Auth**: JWT validation (shared secret with NextAuth)
+- **RAG**: RagFlow SDK integration
 
 ## Getting Started
 
@@ -72,13 +71,12 @@ npm run dev
 
 # Terminal 2: Backend (port 8101)
 cd apps/agent
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8101
+langgraph dev --host 0.0.0.0 --port 2024
 ```
 
 4. **Access the app**
 - Frontend: http://localhost:3001
-- Agent API: http://localhost:8101
-- API Docs: http://localhost:8101/docs
+- LangGraph API: http://localhost:2024
 
 ## Environment Variables
 
@@ -89,7 +87,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8101
 | `NEXTAUTH_SECRET` | JWT secret for auth | (required) |
 | `NEXTAUTH_URL` | App URL | `http://localhost:3001` |
 | `DATABASE_URL` | PostgreSQL connection | (required) |
-| `AGENT_API_URL` | FastAPI server URL | `http://localhost:8101` |
+| `NEXT_PUBLIC_LANGGRAPH_API_URL` | LangGraph server URL | `http://localhost:2024` |
 | `RAGFLOW_BASE_URL` | RagFlow API URL | `http://localhost:9380` |
 | `RAGFLOW_API_KEY` | RagFlow API key | (optional) |
 
@@ -99,10 +97,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8101
 |----------|-------------|---------|
 | `OPENAI_API_KEY` | OpenAI API key | (required) |
 | `GOOGLE_API_KEY` | Google API key | (optional) |
-| `MCP_SERVER_URL` | RagFlow MCP URL | `http://localhost:9382/mcp/` |
-| `JWT_SECRET` | Same as `NEXTAUTH_SECRET` | (required) |
-| `HOST` | Server host | `0.0.0.0` |
-| `PORT` | Server port | `8101` |
+| `RAGFLOW_BASE_URL` | RagFlow API URL | `http://localhost:9380` |
+| `RAGFLOW_API_KEY` | RagFlow API key | (optional) |
 
 ## Features
 

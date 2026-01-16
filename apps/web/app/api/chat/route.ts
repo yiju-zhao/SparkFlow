@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
       data: { lastActivity: new Date() },
     });
 
-    // Proxy request to FastAPI agent backend
+    // Proxy request to LangGraph agent backend
     const agentResponse = await fetch(`${LANGGRAPH_API_URL}/runs/stream`, {
       method: "POST",
       headers: {

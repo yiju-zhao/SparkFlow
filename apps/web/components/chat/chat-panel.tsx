@@ -98,7 +98,23 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   const handleCopy = useCallback(
     async (messageId: string, content: string) => {
       try {
-        await navigator.clipboard.writeText(content);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(content);
+        } else {
+          // Fallback for environments where clipboard API is not available
+          const textArea = document.createElement("textarea");
+          textArea.value = content;
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          try {
+            document.execCommand('copy');
+          } catch (err) {
+            console.error("Fallback: Oops, unable to copy", err);
+            return; // Don't show success state if failed
+          }
+          document.body.removeChild(textArea);
+        }
         setCopiedMessageId(messageId);
         setTimeout(() => setCopiedMessageId(null), 2000);
       } catch (error) {

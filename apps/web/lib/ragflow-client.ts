@@ -5,7 +5,7 @@
  * - Dataset (knowledge base) management
  * - Document upload and processing
  *
- * Note: Chat/retrieval is handled by the MCP server via the FastAPI agent.
+ * Note: Chat/retrieval is handled by the LangGraph server.
  */
 
 const RAGFLOW_BASE_URL = process.env.RAGFLOW_BASE_URL || "http://localhost:9380";

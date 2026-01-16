@@ -1,8 +1,3 @@
-# FastAPI and server
-fastapi
-uvicorn[standard]
-python-multipart
-
 # LangChain
 langgraph
 langchain
@@ -20,7 +15,3 @@ openai
 pydantic
 python-dotenv
 httpx
-
-# Auth
-pyjwt
-python-jose[cryptography]

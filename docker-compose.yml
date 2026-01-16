@@ -19,29 +19,22 @@ services:
       timeout: 5s
       retries: 5
 
-  # FastAPI Agent
-  agent:
+  # LangGraph Agent
+  langgraph:
     build:
       context: ./apps/agent
       dockerfile: Dockerfile
-    container_name: sparkflow-agent
+    container_name: sparkflow-langgraph
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - MCP_SERVER_URL=${MCP_SERVER_URL:-http://ragflow:9382/mcp/}
-      - JWT_SECRET=${JWT_SECRET}
-      - HOST=0.0.0.0
-      - PORT=8101
+      - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL:-http://ragflow:9380}
+      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
     ports:
-      - "8101:8101"
+      - "2024:2024"
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8101/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Crawl4AI - Webpage to Markdown Converter
   crawl4ai:
@@ -67,7 +60,7 @@ services:
       - NEXTAUTH_SECRET=${JWT_SECRET}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3001}
       - DATABASE_URL=postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
-      - AGENT_API_URL=http://agent:8101
+      - NEXT_PUBLIC_LANGGRAPH_API_URL=http://langgraph:2024
       - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL:-http://ragflow:9380}
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
       - CRAWL4AI_BASE_URL=http://crawl4ai:8000
@@ -76,7 +69,7 @@ services:
       - "3001:3001"
     depends_on:
       - postgres
-      - agent
+      - langgraph
       - crawl4ai
 
   # MinIO Object Storage (S3-compatible)
@@ -104,4 +97,3 @@ services:
 volumes:
   postgres_data:
   minio_data:
-
