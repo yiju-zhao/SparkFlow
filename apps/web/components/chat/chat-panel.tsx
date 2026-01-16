@@ -49,8 +49,13 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   // Source of truth: messages from database
   const [historicalMessages, setHistoricalMessages] = useState<HistoricalMessage[]>([]);
 
+  // Track the current streaming response separately to handle the transition properly
+  const [currentStreamingContent, setCurrentStreamingContent] = useState<string>("");
+
   // Track if we've saved the current streaming response to avoid duplicates
   const lastSavedResponseRef = useRef<string>("");
+  // Track previous loading state to detect when streaming completes
+  const wasLoadingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Save AI response to Notes panel
@@ -124,16 +129,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     return "";
   }, []);
 
-  // Extract the current streaming response (only the latest AI message)
-  const streamingResponse = useMemo((): string | null => {
-    if (!stream.isLoading) return null;
-    const aiMessages = stream.messages.filter((msg) => msg.type === "ai");
-    const lastAiMessage = aiMessages[aiMessages.length - 1];
-    if (!lastAiMessage) return null;
-    const content = normalizeContent(lastAiMessage.content).trim();
-    return content || null;
-  }, [stream.messages, stream.isLoading, normalizeContent]);
-
   // Save messages to database
   const saveMessages = useCallback(
     async (sessionId: string, messagesToSave: { sender: "USER" | "ASSISTANT"; content: string }[]) => {
@@ -151,41 +146,34 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     [notebookId]
   );
 
-  // Build visible messages: historical + streaming response (if any)
-  const visibleMessages = useMemo(() => {
-    const messages = historicalMessages.map((msg) => ({
-      id: msg.id,
-      type: msg.role === "user" ? "user" : "assistant",
-      content: msg.content,
-    }));
-
-    if (streamingResponse) {
-      messages.push({
-        id: "streaming-response",
-        type: "assistant",
-        content: streamingResponse,
-      });
+  // Update streaming content as tokens arrive
+  useEffect(() => {
+    if (stream.isLoading) {
+      const aiMessages = stream.messages.filter((msg) => msg.type === "ai");
+      const lastAiMessage = aiMessages[aiMessages.length - 1];
+      if (lastAiMessage) {
+        const content = normalizeContent(lastAiMessage.content).trim();
+        if (content) {
+          setCurrentStreamingContent(content);
+        }
+      }
     }
+  }, [stream.messages, stream.isLoading, normalizeContent]);
 
-    return messages;
-  }, [historicalMessages, streamingResponse]);
-
-  // Scroll to bottom when messages change
+  // Handle streaming completion: save response and add to history
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visibleMessages]);
+    const wasLoading = wasLoadingRef.current;
+    wasLoadingRef.current = stream.isLoading;
 
-  // When streaming completes, save the assistant response to DB and add to historical
-  useEffect(() => {
-    if (stream.isLoading || !activeSessionId) return;
+    // Only run when streaming just finished (was loading, now not loading)
+    if (!wasLoading || stream.isLoading || !activeSessionId) return;
 
-    // Get the final response from stream.messages (not streamingResponse which is null when not loading)
-    const aiMessages = stream.messages.filter((msg) => msg.type === "ai");
-    const lastAiMessage = aiMessages[aiMessages.length - 1];
-    if (!lastAiMessage) return;
-
-    const responseToSave = normalizeContent(lastAiMessage.content).trim();
-    if (!responseToSave || responseToSave === lastSavedResponseRef.current) return;
+    // Use the currentStreamingContent which was captured during streaming
+    const responseToSave = currentStreamingContent.trim();
+    if (!responseToSave || responseToSave === lastSavedResponseRef.current) {
+      setCurrentStreamingContent("");
+      return;
+    }
 
     // Mark as saved to prevent duplicates
     lastSavedResponseRef.current = responseToSave;
@@ -202,8 +190,35 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       },
     ]);
 
+    // Clear streaming content
+    setCurrentStreamingContent("");
     fetchSessions();
   }, [stream.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Build visible messages: historical + streaming response (if any)
+  const visibleMessages = useMemo(() => {
+    const messages = historicalMessages.map((msg) => ({
+      id: msg.id,
+      type: msg.role === "user" ? "user" : "assistant",
+      content: msg.content,
+    }));
+
+    // Show streaming content if we're loading and have content
+    if (stream.isLoading && currentStreamingContent) {
+      messages.push({
+        id: "streaming-response",
+        type: "assistant",
+        content: currentStreamingContent,
+      });
+    }
+
+    return messages;
+  }, [historicalMessages, stream.isLoading, currentStreamingContent]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [visibleMessages]);
 
   // Fetch historical messages for a session
   const fetchSessionMessages = useCallback(async (sessionId: string) => {
@@ -218,6 +233,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     } catch {
       setHistoricalMessages([]);
     }
+    setCurrentStreamingContent("");
     lastSavedResponseRef.current = "";
   }, []);
 
@@ -252,8 +268,9 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   useEffect(() => {
     if (!initialLoadComplete) {
       fetchSessions().finally(() => setInitialLoadComplete(true));
-    } else if (initialSessions.length > 0 && !activeSessionId) {
-      loadSession(initialSessions[0]);
+    } else if (initialSessions.length > 0 && historicalMessages.length === 0) {
+      // Load messages for the first session if we have initial data but no messages yet
+      fetchSessionMessages(initialSessions[0].id);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -281,6 +298,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     setIsNewSession(true);
     setShowHistory(false);
     setHistoricalMessages([]);
+    setCurrentStreamingContent("");
     lastSavedResponseRef.current = "";
   }, []);
 
@@ -304,6 +322,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
 
     const message = input.trim();
     setInput("");
+    setCurrentStreamingContent("");
     lastSavedResponseRef.current = "";
 
     try {
@@ -329,7 +348,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       ]);
 
       // Submit to LangGraph
-      await stream.submit(
+      stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
           config: {
@@ -450,7 +469,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
             );
           })
         )}
-        {stream.isLoading && !streamingResponse && (
+        {stream.isLoading && !currentStreamingContent && (
           <div className="flex justify-start">
             <div className="bg-muted rounded-lg px-3 py-2">
               <Loader2 className="h-4 w-4 animate-spin" />
