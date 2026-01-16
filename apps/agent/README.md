@@ -19,7 +19,8 @@ langgraph dev --host 0.0.0.0 --port 2024
 
 ## Key Environment Variables
 - `OPENAI_API_KEY`
-- `MODEL_PROVIDER` (default: `openai`)
-- `MODEL_NAME` (default: `gpt-4o`)
 - `RAGFLOW_BASE_URL`
 - `RAGFLOW_API_KEY`
+
+## Model Configuration
+Edit `config/rag_agent.py` to change the model provider or model name.

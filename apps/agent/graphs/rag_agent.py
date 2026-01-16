@@ -2,10 +2,9 @@
 RAG Agent using LangChain create_agent.
 """
 
-import os
-
 from langchain.agents import create_agent
 
+from config.rag_agent import RAG_AGENT_CONFIG
 from prompts.rag_agent import RAG_AGENT_SYSTEM_PROMPT
 from tools.ragflow import (
     retrieve_documents,
@@ -16,10 +15,7 @@ from tools.ragflow import (
 )
 
 
-# Get model configuration from environment
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o")
-model = f"{MODEL_PROVIDER}:{MODEL_NAME}"
+model = f"{RAG_AGENT_CONFIG.model_provider}:{RAG_AGENT_CONFIG.model_name}"
 
 # Create the RAG agent using LangChain create_agent
 agent = create_agent(
