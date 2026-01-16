@@ -195,7 +195,7 @@ export async function uploadDocumentSource(
       notebookId,
       title: file.name,
       sourceType: "DOCUMENT",
-      status: "UPLOADING",
+      status: "PROCESSING",
     },
   });
 
@@ -258,6 +258,12 @@ async function handleTextDocument(
   source: { id: string },
   notebook: { ragflowDatasetId: string | null }
 ) {
+  // Update status to processing
+  await prisma.source.update({
+    where: { id: source.id },
+    data: { status: "PROCESSING" },
+  });
+
   // Read file content directly
   const content = await file.text();
   const fileType = file.name.endsWith('.md') ? 'markdown' : 'text';

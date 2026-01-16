@@ -84,8 +84,7 @@ export function SourcesPanel({
       const list = query.state.data || sources;
       const shouldPoll = list.some(
         (sourceItem) =>
-          (sourceItem.status === "PROCESSING" ||
-            sourceItem.status === "UPLOADING") &&
+          (sourceItem.status === "PROCESSING") &&
           sourceItem.ragflowDocumentId
       );
       return shouldPoll ? 5000 : 15000;
@@ -209,8 +208,7 @@ function SourceItem({
     (isFailed && <XCircle className="h-3.5 w-3.5 text-destructive" />) ||
     (() => {
       switch (source.status) {
-        case "UPLOADING":
-          return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />;
+
         case "PROCESSING":
           return <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />;
         case "FAILED":
@@ -522,7 +520,7 @@ function AddSourceDialog({
         title: selectedFile.name,
         sourceType: "DOCUMENT",
         url: null,
-        status: "UPLOADING",
+        status: "PROCESSING",
         content: null,
         fileKey: null,
         ragflowDocumentId: null,
