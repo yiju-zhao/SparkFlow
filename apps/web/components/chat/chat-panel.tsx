@@ -146,7 +146,11 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
 
   // Convert new stream messages (only those not in historical)
   const newStreamMessages = useMemo(() => {
-    const historySet = new Set(historicalMessages.map((m) => `${m.role}:${m.content.trim()}`));
+    // Map historical role to match stream type conversion: "user" stays "user", "assistant" stays "assistant"
+    const historySet = new Set(historicalMessages.map((m) => {
+      const normalizedRole = m.role === "user" ? "user" : "assistant";
+      return `${normalizedRole}:${m.content.trim()}`;
+    }));
     return stream.messages
       .filter((msg) => msg.type === "human" || msg.type === "ai")
       .map((msg) => ({
@@ -297,11 +301,33 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       // Save user message to database immediately
       await saveMessages(sessionId, [{ sender: "USER", content: message }]);
 
-      // Add to historical messages for immediate display
-      setHistoricalMessages((prev) => [
-        ...prev,
-        { id: `pending-${Date.now()}`, role: "user", content: message, createdAt: new Date().toISOString() },
-      ]);
+      // Before adding new user message, commit any pending assistant response from stream
+      // This ensures correct order: previous response comes before new user message
+      setHistoricalMessages((prev) => {
+        // Get current stream messages that would be in newStreamMessages
+        const historySet = new Set(prev.map((m) => {
+          const normalizedRole = m.role === "user" ? "user" : "assistant";
+          return `${normalizedRole}:${m.content.trim()}`;
+        }));
+
+        const pendingAssistantMessages = stream.messages
+          .filter((msg) => msg.type === "ai")
+          .map((msg) => ({
+            id: msg.id ?? `stream-${Date.now()}`,
+            role: "assistant" as const,
+            content: normalizeContent(msg.content),
+            createdAt: new Date().toISOString(),
+          }))
+          .filter((msg) => msg.content.trim().length > 0)
+          .filter((msg) => !historySet.has(`assistant:${msg.content.trim()}`));
+
+        // Add pending assistant messages, then the new user message
+        return [
+          ...prev,
+          ...pendingAssistantMessages,
+          { id: `pending-${Date.now()}`, role: "user", content: message, createdAt: new Date().toISOString() },
+        ];
+      });
 
       // Submit to LangGraph - if threadId is invalid, it will create new one via onThreadId
       await stream.submit(
