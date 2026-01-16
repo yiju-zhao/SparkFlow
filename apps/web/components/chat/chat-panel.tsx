@@ -256,20 +256,32 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
             </div>
           </div>
         ) : (
-          // Filter to show human messages, tool calls, and final AI responses
+          // Filter to show human messages, in-progress tool calls, and final AI responses
           (() => {
+            // Collect all tool_call_ids that have received responses
+            const completedToolCallIds = new Set<string>();
+            stream.messages.forEach((message) => {
+              if (message.type === "tool") {
+                const toolCallId = (message as unknown as { tool_call_id?: string }).tool_call_id;
+                if (toolCallId) completedToolCallIds.add(toolCallId);
+              }
+            });
+
             // Get messages to display: human messages + AI messages (with or without tool_calls)
             const displayMessages = stream.messages.filter((message) => {
               // Always show human messages
               if (message.type === "human") return true;
 
-              // For AI messages, show if they have content OR tool_calls
+              // For AI messages, show if they have content OR in-progress tool_calls
               if (message.type === "ai") {
-                const toolCalls = (message as unknown as { tool_calls?: { name: string }[] }).tool_calls;
-                const hasToolCalls = Boolean(toolCalls?.length);
+                const toolCalls = (message as unknown as { tool_calls?: { id: string; name: string }[] }).tool_calls;
                 const content = getMessageContent(message);
-                // Show AI message if it has tool calls or has content
-                return hasToolCalls || content.trim().length > 0;
+
+                // Check if this message has tool calls that are still in progress
+                const hasInProgressToolCalls = toolCalls?.some(tc => !completedToolCallIds.has(tc.id)) ?? false;
+
+                // Show AI message if it has in-progress tool calls or has content
+                return hasInProgressToolCalls || content.trim().length > 0;
               }
 
               // Hide tool response messages and other types
@@ -280,19 +292,22 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
               const messageKey = message.id ?? `msg-${idx}`;
               const isUser = message.type === "human";
               const content = getMessageContent(message);
-              const toolCalls = (message as unknown as { tool_calls?: { name: string }[] }).tool_calls;
-              const hasToolCalls = Boolean(toolCalls?.length);
+              const toolCalls = (message as unknown as { tool_calls?: { id: string; name: string }[] }).tool_calls;
+
+              // Only show tool call indicator for in-progress tool calls
+              const inProgressToolCalls = toolCalls?.filter(tc => !completedToolCallIds.has(tc.id)) ?? [];
+              const hasInProgressToolCalls = inProgressToolCalls.length > 0;
 
               return (
                 <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                     {isUser ? (
                       <p className="text-sm whitespace-pre-wrap">{content}</p>
-                    ) : hasToolCalls ? (
-                      // Tool call indicator
+                    ) : hasInProgressToolCalls ? (
+                      // Tool call indicator (only for in-progress calls)
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>Using {toolCalls?.map(tc => tc.name).join(", ")}...</span>
+                        <span>Using {inProgressToolCalls.map(tc => tc.name).join(", ")}...</span>
                       </div>
                     ) : (
                       // Final AI response
