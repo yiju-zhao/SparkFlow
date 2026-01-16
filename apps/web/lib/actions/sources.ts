@@ -260,20 +260,67 @@ async function handleTextDocument(
 ) {
   // Read file content directly
   const content = await file.text();
+  const fileType = file.name.endsWith('.md') ? 'markdown' : 'text';
 
-  // Save content directly - no RagFlow upload needed for simple text
-  await prisma.source.update({
-    where: { id: source.id },
-    data: {
-      content,
-      status: "READY",
-      metadata: {
-        fileType: file.name.endsWith('.md') ? 'markdown' : 'text',
-        contentLength: content.length,
-        processedAt: new Date().toISOString(),
+  if (notebook.ragflowDatasetId) {
+    try {
+      const doc = await ragflowClient.uploadDocument(
+        notebook.ragflowDatasetId,
+        file,
+        file.name,
+        { autoParse: true }
+      );
+
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          ragflowDocumentId: doc.id,
+          content,
+          status: "PROCESSING",
+          metadata: {
+            fileType,
+            contentLength: content.length,
+            processedAt: new Date().toISOString(),
+            ragflowRun: "RUNNING",
+            ragflowProgress: doc.progress ?? 0,
+            uploadStartedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      await ragflowClient.parseDocuments(notebook.ragflowDatasetId, [doc.id]);
+    } catch (ragflowError) {
+      console.error("RagFlow upload error:", ragflowError);
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          content,
+          status: "READY",
+          metadata: {
+            fileType,
+            contentLength: content.length,
+            processedAt: new Date().toISOString(),
+            ragflowError:
+              ragflowError instanceof Error ? ragflowError.message : "Upload failed",
+          },
+        },
+      });
+    }
+  } else {
+    // Save content directly - no RagFlow upload needed when dataset is missing
+    await prisma.source.update({
+      where: { id: source.id },
+      data: {
+        content,
+        status: "READY",
+        metadata: {
+          fileType,
+          contentLength: content.length,
+          processedAt: new Date().toISOString(),
+        },
       },
-    },
-  });
+    });
+  }
 }
 
 /**
