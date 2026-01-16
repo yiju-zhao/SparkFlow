@@ -142,8 +142,25 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             },
                         },
                         p: {
-                            props: {
-                                className: "mb-2 last:mb-0 leading-relaxed",
+                            component: ({ children: pChildren, ...props }) => {
+                                // Check if children contain block-level elements (math-block renders a div)
+                                // If so, render as div to avoid invalid HTML nesting
+                                const hasBlockChild = Array.isArray(pChildren)
+                                    ? pChildren.some((child) =>
+                                        child?.type?.name === 'MathBlock' ||
+                                        child?.props?.math !== undefined ||
+                                        child?.type === 'math-block'
+                                    )
+                                    : pChildren?.type?.name === 'MathBlock' ||
+                                    pChildren?.props?.math !== undefined ||
+                                    pChildren?.type === 'math-block';
+
+                                const Tag = hasBlockChild ? 'div' : 'p';
+                                return (
+                                    <Tag className="mb-2 last:mb-0 leading-relaxed" {...props}>
+                                        {pChildren}
+                                    </Tag>
+                                );
                             },
                         },
                         h1: {
