@@ -99,6 +99,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
     assistantId: "agent",
+    messagesKey: "messages",
     threadId: threadId ?? undefined,
     onThreadId: handleThreadId,
     onError: (error: unknown) => {
@@ -192,7 +193,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
 
     // Clear streaming content
     setCurrentStreamingContent("");
-    fetchSessions();
   }, [stream.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build visible messages: historical + streaming response (if any)
@@ -268,8 +268,12 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   useEffect(() => {
     if (!initialLoadComplete) {
       fetchSessions().finally(() => setInitialLoadComplete(true));
-    } else if (initialSessions.length > 0 && historicalMessages.length === 0) {
-      // Load messages for the first session if we have initial data but no messages yet
+    } else if (
+      initialSessions.length > 0 &&
+      historicalMessages.length === 0 &&
+      initialSessions[0]._count.messages > 0
+    ) {
+      // Load messages only if the session actually has messages
       fetchSessionMessages(initialSessions[0].id);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -359,8 +363,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
           },
         }
       );
-
-      fetchSessions();
     } catch (error) {
       console.error("Failed to send message:", error);
     }
