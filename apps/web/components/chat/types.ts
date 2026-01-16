@@ -11,6 +11,4 @@ export type AgentToolCalls = RetrieveDocumentsToolCall;
 
 export interface AgentState {
     messages: Message<AgentToolCalls>[];
-    dataset_ids?: string[];
-    notebook_id?: string;
 }

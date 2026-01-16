@@ -95,12 +95,11 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     [activeSessionId]
   );
 
-  // LangGraph stream hook
+  // LangGraph stream hook - follows docs pattern exactly
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
     assistantId: "agent",
-    messagesKey: "messages",
-    ...(threadId ? { threadId } : {}),
+    threadId: threadId ?? undefined,
     onThreadId: handleThreadId,
     onError: (error: unknown) => {
       console.error("Stream error:", error);
@@ -351,11 +350,17 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       ]);
 
       // Submit to LangGraph
-      stream.submit({
-        messages: [{ type: "human", content: message }],
-        dataset_ids: datasetId ? [datasetId] : [],
-        notebook_id: notebookId,
-      });
+      stream.submit(
+        { messages: [{ type: "human", content: message }] },
+        {
+          config: {
+            configurable: {
+              dataset_ids: datasetId ? [datasetId] : [],
+              notebook_id: notebookId,
+            },
+          },
+        }
+      );
     } catch (error) {
       console.error("Failed to send message:", error);
     }
