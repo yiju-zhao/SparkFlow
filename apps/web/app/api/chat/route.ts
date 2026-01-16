@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 import { randomUUID } from "crypto";
 
-const AGENT_API_URL =
-  process.env.AGENT_API_URL || "http://localhost:8000";
+const LANGGRAPH_API_URL =
+  process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
 /**
  * Get or create the default chat session for a notebook.
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Proxy request to FastAPI agent backend
-    const agentResponse = await fetch(`${AGENT_API_URL}/api/chat`, {
+    const agentResponse = await fetch(`${LANGGRAPH_API_URL}/runs/stream`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

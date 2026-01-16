@@ -99,7 +99,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
         // Clear agent memory for this session
         try {
-            await fetch(`${process.env.AGENT_API_URL || "http://localhost:8000"}/api/chat/session/${sessionId}`, {
+            await fetch(`${process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024"}/threads/${sessionId}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${session.user.id}`,
