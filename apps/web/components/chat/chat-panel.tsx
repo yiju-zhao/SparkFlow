@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
+import type { Message } from "@langchain/langgraph-sdk";
 import { Send, Loader2, Sparkles, Plus, History, X, Trash2, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
 import { createNote } from "@/lib/actions/notes";
-import type { AgentState } from "./types";
 
 interface ChatPanelProps {
   notebookId: string;
@@ -23,40 +23,57 @@ interface ChatSession {
   _count: { messages: number };
 }
 
-interface HistoricalMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: string;
+// State type for our agent
+interface AgentState {
+  messages: Message[];
 }
 
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
-export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatPanelProps) {
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(
-    initialSessions.length > 0 ? initialSessions[0].id : null
-  );
+export function ChatPanel({ notebookId, datasetId: _datasetId, initialSessions = [] }: ChatPanelProps) {
+  // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0 ? (initialSessions[0].langgraphThreadId || null) : null
   );
-  const [input, setInput] = useState("");
+
+  // Session management for persistence
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+    initialSessions.length > 0 ? initialSessions[0].id : null
+  );
   const [sessions, setSessions] = useState<ChatSession[]>(initialSessions);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(initialSessions.length > 0);
   const [showHistory, setShowHistory] = useState(false);
-  const [isNewSession, setIsNewSession] = useState(false);
+
+  // Input state
+  const [input, setInput] = useState("");
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
-
-  // Source of truth: messages from database
-  const [historicalMessages, setHistoricalMessages] = useState<HistoricalMessage[]>([]);
-
-  // Track the current streaming response separately to handle the transition properly
-  const [currentStreamingContent, setCurrentStreamingContent] = useState<string>("");
-
-  // Track if we've saved the current streaming response to avoid duplicates
-  const lastSavedResponseRef = useRef<string>("");
-  // Track previous loading state to detect when streaming completes
-  const wasLoadingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // LangGraph stream hook - follows docs pattern
+  const stream = useStream<AgentState>({
+    apiUrl: LANGGRAPH_API_URL,
+    assistantId: "agent",
+    threadId: threadId ?? undefined,
+    onThreadId: (newThreadId) => {
+      console.log("Thread created:", newThreadId);
+      setThreadId(newThreadId);
+      // Save thread ID to database
+      if (activeSessionId) {
+        fetch(`/api/chat/${activeSessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ langgraphThreadId: newThreadId }),
+        }).catch((err) => console.error("Failed to save thread ID:", err));
+      }
+    },
+    onError: (error) => {
+      console.error("Stream error:", error);
+    },
+  });
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [stream.messages]);
 
   // Save AI response to Notes panel
   const handleSaveToNotes = useCallback(
@@ -76,206 +93,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     [notebookId, savingNoteId]
   );
 
-  // Save thread ID to database when LangGraph creates it
-  const handleThreadId = useCallback(
-    async (newThreadId: string) => {
-      setThreadId(newThreadId);
-      if (activeSessionId) {
-        try {
-          await fetch(`/api/chat/${activeSessionId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ langgraphThreadId: newThreadId }),
-          });
-        } catch (error) {
-          console.error("Failed to save thread ID:", error);
-        }
-      }
-    },
-    [activeSessionId]
-  );
-
-  // LangGraph stream hook - follows docs pattern exactly
-  const stream = useStream<AgentState>({
-    apiUrl: LANGGRAPH_API_URL,
-    assistantId: "agent",
-    threadId: threadId ?? undefined,
-    onThreadId: handleThreadId,
-    onError: (error: unknown) => {
-      console.error("Stream error:", error);
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      if (errorMsg.includes("thread") || errorMsg.includes("not found")) {
-        setThreadId(null);
-      }
-    },
-  });
-
-  // Normalize content from LangGraph messages
-  const normalizeContent = useCallback((content: unknown): string => {
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) {
-      return content
-        .map((item) => {
-          if (typeof item === "string") return item;
-          if (typeof item === "object" && item && "text" in item && typeof item.text === "string") {
-            return item.text;
-          }
-          return "";
-        })
-        .filter(Boolean)
-        .join("\n");
-    }
-    return "";
-  }, []);
-
-  // Save messages to database
-  const saveMessages = useCallback(
-    async (sessionId: string, messagesToSave: { sender: "USER" | "ASSISTANT"; content: string }[]) => {
-      if (!messagesToSave.length) return;
-      try {
-        await fetch("/api/chat/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, notebookId, messages: messagesToSave }),
-        });
-      } catch (error) {
-        console.error("Unable to save chat history:", error);
-      }
-    },
-    [notebookId]
-  );
-
-  // Update streaming content as tokens arrive
-  useEffect(() => {
-    if (stream.isLoading) {
-      const aiMessages = stream.messages.filter((msg) => msg.type === "ai");
-      const lastAiMessage = aiMessages[aiMessages.length - 1];
-      if (lastAiMessage) {
-        const content = normalizeContent(lastAiMessage.content).trim();
-        if (content) {
-          setCurrentStreamingContent(content);
-        }
-      }
-    }
-  }, [stream.messages, stream.isLoading, normalizeContent]);
-
-  // Handle streaming completion: save response and add to history
-  useEffect(() => {
-    const wasLoading = wasLoadingRef.current;
-    wasLoadingRef.current = stream.isLoading;
-
-    // Only run when streaming just finished (was loading, now not loading)
-    if (!wasLoading || stream.isLoading || !activeSessionId) return;
-
-    // Use the currentStreamingContent which was captured during streaming
-    const responseToSave = currentStreamingContent.trim();
-    if (!responseToSave || responseToSave === lastSavedResponseRef.current) {
-      setCurrentStreamingContent("");
-      return;
-    }
-
-    // Mark as saved to prevent duplicates
-    lastSavedResponseRef.current = responseToSave;
-
-    // Save to database and add to historical messages
-    saveMessages(activeSessionId, [{ sender: "ASSISTANT", content: responseToSave }]);
-    setHistoricalMessages((prev) => [
-      ...prev,
-      {
-        id: `response-${Date.now()}`,
-        role: "assistant",
-        content: responseToSave,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-
-    // Clear streaming content
-    setCurrentStreamingContent("");
-  }, [stream.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Build visible messages: historical + streaming response (if any)
-  const visibleMessages = useMemo(() => {
-    const messages = historicalMessages.map((msg) => ({
-      id: msg.id,
-      type: msg.role === "user" ? "user" : "assistant",
-      content: msg.content,
-    }));
-
-    // Show streaming content if we're loading and have content
-    if (stream.isLoading && currentStreamingContent) {
-      messages.push({
-        id: "streaming-response",
-        type: "assistant",
-        content: currentStreamingContent,
-      });
-    }
-
-    return messages;
-  }, [historicalMessages, stream.isLoading, currentStreamingContent]);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visibleMessages]);
-
-  // Fetch historical messages for a session
-  const fetchSessionMessages = useCallback(async (sessionId: string) => {
-    try {
-      const res = await fetch(`/api/chat/${sessionId}`);
-      if (res.ok) {
-        const messages: HistoricalMessage[] = await res.json();
-        setHistoricalMessages(messages);
-      } else {
-        setHistoricalMessages([]);
-      }
-    } catch {
-      setHistoricalMessages([]);
-    }
-    setCurrentStreamingContent("");
-    lastSavedResponseRef.current = "";
-  }, []);
-
-  const loadSession = useCallback(
-    async (session: ChatSession) => {
-      setActiveSessionId(session.id);
-      setThreadId(session.langgraphThreadId || null);
-      setIsNewSession(false);
-      setShowHistory(false);
-      await fetchSessionMessages(session.id);
-    },
-    [fetchSessionMessages]
-  );
-
-  // Fetch sessions list
-  const fetchSessions = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/chat/sessions?notebookId=${notebookId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSessions(data);
-        if (!activeSessionId && data.length > 0 && !isNewSession) {
-          loadSession(data[0]);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch sessions:", error);
-    }
-  }, [notebookId, activeSessionId, isNewSession, loadSession]);
-
-  // Only fetch on mount if we don't have initial data
-  useEffect(() => {
-    if (!initialLoadComplete) {
-      fetchSessions().finally(() => setInitialLoadComplete(true));
-    } else if (
-      initialSessions.length > 0 &&
-      historicalMessages.length === 0 &&
-      initialSessions[0]._count.messages > 0
-    ) {
-      // Load messages only if the session actually has messages
-      fetchSessionMessages(initialSessions[0].id);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // Create new session in database
   const createSession = useCallback(
     async (title?: string) => {
       const res = await fetch(`/api/notebooks/${notebookId}/sessions`, {
@@ -288,22 +106,26 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       setSessions((prev) => [created, ...prev]);
       setActiveSessionId(created.id);
       setThreadId(null);
-      setIsNewSession(false);
       return created;
     },
     [notebookId]
   );
 
+  // Start new chat
   const handleNewChat = useCallback(() => {
     setActiveSessionId(null);
     setThreadId(null);
-    setIsNewSession(true);
     setShowHistory(false);
-    setHistoricalMessages([]);
-    setCurrentStreamingContent("");
-    lastSavedResponseRef.current = "";
   }, []);
 
+  // Load existing session
+  const loadSession = useCallback((session: ChatSession) => {
+    setActiveSessionId(session.id);
+    setThreadId(session.langgraphThreadId || null);
+    setShowHistory(false);
+  }, []);
+
+  // Delete session
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     if (!confirm("Delete this chat history?")) return;
@@ -318,49 +140,24 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     }
   };
 
+  // Submit message - follows docs pattern exactly
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || stream.isLoading) return;
 
     const message = input.trim();
     setInput("");
-    setCurrentStreamingContent("");
-    lastSavedResponseRef.current = "";
 
     try {
-      let sessionId = activeSessionId;
-
-      if (!sessionId) {
-        const session = await createSession(message);
-        sessionId = session.id;
+      // Create session if needed
+      if (!activeSessionId) {
+        await createSession(message);
       }
 
-      if (!sessionId) throw new Error("Unable to determine session");
-
-      // Save user message to database and add to historical messages immediately
-      await saveMessages(sessionId, [{ sender: "USER", content: message }]);
-      setHistoricalMessages((prev) => [
-        ...prev,
-        {
-          id: `user-${Date.now()}`,
-          role: "user",
-          content: message,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-
-      // Submit to LangGraph
-      stream.submit(
-        { messages: [{ type: "human", content: message }] },
-        {
-          config: {
-            configurable: {
-              dataset_ids: datasetId ? [datasetId] : [],
-              notebook_id: notebookId,
-            },
-          },
-        }
-      );
+      // Submit to LangGraph - simple format from docs
+      stream.submit({
+        messages: [{ type: "human", content: message }],
+      });
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -376,6 +173,22 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
+
+  // Get message content as string
+  const getMessageContent = (message: Message): string => {
+    if (typeof message.content === "string") return message.content;
+    if (Array.isArray(message.content)) {
+      return message.content
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (typeof item === "object" && item && "text" in item) return (item as { text: string }).text;
+          return "";
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+    return "";
   };
 
   return (
@@ -425,9 +238,9 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
         </div>
       )}
 
-      {/* Messages */}
+      {/* Messages - using stream.messages directly */}
       <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
-        {visibleMessages.length === 0 ? (
+        {stream.messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
               <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
@@ -435,25 +248,26 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
             </div>
           </div>
         ) : (
-          visibleMessages.map((message, idx) => {
+          stream.messages.map((message, idx) => {
             const messageKey = message.id ?? `msg-${idx}`;
-            const isUser = message.type === "user";
-            const isStreaming = message.id === "streaming-response";
+            const isUser = message.type === "human";
+            const content = getMessageContent(message);
+
             return (
               <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                   {isUser ? (
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{content}</p>
                   ) : (
                     <>
-                      <Markdown className="text-sm">{message.content}</Markdown>
-                      {!isStreaming && (
+                      <Markdown className="text-sm">{content}</Markdown>
+                      {!stream.isLoading && content && (
                         <div className="mt-2 flex justify-end border-t border-border/50 pt-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => handleSaveToNotes(messageKey, message.content)}
+                            onClick={() => handleSaveToNotes(messageKey, content)}
                             disabled={savingNoteId === messageKey}
                             title="Save to Notes"
                           >
@@ -469,22 +283,25 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
             );
           })
         )}
-        {stream.isLoading && !currentStreamingContent && (
+
+        {/* Loading indicator */}
+        {stream.isLoading ? (
           <div className="flex justify-start">
             <div className="bg-muted rounded-lg px-3 py-2">
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           </div>
-        )}
+        ) : null}
+
+        {/* Error display */}
         {stream.error ? (
           <div className="flex justify-start">
             <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2">
-              <p className="text-sm">
-                Error: {stream.error instanceof Error ? stream.error.message : String(stream.error)}
-              </p>
+              <p className="text-sm">Error: {stream.error instanceof Error ? stream.error.message : String(stream.error)}</p>
             </div>
           </div>
         ) : null}
+
         <div ref={messagesEndRef} />
       </div>
 
