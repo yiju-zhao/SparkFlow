@@ -101,16 +101,27 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     assistantId: "agent",
     messagesKey: "messages",
     threadId: threadId ?? undefined,
-    onThreadId: handleThreadId,
+    onThreadId: (newThreadId) => {
+      console.log("[LangGraph] Thread created:", newThreadId);
+      handleThreadId(newThreadId);
+    },
     onError: (error: unknown) => {
-      console.error("Stream error:", error);
+      console.error("[LangGraph] Stream error:", error);
       const errorMsg = error instanceof Error ? error.message : String(error);
       if (errorMsg.includes("thread") || errorMsg.includes("not found")) {
-        console.log("Thread not found, will create new thread on next message");
+        console.log("[LangGraph] Thread not found, will create new thread on next message");
         setThreadId(null);
       }
     },
+    onFinish: (state) => {
+      console.log("[LangGraph] Stream finished:", state);
+    },
   });
+
+  // Log the LangGraph URL on mount for debugging
+  useEffect(() => {
+    console.log("[LangGraph] API URL:", LANGGRAPH_API_URL);
+  }, []);
 
   // Normalize content from LangGraph messages
   const normalizeContent = useCallback((content: unknown): string => {
@@ -352,6 +363,9 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       ]);
 
       // Submit to LangGraph
+      console.log("[LangGraph] Submitting message to:", LANGGRAPH_API_URL);
+      console.log("[LangGraph] Thread ID:", threadId);
+      console.log("[LangGraph] Config:", { dataset_ids: datasetId ? [datasetId] : [], notebook_id: notebookId });
       stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
