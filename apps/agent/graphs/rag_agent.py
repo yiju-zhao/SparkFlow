@@ -3,14 +3,11 @@ RAG Agent using LangChain create_agent.
 """
 
 import os
-from typing import Annotated
 
 from langchain.agents import create_agent
-from langchain.tools import tool
-from langchain_core.runnables import RunnableConfig
 
-from app.agents.prompts import RAG_AGENT_SYSTEM_PROMPT
-from app.agents.tools import (
+from prompts.rag_agent import RAG_AGENT_SYSTEM_PROMPT
+from tools.ragflow import (
     retrieve_documents,
     get_next_chunks,
     list_datasets,

@@ -3,7 +3,7 @@
         "."
     ],
     "graphs": {
-        "agent": "./app/agents/agent.py:agent"
+        "agent": "./graphs/rag_agent.py:agent"
     },
     "env": ".env"
 }
