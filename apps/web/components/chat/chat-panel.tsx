@@ -12,6 +12,7 @@ import type { AgentState } from "./types";
 interface ChatPanelProps {
   notebookId: string;
   datasetId?: string | null;
+  initialSessions?: ChatSession[];
 }
 
 interface ChatSession {
@@ -31,11 +32,16 @@ interface HistoricalMessage {
 
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
-export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [threadId, setThreadId] = useState<string | null>(null);
+export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatPanelProps) {
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+    initialSessions.length > 0 ? initialSessions[0].id : null
+  );
+  const [threadId, setThreadId] = useState<string | null>(
+    initialSessions.length > 0 ? (initialSessions[0].langgraphThreadId || null) : null
+  );
   const [input, setInput] = useState("");
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>(initialSessions);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(initialSessions.length > 0);
   const [showHistory, setShowHistory] = useState(false);
   const [isNewSession, setIsNewSession] = useState(false);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
@@ -220,9 +226,15 @@ export function ChatPanel({ notebookId, datasetId }: ChatPanelProps) {
     }
   }, [notebookId, activeSessionId, isNewSession, loadSession]);
 
+  // Only fetch on mount if we don't have initial data
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    if (!initialLoadComplete) {
+      fetchSessions().finally(() => setInitialLoadComplete(true));
+    } else if (initialSessions.length > 0 && !activeSessionId) {
+      // Load messages for the first session if we have initial data
+      loadSession(initialSessions[0]);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const createSession = useCallback(
     async (title?: string) => {

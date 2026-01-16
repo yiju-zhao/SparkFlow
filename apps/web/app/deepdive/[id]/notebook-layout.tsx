@@ -15,12 +15,13 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SourcesPanel } from "@/components/sources/sources-panel";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { StudioPanel } from "@/components/studio/studio-panel";
-import type { Source, Note, Notebook } from "@prisma/client";
+import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
 
 interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
+  initialChatSessions?: ChatSession[];
 }
 
 // Panel widths
@@ -33,6 +34,7 @@ export function NotebookLayout({
   notebook,
   sources,
   notes,
+  initialChatSessions = [],
 }: NotebookLayoutProps) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -124,6 +126,13 @@ export function NotebookLayout({
           <ChatPanel
             notebookId={notebook.id}
             datasetId={notebook.ragflowDatasetId}
+            initialSessions={initialChatSessions.map((s) => ({
+              id: s.id,
+              title: s.title,
+              lastActivity: s.lastActivity.toISOString(),
+              langgraphThreadId: s.langgraphThreadId,
+              _count: { messages: 0 },
+            }))}
           />
         </div>
 

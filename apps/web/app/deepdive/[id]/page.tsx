@@ -44,6 +44,7 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
       notebook={notebook}
       sources={notebook.sources}
       notes={notebook.notes}
+      initialChatSessions={notebook.chatSessions}
     />
   );
 }

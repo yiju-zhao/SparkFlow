@@ -15,7 +15,11 @@ export async function GET(
 
   const notebook = await prisma.notebook.findFirst({
     where: { id, userId: session.user.id },
-    include: { sources: true },
+    include: {
+      sources: {
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
 
   if (!notebook) {
@@ -94,7 +98,7 @@ export async function GET(
                 typeof doc.progress === "number"
                   ? doc.progress
                   : (source.metadata as Record<string, unknown> | null)?.ragflowProgress ??
-                    null,
+                  null,
               ragflowUpdatedAt: new Date().toISOString(),
             },
           },
