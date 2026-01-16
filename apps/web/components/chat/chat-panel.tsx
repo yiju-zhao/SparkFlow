@@ -45,8 +45,12 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   const [showHistory, setShowHistory] = useState(false);
   const [isNewSession, setIsNewSession] = useState(false);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+
+  // Source of truth: messages from database
   const [historicalMessages, setHistoricalMessages] = useState<HistoricalMessage[]>([]);
-  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
+
+  // Track if we've saved the current streaming response to avoid duplicates
+  const lastSavedResponseRef = useRef<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Save AI response to Notes panel
@@ -94,7 +98,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     onThreadId: handleThreadId,
     onError: (error: unknown) => {
       console.error("Stream error:", error);
-      // If thread connection fails, clear threadId to create new one on next submit
       const errorMsg = error instanceof Error ? error.message : String(error);
       if (errorMsg.includes("thread") || errorMsg.includes("not found")) {
         console.log("Thread not found, will create new thread on next message");
@@ -103,7 +106,8 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     },
   });
 
-  const normalizeContent = useCallback((content: unknown) => {
+  // Normalize content from LangGraph messages
+  const normalizeContent = useCallback((content: unknown): string => {
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
       return content
@@ -120,12 +124,19 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     return "";
   }, []);
 
+  // Extract the current streaming response (only the latest AI message)
+  const streamingResponse = useMemo((): string | null => {
+    if (!stream.isLoading) return null;
+    const aiMessages = stream.messages.filter((msg) => msg.type === "ai");
+    const lastAiMessage = aiMessages[aiMessages.length - 1];
+    if (!lastAiMessage) return null;
+    const content = normalizeContent(lastAiMessage.content).trim();
+    return content || null;
+  }, [stream.messages, stream.isLoading, normalizeContent]);
+
   // Save messages to database
   const saveMessages = useCallback(
-    async (
-      sessionId: string,
-      messagesToSave: { sender: "USER" | "ASSISTANT"; content: string }[]
-    ) => {
+    async (sessionId: string, messagesToSave: { sender: "USER" | "ASSISTANT"; content: string }[]) => {
       if (!messagesToSave.length) return;
       try {
         await fetch("/api/chat/messages", {
@@ -140,52 +151,58 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     [notebookId]
   );
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  // Convert new stream messages (only those not in historical)
-  const newStreamMessages = useMemo(() => {
-    // Map historical role to match stream type conversion: "user" stays "user", "assistant" stays "assistant"
-    const historySet = new Set(historicalMessages.map((m) => {
-      const normalizedRole = m.role === "user" ? "user" : "assistant";
-      return `${normalizedRole}:${m.content.trim()}`;
-    }));
-    return stream.messages
-      .filter((msg) => msg.type === "human" || msg.type === "ai")
-      .map((msg) => ({
-        id: msg.id ?? `stream-${Math.random()}`,
-        type: msg.type === "human" ? "user" : "assistant",
-        content: normalizeContent(msg.content),
-      }))
-      .filter((msg) => msg.content.trim().length > 0)
-      .filter((msg) => !historySet.has(`${msg.type}:${msg.content.trim()}`));
-  }, [stream.messages, historicalMessages, normalizeContent]);
-
-  // Combine historical + new stream messages
+  // Build visible messages: historical + streaming response (if any)
   const visibleMessages = useMemo(() => {
-    const historical = historicalMessages.map((msg) => ({
+    const messages = historicalMessages.map((msg) => ({
       id: msg.id,
       type: msg.role === "user" ? "user" : "assistant",
       content: msg.content,
     }));
-    return [...historical, ...newStreamMessages];
-  }, [historicalMessages, newStreamMessages]);
 
+    if (streamingResponse) {
+      messages.push({
+        id: "streaming-response",
+        type: "assistant",
+        content: streamingResponse,
+      });
+    }
+
+    return messages;
+  }, [historicalMessages, streamingResponse]);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [visibleMessages]);
 
-  // Save assistant response when streaming completes
+  // When streaming completes, save the assistant response to DB and add to historical
   useEffect(() => {
     if (stream.isLoading || !activeSessionId) return;
 
-    const assistantMsgs = newStreamMessages.filter((m) => m.type === "assistant");
-    const latest = assistantMsgs[assistantMsgs.length - 1];
-    if (latest?.content?.trim()) {
-      saveMessages(activeSessionId, [{ sender: "ASSISTANT", content: latest.content.trim() }])
-        .then(() => fetchSessions());
-    }
+    // Get the final response from stream.messages (not streamingResponse which is null when not loading)
+    const aiMessages = stream.messages.filter((msg) => msg.type === "ai");
+    const lastAiMessage = aiMessages[aiMessages.length - 1];
+    if (!lastAiMessage) return;
+
+    const responseToSave = normalizeContent(lastAiMessage.content).trim();
+    if (!responseToSave || responseToSave === lastSavedResponseRef.current) return;
+
+    // Mark as saved to prevent duplicates
+    lastSavedResponseRef.current = responseToSave;
+
+    // Save to database and add to historical messages
+    saveMessages(activeSessionId, [{ sender: "ASSISTANT", content: responseToSave }]);
+    setHistoricalMessages((prev) => [
+      ...prev,
+      {
+        id: `response-${Date.now()}`,
+        role: "assistant",
+        content: responseToSave,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    fetchSessions();
   }, [stream.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch historical messages for a session
@@ -201,6 +218,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     } catch {
       setHistoricalMessages([]);
     }
+    lastSavedResponseRef.current = "";
   }, []);
 
   const loadSession = useCallback(
@@ -235,7 +253,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     if (!initialLoadComplete) {
       fetchSessions().finally(() => setInitialLoadComplete(true));
     } else if (initialSessions.length > 0 && !activeSessionId) {
-      // Load messages for the first session if we have initial data
       loadSession(initialSessions[0]);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -251,20 +268,21 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       const created = await res.json();
       setSessions((prev) => [created, ...prev]);
       setActiveSessionId(created.id);
-      setThreadId(null); // Let LangGraph create new thread
+      setThreadId(null);
       setIsNewSession(false);
       return created;
     },
     [notebookId]
   );
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     setActiveSessionId(null);
     setThreadId(null);
     setIsNewSession(true);
     setShowHistory(false);
     setHistoricalMessages([]);
-  };
+    lastSavedResponseRef.current = "";
+  }, []);
 
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
@@ -286,11 +304,11 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
 
     const message = input.trim();
     setInput("");
+    lastSavedResponseRef.current = "";
 
     try {
       let sessionId = activeSessionId;
 
-      // Create new session if needed
       if (!sessionId) {
         const session = await createSession(message);
         sessionId = session.id;
@@ -298,38 +316,19 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
 
       if (!sessionId) throw new Error("Unable to determine session");
 
-      // Save user message to database immediately
+      // Save user message to database and add to historical messages immediately
       await saveMessages(sessionId, [{ sender: "USER", content: message }]);
+      setHistoricalMessages((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          role: "user",
+          content: message,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
-      // Before adding new user message, commit any pending assistant response from stream
-      // This ensures correct order: previous response comes before new user message
-      setHistoricalMessages((prev) => {
-        // Get current stream messages that would be in newStreamMessages
-        const historySet = new Set(prev.map((m) => {
-          const normalizedRole = m.role === "user" ? "user" : "assistant";
-          return `${normalizedRole}:${m.content.trim()}`;
-        }));
-
-        const pendingAssistantMessages = stream.messages
-          .filter((msg) => msg.type === "ai")
-          .map((msg) => ({
-            id: msg.id ?? `stream-${Date.now()}`,
-            role: "assistant" as const,
-            content: normalizeContent(msg.content),
-            createdAt: new Date().toISOString(),
-          }))
-          .filter((msg) => msg.content.trim().length > 0)
-          .filter((msg) => !historySet.has(`assistant:${msg.content.trim()}`));
-
-        // Add pending assistant messages, then the new user message
-        return [
-          ...prev,
-          ...pendingAssistantMessages,
-          { id: `pending-${Date.now()}`, role: "user", content: message, createdAt: new Date().toISOString() },
-        ];
-      });
-
-      // Submit to LangGraph - if threadId is invalid, it will create new one via onThreadId
+      // Submit to LangGraph
       await stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
@@ -420,6 +419,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
           visibleMessages.map((message, idx) => {
             const messageKey = message.id ?? `msg-${idx}`;
             const isUser = message.type === "user";
+            const isStreaming = message.id === "streaming-response";
             return (
               <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
@@ -428,19 +428,21 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
                   ) : (
                     <>
                       <Markdown className="text-sm">{message.content}</Markdown>
-                      <div className="mt-2 flex justify-end border-t border-border/50 pt-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                          onClick={() => handleSaveToNotes(messageKey, message.content)}
-                          disabled={savingNoteId === messageKey}
-                          title="Save to Notes"
-                        >
-                          {savingNoteId === messageKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <StickyNote className="h-3 w-3" />}
-                          <span>Save to Notes</span>
-                        </Button>
-                      </div>
+                      {!isStreaming && (
+                        <div className="mt-2 flex justify-end border-t border-border/50 pt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => handleSaveToNotes(messageKey, message.content)}
+                            disabled={savingNoteId === messageKey}
+                            title="Save to Notes"
+                          >
+                            {savingNoteId === messageKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <StickyNote className="h-3 w-3" />}
+                            <span>Save to Notes</span>
+                          </Button>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -448,7 +450,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
             );
           })
         )}
-        {stream.isLoading && (
+        {stream.isLoading && !streamingResponse && (
           <div className="flex justify-start">
             <div className="bg-muted rounded-lg px-3 py-2">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -459,7 +461,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
           <div className="flex justify-start">
             <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2">
               <p className="text-sm">
-                Error: {stream.error instanceof Error ? stream.error.message : String(stream.error as unknown)}
+                Error: {stream.error instanceof Error ? stream.error.message : String(stream.error)}
               </p>
             </div>
           </div>
