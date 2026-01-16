@@ -143,17 +143,27 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                         },
                         p: {
                             component: ({ children: pChildren, ...props }) => {
-                                // Check if children contain block-level elements (math-block renders a div)
+                                // Helper to check if a single child is a block-level element
+                                const isBlockElement = (child: unknown): boolean => {
+                                    if (!child || typeof child !== 'object') return false;
+                                    const c = child as { type?: { name?: string } | string; props?: { math?: string; 'data-index'?: string } };
+                                    const typeName = typeof c.type === 'object' ? c.type?.name : c.type;
+                                    // Check for MathBlock (renders div via TeX block)
+                                    if (typeName === 'MathBlock' || c.props?.math !== undefined || typeName === 'math-block') {
+                                        return true;
+                                    }
+                                    // Check for HtmlTable placeholder (renders div)
+                                    if (c.props?.['data-index'] !== undefined || typeName === 'html-table-placeholder') {
+                                        return true;
+                                    }
+                                    return false;
+                                };
+
+                                // Check if children contain block-level elements
                                 // If so, render as div to avoid invalid HTML nesting
                                 const hasBlockChild = Array.isArray(pChildren)
-                                    ? pChildren.some((child) =>
-                                        child?.type?.name === 'MathBlock' ||
-                                        child?.props?.math !== undefined ||
-                                        child?.type === 'math-block'
-                                    )
-                                    : pChildren?.type?.name === 'MathBlock' ||
-                                    pChildren?.props?.math !== undefined ||
-                                    pChildren?.type === 'math-block';
+                                    ? pChildren.some(isBlockElement)
+                                    : isBlockElement(pChildren);
 
                                 const Tag = hasBlockChild ? 'div' : 'p';
                                 return (
