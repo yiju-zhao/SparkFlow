@@ -493,7 +493,7 @@ export async function deleteSource(sourceId: string) {
   // Get source and verify ownership
   const source = await prisma.source.findUnique({
     where: { id: sourceId },
-    include: { notebook: true },
+    include: { notebook: true, images: true },
   });
 
   if (!source || source.notebook.userId !== session.user.id) {
@@ -513,6 +513,20 @@ export async function deleteSource(sourceId: string) {
     }
   }
 
+  // Delete images from S3 if any exist
+  if (source.images && source.images.length > 0) {
+    try {
+      const { deleteImage } = await import("@/lib/s3-client");
+      for (const image of source.images) {
+        await deleteImage(image.storageKey);
+      }
+    } catch (error) {
+      console.error("S3 image delete error:", error);
+      // Continue with source deletion even if S3 delete fails
+    }
+  }
+
+  // Delete source (cascade will delete SourceImage records)
   await prisma.source.delete({ where: { id: sourceId } });
   revalidatePath(`/deepdive/${source.notebookId}`);
 }
