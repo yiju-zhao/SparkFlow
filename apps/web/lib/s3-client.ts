@@ -117,7 +117,7 @@ export function generateImageKey(
  * Upload multiple images for a source
  *
  * @param sourceId - ID of the source document
- * @param images - Record of image names to base64 data
+ * @param images - Record of image names to base64 data (may include data URI prefix)
  * @returns Array of uploaded image info
  */
 export async function uploadSourceImages(
@@ -132,17 +132,29 @@ export async function uploadSourceImages(
         contentType: string;
     }> = [];
 
-    for (const [imageName, base64Data] of Object.entries(images)) {
-        // Detect content type from image name or default to PNG
-        const ext = imageName.split(".").pop()?.toLowerCase() || "png";
-        const contentType =
-            ext === "jpg" || ext === "jpeg"
-                ? "image/jpeg"
-                : ext === "gif"
-                    ? "image/gif"
-                    : ext === "webp"
-                        ? "image/webp"
-                        : "image/png";
+    for (const [imageName, rawData] of Object.entries(images)) {
+        // Handle data URI format: "data:image/jpeg;base64,/9j/4AAQ..."
+        let base64Data = rawData;
+        let contentType = "image/png";
+
+        if (rawData.startsWith("data:")) {
+            const match = rawData.match(/^data:([^;]+);base64,(.*)$/);
+            if (match) {
+                contentType = match[1]; // e.g., "image/jpeg"
+                base64Data = match[2];  // pure base64 without prefix
+            }
+        } else {
+            // Fallback: detect content type from image name
+            const ext = imageName.split(".").pop()?.toLowerCase() || "png";
+            contentType =
+                ext === "jpg" || ext === "jpeg"
+                    ? "image/jpeg"
+                    : ext === "gif"
+                        ? "image/gif"
+                        : ext === "webp"
+                            ? "image/webp"
+                            : "image/png";
+        }
 
         // Convert base64 to Buffer
         const buffer = Buffer.from(base64Data, "base64");
