@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SourcesPanel } from "@/components/sources/sources-panel";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { StudioPanel } from "@/components/studio/studio-panel";
+import { CitationProvider, useCitation, ChunkInfo } from "@/lib/context/citation-context";
 import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
 
 type ChatSessionWithCount = ChatSession & {
@@ -43,7 +44,15 @@ const SOURCES_EXPANDED_WIDTH = 480;
 const STUDIO_LIST_WIDTH = 320;
 const STUDIO_EXPANDED_WIDTH = 480;
 
-export function NotebookLayout({
+export function NotebookLayout(props: NotebookLayoutProps) {
+  return (
+    <CitationProvider>
+      <NotebookLayoutInner {...props} />
+    </CitationProvider>
+  );
+}
+
+function NotebookLayoutInner({
   notebook,
   sources,
   notes,
@@ -54,6 +63,34 @@ export function NotebookLayout({
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [targetChunkId, setTargetChunkId] = useState<string | null>(null);
+
+  // Citation navigation setup
+  const { setOnNavigate } = useCitation();
+
+  // Handle citation click navigation
+  const handleCitationNavigate = useCallback(
+    (chunkId: string, chunkInfo: ChunkInfo) => {
+      // Find source by document name
+      const matchingSource = sources.find(
+        (s) => s.title === chunkInfo.docName || s.ragflowDocumentId === chunkInfo.docId
+      );
+
+      if (matchingSource) {
+        // Open left panel and select the source
+        setLeftPanelOpen(true);
+        setSelectedSource(matchingSource);
+        setTargetChunkId(chunkId);
+      }
+    },
+    [sources]
+  );
+
+  // Register navigation handler with citation context
+  useEffect(() => {
+    setOnNavigate(handleCitationNavigate);
+    return () => setOnNavigate(null);
+  }, [setOnNavigate, handleCitationNavigate]);
 
   // Determine the width of the sources panel based on whether a source is selected
   const sourcesPanelWidth = selectedSource
@@ -127,9 +164,12 @@ export function NotebookLayout({
             >
               <SourcesPanel
                 notebookId={notebook.id}
+                datasetId={notebook.ragflowDatasetId}
                 sources={sources}
                 selectedSource={selectedSource}
                 onSelectSource={setSelectedSource}
+                targetChunkId={targetChunkId}
+                onChunkNavigated={() => setTargetChunkId(null)}
               />
             </motion.div>
           )}

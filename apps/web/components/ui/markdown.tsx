@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import MarkdownToJsx from "markdown-to-jsx";
 import TeX from "@matejmazur/react-katex";
 import { cn } from "@/lib/utils";
+import { useCitationSafe } from "@/lib/context/citation-context";
 import "katex/dist/katex.min.css";
 
 interface MarkdownProps {
@@ -64,15 +65,61 @@ function HtmlTable({ html }: { html: string }) {
     );
 }
 
+// Preprocess citations: [ref:chunkId] -> clickable element
+function preprocessCitations(content: string): string {
+    // Match [ref:chunkId] pattern
+    return content.replace(
+        /\[ref:([a-zA-Z0-9_-]+)\]/g,
+        (_, chunkId) => `<citation-ref data-chunk="${chunkId}"></citation-ref>`
+    );
+}
+
+// Citation link component - renders as clickable badge
+function CitationLink({ "data-chunk": chunkId }: { "data-chunk": string }) {
+    const citationContext = useCitationSafe();
+
+    if (!citationContext) {
+        // Fallback when outside citation context
+        return (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground rounded">
+                [ref]
+            </span>
+        );
+    }
+
+    const chunkInfo = citationContext.chunkRegistry.get(chunkId);
+    const displayName = chunkInfo?.docName || "Source";
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        citationContext.navigateToChunk(chunkId);
+    };
+
+    return (
+        <button
+            onClick={handleClick}
+            className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors cursor-pointer"
+            title={`Navigate to source: ${displayName}`}
+        >
+            [{displayName}]
+        </button>
+    );
+}
+
 export const Markdown = memo(function Markdown({ children, className }: MarkdownProps) {
-    // Extract HTML tables first, then process math
+    // Extract HTML tables first, then process citations, then math
     const { processed: contentWithoutTables, tables } = useMemo(
         () => extractHtmlTables(children),
         [children]
     );
-    const processedContent = useMemo(
-        () => preprocessMath(contentWithoutTables),
+    const contentWithCitations = useMemo(
+        () => preprocessCitations(contentWithoutTables),
         [contentWithoutTables]
+    );
+    const processedContent = useMemo(
+        () => preprocessMath(contentWithCitations),
+        [contentWithCitations]
     );
 
     return (
@@ -97,6 +144,9 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                                 const html = tables[index];
                                 return html ? <HtmlTable html={html} /> : null;
                             },
+                        },
+                        "citation-ref": {
+                            component: CitationLink,
                         },
                         a: {
                             props: {

@@ -35,16 +35,22 @@ type Source = PrismaSource & {
 
 interface SourcesPanelProps {
   notebookId: string;
+  datasetId?: string | null;
   sources: Source[];
   selectedSource: Source | null;
   onSelectSource: (source: Source | null) => void;
+  targetChunkId?: string | null;
+  onChunkNavigated?: () => void;
 }
 
 export function SourcesPanel({
   notebookId,
+  datasetId,
   sources,
   selectedSource,
   onSelectSource,
+  targetChunkId,
+  onChunkNavigated,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: liveSources = sources } = useQuery<Source[]>({
@@ -77,6 +83,9 @@ export function SourcesPanel({
     return (
       <SourceContentView
         source={selectedSource}
+        datasetId={datasetId}
+        targetChunkId={targetChunkId}
+        onChunkNavigated={onChunkNavigated}
         onBack={() => onSelectSource(null)}
       />
     );
@@ -270,13 +279,20 @@ function SourceItem({
 // Source content viewer - shows title and markdown content with TOC button
 function SourceContentView({
   source,
+  datasetId,
+  targetChunkId,
+  onChunkNavigated,
   onBack,
 }: {
   source: Source;
+  datasetId?: string | null;
+  targetChunkId?: string | null;
+  onChunkNavigated?: () => void;
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
+  const [highlightedText, setHighlightedText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Reset scroll when source changes
@@ -288,6 +304,123 @@ function SourceContentView({
 
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
+
+  // Handle chunk navigation - fetch chunk content and scroll to it
+  useEffect(() => {
+    if (!targetChunkId || !datasetId) return;
+
+    const navigateToChunk = async () => {
+      try {
+        // Fetch chunk content from API
+        const res = await fetch(`/api/chunks/${targetChunkId}?datasetId=${datasetId}`);
+        if (!res.ok) {
+          console.error("Failed to fetch chunk content");
+          onChunkNavigated?.();
+          return;
+        }
+
+        const data = await res.json() as { content: string };
+        const chunkContent = data.content;
+
+        if (!chunkContent) {
+          onChunkNavigated?.();
+          return;
+        }
+
+        // Find the chunk position in the source content
+        const position = findChunkPosition(markdownContent, chunkContent);
+
+        if (position !== null) {
+          // Set the text to highlight (first 200 chars of chunk)
+          setHighlightedText(chunkContent.slice(0, 200));
+
+          // Scroll after a short delay to ensure content is rendered
+          setTimeout(() => {
+            scrollToChunkText(chunkContent);
+          }, 100);
+        } else {
+          // Scroll to top if not found
+          scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        // Clear highlight after animation
+        setTimeout(() => {
+          setHighlightedText(null);
+        }, 3500);
+
+        onChunkNavigated?.();
+      } catch (error) {
+        console.error("Error navigating to chunk:", error);
+        onChunkNavigated?.();
+      }
+    };
+
+    navigateToChunk();
+  }, [targetChunkId, datasetId, markdownContent, onChunkNavigated]);
+
+  // Find chunk position in source content using text matching
+  const findChunkPosition = (sourceContent: string, chunkContent: string): number | null => {
+    const normalizedSource = sourceContent.replace(/\s+/g, " ").trim();
+    const normalizedChunk = chunkContent.replace(/\s+/g, " ").trim();
+
+    // Try exact match first
+    const exactIndex = normalizedSource.indexOf(normalizedChunk);
+    if (exactIndex !== -1) return exactIndex;
+
+    // Try matching first 100 characters
+    const prefix = normalizedChunk.slice(0, 100);
+    const prefixIndex = normalizedSource.indexOf(prefix);
+    if (prefixIndex !== -1) return prefixIndex;
+
+    return null;
+  };
+
+  // Scroll to chunk text in the rendered content
+  const scrollToChunkText = (chunkContent: string) => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    // Get first significant words from chunk to search in rendered content
+    const searchText = chunkContent.slice(0, 50).trim();
+
+    // Use TreeWalker to find text nodes containing our search text
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      if (node.textContent?.includes(searchText.slice(0, 30))) {
+        const parent = node.parentElement;
+        if (parent) {
+          // Add highlight class
+          parent.classList.add("chunk-highlight");
+
+          // Scroll to the element
+          const containerRect = container.getBoundingClientRect();
+          const elementRect = parent.getBoundingClientRect();
+          const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+
+          container.scrollTo({
+            top: Math.max(0, relativeTop - 100),
+            behavior: "smooth",
+          });
+
+          // Remove highlight after animation
+          setTimeout(() => {
+            parent.classList.remove("chunk-highlight");
+          }, 3000);
+
+          return;
+        }
+      }
+    }
+
+    // If not found, scroll to top
+    container.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Extract headings from markdown
   useEffect(() => {

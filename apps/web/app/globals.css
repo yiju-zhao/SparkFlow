@@ -250,3 +250,19 @@
   display: none;
 }
 
+/* Chunk highlight animation for citation navigation */
+@keyframes highlight-fade {
+  0% {
+    background-color: rgba(234, 179, 8, 0.4);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.chunk-highlight {
+  animation: highlight-fade 3s ease-out forwards;
+  border-radius: 4px;
+  padding: 2px 0;
+}
+

@@ -261,6 +261,59 @@ class RagFlowClient {
   // Webpage Operations (if supported)
   // ============================================
 
+  // ============================================
+  // Chunk Operations
+  // ============================================
+
+  /**
+   * Get a specific chunk's content by ID
+   * Searches all documents in the dataset for the chunk
+   */
+  async getChunk(
+    datasetId: string,
+    chunkId: string
+  ): Promise<{ content: string; documentId: string; documentName: string } | null> {
+    try {
+      // List all documents in the dataset
+      const documents = await this.listDocuments(datasetId, { pageSize: 100 });
+
+      // Search each document for the chunk
+      for (const doc of documents) {
+        const endpoint = `/v1/datasets/${datasetId}/documents/${doc.id}/chunks?id=${chunkId}&page=1&page_size=1`;
+        const response = await this.request<
+          { id: string; content: string }[] | { chunks?: { id: string; content: string }[] }
+        >(endpoint);
+
+        const data = response.data;
+        let chunks: { id: string; content: string }[] = [];
+
+        if (Array.isArray(data)) {
+          chunks = data;
+        } else if (data?.chunks && Array.isArray(data.chunks)) {
+          chunks = data.chunks;
+        }
+
+        const chunk = chunks.find((c) => c.id === chunkId);
+        if (chunk) {
+          return {
+            content: chunk.content,
+            documentId: doc.id,
+            documentName: doc.name,
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error getting chunk:", error);
+      return null;
+    }
+  }
+
+  // ============================================
+  // Webpage Operations (if supported)
+  // ============================================
+
   /**
    * Add a webpage as a document (URL-based ingestion)
    * Note: This may not be available in all RagFlow versions
