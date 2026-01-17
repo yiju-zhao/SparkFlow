@@ -50,6 +50,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevIsLoadingRef = useRef<boolean>(false);
 
   // LangGraph stream hook - follows docs pattern
   const stream = useStream<AgentState>({
@@ -77,6 +78,48 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessionMessages, stream.messages]);
+
+  // Save messages to database when streaming completes
+  useEffect(() => {
+    const wasLoading = prevIsLoadingRef.current;
+    prevIsLoadingRef.current = stream.isLoading;
+
+    // Detect transition from loading to not loading (streaming just completed)
+    if (wasLoading && !stream.isLoading && !stream.error && streamSessionId) {
+      const messagesToSave = stream.messages
+        .filter((m) => m.type === "human" || m.type === "ai")
+        .map((m) => ({
+          sender: m.type === "human" ? "USER" : "ASSISTANT",
+          content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+        }))
+        .filter((m) => m.content.trim().length > 0);
+
+      if (messagesToSave.length > 0) {
+        fetch("/api/chat/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: streamSessionId,
+            notebookId,
+            messages: messagesToSave,
+          }),
+        })
+          .then(() => {
+            // Update session message count in local state
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === streamSessionId
+                  ? { ...s, _count: { messages: s._count.messages + messagesToSave.length } }
+                  : s
+              )
+            );
+            // Update sessionMessages with the final messages for display
+            setSessionMessages(stream.messages);
+          })
+          .catch((err) => console.error("Failed to save messages:", err));
+      }
+    }
+  }, [stream.isLoading, stream.error, stream.messages, streamSessionId, notebookId]);
 
   // Load stored messages for the active session
   useEffect(() => {
@@ -117,12 +160,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     };
   }, [activeSessionId]);
 
-  // Keep session messages in sync while streaming for the active session
-  useEffect(() => {
-    if (streamSessionId && streamSessionId === activeSessionId) {
-      setSessionMessages(stream.messages);
-    }
-  }, [stream.messages, streamSessionId, activeSessionId]);
 
   // Save AI response to Notes panel
   const handleSaveToNotes = useCallback(
