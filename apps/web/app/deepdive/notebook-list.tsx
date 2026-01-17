@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Book, FileText, MoreVertical, Trash2 } from "lucide-react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,11 @@ import { useState, useTransition } from "react";
 
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
+
+  if (!timeString) {
+    return <Skeleton className="h-3 w-20" />;
+  }
+
   return <>{timeString}</>;
 }
 
