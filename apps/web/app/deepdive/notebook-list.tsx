@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
 import { Book, FileText, MoreVertical, Trash2 } from "lucide-react";
+import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,6 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { deleteNotebook } from "@/lib/actions/notebooks";
 import { useState, useTransition } from "react";
+
+function RelativeTime({ date }: { date: Date }) {
+  const timeString = useRelativeTime(date);
+  return <>{timeString}</>;
+}
 
 type Notebook = {
   id: string;
@@ -109,10 +114,8 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
         </div>
 
         <div className="mt-3 text-xs text-muted-foreground">
-          Updated{" "}
-          {formatDistanceToNow(new Date(notebook.updatedAt), {
-            addSuffix: true,
-          })}
+          {/* Hydration-safe relative time */}
+          <RelativeTime date={new Date(notebook.updatedAt)} />
         </div>
       </Link>
     </div>

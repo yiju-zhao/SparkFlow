@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -32,28 +32,6 @@ import { Markdown } from "@/components/ui/markdown";
 type Source = PrismaSource & {
   content?: string | null;
 };
-
-// Hook to safely format time on client only (avoids hydration mismatch)
-function useRelativeTime(date: Date): string {
-  const [timeString, setTimeString] = useState<string>('');
-
-  useEffect(() => {
-    const formatTime = (d: Date) =>
-      formatDistanceToNow(d, { addSuffix: true }).replace(/^about /, '');
-
-    // Set initial value on client
-    setTimeString(formatTime(date));
-
-    // Update every minute
-    const interval = setInterval(() => {
-      setTimeString(formatTime(date));
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [date]);
-
-  return timeString;
-}
 
 interface SourcesPanelProps {
   notebookId: string;

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { useState, useTransition } from "react";
 import { Markdown } from "@/components/ui/markdown";
+import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import {
   Plus,
   StickyNote,
@@ -17,21 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
-// Hook to safely format time on client only (avoids hydration mismatch)
-function useRelativeTime(date: Date): string {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return "";
-  }
-
-  return formatDistanceToNow(date, { addSuffix: true }).replace(/^about /, '');
-}
 
 // Component wrapper for relative time
 function RelativeTime({ date }: { date: Date }) {
