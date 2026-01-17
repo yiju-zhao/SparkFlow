@@ -28,9 +28,11 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
         orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
       },
       chatSessions: {
-        where: { status: "ACTIVE" },
-        take: 1,
+        where: { status: { in: ["ACTIVE", "CLOSED"] } },
         orderBy: { lastActivity: "desc" },
+        include: {
+          _count: { select: { messages: true } },
+        },
       },
     },
   });

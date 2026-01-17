@@ -42,6 +42,8 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   );
   const [sessions, setSessions] = useState<ChatSession[]>(initialSessions);
   const [showHistory, setShowHistory] = useState(false);
+  const [sessionMessages, setSessionMessages] = useState<Message[]>([]);
+  const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
 
   // Input state
   const [input, setInput] = useState("");
@@ -74,7 +76,53 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [stream.messages]);
+  }, [sessionMessages, stream.messages]);
+
+  // Load stored messages for the active session
+  useEffect(() => {
+    if (!activeSessionId) {
+      setSessionMessages([]);
+      return;
+    }
+
+    let isMounted = true;
+    const loadMessages = async () => {
+      try {
+        const res = await fetch(`/api/chat/${activeSessionId}`);
+        if (!res.ok) {
+          throw new Error(`Failed to load messages (${res.status})`);
+        }
+        const data = (await res.json()) as Array<{
+          id: string;
+          role: "user" | "assistant";
+          content: string;
+        }>;
+
+        if (!isMounted) return;
+        const formatted = data.map((msg) => ({
+          id: msg.id,
+          type: msg.role === "user" ? "human" : "ai",
+          content: msg.content,
+        })) as Message[];
+        setSessionMessages(formatted);
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+        if (isMounted) setSessionMessages([]);
+      }
+    };
+
+    loadMessages();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeSessionId]);
+
+  // Keep session messages in sync while streaming for the active session
+  useEffect(() => {
+    if (streamSessionId && streamSessionId === activeSessionId) {
+      setSessionMessages(stream.messages);
+    }
+  }, [stream.messages, streamSessionId, activeSessionId]);
 
   // Save AI response to Notes panel
   const handleSaveToNotes = useCallback(
@@ -134,10 +182,14 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
       });
       if (!res.ok) throw new Error("Failed to create chat session");
       const created = await res.json();
-      setSessions((prev) => [created, ...prev]);
+      const sessionWithCount = {
+        ...created,
+        _count: { messages: 0 },
+      };
+      setSessions((prev) => [sessionWithCount, ...prev]);
       setActiveSessionId(created.id);
       setThreadId(null);
-      return created;
+      return sessionWithCount;
     },
     [notebookId]
   );
@@ -147,6 +199,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     setActiveSessionId(null);
     setThreadId(null);
     setShowHistory(false);
+    setStreamSessionId(null);
   }, []);
 
   // Load existing session
@@ -154,6 +207,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     setActiveSessionId(session.id);
     setThreadId(session.langgraphThreadId || null);
     setShowHistory(false);
+    setStreamSessionId(null);
   }, []);
 
   // Delete session
@@ -181,9 +235,12 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
 
     try {
       // Create session if needed
-      if (!activeSessionId) {
-        await createSession(message);
+      let targetSessionId = activeSessionId;
+      if (!targetSessionId) {
+        const created = await createSession(message);
+        targetSessionId = created.id;
       }
+      setStreamSessionId(targetSessionId ?? null);
 
       // Submit to LangGraph with config for dataset
       stream.submit(
@@ -229,6 +286,11 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     }
     return "";
   };
+
+  const displayMessages =
+    streamSessionId && streamSessionId === activeSessionId && stream.messages.length > 0
+      ? stream.messages
+      : sessionMessages;
 
   return (
     <div className="flex h-full min-w-0 flex-col relative overflow-hidden">
@@ -279,7 +341,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
 
       {/* Messages - using stream.messages directly */}
       <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
-        {stream.messages.length === 0 ? (
+        {displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
               <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
@@ -291,7 +353,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
           (() => {
             // Collect all tool_call_ids that have received responses
             const completedToolCallIds = new Set<string>();
-            stream.messages.forEach((message) => {
+            displayMessages.forEach((message) => {
               if (message.type === "tool") {
                 const toolCallId = (message as unknown as { tool_call_id?: string }).tool_call_id;
                 if (toolCallId) completedToolCallIds.add(toolCallId);
@@ -299,7 +361,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
             });
 
             // Get messages to display: human messages + AI messages (with or without tool_calls)
-            const displayMessages = stream.messages.filter((message) => {
+            const filteredMessages = displayMessages.filter((message) => {
               // Always show human messages
               if (message.type === "human") return true;
 
@@ -319,7 +381,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
               return false;
             });
 
-            return displayMessages.map((message, idx) => {
+            return filteredMessages.map((message, idx) => {
               const messageKey = message.id ?? `msg-${idx}`;
               const isUser = message.type === "human";
               const content = getMessageContent(message);

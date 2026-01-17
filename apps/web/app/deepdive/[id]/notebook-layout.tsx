@@ -17,11 +17,17 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { StudioPanel } from "@/components/studio/studio-panel";
 import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
 
+type ChatSessionWithCount = ChatSession & {
+  _count?: {
+    messages: number;
+  };
+};
+
 interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
-  initialChatSessions?: ChatSession[];
+  initialChatSessions?: ChatSessionWithCount[];
 }
 
 // Panel widths
@@ -131,7 +137,7 @@ export function NotebookLayout({
               title: s.title,
               lastActivity: s.lastActivity.toISOString(),
               langgraphThreadId: s.langgraphThreadId,
-              _count: { messages: 0 },
+              _count: { messages: s._count?.messages ?? 0 },
             }))}
           />
         </div>
