@@ -218,7 +218,7 @@ function SourceItem({
           <Badge variant="secondary" className="h-4 px-1 text-[10px]">
             {source.sourceType}
           </Badge>
-          {relativeTime && <span>{relativeTime}</span>}
+          {relativeTime && <span suppressHydrationWarning>{relativeTime}</span>}
         </div>
         {isRunning && (
           <div className="mt-1 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300">

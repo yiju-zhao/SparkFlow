@@ -15,7 +15,7 @@ import { useState, useTransition } from "react";
 
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
-  return <>{timeString}</>;
+  return <span suppressHydrationWarning>{timeString}</span>;
 }
 
 type Notebook = {

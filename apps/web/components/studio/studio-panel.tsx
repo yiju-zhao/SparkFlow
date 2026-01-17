@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
   return (
-    <div className="mt-2 text-[10px] text-muted-foreground">
+    <div className="mt-2 text-[10px] text-muted-foreground" suppressHydrationWarning>
       {timeString}
     </div>
   );
