@@ -17,14 +17,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 
 // Component wrapper for relative time
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
   return (
     <div className="mt-2 text-[10px] text-muted-foreground">
-      {timeString || <Skeleton className="h-2.5 w-16" />}
+      {timeString}
     </div>
   );
 }

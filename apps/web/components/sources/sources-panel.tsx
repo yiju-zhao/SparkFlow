@@ -20,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   addWebpageSource,
   uploadDocumentSource,
@@ -219,11 +218,7 @@ function SourceItem({
           <Badge variant="secondary" className="h-4 px-1 text-[10px]">
             {source.sourceType}
           </Badge>
-          {relativeTime ? (
-            <span>{relativeTime}</span>
-          ) : (
-            <Skeleton className="h-3 w-16 inline-block" />
-          )}
+          {relativeTime && <span>{relativeTime}</span>}
         </div>
         {isRunning && (
           <div className="mt-1 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300">
