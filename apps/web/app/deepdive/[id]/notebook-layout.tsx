@@ -23,11 +23,18 @@ type ChatSessionWithCount = ChatSession & {
   };
 };
 
+interface PreloadedMessage {
+  id: string;
+  sender: string;
+  content: string;
+}
+
 interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
   initialChatSessions?: ChatSessionWithCount[];
+  initialMessages?: PreloadedMessage[];
 }
 
 // Panel widths
@@ -41,6 +48,7 @@ export function NotebookLayout({
   sources,
   notes,
   initialChatSessions = [],
+  initialMessages = [],
 }: NotebookLayoutProps) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -138,6 +146,11 @@ export function NotebookLayout({
               lastActivity: s.lastActivity.toISOString(),
               langgraphThreadId: s.langgraphThreadId,
               _count: { messages: s._count?.messages ?? 0 },
+            }))}
+            initialMessages={initialMessages.map((m) => ({
+              id: m.id,
+              role: m.sender === "USER" ? "user" : "assistant",
+              content: m.content,
             }))}
           />
         </div>

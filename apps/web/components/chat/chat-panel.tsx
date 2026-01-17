@@ -9,10 +9,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
 import { createNote } from "@/lib/actions/notes";
 
+interface PreloadedMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface ChatPanelProps {
   notebookId: string;
   datasetId?: string | null;
   initialSessions?: ChatSession[];
+  initialMessages?: PreloadedMessage[];
 }
 
 interface ChatSession {
@@ -30,7 +37,7 @@ interface AgentState {
 
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
-export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatPanelProps) {
+export function ChatPanel({ notebookId, datasetId, initialSessions = [], initialMessages = [] }: ChatPanelProps) {
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0 ? (initialSessions[0].langgraphThreadId || null) : null
@@ -42,8 +49,19 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   );
   const [sessions, setSessions] = useState<ChatSession[]>(initialSessions);
   const [showHistory, setShowHistory] = useState(false);
-  const [sessionMessages, setSessionMessages] = useState<Message[]>([]);
+  // Initialize with preloaded messages (converted to Message format)
+  const [sessionMessages, setSessionMessages] = useState<Message[]>(() =>
+    initialMessages.map((m) => ({
+      id: m.id,
+      type: m.role === "user" ? "human" : "ai",
+      content: m.content,
+    })) as Message[]
+  );
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
+  // Track which session was preloaded to avoid refetching
+  const [preloadedSessionId] = useState<string | null>(
+    initialSessions.length > 0 ? initialSessions[0].id : null
+  );
 
   // Input state
   const [input, setInput] = useState("");
@@ -122,9 +140,17 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
   }, [stream.isLoading, stream.error, stream.messages, streamSessionId, notebookId]);
 
   // Load stored messages for the active session
+  const hasLoadedPreloaded = useRef(preloadedSessionId !== null && initialMessages.length > 0);
+
   useEffect(() => {
     if (!activeSessionId) {
       setSessionMessages([]);
+      return;
+    }
+
+    // Skip fetch on initial mount if this is the preloaded session
+    if (activeSessionId === preloadedSessionId && hasLoadedPreloaded.current) {
+      hasLoadedPreloaded.current = false; // Allow future fetches for this session
       return;
     }
 
@@ -158,7 +184,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [] }: ChatP
     return () => {
       isMounted = false;
     };
-  }, [activeSessionId]);
+  }, [activeSessionId, preloadedSessionId]);
 
 
   // Save AI response to Notes panel

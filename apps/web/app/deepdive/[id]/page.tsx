@@ -41,12 +41,23 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
     notFound();
   }
 
+  // Preload messages for the first (most recent) session to avoid client-side fetch lag
+  const firstSession = notebook.chatSessions[0];
+  const initialMessages = firstSession
+    ? await prisma.chatMessage.findMany({
+        where: { sessionId: firstSession.id },
+        orderBy: { messageOrder: "asc" },
+        select: { id: true, sender: true, content: true },
+      })
+    : [];
+
   return (
     <NotebookLayout
       notebook={notebook}
       sources={notebook.sources}
       notes={notebook.notes}
       initialChatSessions={notebook.chatSessions}
+      initialMessages={initialMessages}
     />
   );
 }
