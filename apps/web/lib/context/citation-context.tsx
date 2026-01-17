@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 
 export interface ChunkInfo {
   chunkId: string;
@@ -27,9 +27,9 @@ export function CitationProvider({ children }: { children: ReactNode }) {
   const [chunkRegistry, setChunkRegistry] = useState<Map<string, ChunkInfo>>(
     () => new Map()
   );
-  const [onNavigate, setOnNavigate] = useState<
-    ((chunkId: string, chunkInfo: ChunkInfo) => void) | null
-  >(null);
+  // Use ref for immediate access in callbacks (avoids stale closure)
+  const chunkRegistryRef = useRef<Map<string, ChunkInfo>>(chunkRegistry);
+  const onNavigateRef = useRef<((chunkId: string, chunkInfo: ChunkInfo) => void) | null>(null);
 
   const registerChunks = useCallback((chunks: ChunkInfo[]) => {
     setChunkRegistry((prev) => {
@@ -37,19 +37,34 @@ export function CitationProvider({ children }: { children: ReactNode }) {
       for (const chunk of chunks) {
         newMap.set(chunk.chunkId, chunk);
       }
+      // Keep ref in sync
+      chunkRegistryRef.current = newMap;
       return newMap;
     });
   }, []);
 
-  const navigateToChunk = useCallback(
-    (chunkId: string) => {
-      const chunkInfo = chunkRegistry.get(chunkId);
-      if (chunkInfo && onNavigate) {
-        onNavigate(chunkId, chunkInfo);
-      }
+  const setOnNavigate = useCallback(
+    (handler: ((chunkId: string, chunkInfo: ChunkInfo) => void) | null) => {
+      onNavigateRef.current = handler;
     },
-    [chunkRegistry, onNavigate]
+    []
   );
+
+  const navigateToChunk = useCallback((chunkId: string) => {
+    // Use refs for immediate access
+    const chunkInfo = chunkRegistryRef.current.get(chunkId);
+    const handler = onNavigateRef.current;
+
+    if (chunkInfo && handler) {
+      handler(chunkId, chunkInfo);
+    } else {
+      console.warn(`Citation not found: ${chunkId}`, {
+        hasChunkInfo: !!chunkInfo,
+        hasHandler: !!handler,
+        registrySize: chunkRegistryRef.current.size,
+      });
+    }
+  }, []);
 
   return (
     <CitationContext.Provider
@@ -57,7 +72,7 @@ export function CitationProvider({ children }: { children: ReactNode }) {
         chunkRegistry,
         registerChunks,
         navigateToChunk,
-        onNavigate,
+        onNavigate: onNavigateRef.current,
         setOnNavigate,
       }}
     >

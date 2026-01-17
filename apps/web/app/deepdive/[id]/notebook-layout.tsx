@@ -70,7 +70,13 @@ function NotebookLayoutInner({
 
   // Handle citation click navigation
   const handleCitationNavigate = useCallback(
-    (chunkId: string, chunkInfo: ChunkInfo) => {
+    (chunkId: string, chunkInfo: ChunkInfo | undefined) => {
+      // Guard against undefined chunkInfo
+      if (!chunkInfo) {
+        console.warn(`Citation clicked but chunk info not found: ${chunkId}`);
+        return;
+      }
+
       // Find source by document name
       const matchingSource = sources.find(
         (s) => s.title === chunkInfo.docName || s.ragflowDocumentId === chunkInfo.docId
