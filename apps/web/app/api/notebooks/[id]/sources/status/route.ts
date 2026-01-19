@@ -1,7 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { ragflowClient } from "@/lib/ragflow-client";
+import { ragflowClient, Chunk } from "@/lib/ragflow-client";
+
+// Build chunk map by matching chunk content to source content positions
+function buildChunkMap(
+  sourceContent: string,
+  chunks: Chunk[]
+): { chunkId: string; startOffset: number; endOffset: number }[] {
+  const chunkMap: { chunkId: string; startOffset: number; endOffset: number }[] = [];
+  let searchStart = 0;
+
+  // Normalize source content for matching
+  const normalizedSource = sourceContent.replace(/\r\n/g, "\n");
+
+  for (const chunk of chunks) {
+    if (!chunk.content) continue;
+
+    // Normalize chunk content
+    const normalizedChunk = chunk.content.replace(/\r\n/g, "\n").trim();
+    if (!normalizedChunk) continue;
+
+    // Search for chunk content starting from last position (chunks are ordered)
+    const startOffset = normalizedSource.indexOf(normalizedChunk, searchStart);
+
+    if (startOffset !== -1) {
+      chunkMap.push({
+        chunkId: chunk.id,
+        startOffset,
+        endOffset: startOffset + normalizedChunk.length,
+      });
+      // Move search position forward
+      searchStart = startOffset + 1;
+    } else {
+      // Try with first 100 chars if exact match fails
+      const prefix = normalizedChunk.slice(0, 100);
+      const prefixOffset = normalizedSource.indexOf(prefix, searchStart);
+      if (prefixOffset !== -1) {
+        chunkMap.push({
+          chunkId: chunk.id,
+          startOffset: prefixOffset,
+          endOffset: prefixOffset + normalizedChunk.length,
+        });
+        searchStart = prefixOffset + 1;
+      }
+    }
+  }
+
+  return chunkMap;
+}
 
 export async function GET(
   _request: NextRequest,
@@ -70,9 +117,27 @@ export async function GET(
           source.status;
         let errorMessage = source.errorMessage || null;
 
+        let chunkMap: { chunkId: string; startOffset: number; endOffset: number }[] | null = null;
+
         if (isDone) {
           status = "READY";
           errorMessage = null;
+
+          // Build chunk map when processing completes
+          if (source.content && source.ragflowDocumentId) {
+            try {
+              const { chunks } = await ragflowClient.listChunks(
+                ragflowDatasetId,
+                source.ragflowDocumentId,
+                { pageSize: 1024 }
+              );
+              if (chunks.length > 0) {
+                chunkMap = buildChunkMap(source.content, chunks);
+              }
+            } catch (err) {
+              console.error("Failed to build chunk map:", err);
+            }
+          }
         } else if (isFailed) {
           status = "FAILED";
           const failureNote = Array.isArray(doc.progress_msg)
@@ -100,6 +165,8 @@ export async function GET(
                   : (source.metadata as Record<string, unknown> | null)?.ragflowProgress ??
                   null,
               ragflowUpdatedAt: new Date().toISOString(),
+              // Store chunk map when available
+              ...(chunkMap ? { chunkMap } : {}),
             },
           },
         });

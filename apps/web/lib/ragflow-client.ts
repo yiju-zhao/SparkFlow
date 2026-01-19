@@ -40,6 +40,17 @@ interface Document {
   created_at?: string;
 }
 
+interface Chunk {
+  id: string;
+  content: string;
+  document_id?: string;
+  docnm_kwd?: string;      // Document name keyword
+  available?: boolean;
+  positions?: unknown[];   // Layout positions from RagFlow (not character offsets)
+  important_keywords?: string;
+  image_id?: string;
+}
+
 class RagFlowClient {
   private baseUrl: string;
   private apiKey: string;
@@ -266,6 +277,40 @@ class RagFlowClient {
   // ============================================
 
   /**
+   * List all chunks for a document
+   * Returns chunks ordered by their position in the document
+   */
+  async listChunks(
+    datasetId: string,
+    documentId: string,
+    params: { page?: number; pageSize?: number; keywords?: string } = {}
+  ): Promise<{ chunks: Chunk[]; total: number }> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("page", (params.page || 1).toString());
+    searchParams.set("page_size", (params.pageSize || 1024).toString());
+    if (params.keywords) searchParams.set("keywords", params.keywords);
+
+    const endpoint = `/v1/datasets/${datasetId}/documents/${documentId}/chunks?${searchParams.toString()}`;
+
+    try {
+      const response = await this.request<{
+        chunks?: Chunk[];
+        total?: number;
+        doc?: Document;
+      }>(endpoint);
+
+      const data = response.data;
+      return {
+        chunks: data?.chunks || [],
+        total: data?.total || 0,
+      };
+    } catch (error) {
+      console.error("Error listing chunks:", error);
+      return { chunks: [], total: 0 };
+    }
+  }
+
+  /**
    * Get a specific chunk's content by ID
    * Searches all documents in the dataset for the chunk
    */
@@ -349,4 +394,4 @@ export const ragflowClient = new RagFlowClient();
 
 // Export class for custom instances
 export { RagFlowClient };
-export type { Dataset, Document, RagFlowResponse };
+export type { Dataset, Document, Chunk, RagFlowResponse };

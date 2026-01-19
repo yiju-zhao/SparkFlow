@@ -276,23 +276,28 @@ function SourceItem({
   );
 }
 
+// Chunk map entry stored in source.metadata
+interface ChunkMapEntry {
+  chunkId: string;
+  startOffset: number;
+  endOffset: number;
+}
+
 // Source content viewer - shows title and markdown content with TOC button
 function SourceContentView({
   source,
-  datasetId,
   targetChunkId,
   onChunkNavigated,
   onBack,
 }: {
   source: Source;
-  datasetId?: string | null;
+  datasetId?: string | null;  // Keep for backward compatibility but not used
   targetChunkId?: string | null;
   onChunkNavigated?: () => void;
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
-  const [highlightedText, setHighlightedText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Reset scroll when source changes
@@ -305,83 +310,43 @@ function SourceContentView({
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
 
-  // Handle chunk navigation - fetch chunk content and scroll to it
+  // Get chunk map from source metadata
+  const chunkMap = useMemo(() => {
+    const metadata = source.metadata as Record<string, unknown> | null;
+    return (metadata?.chunkMap as ChunkMapEntry[] | undefined) || [];
+  }, [source.metadata]);
+
+  // Handle chunk navigation using stored chunk map (no API call needed)
   useEffect(() => {
-    if (!targetChunkId || !datasetId) return;
+    if (!targetChunkId) return;
 
-    const navigateToChunk = async () => {
-      try {
-        // Fetch chunk content from API
-        const res = await fetch(`/api/chunks/${targetChunkId}?datasetId=${datasetId}`);
-        if (!res.ok) {
-          console.error("Failed to fetch chunk content");
-          onChunkNavigated?.();
-          return;
-        }
+    // Look up chunk position from stored map
+    const chunkEntry = chunkMap.find((c) => c.chunkId === targetChunkId);
 
-        const data = await res.json() as { content: string };
-        const chunkContent = data.content;
+    if (chunkEntry) {
+      // Get the chunk text from source content using stored offsets
+      const chunkText = markdownContent.slice(
+        chunkEntry.startOffset,
+        Math.min(chunkEntry.endOffset, chunkEntry.startOffset + 100)
+      );
 
-        if (!chunkContent) {
-          onChunkNavigated?.();
-          return;
-        }
+      // Scroll after a short delay to ensure content is rendered
+      setTimeout(() => {
+        scrollToChunkByOffset(chunkEntry.startOffset, chunkText);
+      }, 100);
+    } else {
+      // Chunk not found in map - scroll to top
+      console.warn(`Chunk ${targetChunkId} not found in chunk map`);
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
 
-        // Find the chunk position in the source content
-        const position = findChunkPosition(markdownContent, chunkContent);
+    onChunkNavigated?.();
+  }, [targetChunkId, chunkMap, markdownContent, onChunkNavigated]);
 
-        if (position !== null) {
-          // Set the text to highlight (first 200 chars of chunk)
-          setHighlightedText(chunkContent.slice(0, 200));
-
-          // Scroll after a short delay to ensure content is rendered
-          setTimeout(() => {
-            scrollToChunkText(chunkContent);
-          }, 100);
-        } else {
-          // Scroll to top if not found
-          scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-        }
-
-        // Clear highlight after animation
-        setTimeout(() => {
-          setHighlightedText(null);
-        }, 3500);
-
-        onChunkNavigated?.();
-      } catch (error) {
-        console.error("Error navigating to chunk:", error);
-        onChunkNavigated?.();
-      }
-    };
-
-    navigateToChunk();
-  }, [targetChunkId, datasetId, markdownContent, onChunkNavigated]);
-
-  // Find chunk position in source content using text matching
-  const findChunkPosition = (sourceContent: string, chunkContent: string): number | null => {
-    const normalizedSource = sourceContent.replace(/\s+/g, " ").trim();
-    const normalizedChunk = chunkContent.replace(/\s+/g, " ").trim();
-
-    // Try exact match first
-    const exactIndex = normalizedSource.indexOf(normalizedChunk);
-    if (exactIndex !== -1) return exactIndex;
-
-    // Try matching first 100 characters
-    const prefix = normalizedChunk.slice(0, 100);
-    const prefixIndex = normalizedSource.indexOf(prefix);
-    if (prefixIndex !== -1) return prefixIndex;
-
-    return null;
-  };
-
-  // Scroll to chunk text in the rendered content
-  const scrollToChunkText = (chunkContent: string) => {
+  // Scroll to chunk by finding matching text in rendered content
+  const scrollToChunkByOffset = (offset: number, searchText: string) => {
     const container = scrollRef.current;
     if (!container) return;
-
-    // Get first significant words from chunk to search in rendered content
-    const searchText = chunkContent.slice(0, 50).trim();
 
     // Use TreeWalker to find text nodes containing our search text
     const walker = document.createTreeWalker(
@@ -390,9 +355,12 @@ function SourceContentView({
       null
     );
 
+    const normalizedSearch = searchText.replace(/\s+/g, " ").trim().slice(0, 30);
+
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(searchText.slice(0, 30))) {
+      const normalizedContent = node.textContent?.replace(/\s+/g, " ") || "";
+      if (normalizedContent.includes(normalizedSearch)) {
         const parent = node.parentElement;
         if (parent) {
           // Add highlight class
