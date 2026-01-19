@@ -3,51 +3,28 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { ragflowClient, Chunk } from "@/lib/ragflow-client";
 
-// Build chunk map by matching chunk content to source content positions
+// Chunk size used by RagFlow when splitting documents
+const RAGFLOW_CHUNK_SIZE = parseInt(process.env.RAGFLOW_CHUNK_SIZE || "1024", 10);
+
+// Build chunk map using chunk index and configured chunk size
 function buildChunkMap(
   sourceContent: string,
   chunks: Chunk[]
 ): { chunkId: string; startOffset: number; endOffset: number }[] {
-  const chunkMap: { chunkId: string; startOffset: number; endOffset: number }[] = [];
-  let searchStart = 0;
+  const contentLength = sourceContent.length;
 
-  // Normalize source content for matching
-  const normalizedSource = sourceContent.replace(/\r\n/g, "\n");
+  return chunks
+    .filter(chunk => chunk.content)
+    .map((chunk, index) => {
+      const startOffset = index * RAGFLOW_CHUNK_SIZE;
+      const endOffset = Math.min(startOffset + RAGFLOW_CHUNK_SIZE, contentLength);
 
-  for (const chunk of chunks) {
-    if (!chunk.content) continue;
-
-    // Normalize chunk content
-    const normalizedChunk = chunk.content.replace(/\r\n/g, "\n").trim();
-    if (!normalizedChunk) continue;
-
-    // Search for chunk content starting from last position (chunks are ordered)
-    const startOffset = normalizedSource.indexOf(normalizedChunk, searchStart);
-
-    if (startOffset !== -1) {
-      chunkMap.push({
+      return {
         chunkId: chunk.id,
         startOffset,
-        endOffset: startOffset + normalizedChunk.length,
-      });
-      // Move search position forward
-      searchStart = startOffset + 1;
-    } else {
-      // Try with first 100 chars if exact match fails
-      const prefix = normalizedChunk.slice(0, 100);
-      const prefixOffset = normalizedSource.indexOf(prefix, searchStart);
-      if (prefixOffset !== -1) {
-        chunkMap.push({
-          chunkId: chunk.id,
-          startOffset: prefixOffset,
-          endOffset: prefixOffset + normalizedChunk.length,
-        });
-        searchStart = prefixOffset + 1;
-      }
-    }
-  }
-
-  return chunkMap;
+        endOffset,
+      };
+    });
 }
 
 export async function GET(
