@@ -6,7 +6,7 @@ Architecture:
 - Tools Layer (3 工具): Composite capabilities visible to Agent
   - explore(): Understand knowledge base structure
   - search(): Find relevant information
-  - extend(): Read more context around a chunk
+  - probe(): Validate chunk relevance by examining surrounding context
 """
 
 import logging
@@ -163,9 +163,9 @@ def explore(config: RunnableConfig = None) -> str:
 @tool
 def search(query: str, config: RunnableConfig) -> str:
     """Search the knowledge base for relevant information.
-    
-    Returns chunks with chunk IDs that can be used with extend() to read more.
-    
+
+    Returns chunks with chunk IDs that can be used with probe() to validate relevance.
+
     Args:
         query: Keywords or question to search for
     """
@@ -200,20 +200,21 @@ def search(query: str, config: RunnableConfig) -> str:
 
 
 @tool
-def extend(
+def probe(
     chunk_id: str,
-    direction: str = "after",
-    count: int = 3,
+    direction: str = "both",
+    count: int = 2,
     config: RunnableConfig = None
 ) -> str:
-    """Read more context around a chunk from search results.
-    
-    Use this when a search result seems relevant but incomplete.
-    
+    """Probe surrounding context to validate chunk relevance.
+
+    Use this to verify a search result is truly relevant before citing it.
+    Check if the surrounding context matches the question's intent.
+
     Args:
         chunk_id: The chunk ID from search results (e.g., "abc123")
-        direction: "before", "after" (default), or "both"
-        count: Number of chunks to retrieve (default: 3)
+        direction: "before", "after", or "both" (default)
+        count: Number of chunks to retrieve (default: 2)
     """
     client = _get_client()
     if not client:
@@ -233,7 +234,7 @@ def extend(
         if not chunks:
             return f"No {direction} chunks found for #{chunk_id}."
         
-        results = [f"== Extended Context ({direction} #{chunk_id}) from [{doc_name}] ==\n"]
+        results = [f"== Probed Context ({direction} #{chunk_id}) from [{doc_name}] ==\n"]
         for chunk in chunks:
             content = getattr(chunk, 'content', str(chunk))
             results.append(content)
