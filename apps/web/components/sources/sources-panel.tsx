@@ -320,64 +320,113 @@ function SourceContentView({
     onChunkNavigated?.();
   }, [targetChunkId, targetContentPreview, onChunkNavigated]);
 
-  // Scroll to chunk by finding matching text in rendered content
+  // Chunk size (characters to highlight)
+  const CHUNK_SIZE = 2048;
+
+  // Scroll to chunk by finding matching text and highlighting chunk_size chars
   const scrollToChunkByContent = (contentPreview: string) => {
     const container = scrollRef.current;
     if (!container) return;
 
-    // Use TreeWalker to find text nodes containing our search text
+    // Find the position in markdown content where contentPreview starts
+    const normalizedPreview = contentPreview.replace(/\s+/g, " ").trim();
+    const normalizedContent = markdownContent.replace(/\s+/g, " ");
+    const matchPosition = normalizedContent.indexOf(normalizedPreview.slice(0, 50));
+
+    if (matchPosition === -1) {
+      console.warn("Chunk content not found in source");
+      container.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    // Calculate the range to highlight (from match position to match + CHUNK_SIZE)
+    const highlightStart = matchPosition;
+    const highlightEnd = Math.min(matchPosition + CHUNK_SIZE, normalizedContent.length);
+
+    // Find all text nodes and track cumulative position
     const walker = document.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
       null
     );
 
-    // Normalize and use first 50 chars for matching
-    const normalizedSearch = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
-    if (!normalizedSearch) return;
+    let cumulativePos = 0;
+    const nodesToHighlight: { node: Text; startOffset: number; endOffset: number }[] = [];
+    let firstHighlightNode: Element | null = null;
 
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
-      const normalizedContent = node.textContent?.replace(/\s+/g, " ") || "";
-      if (normalizedContent.includes(normalizedSearch)) {
-        const parent = node.parentElement;
-        if (parent) {
-          // Create a highlighted span wrapper around just the text node content
-          const highlightSpan = document.createElement("span");
-          highlightSpan.className = "chunk-highlight";
+      const nodeText = node.textContent || "";
+      const normalizedNodeText = nodeText.replace(/\s+/g, " ");
+      const nodeStart = cumulativePos;
+      const nodeEnd = cumulativePos + normalizedNodeText.length;
 
-          // Wrap the text node in the highlight span
-          parent.insertBefore(highlightSpan, node);
-          highlightSpan.appendChild(node);
+      // Check if this node overlaps with the highlight range
+      if (nodeEnd > highlightStart && nodeStart < highlightEnd) {
+        // Calculate the portion of this node to highlight
+        const startOffset = Math.max(0, highlightStart - nodeStart);
+        const endOffset = Math.min(normalizedNodeText.length, highlightEnd - nodeStart);
 
-          // Scroll to the highlighted element
-          const containerRect = container.getBoundingClientRect();
-          const elementRect = highlightSpan.getBoundingClientRect();
-          const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+        nodesToHighlight.push({ node, startOffset, endOffset });
+      }
 
-          container.scrollTo({
-            top: Math.max(0, relativeTop - 100),
-            behavior: "smooth",
-          });
+      cumulativePos = nodeEnd;
 
-          // Remove highlight after animation - unwrap the span
-          setTimeout(() => {
-            if (highlightSpan.parentNode) {
-              const textNode = highlightSpan.firstChild;
-              if (textNode) {
-                highlightSpan.parentNode.insertBefore(textNode, highlightSpan);
-              }
-              highlightSpan.remove();
-            }
-          }, 3000);
+      // Stop if we've passed the highlight range
+      if (nodeStart > highlightEnd) break;
+    }
 
-          return;
-        }
+    // Wrap highlighted portions in spans
+    const highlightSpans: HTMLSpanElement[] = [];
+    for (const { node, startOffset, endOffset } of nodesToHighlight) {
+      const parent = node.parentElement;
+      if (!parent) continue;
+
+      const text = node.textContent || "";
+
+      // If highlighting entire node, wrap it directly
+      if (startOffset === 0 && endOffset >= text.length) {
+        const span = document.createElement("span");
+        span.className = "chunk-highlight";
+        parent.insertBefore(span, node);
+        span.appendChild(node);
+        highlightSpans.push(span);
+        if (!firstHighlightNode) firstHighlightNode = span;
+      } else {
+        // Need to split the text node for partial highlighting
+        // For simplicity, just highlight the whole node if any part matches
+        const span = document.createElement("span");
+        span.className = "chunk-highlight";
+        parent.insertBefore(span, node);
+        span.appendChild(node);
+        highlightSpans.push(span);
+        if (!firstHighlightNode) firstHighlightNode = span;
       }
     }
 
-    // If not found, scroll to top
-    container.scrollTo({ top: 0, behavior: "smooth" });
+    // Scroll to first highlighted element
+    if (firstHighlightNode) {
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = firstHighlightNode.getBoundingClientRect();
+      const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+
+      container.scrollTo({
+        top: Math.max(0, relativeTop - 100),
+        behavior: "smooth",
+      });
+    }
+
+    // Remove highlights after animation
+    setTimeout(() => {
+      for (const span of highlightSpans) {
+        if (span.parentNode) {
+          while (span.firstChild) {
+            span.parentNode.insertBefore(span.firstChild, span);
+          }
+          span.remove();
+        }
+      }
+    }, 3000);
   };
 
   // Extract headings from markdown
