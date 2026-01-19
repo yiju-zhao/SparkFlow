@@ -251,9 +251,9 @@
 }
 
 /* Chunk highlight animation for citation navigation */
-/* Stay solid for 90% of duration (27s), then fade over last 10% (3s) */
+/* Stay solid for 95% of duration (57s), then fade over last 5% (3s) */
 @keyframes highlight-fade {
-  0%, 90% {
+  0%, 95% {
     background-color: rgba(234, 179, 8, 0.4);
   }
   100% {
@@ -262,7 +262,7 @@
 }
 
 .chunk-highlight {
-  animation: highlight-fade 30s ease-out forwards;
+  animation: highlight-fade 60s ease-out forwards;
   border-radius: 4px;
   padding: 2px 0;
 }
