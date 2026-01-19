@@ -80,13 +80,12 @@ function NotebookLayoutInner({
           return;
         }
         const data = await res.json();
-        const { sourceId, contentPreview } = data;
+        const { contentPreview, source } = data;
 
-        // Find the source in our list
-        const source = sources.find((s) => s.id === sourceId);
         if (source) {
           setLeftPanelOpen(true);
-          setSelectedSource(source);
+          // Use the source from API response (guaranteed to have fresh content)
+          setSelectedSource(source as Source);
           setTargetChunkId(chunkId);
           setTargetContentPreview(contentPreview);
         }
@@ -94,7 +93,7 @@ function NotebookLayoutInner({
         console.error("Failed to navigate to chunk:", error);
       }
     },
-    [sources]
+    []
   );
 
   // Register navigation handler with citation context

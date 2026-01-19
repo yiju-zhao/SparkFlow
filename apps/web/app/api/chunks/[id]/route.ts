@@ -16,10 +16,7 @@ export async function GET(
         where: { id },
         include: {
             source: {
-                select: {
-                    id: true,
-                    title: true,
-                    notebookId: true,
+                include: {
                     notebook: {
                         select: { userId: true },
                     },
@@ -39,8 +36,21 @@ export async function GET(
 
     return NextResponse.json({
         chunkId: chunk.id,
-        sourceId: chunk.sourceId,
         contentPreview: chunk.contentPreview,
-        sourceTitle: chunk.source.title,
+        source: {
+            id: chunk.source.id,
+            title: chunk.source.title,
+            content: chunk.source.content,
+            sourceType: chunk.source.sourceType,
+            url: chunk.source.url,
+            status: chunk.source.status,
+            metadata: chunk.source.metadata,
+            createdAt: chunk.source.createdAt,
+            updatedAt: chunk.source.updatedAt,
+            notebookId: chunk.source.notebookId,
+            ragflowDocumentId: chunk.source.ragflowDocumentId,
+            fileKey: chunk.source.fileKey,
+            errorMessage: chunk.source.errorMessage,
+        },
     });
 }
