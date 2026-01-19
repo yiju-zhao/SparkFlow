@@ -342,12 +342,17 @@ function SourceContentView({
       if (normalizedContent.includes(normalizedSearch)) {
         const parent = node.parentElement;
         if (parent) {
-          // Add highlight class
-          parent.classList.add("chunk-highlight");
+          // Create a highlighted span wrapper around just the text node content
+          const highlightSpan = document.createElement("span");
+          highlightSpan.className = "chunk-highlight";
 
-          // Scroll to the element
+          // Wrap the text node in the highlight span
+          parent.insertBefore(highlightSpan, node);
+          highlightSpan.appendChild(node);
+
+          // Scroll to the highlighted element
           const containerRect = container.getBoundingClientRect();
-          const elementRect = parent.getBoundingClientRect();
+          const elementRect = highlightSpan.getBoundingClientRect();
           const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
 
           container.scrollTo({
@@ -355,9 +360,15 @@ function SourceContentView({
             behavior: "smooth",
           });
 
-          // Remove highlight after animation
+          // Remove highlight after animation - unwrap the span
           setTimeout(() => {
-            parent.classList.remove("chunk-highlight");
+            if (highlightSpan.parentNode) {
+              const textNode = highlightSpan.firstChild;
+              if (textNode) {
+                highlightSpan.parentNode.insertBefore(textNode, highlightSpan);
+              }
+              highlightSpan.remove();
+            }
           }, 3000);
 
           return;
