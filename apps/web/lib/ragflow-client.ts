@@ -15,7 +15,6 @@ const RAGFLOW_EMBEDDING_MODEL =
 const RAGFLOW_CHUNK_SIZE = parseInt(process.env.RAGFLOW_CHUNK_SIZE || "1024", 10);
 const RAGFLOW_AUTO_KEYWORDS = parseInt(process.env.RAGFLOW_AUTO_KEYWORDS || "0", 10);
 const RAGFLOW_AUTO_QUESTIONS = parseInt(process.env.RAGFLOW_AUTO_QUESTIONS || "0", 10);
-const RAGFLOW_TOC_EXTRACTION = process.env.RAGFLOW_TOC_EXTRACTION?.toLowerCase() === "true";
 
 interface RagFlowResponse<T = unknown> {
   code: number;
@@ -111,7 +110,6 @@ class RagFlowClient {
           chunk_token_num: RAGFLOW_CHUNK_SIZE,
           auto_keywords: RAGFLOW_AUTO_KEYWORDS,
           auto_questions: RAGFLOW_AUTO_QUESTIONS,
-          toc_extraction: RAGFLOW_TOC_EXTRACTION,
         },
       }),
     });
