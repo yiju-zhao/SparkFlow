@@ -326,122 +326,47 @@ function SourceContentView({
     onChunkNavigated?.();
   }, [targetChunkId, targetContentPreview, navigationTrigger, onChunkNavigated]);
 
-  // Chunk size (characters to highlight)
-  const CHUNK_SIZE = 2048;
-
-  // Scroll to chunk by finding matching text and highlighting chunk_size chars
+  // Scroll to chunk by finding matching text in DOM
   const scrollToChunkByContent = (contentPreview: string) => {
     const container = scrollRef.current;
     if (!container) return;
 
-    // Clean up any existing highlights first to avoid DOM structure issues
-    const existingHighlights = container.querySelectorAll(".chunk-highlight");
-    existingHighlights.forEach((span) => {
-      while (span.firstChild) {
-        span.parentNode?.insertBefore(span.firstChild, span);
-      }
-      span.remove();
-    });
+    // Normalize search text - use first 50 chars
+    const searchText = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
+    if (!searchText) return;
 
-    // Find the position in markdown content where contentPreview starts
-    const normalizedPreview = contentPreview.replace(/\s+/g, " ").trim();
-    const normalizedContent = markdownContent.replace(/\s+/g, " ");
-    const matchPosition = normalizedContent.indexOf(normalizedPreview.slice(0, 50));
-
-    if (matchPosition === -1) {
-      console.warn("Chunk content not found in source");
-      container.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    // Calculate the range to highlight (from match position to match + CHUNK_SIZE)
-    const highlightStart = matchPosition;
-    const highlightEnd = Math.min(matchPosition + CHUNK_SIZE, normalizedContent.length);
-
-    // Find all text nodes and track cumulative position
+    // Find text node containing the search text
     const walker = document.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
       null
     );
 
-    let cumulativePos = 0;
-    const nodesToHighlight: { node: Text; startOffset: number; endOffset: number }[] = [];
-    let firstHighlightNode: Element | null = null;
-
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
-      const nodeText = node.textContent || "";
-      const normalizedNodeText = nodeText.replace(/\s+/g, " ");
-      const nodeStart = cumulativePos;
-      const nodeEnd = cumulativePos + normalizedNodeText.length;
+      const nodeText = (node.textContent || "").replace(/\s+/g, " ");
+      const matchIndex = nodeText.indexOf(searchText);
+      if (matchIndex !== -1) {
+        // Use Range to get exact position of the matched text
+        const range = document.createRange();
+        range.setStart(node, Math.min(matchIndex, node.length));
+        range.setEnd(node, Math.min(matchIndex + 1, node.length));
 
-      // Check if this node overlaps with the highlight range
-      if (nodeEnd > highlightStart && nodeStart < highlightEnd) {
-        // Calculate the portion of this node to highlight
-        const startOffset = Math.max(0, highlightStart - nodeStart);
-        const endOffset = Math.min(normalizedNodeText.length, highlightEnd - nodeStart);
+        const rangeRect = range.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const relativeTop = rangeRect.top - containerRect.top + container.scrollTop;
 
-        nodesToHighlight.push({ node, startOffset, endOffset });
-      }
-
-      cumulativePos = nodeEnd;
-
-      // Stop if we've passed the highlight range
-      if (nodeStart > highlightEnd) break;
-    }
-
-    // Wrap highlighted portions in spans
-    const highlightSpans: HTMLSpanElement[] = [];
-    for (const { node, startOffset, endOffset } of nodesToHighlight) {
-      const parent = node.parentElement;
-      if (!parent) continue;
-
-      const text = node.textContent || "";
-
-      // If highlighting entire node, wrap it directly
-      if (startOffset === 0 && endOffset >= text.length) {
-        const span = document.createElement("span");
-        span.className = "chunk-highlight";
-        parent.insertBefore(span, node);
-        span.appendChild(node);
-        highlightSpans.push(span);
-        if (!firstHighlightNode) firstHighlightNode = span;
-      } else {
-        // Need to split the text node for partial highlighting
-        // For simplicity, just highlight the whole node if any part matches
-        const span = document.createElement("span");
-        span.className = "chunk-highlight";
-        parent.insertBefore(span, node);
-        span.appendChild(node);
-        highlightSpans.push(span);
-        if (!firstHighlightNode) firstHighlightNode = span;
+        container.scrollTo({
+          top: Math.max(0, relativeTop - 100),
+          behavior: "smooth",
+        });
+        return;
       }
     }
 
-    // Scroll to first highlighted element
-    if (firstHighlightNode) {
-      const containerRect = container.getBoundingClientRect();
-      const elementRect = firstHighlightNode.getBoundingClientRect();
-      const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
-
-      container.scrollTo({
-        top: Math.max(0, relativeTop - 100),
-        behavior: "smooth",
-      });
-    }
-
-    // Remove highlights after animation
-    setTimeout(() => {
-      for (const span of highlightSpans) {
-        if (span.parentNode) {
-          while (span.firstChild) {
-            span.parentNode.insertBefore(span.firstChild, span);
-          }
-          span.remove();
-        }
-      }
-    }, 3000);
+    // Not found - scroll to top
+    console.warn("Chunk content not found in source");
+    container.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Extract headings from markdown
