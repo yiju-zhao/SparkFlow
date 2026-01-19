@@ -65,17 +65,21 @@ function HtmlTable({ html }: { html: string }) {
     );
 }
 
-// Preprocess citations: [ref:chunkId] -> clickable element
+// Preprocess citations: [ref:chunkId] -> clickable element with index
 function preprocessCitations(content: string): string {
-    // Match [ref:chunkId] pattern
+    // Match [ref:chunkId] pattern and add sequential index
+    let index = 0;
     return content.replace(
         /\[ref:([a-zA-Z0-9_-]+)\]/g,
-        (_, chunkId) => `<citation-ref data-chunk="${chunkId}"></citation-ref>`
+        (_, chunkId) => {
+            index++;
+            return `<citation-ref data-chunk="${chunkId}" data-index="${index}"></citation-ref>`;
+        }
     );
 }
 
-// Citation link component - renders as clickable badge
-function CitationLink({ "data-chunk": chunkId }: { "data-chunk": string }) {
+// Citation link component - renders as clickable numbered badge
+function CitationLink({ "data-chunk": chunkId, "data-index": index }: { "data-chunk": string; "data-index": string }) {
     const citationContext = useCitationSafe();
 
     const handleClick = (e: React.MouseEvent) => {
@@ -90,7 +94,7 @@ function CitationLink({ "data-chunk": chunkId }: { "data-chunk": string }) {
             className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors cursor-pointer"
             title="Navigate to source"
         >
-            [Source]
+            [{index}]
         </button>
     );
 }

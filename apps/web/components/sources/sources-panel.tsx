@@ -420,7 +420,7 @@ function SourceContentView({
       });
     }
 
-    // Remove highlights after 3 seconds
+    // Remove highlights after 30 seconds
     setTimeout(() => {
       highlightSpans.forEach((span) => {
         const parent = span.parentNode;
@@ -428,7 +428,7 @@ function SourceContentView({
         span.remove();
       });
       container.normalize();
-    }, 3000);
+    }, 30000);
   }, [markdownContent]);
 
   const scheduleScrollToChunk = useCallback((delayMs: number) => {
