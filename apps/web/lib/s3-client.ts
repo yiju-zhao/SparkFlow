@@ -10,6 +10,7 @@ import {
     PutObjectCommand,
     GetObjectCommand,
     DeleteObjectCommand,
+    ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
 
@@ -96,6 +97,39 @@ export async function deleteImage(key: string): Promise<void> {
     });
 
     await s3Client.send(command);
+}
+
+/**
+ * Delete all images for a source
+ *
+ * @param sourceId - ID of the source document
+ * @returns Number of deleted objects
+ */
+export async function deleteSourceImages(sourceId: string): Promise<number> {
+    const prefix = `sources/${sourceId}/images/`;
+    let deletedCount = 0;
+
+    // List all objects with the prefix
+    const listCommand = new ListObjectsV2Command({
+        Bucket: S3_BUCKET_NAME,
+        Prefix: prefix,
+    });
+
+    const listResponse = await s3Client.send(listCommand);
+
+    if (!listResponse.Contents || listResponse.Contents.length === 0) {
+        return 0;
+    }
+
+    // Delete each object
+    for (const obj of listResponse.Contents) {
+        if (obj.Key) {
+            await deleteImage(obj.Key);
+            deletedCount++;
+        }
+    }
+
+    return deletedCount;
 }
 
 /**

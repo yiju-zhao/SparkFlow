@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { ragflowClient } from "@/lib/ragflow-client";
+import { deleteSourceImages } from "@/lib/s3-client";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -79,13 +81,32 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Verify ownership
+  // Verify ownership and get sources
   const notebook = await prisma.notebook.findFirst({
     where: { id, userId: session.user.id },
+    include: { sources: { select: { id: true } } },
   });
 
   if (!notebook) {
     return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
+  }
+
+  // Delete source images from MinIO (non-blocking)
+  for (const source of notebook.sources) {
+    try {
+      await deleteSourceImages(source.id);
+    } catch (error) {
+      console.error(`Failed to delete images for source ${source.id}:`, error);
+    }
+  }
+
+  // Delete RagFlow dataset (non-blocking)
+  if (notebook.ragflowDatasetId) {
+    try {
+      await ragflowClient.deleteDataset(notebook.ragflowDatasetId);
+    } catch (error) {
+      console.error("RagFlow dataset deletion failed:", error);
+    }
   }
 
   await prisma.notebook.delete({ where: { id } });
