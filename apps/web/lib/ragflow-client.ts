@@ -87,7 +87,6 @@ class RagFlowClient {
     if (!response.ok) {
       throw new Error(`RagFlow API error: ${response.status} ${response.statusText}`);
     }
-
     return response.json();
   }
 
@@ -145,9 +144,14 @@ class RagFlowClient {
    * Delete a dataset
    */
   async deleteDataset(datasetId: string): Promise<void> {
-    await this.request(`/v1/datasets/${datasetId}`, {
+    const response = await this.request(`/v1/datasets`, {
       method: "DELETE",
+      body: JSON.stringify({ ids: [datasetId] }),
     });
+
+    if (response.code !== 0) {
+      throw new Error(response.message || "Failed to delete dataset");
+    }
   }
 
   // ============================================
