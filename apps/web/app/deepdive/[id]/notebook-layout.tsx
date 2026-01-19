@@ -15,7 +15,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SourcesPanel } from "@/components/sources/sources-panel";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { StudioPanel } from "@/components/studio/studio-panel";
-import { CitationProvider, useCitation, ChunkInfo } from "@/lib/context/citation-context";
+import { CitationProvider, useCitation } from "@/lib/context/citation-context";
+
+// Chunk map entry stored in source.metadata
+interface ChunkMapEntry {
+  chunkId: string;
+  startOffset: number;
+  endOffset: number;
+}
 import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
 
 type ChatSessionWithCount = ChatSession & {
@@ -68,25 +75,21 @@ function NotebookLayoutInner({
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
 
-  // Handle citation click navigation
+  // Handle citation click - find source by searching chunkMaps
   const handleCitationNavigate = useCallback(
-    (chunkId: string, chunkInfo: ChunkInfo | undefined) => {
-      // Guard against undefined chunkInfo
-      if (!chunkInfo) {
-        console.warn(`Citation clicked but chunk info not found: ${chunkId}`);
-        return;
-      }
+    (chunkId: string) => {
+      // Search all sources' chunkMaps to find which source contains this chunk
+      for (const source of sources) {
+        const metadata = source.metadata as Record<string, unknown> | null;
+        const chunkMap = metadata?.chunkMap as ChunkMapEntry[] | undefined;
 
-      // Find source by document name
-      const matchingSource = sources.find(
-        (s) => s.title === chunkInfo.docName || s.ragflowDocumentId === chunkInfo.docId
-      );
-
-      if (matchingSource) {
-        // Open left panel and select the source
-        setLeftPanelOpen(true);
-        setSelectedSource(matchingSource);
-        setTargetChunkId(chunkId);
+        if (chunkMap?.some((entry) => entry.chunkId === chunkId)) {
+          // Found the source containing this chunk
+          setLeftPanelOpen(true);
+          setSelectedSource(source);
+          setTargetChunkId(chunkId);
+          return;
+        }
       }
     },
     [sources]

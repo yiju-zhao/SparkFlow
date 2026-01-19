@@ -78,31 +78,19 @@ function preprocessCitations(content: string): string {
 function CitationLink({ "data-chunk": chunkId }: { "data-chunk": string }) {
     const citationContext = useCitationSafe();
 
-    if (!citationContext) {
-        // Fallback when outside citation context
-        return (
-            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground rounded">
-                [ref]
-            </span>
-        );
-    }
-
-    const chunkInfo = citationContext.chunkRegistry.get(chunkId);
-    const displayName = chunkInfo?.docName || "Source";
-
     const handleClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        citationContext.navigateToChunk(chunkId);
+        citationContext?.navigateToChunk(chunkId);
     };
 
     return (
         <button
             onClick={handleClick}
             className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors cursor-pointer"
-            title={`Navigate to source: ${displayName}`}
+            title="Navigate to source"
         >
-            [{displayName}]
+            [Source]
         </button>
     );
 }

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
 import { createNote } from "@/lib/actions/notes";
-import { useCitationSafe, ChunkInfo } from "@/lib/context/citation-context";
 
 interface PreloadedMessage {
   id: string;
@@ -71,26 +70,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevIsLoadingRef = useRef<boolean>(false);
 
-  // Citation context for chunk references
-  const citationContext = useCitationSafe();
-
-  // Parse tool results to extract chunk info
-  // Format: [Document Name] #chunk_id
-  const parseChunksFromToolResult = useCallback((content: string): ChunkInfo[] => {
-    const chunks: ChunkInfo[] = [];
-    // Match pattern: [Document Name] #chunk_id
-    const regex = /\[([^\]]+)\]\s*#([a-zA-Z0-9_-]+)/g;
-    let match;
-    while ((match = regex.exec(content)) !== null) {
-      chunks.push({
-        chunkId: match[2],
-        docName: match[1],
-        docId: "", // Will be resolved later via API
-      });
-    }
-    return chunks;
-  }, []);
-
   // LangGraph stream hook - follows docs pattern
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
@@ -117,25 +96,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessionMessages, stream.messages]);
-
-  // Parse tool results and register chunks for citation linking
-  useEffect(() => {
-    if (!citationContext) return;
-
-    // Find tool messages (search results) and extract chunks
-    const toolMessages = stream.messages.filter((m) => m.type === "tool");
-    const allChunks: ChunkInfo[] = [];
-
-    for (const msg of toolMessages) {
-      const content = typeof msg.content === "string" ? msg.content : "";
-      const chunks = parseChunksFromToolResult(content);
-      allChunks.push(...chunks);
-    }
-
-    if (allChunks.length > 0) {
-      citationContext.registerChunks(allChunks);
-    }
-  }, [stream.messages, citationContext, parseChunksFromToolResult]);
 
   // Save messages to database when streaming completes
   useEffect(() => {
