@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -307,6 +307,9 @@ function SourceContentView({
   const [showToc, setShowToc] = useState(false);
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
+  const scrollTimeoutRef = useRef<number | null>(null);
+  const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -318,19 +321,8 @@ function SourceContentView({
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
 
-  // Handle chunk navigation using content preview and suffix from API
-  useEffect(() => {
-    if (!targetChunkId || !targetContentPreview) return;
-
-    setTimeout(() => {
-      scrollToChunkByContent(targetContentPreview, targetContentSuffix || null);
-    }, 100);
-
-    onChunkNavigated?.();
-  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, onChunkNavigated]);
-
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
-  const scrollToChunkByContent = (contentPreview: string, contentSuffix: string | null) => {
+  const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
     const container = scrollRef.current;
     if (!container) return;
 
@@ -437,7 +429,60 @@ function SourceContentView({
       });
       container.normalize();
     }, 3000);
-  };
+  }, [markdownContent]);
+
+  const scheduleScrollToChunk = useCallback((delayMs: number) => {
+    if (!pendingNavigationRef.current) return;
+    if (scrollTimeoutRef.current !== null) {
+      window.clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      const pending = pendingNavigationRef.current;
+      if (!pending) return;
+      scrollToChunkByContent(pending.preview, pending.suffix);
+      pendingNavigationRef.current = null;
+      onChunkNavigated?.();
+    }, delayMs);
+  }, [onChunkNavigated, scrollToChunkByContent]);
+
+  // Handle chunk navigation using content preview and suffix from API
+  useEffect(() => {
+    if (!targetChunkId || !targetContentPreview) return;
+    pendingNavigationRef.current = {
+      preview: targetContentPreview,
+      suffix: targetContentSuffix || null,
+    };
+    scheduleScrollToChunk(250);
+  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk]);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const { width, height } = entry.contentRect;
+      const lastSize = lastSizeRef.current;
+
+      if (!lastSize || lastSize.width !== width || lastSize.height !== height) {
+        lastSizeRef.current = { width, height };
+        if (pendingNavigationRef.current) {
+          scheduleScrollToChunk(80);
+        }
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [scheduleScrollToChunk]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current !== null) {
+        window.clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Extract headings from markdown
   useEffect(() => {
