@@ -57,10 +57,12 @@ def _list_documents(client: RAGFlow, dataset_ids: list[str]) -> dict:
 
 def _retrieve(client: RAGFlow, query: str, dataset_ids: list[str]) -> list:
     """Retrieve chunks matching query from datasets."""
+    toc_enhance = os.getenv("RAGFLOW_TOC_ENHANCE", "false").lower() == "true"
     return client.retrieve(
         question=query,
         dataset_ids=dataset_ids,
         page_size=10,
+        toc_enhance=toc_enhance,
     )
 
 
