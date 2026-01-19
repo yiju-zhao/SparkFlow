@@ -326,47 +326,135 @@ function SourceContentView({
     onChunkNavigated?.();
   }, [targetChunkId, targetContentPreview, navigationTrigger, onChunkNavigated]);
 
-  // Scroll to chunk by finding matching text in DOM
+  // Chunk size for highlighting (characters)
+  const CHUNK_SIZE = 2048;
+
+  // Scroll to chunk and highlight chunk_size chars starting from match
   const scrollToChunkByContent = (contentPreview: string) => {
     const container = scrollRef.current;
     if (!container) return;
+
+    // Clean up existing highlights
+    container.querySelectorAll(".chunk-highlight").forEach((el) => {
+      const parent = el.parentNode;
+      while (el.firstChild) {
+        parent?.insertBefore(el.firstChild, el);
+      }
+      el.remove();
+    });
 
     // Normalize search text - use first 50 chars
     const searchText = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
     if (!searchText) return;
 
-    // Find text node containing the search text
+    // Find all text nodes
     const walker = document.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
       null
     );
 
+    const textNodes: Text[] = [];
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
-      const nodeText = (node.textContent || "").replace(/\s+/g, " ");
+      textNodes.push(node);
+    }
+
+    // Find the starting node and position
+    let startNodeIndex = -1;
+    let startOffset = 0;
+    let charsBeforeMatch = 0;
+
+    for (let i = 0; i < textNodes.length; i++) {
+      const nodeText = (textNodes[i].textContent || "").replace(/\s+/g, " ");
       const matchIndex = nodeText.indexOf(searchText);
       if (matchIndex !== -1) {
-        // Use Range to get exact position of the matched text
-        const range = document.createRange();
-        range.setStart(node, Math.min(matchIndex, node.length));
-        range.setEnd(node, Math.min(matchIndex + 1, node.length));
+        startNodeIndex = i;
+        startOffset = matchIndex;
+        break;
+      }
+      charsBeforeMatch += nodeText.length;
+    }
 
-        const rangeRect = range.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const relativeTop = rangeRect.top - containerRect.top + container.scrollTop;
+    if (startNodeIndex === -1) {
+      console.warn("Chunk content not found in source");
+      container.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
-        container.scrollTo({
-          top: Math.max(0, relativeTop - 100),
-          behavior: "smooth",
-        });
-        return;
+    // Collect nodes to highlight (from match position for CHUNK_SIZE chars)
+    let charsToHighlight = CHUNK_SIZE;
+    const highlightSpans: HTMLSpanElement[] = [];
+    let firstSpan: HTMLSpanElement | null = null;
+
+    for (let i = startNodeIndex; i < textNodes.length && charsToHighlight > 0; i++) {
+      const textNode = textNodes[i];
+      const parent = textNode.parentElement;
+      if (!parent) continue;
+
+      const text = textNode.textContent || "";
+      const nodeStartOffset = i === startNodeIndex ? startOffset : 0;
+      const availableChars = text.length - nodeStartOffset;
+      const charsFromNode = Math.min(availableChars, charsToHighlight);
+
+      if (charsFromNode > 0) {
+        // Create highlight span
+        const span = document.createElement("span");
+        span.className = "chunk-highlight";
+
+        // If we need to split the text node
+        if (nodeStartOffset > 0 || charsFromNode < text.length - nodeStartOffset) {
+          // Split: before | highlight | after
+          const before = text.slice(0, nodeStartOffset);
+          const highlight = text.slice(nodeStartOffset, nodeStartOffset + charsFromNode);
+          const after = text.slice(nodeStartOffset + charsFromNode);
+
+          if (before) {
+            parent.insertBefore(document.createTextNode(before), textNode);
+          }
+          span.textContent = highlight;
+          parent.insertBefore(span, textNode);
+          if (after) {
+            textNode.textContent = after;
+          } else {
+            textNode.remove();
+          }
+        } else {
+          // Wrap entire node
+          parent.insertBefore(span, textNode);
+          span.appendChild(textNode);
+        }
+
+        highlightSpans.push(span);
+        if (!firstSpan) firstSpan = span;
+        charsToHighlight -= charsFromNode;
       }
     }
 
-    // Not found - scroll to top
-    console.warn("Chunk content not found in source");
-    container.scrollTo({ top: 0, behavior: "smooth" });
+    // Scroll to first highlighted span
+    if (firstSpan) {
+      const containerRect = container.getBoundingClientRect();
+      const spanRect = firstSpan.getBoundingClientRect();
+      const relativeTop = spanRect.top - containerRect.top + container.scrollTop;
+
+      container.scrollTo({
+        top: Math.max(0, relativeTop - 100),
+        behavior: "smooth",
+      });
+    }
+
+    // Remove highlights after 3 seconds
+    setTimeout(() => {
+      highlightSpans.forEach((span) => {
+        const parent = span.parentNode;
+        while (span.firstChild) {
+          parent?.insertBefore(span.firstChild, span);
+        }
+        span.remove();
+      });
+      // Normalize to merge adjacent text nodes
+      container.normalize();
+    }, 3000);
   };
 
   // Extract headings from markdown
