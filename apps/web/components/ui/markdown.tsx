@@ -66,13 +66,19 @@ function HtmlTable({ html }: { html: string }) {
 }
 
 // Preprocess citations: [ref:chunkId] -> clickable element with index
+// Same chunkId gets the same index number
 function preprocessCitations(content: string): string {
-    // Match [ref:chunkId] pattern and add sequential index
-    let index = 0;
+    const chunkIndexMap = new Map<string, number>();
+    let nextIndex = 1;
+
     return content.replace(
         /\[ref:([a-zA-Z0-9_-]+)\]/g,
         (_, chunkId) => {
-            index++;
+            let index = chunkIndexMap.get(chunkId);
+            if (index === undefined) {
+                index = nextIndex++;
+                chunkIndexMap.set(chunkId, index);
+            }
             return `<citation-ref data-chunk="${chunkId}" data-index="${index}"></citation-ref>`;
         }
     );

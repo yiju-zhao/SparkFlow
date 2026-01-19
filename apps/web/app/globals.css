@@ -251,8 +251,9 @@
 }
 
 /* Chunk highlight animation for citation navigation */
+/* Stay solid for 90% of duration (27s), then fade over last 10% (3s) */
 @keyframes highlight-fade {
-  0% {
+  0%, 90% {
     background-color: rgba(234, 179, 8, 0.4);
   }
   100% {
