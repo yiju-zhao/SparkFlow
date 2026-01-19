@@ -328,6 +328,15 @@ function SourceContentView({
     const container = scrollRef.current;
     if (!container) return;
 
+    // Clean up any existing highlights first to avoid DOM structure issues
+    const existingHighlights = container.querySelectorAll(".chunk-highlight");
+    existingHighlights.forEach((span) => {
+      while (span.firstChild) {
+        span.parentNode?.insertBefore(span.firstChild, span);
+      }
+      span.remove();
+    });
+
     // Find the position in markdown content where contentPreview starts
     const normalizedPreview = contentPreview.replace(/\s+/g, " ").trim();
     const normalizedContent = markdownContent.replace(/\s+/g, " ");
