@@ -44,7 +44,6 @@ interface SourcesPanelProps {
   targetContentSuffix?: string | null;
   navigationTrigger?: number;
   onChunkNavigated?: () => void;
-  onContentReady?: () => void;
 }
 
 export function SourcesPanel({
@@ -58,7 +57,6 @@ export function SourcesPanel({
   targetContentSuffix,
   navigationTrigger,
   onChunkNavigated,
-  onContentReady,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: liveSources = sources } = useQuery<Source[]>({
@@ -97,7 +95,6 @@ export function SourcesPanel({
         targetContentSuffix={targetContentSuffix}
         navigationTrigger={navigationTrigger}
         onChunkNavigated={onChunkNavigated}
-        onContentReady={onContentReady}
         onBack={() => onSelectSource(null)}
       />
     );
@@ -296,7 +293,6 @@ function SourceContentView({
   targetContentSuffix,
   navigationTrigger,
   onChunkNavigated,
-  onContentReady,
   onBack,
 }: {
   source: Source;
@@ -306,7 +302,6 @@ function SourceContentView({
   targetContentSuffix?: string | null;
   navigationTrigger?: number;
   onChunkNavigated?: () => void;
-  onContentReady?: () => void;
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
@@ -320,11 +315,6 @@ function SourceContentView({
     }
   }, [source.id]);
 
-  // Notify parent when content is rendered
-  useEffect(() => {
-    onContentReady?.();
-  }, [source.id, onContentReady]);
-
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
 
@@ -332,11 +322,11 @@ function SourceContentView({
   useEffect(() => {
     if (!targetChunkId || !targetContentPreview) return;
 
-    // Small delay to ensure DOM is ready after render
     setTimeout(() => {
       scrollToChunkByContent(targetContentPreview, targetContentSuffix || null);
-      onChunkNavigated?.();
-    }, 50);
+    }, 100);
+
+    onChunkNavigated?.();
   }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, onChunkNavigated]);
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)

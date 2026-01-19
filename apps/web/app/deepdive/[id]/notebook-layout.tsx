@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -72,13 +72,6 @@ function NotebookLayoutInner({
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
 
-  // Pending navigation data - stored in ref to apply after content renders
-  const pendingNavigation = useRef<{
-    chunkId: string;
-    contentPreview: string;
-    contentSuffix: string | null;
-  } | null>(null);
-
   // Handle citation click - look up chunk via API to find source
   const handleCitationNavigate = useCallback(
     async (chunkId: string) => {
@@ -93,14 +86,12 @@ function NotebookLayoutInner({
 
         if (source) {
           setLeftPanelOpen(true);
-          // Store pending navigation
-          pendingNavigation.current = {
-            chunkId,
-            contentPreview,
-            contentSuffix: contentSuffix || null,
-          };
-          // Open the source panel - onContentReady will trigger navigation
+          // Use the source from API response (guaranteed to have fresh content)
           setSelectedSource(source as Source);
+          setTargetChunkId(chunkId);
+          setTargetContentPreview(contentPreview);
+          setTargetContentSuffix(contentSuffix || null);
+          setNavigationTrigger((n) => n + 1); // Force effect to run
         }
       } catch (error) {
         console.error("Failed to navigate to chunk:", error);
@@ -108,18 +99,6 @@ function NotebookLayoutInner({
     },
     []
   );
-
-  // Called when SourceContentView has rendered its content
-  const handleContentReady = useCallback(() => {
-    if (pendingNavigation.current) {
-      const { chunkId, contentPreview, contentSuffix } = pendingNavigation.current;
-      setTargetChunkId(chunkId);
-      setTargetContentPreview(contentPreview);
-      setTargetContentSuffix(contentSuffix);
-      setNavigationTrigger((n) => n + 1);
-      pendingNavigation.current = null;
-    }
-  }, []);
 
   // Register navigation handler with citation context
   useEffect(() => {
@@ -207,7 +186,6 @@ function NotebookLayoutInner({
                 targetContentPreview={targetContentPreview}
                 targetContentSuffix={targetContentSuffix}
                 navigationTrigger={navigationTrigger}
-                onContentReady={handleContentReady}
                 onChunkNavigated={() => {
                   setTargetChunkId(null);
                   setTargetContentPreview(null);
