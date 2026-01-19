@@ -37,6 +37,7 @@ export async function GET(
     return NextResponse.json({
         chunkId: chunk.id,
         contentPreview: chunk.contentPreview,
+        contentSuffix: chunk.contentSuffix,
         source: {
             id: chunk.source.id,
             title: chunk.source.title,

@@ -91,7 +91,10 @@ export async function GET(
                     .map((chunk, index) => ({
                       id: chunk.id,
                       sourceId: source.id,
-                      contentPreview: chunk.content.slice(0, 200),
+                      contentPreview: chunk.content.slice(0, 100),
+                      contentSuffix: chunk.content.length > 100
+                        ? chunk.content.slice(-100)
+                        : null,
                       position: index,
                     })),
                 });

@@ -41,6 +41,7 @@ interface SourcesPanelProps {
   onSelectSource: (source: Source | null) => void;
   targetChunkId?: string | null;
   targetContentPreview?: string | null;
+  targetContentSuffix?: string | null;
   navigationTrigger?: number;
   onChunkNavigated?: () => void;
 }
@@ -53,6 +54,7 @@ export function SourcesPanel({
   onSelectSource,
   targetChunkId,
   targetContentPreview,
+  targetContentSuffix,
   navigationTrigger,
   onChunkNavigated,
 }: SourcesPanelProps) {
@@ -90,6 +92,7 @@ export function SourcesPanel({
         datasetId={datasetId}
         targetChunkId={targetChunkId}
         targetContentPreview={targetContentPreview}
+        targetContentSuffix={targetContentSuffix}
         navigationTrigger={navigationTrigger}
         onChunkNavigated={onChunkNavigated}
         onBack={() => onSelectSource(null)}
@@ -287,14 +290,16 @@ function SourceContentView({
   source,
   targetChunkId,
   targetContentPreview,
+  targetContentSuffix,
   navigationTrigger,
   onChunkNavigated,
   onBack,
 }: {
   source: Source;
-  datasetId?: string | null;  // Keep for backward compatibility but not used
+  datasetId?: string | null;
   targetChunkId?: string | null;
   targetContentPreview?: string | null;
+  targetContentSuffix?: string | null;
   navigationTrigger?: number;
   onChunkNavigated?: () => void;
   onBack: () => void;
@@ -313,24 +318,19 @@ function SourceContentView({
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
 
-  // Handle chunk navigation using content preview from API
-  // navigationTrigger forces effect to run even when clicking same citation
+  // Handle chunk navigation using content preview and suffix from API
   useEffect(() => {
     if (!targetChunkId || !targetContentPreview) return;
 
-    // Scroll after a short delay to ensure content is rendered
     setTimeout(() => {
-      scrollToChunkByContent(targetContentPreview);
+      scrollToChunkByContent(targetContentPreview, targetContentSuffix || null);
     }, 100);
 
     onChunkNavigated?.();
-  }, [targetChunkId, targetContentPreview, navigationTrigger, onChunkNavigated]);
+  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, onChunkNavigated]);
 
-  // Chunk size for highlighting (characters)
-  const CHUNK_SIZE = 2048;
-
-  // Scroll to chunk and highlight chunk_size chars starting from match
-  const scrollToChunkByContent = (contentPreview: string) => {
+  // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
+  const scrollToChunkByContent = (contentPreview: string, contentSuffix: string | null) => {
     const container = scrollRef.current;
     if (!container) return;
 
@@ -342,103 +342,88 @@ function SourceContentView({
       }
       el.remove();
     });
+    container.normalize();
 
-    // Normalize search text - use first 50 chars
-    const searchText = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
-    if (!searchText) return;
+    // Find start and end positions in source content
+    const normalizedContent = markdownContent.replace(/\s+/g, " ");
+    const startMarker = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
+    const endMarker = contentSuffix?.replace(/\s+/g, " ").trim().slice(-50) || null;
 
-    // Find all text nodes
-    const walker = document.createTreeWalker(
-      container,
-      NodeFilter.SHOW_TEXT,
-      null
-    );
+    const startPos = normalizedContent.indexOf(startMarker);
+    if (startPos === -1) {
+      console.warn("Chunk start not found in source");
+      container.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
+    let endPos: number;
+    if (endMarker) {
+      // Find end marker after start position
+      const searchAfter = normalizedContent.slice(startPos);
+      const endOffset = searchAfter.lastIndexOf(endMarker);
+      endPos = endOffset !== -1 ? startPos + endOffset + endMarker.length : startPos + 2048;
+    } else {
+      // Fallback to fixed chunk size
+      endPos = startPos + 2048;
+    }
+    endPos = Math.min(endPos, normalizedContent.length);
+
+    // Find text nodes and track cumulative position
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
     const textNodes: Text[] = [];
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
       textNodes.push(node);
     }
 
-    // Find the starting node and position
-    let startNodeIndex = -1;
-    let startOffset = 0;
-    let charsBeforeMatch = 0;
-
-    for (let i = 0; i < textNodes.length; i++) {
-      const nodeText = (textNodes[i].textContent || "").replace(/\s+/g, " ");
-      const matchIndex = nodeText.indexOf(searchText);
-      if (matchIndex !== -1) {
-        startNodeIndex = i;
-        startOffset = matchIndex;
-        break;
-      }
-      charsBeforeMatch += nodeText.length;
-    }
-
-    if (startNodeIndex === -1) {
-      console.warn("Chunk content not found in source");
-      container.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    // Collect nodes to highlight (from match position for CHUNK_SIZE chars)
-    let charsToHighlight = CHUNK_SIZE;
+    let cumPos = 0;
     const highlightSpans: HTMLSpanElement[] = [];
     let firstSpan: HTMLSpanElement | null = null;
 
-    for (let i = startNodeIndex; i < textNodes.length && charsToHighlight > 0; i++) {
-      const textNode = textNodes[i];
-      const parent = textNode.parentElement;
-      if (!parent) continue;
-
+    for (const textNode of textNodes) {
       const text = textNode.textContent || "";
-      const nodeStartOffset = i === startNodeIndex ? startOffset : 0;
-      const availableChars = text.length - nodeStartOffset;
-      const charsFromNode = Math.min(availableChars, charsToHighlight);
+      const normalizedText = text.replace(/\s+/g, " ");
+      const nodeStart = cumPos;
+      const nodeEnd = cumPos + normalizedText.length;
 
-      if (charsFromNode > 0) {
-        // Create highlight span
+      // Check if this node overlaps with highlight range
+      if (nodeEnd > startPos && nodeStart < endPos) {
+        const parent = textNode.parentElement;
+        if (!parent) { cumPos = nodeEnd; continue; }
+
+        const highlightStart = Math.max(0, startPos - nodeStart);
+        const highlightEnd = Math.min(text.length, endPos - nodeStart);
+
         const span = document.createElement("span");
         span.className = "chunk-highlight";
 
-        // If we need to split the text node
-        if (nodeStartOffset > 0 || charsFromNode < text.length - nodeStartOffset) {
-          // Split: before | highlight | after
-          const before = text.slice(0, nodeStartOffset);
-          const highlight = text.slice(nodeStartOffset, nodeStartOffset + charsFromNode);
-          const after = text.slice(nodeStartOffset + charsFromNode);
+        const before = text.slice(0, highlightStart);
+        const highlight = text.slice(highlightStart, highlightEnd);
+        const after = text.slice(highlightEnd);
 
-          if (before) {
-            parent.insertBefore(document.createTextNode(before), textNode);
-          }
-          span.textContent = highlight;
-          parent.insertBefore(span, textNode);
-          if (after) {
-            textNode.textContent = after;
-          } else {
-            textNode.remove();
-          }
+        if (before) parent.insertBefore(document.createTextNode(before), textNode);
+        span.textContent = highlight;
+        parent.insertBefore(span, textNode);
+        if (after) {
+          textNode.textContent = after;
         } else {
-          // Wrap entire node
-          parent.insertBefore(span, textNode);
-          span.appendChild(textNode);
+          textNode.remove();
         }
 
         highlightSpans.push(span);
         if (!firstSpan) firstSpan = span;
-        charsToHighlight -= charsFromNode;
       }
+
+      cumPos = nodeEnd;
+      if (nodeStart > endPos) break;
     }
 
     // Scroll to first highlighted span
     if (firstSpan) {
       const containerRect = container.getBoundingClientRect();
       const spanRect = firstSpan.getBoundingClientRect();
-      const relativeTop = spanRect.top - containerRect.top + container.scrollTop;
-
       container.scrollTo({
-        top: Math.max(0, relativeTop - 100),
+        top: Math.max(0, spanRect.top - containerRect.top + container.scrollTop - 100),
         behavior: "smooth",
       });
     }
@@ -447,12 +432,9 @@ function SourceContentView({
     setTimeout(() => {
       highlightSpans.forEach((span) => {
         const parent = span.parentNode;
-        while (span.firstChild) {
-          parent?.insertBefore(span.firstChild, span);
-        }
+        while (span.firstChild) parent?.insertBefore(span.firstChild, span);
         span.remove();
       });
-      // Normalize to merge adjacent text nodes
       container.normalize();
     }, 3000);
   };

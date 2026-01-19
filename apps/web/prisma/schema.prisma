@@ -108,10 +108,11 @@ model Source {
 
 // Chunks from RagFlow for citation navigation
 model Chunk {
-  id             String @id // RagFlow chunk ID (primary key)
+  id             String  @id // RagFlow chunk ID (primary key)
   sourceId       String
-  contentPreview String @db.VarChar(200) // First ~200 chars for fuzzy matching
-  position       Int    @default(0) // Order within document
+  contentPreview String  @db.VarChar(200) // First ~100 chars for start position
+  contentSuffix  String? @db.VarChar(200) // Last ~100 chars for end position
+  position       Int     @default(0) // Order within document
 
   // Relations
   source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)

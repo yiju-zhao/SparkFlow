@@ -66,6 +66,7 @@ function NotebookLayoutInner({
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [targetChunkId, setTargetChunkId] = useState<string | null>(null);
   const [targetContentPreview, setTargetContentPreview] = useState<string | null>(null);
+  const [targetContentSuffix, setTargetContentSuffix] = useState<string | null>(null);
   const [navigationTrigger, setNavigationTrigger] = useState(0);
 
   // Citation navigation setup
@@ -81,7 +82,7 @@ function NotebookLayoutInner({
           return;
         }
         const data = await res.json();
-        const { contentPreview, source } = data;
+        const { contentPreview, contentSuffix, source } = data;
 
         if (source) {
           setLeftPanelOpen(true);
@@ -89,6 +90,7 @@ function NotebookLayoutInner({
           setSelectedSource(source as Source);
           setTargetChunkId(chunkId);
           setTargetContentPreview(contentPreview);
+          setTargetContentSuffix(contentSuffix || null);
           setNavigationTrigger((n) => n + 1); // Force effect to run
         }
       } catch (error) {
@@ -182,10 +184,12 @@ function NotebookLayoutInner({
                 onSelectSource={setSelectedSource}
                 targetChunkId={targetChunkId}
                 targetContentPreview={targetContentPreview}
+                targetContentSuffix={targetContentSuffix}
                 navigationTrigger={navigationTrigger}
                 onChunkNavigated={() => {
                   setTargetChunkId(null);
                   setTargetContentPreview(null);
+                  setTargetContentSuffix(null);
                 }}
               />
             </motion.div>
