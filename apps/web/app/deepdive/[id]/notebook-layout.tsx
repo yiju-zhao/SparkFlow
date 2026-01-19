@@ -66,6 +66,7 @@ function NotebookLayoutInner({
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [targetChunkId, setTargetChunkId] = useState<string | null>(null);
   const [targetContentPreview, setTargetContentPreview] = useState<string | null>(null);
+  const [navigationTrigger, setNavigationTrigger] = useState(0);
 
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
@@ -88,6 +89,7 @@ function NotebookLayoutInner({
           setSelectedSource(source as Source);
           setTargetChunkId(chunkId);
           setTargetContentPreview(contentPreview);
+          setNavigationTrigger((n) => n + 1); // Force effect to run
         }
       } catch (error) {
         console.error("Failed to navigate to chunk:", error);
@@ -180,6 +182,7 @@ function NotebookLayoutInner({
                 onSelectSource={setSelectedSource}
                 targetChunkId={targetChunkId}
                 targetContentPreview={targetContentPreview}
+                navigationTrigger={navigationTrigger}
                 onChunkNavigated={() => {
                   setTargetChunkId(null);
                   setTargetContentPreview(null);

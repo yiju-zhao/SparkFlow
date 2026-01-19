@@ -41,6 +41,7 @@ interface SourcesPanelProps {
   onSelectSource: (source: Source | null) => void;
   targetChunkId?: string | null;
   targetContentPreview?: string | null;
+  navigationTrigger?: number;
   onChunkNavigated?: () => void;
 }
 
@@ -52,6 +53,7 @@ export function SourcesPanel({
   onSelectSource,
   targetChunkId,
   targetContentPreview,
+  navigationTrigger,
   onChunkNavigated,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -88,6 +90,7 @@ export function SourcesPanel({
         datasetId={datasetId}
         targetChunkId={targetChunkId}
         targetContentPreview={targetContentPreview}
+        navigationTrigger={navigationTrigger}
         onChunkNavigated={onChunkNavigated}
         onBack={() => onSelectSource(null)}
       />
@@ -284,6 +287,7 @@ function SourceContentView({
   source,
   targetChunkId,
   targetContentPreview,
+  navigationTrigger,
   onChunkNavigated,
   onBack,
 }: {
@@ -291,6 +295,7 @@ function SourceContentView({
   datasetId?: string | null;  // Keep for backward compatibility but not used
   targetChunkId?: string | null;
   targetContentPreview?: string | null;
+  navigationTrigger?: number;
   onChunkNavigated?: () => void;
   onBack: () => void;
 }) {
@@ -309,6 +314,7 @@ function SourceContentView({
   const markdownContent = source.content || "No content available";
 
   // Handle chunk navigation using content preview from API
+  // navigationTrigger forces effect to run even when clicking same citation
   useEffect(() => {
     if (!targetChunkId || !targetContentPreview) return;
 
@@ -318,7 +324,7 @@ function SourceContentView({
     }, 100);
 
     onChunkNavigated?.();
-  }, [targetChunkId, targetContentPreview, onChunkNavigated]);
+  }, [targetChunkId, targetContentPreview, navigationTrigger, onChunkNavigated]);
 
   // Chunk size (characters to highlight)
   const CHUNK_SIZE = 2048;
