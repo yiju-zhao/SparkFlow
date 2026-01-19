@@ -1,31 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { ragflowClient, Chunk } from "@/lib/ragflow-client";
-
-// Chunk size used by RagFlow when splitting documents
-const RAGFLOW_CHUNK_SIZE = parseInt(process.env.RAGFLOW_CHUNK_SIZE || "1024", 10);
-
-// Build chunk map using chunk index and configured chunk size
-function buildChunkMap(
-  sourceContent: string,
-  chunks: Chunk[]
-): { chunkId: string; startOffset: number; endOffset: number }[] {
-  const contentLength = sourceContent.length;
-
-  return chunks
-    .filter(chunk => chunk.content)
-    .map((chunk, index) => {
-      const startOffset = index * RAGFLOW_CHUNK_SIZE;
-      const endOffset = Math.min(startOffset + RAGFLOW_CHUNK_SIZE, contentLength);
-
-      return {
-        chunkId: chunk.id,
-        startOffset,
-        endOffset,
-      };
-    });
-}
+import { ragflowClient } from "@/lib/ragflow-client";
 
 export async function GET(
   _request: NextRequest,
@@ -94,14 +70,12 @@ export async function GET(
           source.status;
         let errorMessage = source.errorMessage || null;
 
-        let chunkMap: { chunkId: string; startOffset: number; endOffset: number }[] | null = null;
-
         if (isDone) {
           status = "READY";
           errorMessage = null;
 
-          // Build chunk map when processing completes
-          if (source.content && source.ragflowDocumentId) {
+          // Store chunks in database when processing completes
+          if (source.ragflowDocumentId) {
             try {
               const { chunks } = await ragflowClient.listChunks(
                 ragflowDatasetId,
@@ -109,10 +83,21 @@ export async function GET(
                 { pageSize: 1024 }
               );
               if (chunks.length > 0) {
-                chunkMap = buildChunkMap(source.content, chunks);
+                // Delete existing chunks and insert new ones
+                await prisma.chunk.deleteMany({ where: { sourceId: source.id } });
+                await prisma.chunk.createMany({
+                  data: chunks
+                    .filter((chunk) => chunk.content)
+                    .map((chunk, index) => ({
+                      id: chunk.id,
+                      sourceId: source.id,
+                      contentPreview: chunk.content.slice(0, 200),
+                      position: index,
+                    })),
+                });
               }
             } catch (err) {
-              console.error("Failed to build chunk map:", err);
+              console.error("Failed to store chunks:", err);
             }
           }
         } else if (isFailed) {
@@ -142,8 +127,6 @@ export async function GET(
                   : (source.metadata as Record<string, unknown> | null)?.ragflowProgress ??
                   null,
               ragflowUpdatedAt: new Date().toISOString(),
-              // Store chunk map when available
-              ...(chunkMap ? { chunkMap } : {}),
             },
           },
         });

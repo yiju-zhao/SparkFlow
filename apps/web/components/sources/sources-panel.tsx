@@ -40,6 +40,7 @@ interface SourcesPanelProps {
   selectedSource: Source | null;
   onSelectSource: (source: Source | null) => void;
   targetChunkId?: string | null;
+  targetContentPreview?: string | null;
   onChunkNavigated?: () => void;
 }
 
@@ -50,6 +51,7 @@ export function SourcesPanel({
   selectedSource,
   onSelectSource,
   targetChunkId,
+  targetContentPreview,
   onChunkNavigated,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -85,6 +87,7 @@ export function SourcesPanel({
         source={selectedSource}
         datasetId={datasetId}
         targetChunkId={targetChunkId}
+        targetContentPreview={targetContentPreview}
         onChunkNavigated={onChunkNavigated}
         onBack={() => onSelectSource(null)}
       />
@@ -276,23 +279,18 @@ function SourceItem({
   );
 }
 
-// Chunk map entry stored in source.metadata
-interface ChunkMapEntry {
-  chunkId: string;
-  startOffset: number;
-  endOffset: number;
-}
-
 // Source content viewer - shows title and markdown content with TOC button
 function SourceContentView({
   source,
   targetChunkId,
+  targetContentPreview,
   onChunkNavigated,
   onBack,
 }: {
   source: Source;
   datasetId?: string | null;  // Keep for backward compatibility but not used
   targetChunkId?: string | null;
+  targetContentPreview?: string | null;
   onChunkNavigated?: () => void;
   onBack: () => void;
 }) {
@@ -310,41 +308,20 @@ function SourceContentView({
   // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
 
-  // Get chunk map from source metadata
-  const chunkMap = useMemo(() => {
-    const metadata = source.metadata as Record<string, unknown> | null;
-    return (metadata?.chunkMap as ChunkMapEntry[] | undefined) || [];
-  }, [source.metadata]);
-
-  // Handle chunk navigation using stored chunk map (no API call needed)
+  // Handle chunk navigation using content preview from API
   useEffect(() => {
-    if (!targetChunkId) return;
+    if (!targetChunkId || !targetContentPreview) return;
 
-    // Look up chunk position from stored map
-    const chunkEntry = chunkMap.find((c) => c.chunkId === targetChunkId);
-
-    if (chunkEntry) {
-      // Get the chunk text from source content using stored offsets
-      const chunkText = markdownContent.slice(
-        chunkEntry.startOffset,
-        Math.min(chunkEntry.endOffset, chunkEntry.startOffset + 100)
-      );
-
-      // Scroll after a short delay to ensure content is rendered
-      setTimeout(() => {
-        scrollToChunkByOffset(chunkEntry.startOffset, chunkText);
-      }, 100);
-    } else {
-      // Chunk not found in map - scroll to top
-      console.warn(`Chunk ${targetChunkId} not found in chunk map`);
-      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    // Scroll after a short delay to ensure content is rendered
+    setTimeout(() => {
+      scrollToChunkByContent(targetContentPreview);
+    }, 100);
 
     onChunkNavigated?.();
-  }, [targetChunkId, chunkMap, markdownContent, onChunkNavigated]);
+  }, [targetChunkId, targetContentPreview, onChunkNavigated]);
 
   // Scroll to chunk by finding matching text in rendered content
-  const scrollToChunkByOffset = (offset: number, searchText: string) => {
+  const scrollToChunkByContent = (contentPreview: string) => {
     const container = scrollRef.current;
     if (!container) return;
 
@@ -355,7 +332,9 @@ function SourceContentView({
       null
     );
 
-    const normalizedSearch = searchText.replace(/\s+/g, " ").trim().slice(0, 30);
+    // Normalize and use first 50 chars for matching
+    const normalizedSearch = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
+    if (!normalizedSearch) return;
 
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {

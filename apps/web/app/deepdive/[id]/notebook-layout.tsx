@@ -17,12 +17,6 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { StudioPanel } from "@/components/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 
-// Chunk map entry stored in source.metadata
-interface ChunkMapEntry {
-  chunkId: string;
-  startOffset: number;
-  endOffset: number;
-}
 import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
 
 type ChatSessionWithCount = ChatSession & {
@@ -71,25 +65,33 @@ function NotebookLayoutInner({
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [targetChunkId, setTargetChunkId] = useState<string | null>(null);
+  const [targetContentPreview, setTargetContentPreview] = useState<string | null>(null);
 
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
 
-  // Handle citation click - find source by searching chunkMaps
+  // Handle citation click - look up chunk via API to find source
   const handleCitationNavigate = useCallback(
-    (chunkId: string) => {
-      // Search all sources' chunkMaps to find which source contains this chunk
-      for (const source of sources) {
-        const metadata = source.metadata as Record<string, unknown> | null;
-        const chunkMap = metadata?.chunkMap as ChunkMapEntry[] | undefined;
+    async (chunkId: string) => {
+      try {
+        const res = await fetch(`/api/chunks/${chunkId}`);
+        if (!res.ok) {
+          console.warn(`Chunk ${chunkId} not found`);
+          return;
+        }
+        const data = await res.json();
+        const { sourceId, contentPreview } = data;
 
-        if (chunkMap?.some((entry) => entry.chunkId === chunkId)) {
-          // Found the source containing this chunk
+        // Find the source in our list
+        const source = sources.find((s) => s.id === sourceId);
+        if (source) {
           setLeftPanelOpen(true);
           setSelectedSource(source);
           setTargetChunkId(chunkId);
-          return;
+          setTargetContentPreview(contentPreview);
         }
+      } catch (error) {
+        console.error("Failed to navigate to chunk:", error);
       }
     },
     [sources]
@@ -178,7 +180,11 @@ function NotebookLayoutInner({
                 selectedSource={selectedSource}
                 onSelectSource={setSelectedSource}
                 targetChunkId={targetChunkId}
-                onChunkNavigated={() => setTargetChunkId(null)}
+                targetContentPreview={targetContentPreview}
+                onChunkNavigated={() => {
+                  setTargetChunkId(null);
+                  setTargetContentPreview(null);
+                }}
               />
             </motion.div>
           )}
