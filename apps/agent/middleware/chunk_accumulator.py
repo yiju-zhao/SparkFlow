@@ -1,26 +1,18 @@
 """
 Chunk accumulator middleware for RAG agent.
 
-Automatically accumulates chunks from search/probe tool results into state,
+Automatically accumulates chunks from search/probe tool results,
 providing persistent context that the agent can reference when answering.
 
-Based on LangChain's context engineering patterns:
-- Life-cycle context: intercepts tool results
-- State writes: persists chunks for future steps
-- Model context: injects gathered chunks before model call
+Uses @wrap_model_call to:
+1. Parse chunks from tool messages in conversation history
+2. Inject organized chunks into context before model call
 """
 
 import re
 from typing import Callable
 
-from langchain.agents.middleware import (
-    after_tool,
-    wrap_model_call,
-    ToolRequest,
-    ToolResponse,
-    ModelRequest,
-    ModelResponse,
-)
+from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
 
 
 def _parse_chunks(content: str, source: str) -> list[dict]:
@@ -54,64 +46,46 @@ def _parse_chunks(content: str, source: str) -> list[dict]:
     return chunks
 
 
-@after_tool
-def chunk_accumulator(request: ToolRequest, response: ToolResponse) -> ToolResponse:
-    """Accumulate chunks from search/probe results into state.
+def _extract_chunks_from_messages(messages: list[dict]) -> list[dict]:
+    """Extract chunks from tool messages in conversation history."""
+    gathered = []
+    seen_keys = set()
 
-    This middleware intercepts tool results and extracts chunk information,
-    storing it in state["gathered_chunks"] for the agent to reference.
-    """
-    tool_name = request.tool.name
-    result_content = str(response.result)
+    for msg in messages:
+        # Tool messages have role="tool" and name attribute
+        if msg.get("role") != "tool":
+            continue
 
-    # Skip if error or no results
-    if "Error" in result_content or "No " in result_content[:20]:
-        return response
+        tool_name = msg.get("name", "")
+        if tool_name not in ("search", "probe"):
+            continue
 
-    # Parse chunks (same format for search and probe)
-    new_chunks = []
-    if tool_name in ("search", "probe"):
-        new_chunks = _parse_chunks(result_content, source=tool_name)
+        content = msg.get("content", "")
+        if not content or "Error" in content or content.startswith("No "):
+            continue
 
-    if not new_chunks:
-        return response
+        chunks = _parse_chunks(content, source=tool_name)
+        for chunk in chunks:
+            key = (chunk["chunk_id"], chunk["source"])
+            if key not in seen_keys:
+                gathered.append(chunk)
+                seen_keys.add(key)
 
-    # Get existing chunks from state
-    gathered = response.state.get("gathered_chunks", [])
-
-    # Merge new chunks (avoid duplicates by chunk_id + source)
-    existing_keys = {(c["chunk_id"], c["source"]) for c in gathered}
-    for chunk in new_chunks:
-        key = (chunk["chunk_id"], chunk["source"])
-        if key not in existing_keys:
-            gathered.append(chunk)
-            existing_keys.add(key)
-
-    # Update state with accumulated chunks
-    return response.update_state({"gathered_chunks": gathered})
+    return gathered
 
 
 def _organize_chunks(chunks: list[dict]) -> str:
-    """Organize chunks by document, merge related chunks, note sequence gaps.
-
-    Returns formatted string with:
-    - Chunks grouped by document (using document_id when available)
-    - Related chunks (same chunk_id from search+probe) merged
-    - Chunks sorted by position within document
-    - Sequence gaps noted (using actual positions)
-    """
+    """Organize chunks by document, merge related chunks, note sequence gaps."""
     # Group by document_id (preferred) or doc_name (fallback)
-    by_doc: dict[str, tuple[str, list[dict]]] = {}  # key -> (display_name, chunks)
+    by_doc: dict[str, tuple[str, list[dict]]] = {}
     for chunk in chunks:
         doc_id = chunk.get("document_id")
         doc_name = chunk["doc_name"]
-        # Use document_id as key if available for reliable grouping
         key = doc_id if doc_id else doc_name
         if key not in by_doc:
             by_doc[key] = (doc_name, [])
         by_doc[key][1].append(chunk)
 
-    # Format each document's chunks
     output = []
     for key, (doc_name, doc_chunks) in by_doc.items():
         output.append(f"[{doc_name}]")
@@ -124,38 +98,29 @@ def _organize_chunks(chunks: list[dict]) -> str:
                 by_id[cid] = []
             by_id[cid].append(chunk)
 
-        # Get best position for each chunk group (prefer non-None)
         def get_best_position(chunks_list: list[dict]) -> int | None:
             for c in chunks_list:
                 if c.get("position") is not None:
                     return c["position"]
             return None
 
-        # Sort chunk groups by position (if available)
         sorted_ids = sorted(
             by_id.keys(),
             key=lambda cid: get_best_position(by_id[cid]) if get_best_position(by_id[cid]) is not None else float("inf")
         )
 
-        # Check for sequence gaps using actual positions
+        # Check for sequence gaps
         positions = sorted([get_best_position(by_id[cid]) for cid in sorted_ids if get_best_position(by_id[cid]) is not None])
-        has_gaps = False
-        if len(positions) > 1:
-            for i in range(1, len(positions)):
-                if positions[i] - positions[i-1] > 1:
-                    has_gaps = True
-                    break
+        has_gaps = len(positions) > 1 and any(positions[i] - positions[i-1] > 1 for i in range(1, len(positions)))
 
         if has_gaps:
             output.append("  (Note: chunks are non-consecutive - may have gaps)")
 
-        # Format each chunk group
         for chunk_id in sorted_ids:
             related = by_id[chunk_id]
             pos = get_best_position(related)
             pos_str = f" @{pos}" if pos is not None else ""
 
-            # Merge content from search and probe
             search_content = next((c["content"] for c in related if c["source"] == "search"), None)
             probe_content = next((c["content"] for c in related if c["source"] == "probe"), None)
 
@@ -165,9 +130,8 @@ def _organize_chunks(chunks: list[dict]) -> str:
             if probe_content:
                 output.append(f"    [probed] {probe_content[:300]}{'...' if len(probe_content) > 300 else ''}")
 
-        output.append("")  # Blank line between documents
+        output.append("")
 
-    # Add note about potential gaps
     if len(by_doc) > 1:
         output.append("Note: Chunks are from multiple documents - verify context consistency.")
 
@@ -179,16 +143,13 @@ def inject_gathered_chunks(
     request: ModelRequest,
     handler: Callable[[ModelRequest], ModelResponse]
 ) -> ModelResponse:
-    """Inject gathered chunks into context before model call.
-
-    Organizes chunks by document and merges search+probe results for the same chunk.
-    """
-    gathered = request.state.get("gathered_chunks", [])
+    """Parse chunks from tool messages and inject organized context before model call."""
+    # Extract chunks from all tool messages in conversation
+    gathered = _extract_chunks_from_messages(request.messages)
 
     if not gathered:
         return handler(request)
 
-    # Organize chunks by document and merge related
     organized = _organize_chunks(gathered)
     chunk_ids = list({c["chunk_id"] for c in gathered})
 
@@ -198,11 +159,11 @@ def inject_gathered_chunks(
 
 Use [ref:CHUNK_ID] to cite. Only cite chunks that are relevant to the question."""
 
-    # Inject as system message before recent messages
+    # Inject as system message before the last message
     messages = [
-        *request.messages[:-1],  # All but last message
+        *request.messages[:-1],
         {"role": "system", "content": context_reminder},
-        request.messages[-1],  # Last user message
+        request.messages[-1],
     ]
     request = request.override(messages=messages)
 
