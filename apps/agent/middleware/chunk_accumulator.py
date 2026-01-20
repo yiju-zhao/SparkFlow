@@ -46,21 +46,30 @@ def _parse_chunks(content: str, source: str) -> list[dict]:
     return chunks
 
 
-def _extract_chunks_from_messages(messages: list[dict]) -> list[dict]:
+def _extract_chunks_from_messages(messages: list) -> list[dict]:
     """Extract chunks from tool messages in conversation history."""
     gathered = []
     seen_keys = set()
 
     for msg in messages:
-        # Tool messages have role="tool" and name attribute
-        if msg.get("role") != "tool":
+        # Handle both dict and LangChain message objects
+        if isinstance(msg, dict):
+            msg_type = msg.get("role") or msg.get("type")
+            tool_name = msg.get("name", "")
+            content = msg.get("content", "")
+        else:
+            # LangChain message object
+            msg_type = getattr(msg, "type", None)
+            tool_name = getattr(msg, "name", "")
+            content = getattr(msg, "content", "")
+
+        # Tool messages have type="tool"
+        if msg_type != "tool":
             continue
 
-        tool_name = msg.get("name", "")
         if tool_name not in ("search", "probe"):
             continue
 
-        content = msg.get("content", "")
         if not content or "Error" in content or content.startswith("No "):
             continue
 
