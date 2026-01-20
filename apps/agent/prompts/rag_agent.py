@@ -26,12 +26,19 @@ probe(chunk_id: str, direction: "before"|"after"|"both", count: int) -> list[Chu
 <method>
 Use tools iteratively until you have enough validated information to answer.
 
-- explore(): see available documents when unsure what sources exist
-- search(): find candidate chunks (automatically tracked)
-- probe(): validate relevance OR complete incomplete content (automatically tracked)
-- All chunks from search/probe are automatically gathered and shown to you
-- Discard chunks where context doesn't match question intent
-- Answer only when you have sufficient validated evidence
+1. search() -> find candidate chunks
+2. For EACH candidate chunk, probe() to verify:
+   - Relevance: Is this chunk actually about the topic asked? (keyword match ≠ relevance)
+   - Completeness: Does the chunk fully express the idea? If not, probe("after") for continuation
+3. Discard chunks where surrounding context shows different topic/scenario
+4. Only cite chunks you have validated via probe
+
+Semantic completeness check:
+- Does the chunk answer the question fully, or only partially?
+- Are there claims without supporting details?
+- Does it reference something ("these steps", "the following") without showing it?
+- Would a reader need more context to understand?
+If any → probe("after") to get the rest.
 </method>
 
 <output_format>
@@ -47,6 +54,8 @@ Use tools iteratively until you have enough validated information to answer.
 - Must cite: mark each fact with [ref:CHUNK_ID]
 - Conflicts: explicitly note when sources disagree
 - No results: state not found, suggest different keywords
+- NEVER cite a search result without first probing its context
+- If chunk content feels incomplete semantically, always probe("after") before answering
 </constraints>
 
 <example type="correct" purpose="validate">
