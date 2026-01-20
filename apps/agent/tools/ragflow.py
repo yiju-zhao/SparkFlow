@@ -181,17 +181,22 @@ def search(query: str, config: RunnableConfig) -> str:
         chunks = _retrieve(client, query, dataset_ids)
         if not chunks:
             return "No relevant information found. Try different keywords."
-        
+
         results = []
         for chunk in chunks:
             content = getattr(chunk, 'content', str(chunk))
             doc_name = getattr(chunk, 'document_name', 'Unknown')
             chunk_id = getattr(chunk, 'id', '')
-            
-            # Format: [Doc Name] #chunk_id
-            header = f"[{doc_name}] #{chunk_id}" if chunk_id else f"[{doc_name}]"
+            doc_id = getattr(chunk, 'document_id', '')
+            position = getattr(chunk, 'position', None)
+
+            # Format: [Doc Name | doc:ID] #chunk_id pos=N
+            doc_id_str = f" | doc:{doc_id}" if doc_id else ""
+            pos_val = position[0] if isinstance(position, list) else position
+            pos_str = f" pos={pos_val}" if pos_val is not None else ""
+            header = f"[{doc_name}{doc_id_str}] #{chunk_id}{pos_str}" if chunk_id else f"[{doc_name}{doc_id_str}]"
             results.append(f"{header}\n{content}")
-        
+
         return "\n\n---\n\n".join(results)
         
     except Exception as e:
@@ -230,15 +235,24 @@ def probe(
     
     try:
         chunks, doc_name = _get_chunks_around(client, dataset_ids, chunk_id, direction, count)
-        
+
         if not chunks:
             return f"No {direction} chunks found for #{chunk_id}."
-        
-        results = [f"== Probed Context ({direction} #{chunk_id}) from [{doc_name}] ==\n"]
+
+        # Same format as search: [Doc Name | doc:ID] #chunk_id pos=N
+        results = []
         for chunk in chunks:
             content = getattr(chunk, 'content', str(chunk))
-            results.append(content)
-        
+            cid = getattr(chunk, 'id', '')
+            doc_id = getattr(chunk, 'document_id', '')
+            position = getattr(chunk, 'position', None)
+
+            doc_id_str = f" | doc:{doc_id}" if doc_id else ""
+            pos_val = position[0] if isinstance(position, list) else position
+            pos_str = f" pos={pos_val}" if pos_val is not None else ""
+            header = f"[{doc_name}{doc_id_str}] #{cid}{pos_str}"
+            results.append(f"{header}\n{content}")
+
         return "\n\n---\n\n".join(results)
         
     except Exception as e:
