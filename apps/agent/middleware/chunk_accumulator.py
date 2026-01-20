@@ -139,7 +139,7 @@ def _organize_chunks(chunks: list[dict]) -> str:
 
 
 @wrap_model_call
-def inject_gathered_chunks(
+async def inject_gathered_chunks(
     request: ModelRequest,
     handler: Callable[[ModelRequest], ModelResponse]
 ) -> ModelResponse:
@@ -148,7 +148,7 @@ def inject_gathered_chunks(
     gathered = _extract_chunks_from_messages(request.messages)
 
     if not gathered:
-        return handler(request)
+        return await handler(request)
 
     organized = _organize_chunks(gathered)
     chunk_ids = list({c["chunk_id"] for c in gathered})
@@ -167,4 +167,4 @@ Use [ref:CHUNK_ID] to cite. Only cite chunks that are relevant to the question."
     ]
     request = request.override(messages=messages)
 
-    return handler(request)
+    return await handler(request)
