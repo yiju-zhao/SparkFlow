@@ -168,11 +168,10 @@ async def inject_gathered_chunks(
 
 Use [ref:CHUNK_ID] to cite. Only cite chunks that are relevant to the question."""
 
-    # Inject as system message before the last message
+    # Append context at end (as user message to avoid breaking tool_call sequences)
     messages = [
-        *request.messages[:-1],
-        {"role": "system", "content": context_reminder},
-        request.messages[-1],
+        *request.messages,
+        {"role": "user", "content": context_reminder},
     ]
     request = request.override(messages=messages)
 
