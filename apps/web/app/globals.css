@@ -157,6 +157,15 @@
     background-color: rgba(255, 255, 255, 0.4);
   }
 
+  /* Prevent layout shift when scrollbar appears/disappears */
+  /* Apply to ALL scrollable containers globally */
+  .overflow-y-auto,
+  .overflow-y-scroll,
+  [class*="overflow-y-auto"],
+  [class*="overflow-y-scroll"] {
+    scrollbar-gutter: stable;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }

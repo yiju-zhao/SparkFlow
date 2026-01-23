@@ -67,7 +67,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
   const [input, setInput] = useState("");
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevIsLoadingRef = useRef<boolean>(false);
 
   // LangGraph stream hook - follows docs pattern
@@ -92,9 +92,14 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
     },
   });
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change (only if there are messages)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const hasMessages = sessionMessages.length > 0 || stream.messages.length > 0;
+    const container = messagesContainerRef.current;
+    if (hasMessages && container) {
+      // Use scrollTop instead of scrollIntoView to prevent affecting parent layouts
+      container.scrollTop = container.scrollHeight;
+    }
   }, [sessionMessages, stream.messages]);
 
   // Save messages to database when streaming completes
@@ -403,7 +408,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
       )}
 
       {/* Messages - using stream.messages directly */}
-      <div className={`min-w-0 flex-1 overflow-x-hidden p-4 space-y-4 ${displayMessages.length > 0 ? 'overflow-y-auto' : 'overflow-y-hidden'}`}>
+      <div ref={messagesContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4">
         {displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
@@ -521,7 +526,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
           </div>
         ) : null}
 
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
