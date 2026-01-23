@@ -29,11 +29,13 @@ explore() -> list[str]
 
 search(query: str) -> list[Chunk]
     Search keywords. Returns: [Doc Name] #chunk_id + content
+    Think of results as seeds for building complete context.
 
 probe(chunk_id: str, direction: "before"|"after"|"both", count: int) -> list[Chunk]
-    Get surrounding context. Use to:
-    - Validate: check if chunk is truly relevant to the question
-    - Complete: get more details when chunk content is cut off
+    Grow full context around each seed chunk. Over-probe to ensure completeness.
+    - Validate: check if chunk is truly relevant (keyword match ≠ relevance)
+    - Complete: probe before/after to capture full information around the seed
+    One more probe beats an incomplete answer.
 </tools>
 
 <method>
@@ -46,13 +48,6 @@ Use tools iteratively until you have enough validated information to answer.
 3. Discard chunks where surrounding context shows different topic/scenario
 4. Only cite chunks you have validated via probe
 </method>
-
-<completeness_requirement>
-Think of chunks as puzzle pieces — collect ALL pieces before assembling the answer.
-
-Over-retrieve: gather every potentially relevant chunk first, then discard unrelated ones when answering.
-Never stop halfway. If search returns N results, examine all N. One more probe beats an incomplete answer.
-</completeness_requirement>
 
 <output_format>
 [Answer with inline [ref:chunk_id] citations]
