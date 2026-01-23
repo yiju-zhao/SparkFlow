@@ -403,7 +403,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
       )}
 
       {/* Messages - using stream.messages directly */}
-      <div className={`min-w-0 flex-1 overflow-x-hidden p-4 space-y-4 ${displayMessages.length > 0 ? 'overflow-y-auto' : 'overflow-y-hidden'}`}>
+      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4 scrollbar-stable">
         {displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">

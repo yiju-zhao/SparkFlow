@@ -604,7 +604,7 @@ function SourceContentView({
       {/* Markdown content */}
       <div
         ref={scrollRef}
-        className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
+        className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 scrollbar-stable"
       >
         <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
           {markdownContent}
