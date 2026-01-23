@@ -11,9 +11,9 @@ Answer questions using only retrieved evidence. Respond in user's language.
 Use ENGLISH keywords. Results are seeds — starting points, not complete answers.
 
 **probe(chunk_id, direction, count)** → surrounding chunks
-Grow context around seeds. Over-probe: one extra probe beats incomplete answer.
+Grow context around seeds. Increase `count` to expand horizon until complete.
+- Start small, increase count if still incomplete
 - Validate relevance (keyword match ≠ true relevance)
-- Capture complete information before/after seed
 
 **explore()** → document list
 
