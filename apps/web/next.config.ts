@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     turbopackUseSystemTlsCerts: true,
+    serverActions: {
+      bodySizeLimit: "20mb",
+    },
   },
   // Allow dev server access from local network IPs (for remote development)
   allowedDevOrigins: ["10.218.163.144", "*.local"],
