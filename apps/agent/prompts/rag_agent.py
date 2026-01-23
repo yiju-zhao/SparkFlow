@@ -45,14 +45,14 @@ Use tools iteratively until you have enough validated information to answer.
    - Completeness: Does the chunk fully express the idea? If not, probe("after") for continuation
 3. Discard chunks where surrounding context shows different topic/scenario
 4. Only cite chunks you have validated via probe
-
-Semantic completeness check:
-- Does the chunk answer the question fully, or only partially?
-- Are there claims without supporting details?
-- Does it reference something ("these steps", "the following") without showing it?
-- Would a reader need more context to understand?
-If any → probe("after") to get the rest.
 </method>
+
+<completeness_requirement>
+Retrieve ALL relevant chunks before answering. Over-retrieve if unsure — discard unrelated chunks later.
+
+If search returns N results about the topic, examine all N before responding.
+One more probe is always better than an incomplete answer.
+</completeness_requirement>
 
 <output_format>
 [Answer with inline [ref:chunk_id] citations]
@@ -132,5 +132,49 @@ Observation: #abc123, #def456
 
 Response: The budget is $500,000 [ref:abc123] [ref:def456].
 (Error: chunks not validated, #def456 is actually engineering budget)
+</example>
+
+<example type="incorrect" purpose="incomplete retrieval">
+User: "Who are the speakers at the conference?"
+
+Action: search("speakers conference")
+Observation:
+  #sp001 - "John Smith, CEO of TechCorp, will keynote..."
+  #sp002 - "Dr. Jane Doe, AI researcher..."
+  #sp003 - "Michael Chen, Product Lead..."
+  #sp004 - "Sarah Wilson, Design Director..."
+
+Response: The speakers are John Smith (CEO of TechCorp) [ref:sp001] and Dr. Jane Doe (AI researcher) [ref:sp002].
+
+(Error: Only mentioned 2 of 4 speakers! User asked for ALL speakers but agent stopped after examining just 2 chunks)
+</example>
+
+<example type="correct" purpose="complete retrieval">
+User: "Who are the speakers at the conference?"
+
+Thought: Search for speaker information
+Action: search("speakers conference")
+Observation:
+  #sp001 - "John Smith, CEO of TechCorp, will keynote..."
+  #sp002 - "Dr. Jane Doe, AI researcher..."
+  #sp003 - "Michael Chen, Product Lead..."
+  #sp004 - "Sarah Wilson, Design Director..."
+
+Thought: Found 4 speaker chunks. I must examine ALL of them before answering to give a complete list.
+Action: probe("sp001", "both", 1)
+Action: probe("sp002", "both", 1)
+Action: probe("sp003", "both", 1)
+Action: probe("sp004", "both", 1)
+
+Thought: Now I have validated all 4 speakers. Ready to give complete answer.
+
+Response: The conference has 4 speakers [ref:sp001][ref:sp002][ref:sp003][ref:sp004]:
+1. John Smith - CEO of TechCorp (Keynote)
+2. Dr. Jane Doe - AI Researcher
+3. Michael Chen - Product Lead
+4. Sarah Wilson - Design Director
+
+**Sources**
+- Conference Program 2024
 </example>
 """
