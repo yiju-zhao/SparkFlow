@@ -158,7 +158,11 @@
   }
 
   /* Prevent layout shift when scrollbar appears/disappears */
-  .scrollbar-stable {
+  /* Apply to ALL scrollable containers globally */
+  .overflow-y-auto,
+  .overflow-y-scroll,
+  [class*="overflow-y-auto"],
+  [class*="overflow-y-scroll"] {
     scrollbar-gutter: stable;
   }
 

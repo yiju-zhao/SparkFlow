@@ -92,9 +92,12 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
     },
   });
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change (only if there are messages)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const hasMessages = sessionMessages.length > 0 || stream.messages.length > 0;
+    if (hasMessages) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [sessionMessages, stream.messages]);
 
   // Save messages to database when streaming completes
@@ -403,7 +406,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
       )}
 
       {/* Messages - using stream.messages directly */}
-      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4 scrollbar-stable">
+      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4">
         {displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
