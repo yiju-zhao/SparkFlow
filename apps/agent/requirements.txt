@@ -4,6 +4,7 @@ langchain
 langchain-openai
 langchain-core
 langgraph-cli[inmem]
+deepagents
 
 # RAGFlow Python SDK
 ragflow-sdk

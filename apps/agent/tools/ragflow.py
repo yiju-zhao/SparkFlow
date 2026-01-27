@@ -13,8 +13,7 @@ import logging
 import os
 from typing import Literal
 
-from langchain.tools import tool
-from langchain_core.runnables import RunnableConfig
+from langchain.tools import tool, ToolRuntime
 from ragflow_sdk import RAGFlow
 
 logger = logging.getLogger(__name__)
@@ -125,15 +124,16 @@ def _get_chunks_around(
 # =============================================================================
 
 @tool
-def explore(config: RunnableConfig = None) -> str:
+def explore(runtime: ToolRuntime = None) -> str:
     """Explore the knowledge base to see available documents.
-    
+
     Use this to understand what sources are available before searching.
     """
     client = _get_client()
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
-    
+
+    config = runtime.config if runtime else None
     dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
     if not dataset_ids:
         return "No datasets configured."
@@ -161,7 +161,7 @@ def explore(config: RunnableConfig = None) -> str:
 
 
 @tool
-def search(query: str, config: RunnableConfig) -> str:
+def search(query: str, runtime: ToolRuntime) -> str:
     """Search the knowledge base for relevant information.
 
     Returns chunks with chunk IDs that can be used with probe() to validate relevance.
@@ -172,8 +172,9 @@ def search(query: str, config: RunnableConfig) -> str:
     client = _get_client()
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
-    
-    dataset_ids = config.get("configurable", {}).get("dataset_ids", [])
+
+    config = runtime.config if runtime else None
+    dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
     if not dataset_ids:
         return "No datasets configured. Use explore() to see available datasets."
     
@@ -209,7 +210,7 @@ def probe(
     chunk_id: str,
     direction: str = "both",
     count: int = 2,
-    config: RunnableConfig = None
+    runtime: ToolRuntime = None
 ) -> str:
     """Probe surrounding context to validate chunk relevance.
 
@@ -224,7 +225,8 @@ def probe(
     client = _get_client()
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
-    
+
+    config = runtime.config if runtime else None
     dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
     if not dataset_ids:
         return "No datasets configured."
