@@ -10,8 +10,7 @@ class RAGAgentConfig:
     model_provider: str = "openai"
     model_name: str = "gpt-5.2"
 
-    # Prompt optimizer settings
-    optimizer_model: str = "gpt-4.1"
+    # Prompt optimizer settings (uses DeepSeek)
     enable_prompt_optimizer: bool = True
 
 

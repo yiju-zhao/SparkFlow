@@ -9,10 +9,11 @@ Uses @wrap_model_call to intercept the first model call and optimize
 the user's question before it reaches the main agent.
 """
 
+import os
 from typing import Callable
 
 from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
-from langchain_openai import ChatOpenAI
+from openai import AsyncOpenAI
 
 from config.rag_agent import RAG_AGENT_CONFIG
 from prompts.prompt_optimizer import PROMPT_OPTIMIZER_SYSTEM, PROMPT_OPTIMIZER_USER_TEMPLATE
@@ -49,19 +50,22 @@ def _get_latest_user_message(messages: list) -> tuple[int, str | None]:
 
 
 async def _optimize_question(question: str) -> str:
-    """Call optimizer LLM to rewrite the question."""
-    llm = ChatOpenAI(
-        model=RAG_AGENT_CONFIG.optimizer_model,
+    """Call optimizer LLM (DeepSeek) to rewrite the question."""
+    client = AsyncOpenAI(
+        api_key=os.environ.get("DEEPSEEK_API_KEY"),
+        base_url="https://api.deepseek.com",
+    )
+
+    response = await client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": PROMPT_OPTIMIZER_SYSTEM},
+            {"role": "user", "content": PROMPT_OPTIMIZER_USER_TEMPLATE.format(question=question)},
+        ],
         temperature=0,
     )
 
-    messages = [
-        {"role": "system", "content": PROMPT_OPTIMIZER_SYSTEM},
-        {"role": "user", "content": PROMPT_OPTIMIZER_USER_TEMPLATE.format(question=question)},
-    ]
-
-    response = await llm.ainvoke(messages)
-    return response.content.strip()
+    return response.choices[0].message.content.strip()
 
 
 @wrap_model_call
