@@ -36,16 +36,10 @@ def get_tools() -> list:
         return []
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, _load(PROMPT_OPTIMIZER_MCP_URL))
-                return future.result()
-        else:
-            return loop.run_until_complete(_load(PROMPT_OPTIMIZER_MCP_URL))
-    except RuntimeError:
         return asyncio.run(_load(PROMPT_OPTIMIZER_MCP_URL))
+    except Exception as e:
+        logger.error(f"Failed to load prompt optimizer tools: {e}")
+        return []
 
 
 async def _load(url: str) -> list:
@@ -54,7 +48,7 @@ async def _load(url: str) -> list:
     try:
         client = MultiServerMCPClient({
             "prompt_optimizer": {
-                "transport": "streamable_http",
+                "transport": "http",
                 "url": url,
             }
         })
