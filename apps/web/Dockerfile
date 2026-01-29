@@ -4,12 +4,15 @@ WORKDIR /app
 
 # Builder stage
 FROM base AS builder
+
+# Skip SSL verification for npm/prisma during build
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-# Install dependencies and generate Prisma client in same stage
-# This ensures WASM modules are properly available for Prisma 7.x
+# Install dependencies and generate Prisma client
 RUN npm ci && npx prisma generate
 
 COPY . .
