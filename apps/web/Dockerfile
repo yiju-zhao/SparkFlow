@@ -1,18 +1,12 @@
 # Base stage
-FROM node:20-alpine AS base
+FROM node:20 AS base
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
 
 # Dependencies stage
 FROM base AS deps
-ARG NODE_ENV=production
 COPY package.json package-lock.json* ./
-# Use npm ci for production (faster, stricter), npm install for dev (avoids Alpine bug in some cases)
-RUN if [ "$NODE_ENV" = "development" ]; then \
-    npm cache clean --force && npm install --no-audit; \
-    else \
-    npm ci --only=production; \
-    fi
+# Use npm ci for consistent, deterministic installs in all environments
+RUN npm ci
 
 # Builder stage
 FROM base AS builder
@@ -32,8 +26,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd -r nodejs && useradd -r -g nodejs nextjs
 
 # Copy built application
 COPY --from=builder /app/public ./public

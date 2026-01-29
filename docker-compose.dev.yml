@@ -21,8 +21,6 @@ services:
   web:
     build:
       context: ./apps/web
-      args:
-        NODE_ENV: development
     ports:
       - "3003:3001" # External 3003 -> Container 3001
     volumes:

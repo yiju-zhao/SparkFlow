@@ -1,4 +1,3 @@
-
 # Production overrides
 # Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
@@ -20,9 +19,11 @@ services:
     # No external port
 
   web:
+    build:
+      context: ./apps/web
     restart: always
     ports:
-      - "3003:3001"  # External 3003 -> Container 3001
+      - "3003:3001" # External 3003 -> Container 3001
     environment:
       - NODE_ENV=production
     deploy:
@@ -33,4 +34,4 @@ services:
   minio:
     restart: always
     ports:
-      - "9004:9000"  # API only, no console in prod
+      - "9004:9000" # API only, no console in prod
