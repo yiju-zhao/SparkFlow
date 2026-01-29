@@ -7,6 +7,9 @@ langgraph-cli[inmem]
 langchain-mcp-adapters
 deepagents
 
+# LangGraph Checkpointing
+langgraph-checkpoint-postgres
+
 # RAGFlow Python SDK
 ragflow-sdk
 

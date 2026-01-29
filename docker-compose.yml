@@ -1,20 +1,24 @@
 version: '3.8'
 
+# Base configuration - shared between dev and prod
+# Usage:
+#   Dev:  docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   Prod: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:17-alpine
     container_name: sparkflow-postgres
     environment:
-      POSTGRES_USER: sparkflow
-      POSTGRES_PASSWORD: sparkflow
-      POSTGRES_DB: sparkflow
+      POSTGRES_USER: ${POSTGRES_USER:-sparkflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sparkflow}
+      POSTGRES_DB: ${POSTGRES_DB:-sparkflow}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sparkflow"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sparkflow}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,10 +32,11 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL:-http://ragflow:9380}
+      - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL}
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
-    ports:
-      - "2024:2024"
+      - RAGFLOW_TOC_ENHANCE=${RAGFLOW_TOC_ENHANCE:-false}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - CHECKPOINT_DB_URL=postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/sparkflow_checkpoints
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,31 +47,44 @@ services:
     container_name: sparkflow-crawl4ai
     environment:
       - CRAWL4AI_API_TOKEN=${CRAWL4AI_API_TOKEN:-}
-    ports:
-      - "9000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # Next.js Web App (for production)
+  # Next.js Web App
   web:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
     container_name: sparkflow-web
     environment:
+      # Auth
       - NEXTAUTH_SECRET=${JWT_SECRET}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3001}
-      - DATABASE_URL=postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
-      - NEXT_PUBLIC_LANGGRAPH_API_URL=http://langgraph:2024
-      - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL:-http://ragflow:9380}
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/sparkflow
+      # Services
+      - NEXT_PUBLIC_LANGGRAPH_API_URL=${NEXT_PUBLIC_LANGGRAPH_API_URL:-http://localhost:2024}
+      - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL}
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
       - CRAWL4AI_BASE_URL=http://crawl4ai:8000
       - CRAWL4AI_API_KEY=${CRAWL4AI_API_TOKEN:-}
-    ports:
-      - "3001:3001"
+      - MINERU_BASE_URL=${MINERU_BASE_URL:-http://mineru:8000}
+      # API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # RAGFlow Config
+      - RAGFLOW_EMBEDDING_MODEL=${RAGFLOW_EMBEDDING_MODEL:-BAAI/bge-large-en-v1.5@BAAI}
+      - RAGFLOW_CHUNK_SIZE=${RAGFLOW_CHUNK_SIZE:-1024}
+      - RAGFLOW_AUTO_KEYWORDS=${RAGFLOW_AUTO_KEYWORDS:-0}
+      - RAGFLOW_AUTO_QUESTIONS=${RAGFLOW_AUTO_QUESTIONS:-0}
+      # S3/MinIO
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minioadmin}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-minioadmin}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-sparkflow-images}
+      - S3_REGION=${S3_REGION:-us-east-1}
     depends_on:
       - postgres
       - langgraph
@@ -81,13 +99,10 @@ services:
       minio server /data --console-address ':9001'
       "
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - minio_data:/data
-    ports:
-      - "9004:9000"  # API
-      - "9005:9001"  # Console
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s

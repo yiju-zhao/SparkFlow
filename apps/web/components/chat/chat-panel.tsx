@@ -193,6 +193,24 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
 
 
   // Save AI response to Notes panel
+  // Optimize prompt for better RAG search
+  const optimizePrompt = async (content: string): Promise<string> => {
+    try {
+      const res = await fetch("/api/chat/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const { optimized } = await res.json();
+        if (optimized) return optimized;
+      }
+    } catch {
+      // Fall back to original
+    }
+    return content;
+  };
+
   const handleSaveToNotes = useCallback(
     async (messageId: string, content: string) => {
       if (savingNoteId) return;
@@ -310,9 +328,10 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
       }
       setStreamSessionId(targetSessionId ?? null);
 
-      // Submit to LangGraph with config for dataset
+      // Optimize prompt for better RAG search, then submit to LangGraph
+      const optimizedMessage = await optimizePrompt(message);
       stream.submit(
-        { messages: [{ type: "human", content: message }] },
+        { messages: [{ type: "human", content: optimizedMessage }] },
         {
           config: {
             configurable: {

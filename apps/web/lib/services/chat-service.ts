@@ -4,18 +4,10 @@ import { getNextMessageOrder } from "@/lib/utils/message-utils";
 import { randomUUID } from "crypto";
 import type { ChatSession, ChatMessage } from "@prisma/client";
 
-const LANGGRAPH_API_URL =
-  process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
-
 interface GetOrCreateSessionOptions {
   sessionId?: string;
   newSession?: boolean;
   title?: string;
-}
-
-interface IncomingMessage {
-  role: "user" | "assistant";
-  content: string;
 }
 
 class ChatService {
@@ -147,47 +139,15 @@ class ChatService {
   }
 
   /**
-   * Call the LangGraph agent and return the response.
+   * Generate a session title from a message.
    */
-  async callAgent(
-    datasetId: string,
-    sessionId: string,
-    message: string,
-    messages: IncomingMessage[],
-    userId: string
-  ): Promise<Response> {
-    const response = await fetch(`${LANGGRAPH_API_URL}/runs/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${userId}`,
-      },
-      body: JSON.stringify({
-        dataset_id: datasetId,
-        session_id: sessionId,
-        message,
-        messages: messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-      }),
-    });
-
-    return response;
-  }
-
-  /**
-   * Generate a session title from the first user message.
-   */
-  generateSessionTitle(messages: IncomingMessage[]): string {
-    const firstUserMsg = messages.find((m) => m.role === "user");
-    if (!firstUserMsg?.content) return "New Chat";
-
-    const title = firstUserMsg.content.trim();
+  generateSessionTitle(content: string): string {
+    if (!content) return "New Chat";
+    const title = content.trim();
     return title.length > 50 ? `${title.substring(0, 50)}...` : title;
   }
 }
 
 export const chatService = new ChatService();
 export { ChatService };
-export type { IncomingMessage, GetOrCreateSessionOptions };
+export type { GetOrCreateSessionOptions };

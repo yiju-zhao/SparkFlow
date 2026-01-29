@@ -1,0 +1,37 @@
+version: '3.8'
+
+# Production overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    restart: always
+    # No external port exposed in production
+
+  langgraph:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    # No external port - accessed via internal network
+
+  crawl4ai:
+    restart: always
+    # No external port
+
+  web:
+    restart: always
+    ports:
+      - "3001:3001"  # Only web is exposed externally
+    environment:
+      - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  minio:
+    restart: always
+    ports:
+      - "9004:9000"  # API only, no console in prod

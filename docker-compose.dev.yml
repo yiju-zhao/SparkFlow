@@ -1,0 +1,36 @@
+version: '3.8'
+
+# Development overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  postgres:
+    ports:
+      - "5433:5432"  # Expose for local dev tools
+
+  langgraph:
+    ports:
+      - "2024:2024"  # Expose for local web dev
+    volumes:
+      - ./apps/agent:/app  # Hot reload agent code
+    environment:
+      - DEBUG=true
+
+  crawl4ai:
+    ports:
+      - "9000:8000"
+
+  web:
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./apps/web:/app  # Hot reload web code
+      - /app/node_modules  # Preserve node_modules
+      - /app/.next  # Preserve build cache
+    environment:
+      - NODE_ENV=development
+
+  minio:
+    ports:
+      - "9004:9000"  # API
+      - "9005:9001"  # Console
