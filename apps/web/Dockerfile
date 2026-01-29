@@ -1,13 +1,18 @@
 # Base stage
-FROM node:22-alpine AS base
+FROM node:20-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 # Dependencies stage
 FROM base AS deps
+ARG NODE_ENV=production
 COPY package.json package-lock.json* ./
-# Clean cache and use npm install instead of ci to avoid Alpine npm bug
-RUN npm cache clean --force && npm install --no-audit
+# Use npm ci for production (faster, stricter), npm install for dev (avoids Alpine bug in some cases)
+RUN if [ "$NODE_ENV" = "development" ]; then \
+    npm cache clean --force && npm install --no-audit; \
+    else \
+    npm ci --only=production; \
+    fi
 
 # Builder stage
 FROM base AS builder

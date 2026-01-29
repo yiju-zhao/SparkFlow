@@ -6,31 +6,35 @@ version: '3.8'
 services:
   postgres:
     ports:
-      - "5433:5432"  # Expose for local dev tools
+      - "5433:5432" # Expose for local dev tools
 
   langgraph:
     ports:
-      - "2024:2024"  # Expose for local web dev
+      - "2024:2024" # Expose for local web dev
     volumes:
-      - ./apps/agent:/app  # Hot reload agent code
+      - ./apps/agent:/app # Hot reload agent code
     environment:
       - DEBUG=true
 
   crawl4ai:
     ports:
-      - "9000:8000"
+      - "11235:11235"
 
   web:
+    build:
+      context: ./apps/web
+      args:
+        NODE_ENV: development
     ports:
-      - "3003:3001"  # External 3003 -> Container 3001
+      - "3003:3001" # External 3003 -> Container 3001
     volumes:
-      - ./apps/web:/app  # Hot reload web code
-      - /app/node_modules  # Preserve node_modules
-      - /app/.next  # Preserve build cache
+      - ./apps/web:/app # Hot reload web code
+      - /app/node_modules # Preserve node_modules
+      - /app/.next # Preserve build cache
     environment:
       - NODE_ENV=development
 
   minio:
     ports:
-      - "9004:9000"  # API
-      - "9005:9001"  # Console
+      - "9004:9000" # API
+      - "9005:9001" # Console
