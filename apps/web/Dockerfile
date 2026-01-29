@@ -6,6 +6,7 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json package-lock.json* ./
 # Use npm ci for consistent, deterministic installs in all environments
+# The binaryTargets in schema.prisma will handle platform differences
 RUN npm ci
 
 # Builder stage
