@@ -1,57 +1,7 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { chatService } from "@/lib/services/chat-service";
+import { streamResponse } from "@/lib/helpers/responses";
 import { NextRequest } from "next/server";
-import { randomUUID } from "crypto";
-
-const LANGGRAPH_API_URL =
-  process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
-
-/**
- * Get or create the default chat session for a notebook.
- */
-async function getOrCreateChatSession(notebookId: string) {
-  // Try to find an active session
-  let session = await prisma.chatSession.findFirst({
-    where: {
-      notebookId,
-      status: "ACTIVE",
-    },
-    orderBy: { lastActivity: "desc" },
-  });
-
-  // Create one if none exists
-  if (!session) {
-    const newId = randomUUID();
-    session = await prisma.chatSession.create({
-      data: {
-        id: newId,
-        notebookId,
-        title: "Chat",
-        status: "ACTIVE",
-        ragflowAgentId: newId,
-      },
-    });
-  } else if (!session.ragflowAgentId) {
-    session = await prisma.chatSession.update({
-      where: { id: session.id },
-      data: { ragflowAgentId: session.id },
-    });
-  }
-
-  return session;
-}
-
-/**
- * Get the next message order for a session.
- */
-async function getNextMessageOrder(sessionId: string): Promise<number> {
-  const lastMessage = await prisma.chatMessage.findFirst({
-    where: { sessionId },
-    orderBy: { messageOrder: "desc" },
-    select: { messageOrder: true },
-  });
-  return (lastMessage?.messageOrder ?? -1) + 1;
-}
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -86,91 +36,38 @@ export async function POST(req: NextRequest) {
       return new Response("Last message must be from user", { status: 400 });
     }
 
-    // Determine which session to use
-    let chatSession;
-    if (newSession) {
-      // Create a brand new session
-      // Use the first user message for the title
-      const firstUserMsg = (messages as IncomingMessage[]).find((m) => m.role === "user");
-      let title = "New Chat";
-      if (firstUserMsg && firstUserMsg.content) {
-        title = firstUserMsg.content.trim();
-        if (title.length > 50) {
-          title = title.substring(0, 50) + "...";
-        }
-      }
+    // Optimize prompt for better RAG search
+    const optimizedQuery = await chatService.optimizePrompt(userMessage.content);
 
-      const newId = sessionId || randomUUID();
-      chatSession = await prisma.chatSession.create({
-        data: {
-          id: newId,
-          notebookId,
-          title,
-          status: "ACTIVE",
-          ragflowAgentId: newId,
-        },
-      });
-    } else if (sessionId) {
-      // Use specified session
-      chatSession = await prisma.chatSession.findUnique({
-        where: { id: sessionId },
-      });
-      if (!chatSession) {
-        return new Response("Session not found", { status: 404 });
-      }
-      // Backfill ragflowAgentId if missing
-      if (!chatSession.ragflowAgentId) {
-        await prisma.chatSession.update({
-          where: { id: chatSession.id },
-          data: { ragflowAgentId: chatSession.id },
-        });
-      }
-    } else {
-      // Resume or create default session
-      chatSession = await getOrCreateChatSession(notebookId);
-      if (!chatSession.ragflowAgentId) {
-        await prisma.chatSession.update({
-          where: { id: chatSession.id },
-          data: { ragflowAgentId: chatSession.id },
-        });
-      }
-    }
+    // Get or create chat session using service
+    const title = newSession
+      ? chatService.generateSessionTitle(messages as IncomingMessage[])
+      : undefined;
+
+    const chatSession = await chatService.getOrCreateSession(notebookId, {
+      sessionId,
+      newSession,
+      title,
+    });
 
     // Save user message to database
-    const userMsgOrder = await getNextMessageOrder(chatSession.id);
-    await prisma.chatMessage.create({
-      data: {
-        sessionId: chatSession.id,
-        notebookId,
-        sender: "USER",
-        content: userMessage.content,
-        messageOrder: userMsgOrder,
-      },
-    });
+    await chatService.saveUserMessage(
+      chatSession.id,
+      notebookId,
+      userMessage.content
+    );
 
     // Update session last activity
-    await prisma.chatSession.update({
-      where: { id: chatSession.id },
-      data: { lastActivity: new Date() },
-    });
+    await chatService.updateSessionActivity(chatSession.id);
 
-    // Proxy request to LangGraph agent backend
-    const agentResponse = await fetch(`${LANGGRAPH_API_URL}/runs/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.user.id}`,
-      },
-      body: JSON.stringify({
-        dataset_id: datasetId,
-        session_id: chatSession.id,
-        message: userMessage.content,
-        messages: messages.map((m: { role: string; content: string }) => ({
-          role: m.role,
-          content: m.content,
-        })),
-      }),
-    });
+    // Call the LangGraph agent
+    const agentResponse = await chatService.callAgent(
+      datasetId,
+      chatSession.id,
+      optimizedQuery,
+      messages as IncomingMessage[],
+      session.user.id
+    );
 
     if (!agentResponse.ok) {
       const errorText = await agentResponse.text();
@@ -225,7 +122,6 @@ export async function POST(req: NextRequest) {
             }
 
             // Forward to client in Vercel AI SDK format
-            // Convert SSE text events to Vercel AI SDK format
             const convertedChunks: string[] = [];
             for (const line of lines) {
               if (line.startsWith("data: ")) {
@@ -254,16 +150,11 @@ export async function POST(req: NextRequest) {
 
           // Save assistant message to database
           if (fullResponse) {
-            const assistantMsgOrder = await getNextMessageOrder(chatSession.id);
-            await prisma.chatMessage.create({
-              data: {
-                sessionId: chatSession.id,
-                notebookId,
-                sender: "ASSISTANT",
-                content: fullResponse,
-                messageOrder: assistantMsgOrder,
-              },
-            });
+            await chatService.saveAssistantMessage(
+              chatSession.id,
+              notebookId,
+              fullResponse
+            );
           }
 
           controller.close();
@@ -273,17 +164,12 @@ export async function POST(req: NextRequest) {
             error instanceof Error ? error.message : "Unknown error";
 
           // Save error message
-          const assistantMsgOrder = await getNextMessageOrder(chatSession.id);
-          await prisma.chatMessage.create({
-            data: {
-              sessionId: chatSession.id,
-              notebookId,
-              sender: "ASSISTANT",
-              content: `Error: ${errorMsg}`,
-              messageOrder: assistantMsgOrder,
-              metadata: { error: true },
-            },
-          });
+          await chatService.saveAssistantMessage(
+            chatSession.id,
+            notebookId,
+            `Error: ${errorMsg}`,
+            { error: true }
+          );
 
           controller.enqueue(
             encoder.encode(`0:${JSON.stringify(`Error: ${errorMsg}`)}\n`)
@@ -294,12 +180,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Vercel-AI-Data-Stream": "v1",
-      },
-    });
+    return streamResponse(stream);
   } catch (error) {
     console.error("Chat API error:", error);
     return new Response("Internal server error", { status: 500 });

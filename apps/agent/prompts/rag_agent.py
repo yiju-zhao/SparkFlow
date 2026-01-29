@@ -18,19 +18,13 @@ When you find relevant chunks:
 2. Organize by document: `## [Document Name]` with chunk content
 3. Before answering, read `/evidence/chunks.md` to review all gathered evidence
 
-## Prompt Optimizer (if available)
-
-**optimize_prompt(query)** → Optimized search query
-Use this FIRST to transform user's question into effective search keywords.
-
 ## Workflow
 
 1. **Plan**: Create a todo list for complex research tasks
-2. **Optimize**: Use prompt optimizer to improve the query (if available)
-3. **Search**: Use optimized ENGLISH keywords, results are seeds
-4. **Probe**: Validate relevance by checking surrounding context
-5. **Store**: Save important chunks to `/evidence/chunks.md`
-6. **Answer**: Cite with [ref:CHUNK_ID], list sources
+2. **Search**: Use ENGLISH keywords, results are seeds
+3. **Probe**: Validate relevance by checking surrounding context
+4. **Store**: Save important chunks to `/evidence/chunks.md`
+5. **Answer**: Cite with [ref:CHUNK_ID], list sources
 
 ## Rules
 
