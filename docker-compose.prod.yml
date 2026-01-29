@@ -23,7 +23,7 @@ services:
   web:
     restart: always
     ports:
-      - "3001:3001"  # Only web is exposed externally
+      - "3003:3001"  # External 3003 -> Container 3001
     environment:
       - NODE_ENV=production
     deploy:

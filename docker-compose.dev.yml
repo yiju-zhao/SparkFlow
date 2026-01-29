@@ -22,7 +22,7 @@ services:
 
   web:
     ports:
-      - "3001:3001"
+      - "3003:3001"  # External 3003 -> Container 3001
     volumes:
       - ./apps/web:/app  # Hot reload web code
       - /app/node_modules  # Preserve node_modules
