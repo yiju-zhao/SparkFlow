@@ -2,20 +2,17 @@
 FROM node:20 AS base
 WORKDIR /app
 
-# Dependencies stage
-FROM base AS deps
-COPY package.json package-lock.json* ./
-# Use npm ci for consistent, deterministic installs in all environments
-# The binaryTargets in schema.prisma will handle platform differences
-RUN npm ci
-
 # Builder stage
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
 
-# Generate Prisma client
-RUN npx prisma generate
+# Install dependencies and generate Prisma client in same stage
+# This ensures WASM modules are properly available for Prisma 7.x
+RUN npm ci && npx prisma generate
+
+COPY . .
 
 # Build the application
 ENV NEXT_TELEMETRY_DISABLED=1
