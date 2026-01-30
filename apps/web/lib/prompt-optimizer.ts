@@ -3,9 +3,7 @@
  * with LRU caching to reduce API calls.
  */
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const OPENAI_BASE_URL =
-  process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+import OpenAI from "openai";
 
 const OPTIMIZER_SYSTEM_PROMPT = `
   # Role: User Prompt General Optimization Expert
@@ -67,9 +65,6 @@ User prompt to optimize:
 
 Please output the optimized prompt:`;
 
-interface OpenAIChatResponse {
-  choices: Array<{ message: { content: string } }>;
-}
 
 /**
  * Simple LRU cache implementation for prompt optimization results.
@@ -124,13 +119,11 @@ class LRUCache<K, V> {
 }
 
 class PromptOptimizer {
-  private apiKey: string;
-  private baseUrl: string;
+  private client: OpenAI;
   private cache: LRUCache<string, string>;
 
-  constructor(apiKey?: string, baseUrl?: string) {
-    this.apiKey = apiKey || OPENAI_API_KEY;
-    this.baseUrl = baseUrl || OPENAI_BASE_URL;
+  constructor() {
+    this.client = new OpenAI();
     // Cache up to 500 prompts for 1 hour
     this.cache = new LRUCache<string, string>(500, 1000 * 60 * 60);
   }
@@ -147,36 +140,15 @@ class PromptOptimizer {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: OPTIMIZER_SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: OPTIMIZER_USER_PROMPT_TEMPLATE.replace(
-                "{prompt}",
-                prompt,
-              ),
-            },
-          ],
-          max_tokens: 100,
-          temperature: 0.3,
-        }),
+      const response = await this.client.responses.create({
+        model: "gpt-4o-mini",
+        instructions: OPTIMIZER_SYSTEM_PROMPT,
+        input: OPTIMIZER_USER_PROMPT_TEMPLATE.replace("{prompt}", prompt),
+        max_output_tokens: 100,
+        temperature: 0.3,
       });
 
-      if (!response.ok) {
-        console.error("Prompt optimizer API error:", response.status);
-        return prompt;
-      }
-
-      const data: OpenAIChatResponse = await response.json();
-      const optimized = data.choices?.[0]?.message?.content?.trim();
+      const optimized = response.output_text?.trim();
 
       if (optimized && optimized.length > 0) {
         console.log(`Prompt optimized: "${prompt}" -> "${optimized}"`);
