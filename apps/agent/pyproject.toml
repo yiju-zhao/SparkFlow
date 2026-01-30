@@ -1,0 +1,29 @@
+[project]
+name = "sparkflow-agent"
+version = "0.1.0"
+description = "SparkFlow RAG Agent"
+requires-python = ">=3.13"
+dependencies = [
+    "langgraph",
+    "langchain",
+    "langchain-openai",
+    "langchain-core",
+    "langgraph-cli[inmem]",
+    "langchain-mcp-adapters",
+    "deepagents",
+    "langgraph-checkpoint-postgres",
+    "psycopg[binary]",
+    "ragflow-sdk",
+    "openai",
+    "pydantic",
+    "python-dotenv",
+    "httpx",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["config*", "graphs*", "prompts*", "tools*"]
