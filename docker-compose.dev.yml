@@ -21,15 +21,17 @@ services:
   web:
     build:
       context: ./apps/web
+      target: dev # Use the dev stage with full node_modules
     ports:
       - "3003:3001" # External 3003 -> Container 3001
     volumes:
-      - ./apps/web:/app # Hot reload web code
-      - /app/node_modules # Preserve node_modules
-      - /app/.next # Preserve build cache
+      - ./apps/web/app:/app/app # Hot reload app directory only
+      - ./apps/web/components:/app/components
+      - ./apps/web/lib:/app/lib
+      - ./apps/web/public:/app/public
     environment:
       - NODE_ENV=development
-    command: npm run dev
+    # command already set in Dockerfile dev stage
 
   minio:
     ports:
