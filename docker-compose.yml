@@ -2,6 +2,9 @@
 # Usage:
 #   Dev:  docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 #   Prod: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Note: LangGraph agent runs separately via 'langgraph up' (port 8123)
+#   cd apps/agent && langgraph up
 
 services:
   # PostgreSQL Database
@@ -14,30 +17,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-sparkflow}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sparkflow}" ]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # LangGraph Agent
-  langgraph:
-    build:
-      context: ./apps/agent
-      dockerfile: Dockerfile
-    container_name: sparkflow-langgraph
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL}
-      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
-      - RAGFLOW_TOC_ENHANCE=${RAGFLOW_TOC_ENHANCE:-false}
-      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
-      - CHECKPOINT_DB_URL=postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/sparkflow_checkpoints
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   # Crawl4AI - Webpage to Markdown Converter
   crawl4ai:
@@ -65,7 +49,8 @@ services:
       # Database
       - DATABASE_URL=postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/sparkflow
       # Services
-      - NEXT_PUBLIC_LANGGRAPH_API_URL=${NEXT_PUBLIC_LANGGRAPH_API_URL:-http://localhost:2024}
+      # LangGraph runs separately via 'langgraph up' on port 8123
+      - NEXT_PUBLIC_LANGGRAPH_API_URL=${NEXT_PUBLIC_LANGGRAPH_API_URL:-http://localhost:8123}
       - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL}
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
       - CRAWL4AI_BASE_URL=${CRAWL4AI_BASE_URL:-http://localhost:11235}
@@ -85,7 +70,6 @@ services:
       - S3_REGION=${S3_REGION:-us-east-1}
     depends_on:
       - postgres
-      - langgraph
       - crawl4ai
 
   # MinIO Object Storage (S3-compatible)
