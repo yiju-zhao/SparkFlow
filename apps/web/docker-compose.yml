@@ -63,7 +63,7 @@ services:
       - AUTH_TRUST_HOST=true
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3003}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/sparkflow
+      - DATABASE_URL=${DATABASE_URL}
       - NEXT_PUBLIC_LANGGRAPH_API_URL=${NEXT_PUBLIC_LANGGRAPH_API_URL:-http://localhost:8123}
       - RAGFLOW_BASE_URL=${RAGFLOW_BASE_URL}
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
