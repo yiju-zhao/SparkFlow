@@ -6,29 +6,21 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432" # Expose for local dev tools
 
-  langgraph:
-    ports:
-      - "2024:2024" # Expose for local web dev
-    volumes:
-      - ./apps/agent:/app # Hot reload agent code
-    environment:
-      - DEBUG=true
-
   crawl4ai:
     ports:
       - "11235:11235"
 
   web:
     build:
-      context: ./apps/web
+      context: ..
       target: dev # Use the dev stage with full node_modules
     ports:
       - "3003:3001" # External 3003 -> Container 3001
     volumes:
-      - ./apps/web/app:/app/app # Hot reload app directory only
-      - ./apps/web/components:/app/components
-      - ./apps/web/lib:/app/lib
-      - ./apps/web/public:/app/public
+      - ../app:/app/app # Hot reload app directory only
+      - ../components:/app/components
+      - ../lib:/app/lib
+      - ../public:/app/public
     environment:
       - NODE_ENV=development
     # command already set in Dockerfile dev stage

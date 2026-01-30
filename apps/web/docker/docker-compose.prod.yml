@@ -6,21 +6,13 @@ services:
     restart: always
     # No external port exposed in production
 
-  langgraph:
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-    # No external port - accessed via internal network
-
   crawl4ai:
     restart: always
     # No external port
 
   web:
     build:
-      context: ./apps/web
+      context: ..
     restart: always
     ports:
       - "3003:3001" # External 3003 -> Container 3001

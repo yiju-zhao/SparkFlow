@@ -2,7 +2,7 @@
 name = "sparkflow-agent"
 version = "0.1.0"
 description = "SparkFlow RAG Agent"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "langgraph",
     "langchain",
