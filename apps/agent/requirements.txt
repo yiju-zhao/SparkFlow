@@ -9,6 +9,7 @@ deepagents
 
 # LangGraph Checkpointing
 langgraph-checkpoint-postgres
+psycopg[binary]
 
 # RAGFlow Python SDK
 ragflow-sdk
