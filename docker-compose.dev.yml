@@ -4,7 +4,7 @@
 services:
   postgres:
     ports:
-      - "5433:5432" # Expose for local dev tools
+      - "${POSTGRES_PORT:-5432}:5432" # Expose for local dev tools
 
   langgraph:
     ports:
