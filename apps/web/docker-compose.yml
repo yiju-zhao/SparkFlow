@@ -59,6 +59,7 @@ services:
     image: sparkflow-web
     container_name: sparkflow-web
     env_file: .env
+    command: sh -c "npx prisma db push --skip-generate && node server.js"
     environment:
       - AUTH_TRUST_HOST=true
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
