@@ -119,7 +119,7 @@ class LRUCache<K, V> {
 }
 
 // Environment variable to enable/disable prompt optimization
-const ENABLE_PROMPT_OPTIMIZER = process.env.ENABLE_PROMPT_OPTIMIZER === "false";
+const ENABLE_PROMPT_OPTIMIZER = process.env.ENABLE_PROMPT_OPTIMIZER === "true";
 
 class PromptOptimizer {
   private client: OpenAI;
@@ -148,13 +148,15 @@ class PromptOptimizer {
     }
 
     try {
-      const response = await this.client.responses.create({
-        model: "gpt-5.1",
-        instructions: OPTIMIZER_SYSTEM_PROMPT,
-        input: OPTIMIZER_USER_PROMPT_TEMPLATE.replace("{prompt}", prompt),
+      const response = await this.client.chat.completions.create({
+        model: "gpt-4.1",
+        messages: [
+          { role: "system", content: OPTIMIZER_SYSTEM_PROMPT },
+          { role: "user", content: OPTIMIZER_USER_PROMPT_TEMPLATE.replace("{prompt}", prompt) },
+        ],
       });
 
-      const optimized = response.output_text?.trim();
+      const optimized = response.choices[0]?.message?.content?.trim();
 
       if (optimized && optimized.length > 0) {
         console.log(`Prompt optimized: "${prompt}" -> "${optimized}"`);
