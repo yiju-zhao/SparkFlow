@@ -306,6 +306,7 @@ function SourceContentView({
 }) {
   const [showToc, setShowToc] = useState(false);
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
+  const [isContentReady, setIsContentReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -316,6 +317,18 @@ function SourceContentView({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
+    // Delay content rendering to allow panel animation to complete smoothly
+    setIsContentReady(false);
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        const raf3 = requestAnimationFrame(() => {
+          setIsContentReady(true);
+        });
+        return () => cancelAnimationFrame(raf3);
+      });
+      return () => cancelAnimationFrame(raf2);
+    });
+    return () => cancelAnimationFrame(raf1);
   }, [source.id]);
 
   const markdownContent = source.content || "No content available";
@@ -607,9 +620,21 @@ function SourceContentView({
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
         style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 500px' }}
       >
-        <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-          {deferredMarkdownContent}
-        </Markdown>
+        {isContentReady ? (
+          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+            {deferredMarkdownContent}
+          </Markdown>
+        ) : (
+          <div className="space-y-3 animate-pulse">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-4 rounded bg-muted"
+                style={{ width: `${Math.random() * 40 + 60}%` }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
