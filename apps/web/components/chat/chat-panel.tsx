@@ -67,6 +67,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
   const [input, setInput] = useState("");
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [isChatReady, setIsChatReady] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevIsLoadingRef = useRef<boolean>(false);
 
@@ -146,6 +147,28 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
 
   // Load stored messages for the active session
   const hasLoadedPreloaded = useRef(preloadedSessionId !== null && initialMessages.length > 0);
+
+  // Detect panel resize and delay rendering for smooth animation
+  useEffect(() => {
+    const handleResize = () => {
+      setIsChatReady(false);
+      const timer = setTimeout(() => {
+        setIsChatReady(true);
+      }, 110); // Match panel animation duration + buffer
+      return () => clearTimeout(timer);
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+
+    const container = messagesContainerRef.current?.parentElement;
+    if (container) {
+      resizeObserver.observe(container);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!activeSessionId) {
@@ -409,14 +432,28 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
 
       {/* Messages - using stream.messages directly */}
       <div ref={messagesContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4">
-        {displayMessages.length === 0 ? (
+        {isChatReady ? (
+          displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
               <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
               <p className="text-sm">Start a conversation</p>
             </div>
           </div>
-         ) : (
+        ) : null) : (
+          <div className="space-y-4 animate-pulse">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex w-full justify-center">
+                <div className="w-[70%] space-y-2">
+                  <div className="h-4 rounded bg-muted" style={{ width: `${Math.random() * 30 + 40}%` }} />
+                  <div className="h-4 rounded bg-muted" style={{ width: `${Math.random() * 50 + 40}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isChatReady && displayMessages.length > 0 && (
           // Filter to show human messages, in-progress tool calls, and final AI responses
           (() => {
             // Collect all tool_call_ids that have received responses
@@ -460,7 +497,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
               const hasInProgressToolCalls = inProgressToolCalls.length > 0;
 
               return (
-                <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`} style={{ contain: 'layout style' as any }}>
+                <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                     {isUser ? (
                       <p className="text-sm whitespace-pre-wrap">{content}</p>
