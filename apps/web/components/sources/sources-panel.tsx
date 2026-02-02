@@ -317,18 +317,12 @@ function SourceContentView({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
-    // Delay content rendering to allow panel animation to complete smoothly
+    // Delay content rendering to allow panel expansion animation to complete
     setIsContentReady(false);
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => {
-        const raf3 = requestAnimationFrame(() => {
-          setIsContentReady(true);
-        });
-        return () => cancelAnimationFrame(raf3);
-      });
-      return () => cancelAnimationFrame(raf2);
-    });
-    return () => cancelAnimationFrame(raf1);
+    const timer = setTimeout(() => {
+      setIsContentReady(true);
+    }, 250); // Wait for panel expansion animation to complete (200ms duration + buffer)
+    return () => clearTimeout(timer);
   }, [source.id]);
 
   const markdownContent = source.content || "No content available";
