@@ -181,9 +181,10 @@ function NotebookLayoutInner({
         <div
           className="h-full shrink-0 border-r border-border"
           style={{
-            width: `${sourcesPanelWidth}px`,
-            transform: sourcesPanelVisible ? 'translateX(0)' : 'translateX(-100%)',
-            transition: 'transform 100ms ease-in-out'
+            width: sourcesPanelVisible ? `${sourcesPanelWidth}px` : '0px',
+            minWidth: '0',
+            willChange: 'width',
+            transition: 'width 100ms ease-in-out'
           }}
         >
           <SourcesPanel
@@ -228,9 +229,10 @@ function NotebookLayoutInner({
         <div
           className="h-full shrink-0 border-l border-border"
           style={{
-            width: `${studioPanelWidth}px`,
-            transform: studioPanelVisible ? 'translateX(0)' : 'translateX(100%)',
-            transition: 'transform 100ms ease-in-out'
+            width: studioPanelVisible ? `${studioPanelWidth}px` : '0px',
+            minWidth: '0',
+            willChange: 'width',
+            transition: 'width 100ms ease-in-out'
           }}
         >
           <StudioPanel
