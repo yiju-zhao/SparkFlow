@@ -171,10 +171,10 @@ function NotebookLayoutInner({
           {leftPanelOpen && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: sourcesPanelWidth, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="h-full shrink-0 overflow-hidden border-r border-border"
+               animate={{ width: sourcesPanelWidth, opacity: 1 }}
+               exit={{ width: 0, opacity: 0 }}
+               transition={{ duration: 0.1, ease: "easeInOut" }}
+               className="h-full shrink-0 overflow-hidden border-r border-border"
             >
               <SourcesPanel
                 notebookId={notebook.id}
@@ -221,10 +221,10 @@ function NotebookLayoutInner({
           {rightPanelOpen && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: studioPanelWidth, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="h-full shrink-0 overflow-hidden border-l border-border"
+               animate={{ width: studioPanelWidth, opacity: 1 }}
+               exit={{ width: 0, opacity: 0 }}
+               transition={{ duration: 0.1, ease: "easeInOut" }}
+               className="h-full shrink-0 overflow-hidden border-l border-border"
             >
               <StudioPanel
                 notebookId={notebook.id}
