@@ -141,11 +141,9 @@ class PromptOptimizer {
 
     try {
       const response = await this.client.responses.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5.1",
         instructions: OPTIMIZER_SYSTEM_PROMPT,
         input: OPTIMIZER_USER_PROMPT_TEMPLATE.replace("{prompt}", prompt),
-        max_output_tokens: 100,
-        temperature: 0.3,
       });
 
       const optimized = response.output_text?.trim();
