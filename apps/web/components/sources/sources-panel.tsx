@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useDeferredValue } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -318,8 +318,8 @@ function SourceContentView({
     }
   }, [source.id]);
 
-  // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
+  const deferredMarkdownContent = useDeferredValue(markdownContent);
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
   const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
@@ -337,7 +337,7 @@ function SourceContentView({
     container.normalize();
 
     // Find start and end positions in source content
-    const normalizedContent = markdownContent.replace(/\s+/g, " ");
+    const normalizedContent = (deferredMarkdownContent || markdownContent).replace(/\s+/g, " ");
     const startMarker = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
     const endMarker = contentSuffix?.replace(/\s+/g, " ").trim().slice(-50) || null;
 
@@ -429,7 +429,7 @@ function SourceContentView({
       });
       container.normalize();
     }, 60000);
-  }, [markdownContent]);
+  }, [deferredMarkdownContent, markdownContent]);
 
   const scheduleScrollToChunk = useCallback((delayMs: number) => {
     if (!pendingNavigationRef.current) return;
@@ -487,7 +487,7 @@ function SourceContentView({
   // Extract headings from markdown
   useEffect(() => {
     const extractedHeadings: { id: string; text: string; level: number }[] = [];
-    const lines = markdownContent.split('\n');
+    const lines = (deferredMarkdownContent || markdownContent).split('\n');
 
     for (const line of lines) {
       const match = line.match(/^(#{1,3})\s+(.+)$/);
@@ -504,7 +504,7 @@ function SourceContentView({
     }
 
     setHeadings(extractedHeadings);
-  }, [markdownContent]);
+  }, [deferredMarkdownContent, markdownContent]);
 
   const scrollToHeading = (headingText: string) => {
     const container = scrollRef.current;
@@ -605,9 +605,10 @@ function SourceContentView({
       <div
         ref={scrollRef}
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
+        style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 500px' }}
       >
         <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-          {markdownContent}
+          {deferredMarkdownContent}
         </Markdown>
       </div>
     </div>
