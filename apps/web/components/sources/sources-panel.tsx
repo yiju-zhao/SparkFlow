@@ -321,7 +321,7 @@ function SourceContentView({
     setIsContentReady(false);
     const timer = setTimeout(() => {
       setIsContentReady(true);
-    }, 110); // Wait for panel expansion animation to complete (100ms duration + 10ms buffer)
+    }, 90); // Wait for panel expansion animation to complete (100ms duration - 10ms buffer)
     return () => clearTimeout(timer);
   }, [source.id]);
 
