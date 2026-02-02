@@ -70,23 +70,23 @@ export async function deleteNotebook(id: string) {
     throw new Error("Notebook not found");
   }
 
-  // Delete source images from MinIO (non-blocking)
-  for (const source of notebook.sources) {
-    try {
-      await deleteSourceImages(source.id);
-    } catch (error) {
-      console.error(`Failed to delete images for source ${source.id}:`, error);
-    }
-  }
-
-  // Try to delete RagFlow dataset (non-blocking)
-  if (notebook.ragflowDatasetId) {
-    try {
-      await ragflowClient.deleteDataset(notebook.ragflowDatasetId);
-    } catch (error) {
-      console.error("RagFlow dataset deletion failed:", error);
-    }
-  }
+  // Delete source images and RagFlow dataset in parallel
+  await Promise.all([
+    // Delete images for all sources concurrently
+    Promise.all(
+      notebook.sources.map((source) =>
+        deleteSourceImages(source.id).catch((error) =>
+          console.error(`Failed to delete images for source ${source.id}:`, error)
+        )
+      )
+    ),
+    // Delete RagFlow dataset
+    notebook.ragflowDatasetId
+      ? ragflowClient.deleteDataset(notebook.ragflowDatasetId).catch((error) =>
+          console.error("RagFlow dataset deletion failed:", error)
+        )
+      : Promise.resolve(),
+  ]);
 
   await prisma.notebook.delete({ where: { id } });
   revalidatePath("/deepdive");

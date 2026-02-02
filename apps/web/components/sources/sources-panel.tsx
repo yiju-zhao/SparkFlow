@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useDeferredValue } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useDeferredValue, memo } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -149,7 +149,7 @@ export function SourcesPanel({
   );
 }
 
-function SourceItem({
+const SourceItem = memo(function SourceItem({
   source,
   onSelect,
 }: {
@@ -283,7 +283,7 @@ function SourceItem({
       </div>
     </div>
   );
-}
+});
 
 // Source content viewer - shows title and markdown content with TOC button
 function SourceContentView({

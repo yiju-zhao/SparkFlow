@@ -13,6 +13,7 @@ export async function getNotes(notebookId: string) {
   // Verify notebook ownership
   const notebook = await prisma.notebook.findFirst({
     where: { id: notebookId, userId: session.user.id },
+    select: { id: true },
   });
 
   if (!notebook) {
@@ -37,6 +38,7 @@ export async function createNote(
   // Verify notebook ownership
   const notebook = await prisma.notebook.findFirst({
     where: { id: notebookId, userId: session.user.id },
+    select: { id: true },
   });
 
   if (!notebook) {
@@ -69,7 +71,7 @@ export async function updateNote(
   // Verify ownership
   const note = await prisma.note.findUnique({
     where: { id: noteId },
-    include: { notebook: true },
+    select: { notebookId: true, notebook: { select: { userId: true } } },
   });
 
   if (!note || note.notebook.userId !== session.user.id) {
@@ -97,7 +99,7 @@ export async function deleteNote(noteId: string) {
   // Verify ownership
   const note = await prisma.note.findUnique({
     where: { id: noteId },
-    include: { notebook: true },
+    select: { notebookId: true, notebook: { select: { userId: true } } },
   });
 
   if (!note || note.notebook.userId !== session.user.id) {
@@ -117,7 +119,7 @@ export async function togglePinNote(noteId: string) {
   // Verify ownership
   const note = await prisma.note.findUnique({
     where: { id: noteId },
-    include: { notebook: true },
+    select: { isPinned: true, notebookId: true, notebook: { select: { userId: true } } },
   });
 
   if (!note || note.notebook.userId !== session.user.id) {

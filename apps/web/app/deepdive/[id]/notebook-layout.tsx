@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   PanelLeftClose,
@@ -110,22 +109,18 @@ function NotebookLayoutInner({
   const sourcesPanelWidth = selectedSource
     ? SOURCES_EXPANDED_WIDTH
     : SOURCES_LIST_WIDTH;
-  const [sourcesPanelVisible, setSourcesPanelVisible] = useState(true);
 
   // Determine the width of the studio panel based on whether a note is selected
   const studioPanelWidth = selectedNote
     ? STUDIO_EXPANDED_WIDTH
     : STUDIO_LIST_WIDTH;
-  const [studioPanelVisible, setStudioPanelVisible] = useState(true);
 
-  // Sync panel visibility with open state
-  useEffect(() => {
-    setSourcesPanelVisible(leftPanelOpen);
-  }, [leftPanelOpen]);
-
-  useEffect(() => {
-    setStudioPanelVisible(rightPanelOpen);
-  }, [rightPanelOpen]);
+  // Memoized callback for chunk navigation cleanup
+  const handleChunkNavigated = useCallback(() => {
+    setTargetChunkId(null);
+    setTargetContentPreview(null);
+    setTargetContentSuffix(null);
+  }, []);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -181,7 +176,7 @@ function NotebookLayoutInner({
         <div
           className="h-full shrink-0 border-r border-border"
           style={{
-            width: sourcesPanelVisible ? `${sourcesPanelWidth}px` : '0px',
+            width: leftPanelOpen ? `${sourcesPanelWidth}px` : '0px',
             minWidth: '0',
             willChange: 'width',
             transition: 'width 100ms ease-in-out'
@@ -197,11 +192,7 @@ function NotebookLayoutInner({
             targetContentPreview={targetContentPreview}
             targetContentSuffix={targetContentSuffix}
             navigationTrigger={navigationTrigger}
-            onChunkNavigated={() => {
-              setTargetChunkId(null);
-              setTargetContentPreview(null);
-              setTargetContentSuffix(null);
-            }}
+            onChunkNavigated={handleChunkNavigated}
           />
         </div>
 
@@ -229,7 +220,7 @@ function NotebookLayoutInner({
         <div
           className="h-full shrink-0 border-l border-border"
           style={{
-            width: studioPanelVisible ? `${studioPanelWidth}px` : '0px',
+            width: rightPanelOpen ? `${studioPanelWidth}px` : '0px',
             minWidth: '0',
             willChange: 'width',
             transition: 'width 100ms ease-in-out'
