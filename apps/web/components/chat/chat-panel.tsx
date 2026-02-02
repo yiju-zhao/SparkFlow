@@ -408,7 +408,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
       )}
 
       {/* Messages - using stream.messages directly */}
-      <div ref={messagesContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 300px' }}>
+      <div ref={messagesContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4">
         {displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
@@ -416,7 +416,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
               <p className="text-sm">Start a conversation</p>
             </div>
           </div>
-        ) : (
+         ) : (
           // Filter to show human messages, in-progress tool calls, and final AI responses
           (() => {
             // Collect all tool_call_ids that have received responses
@@ -460,7 +460,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
               const hasInProgressToolCalls = inProgressToolCalls.length > 0;
 
               return (
-                <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                <div key={messageKey} className={`flex ${isUser ? "justify-end" : "justify-start"}`} style={{ contain: 'layout style' as any }}>
                   <div className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                     {isUser ? (
                       <p className="text-sm whitespace-pre-wrap">{content}</p>
