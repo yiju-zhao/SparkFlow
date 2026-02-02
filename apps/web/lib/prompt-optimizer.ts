@@ -118,6 +118,9 @@ class LRUCache<K, V> {
   }
 }
 
+// Environment variable to enable/disable prompt optimization
+const ENABLE_PROMPT_OPTIMIZER = process.env.ENABLE_PROMPT_OPTIMIZER === "false";
+
 class PromptOptimizer {
   private client: OpenAI;
   private cache: LRUCache<string, string>;
@@ -129,6 +132,11 @@ class PromptOptimizer {
   }
 
   async optimize(prompt: string): Promise<string> {
+    // Skip optimization if disabled
+    if (!ENABLE_PROMPT_OPTIMIZER) {
+      return prompt;
+    }
+
     const trimmed = prompt.trim();
     if (trimmed.length < 10) return prompt;
 
