@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -110,11 +110,22 @@ function NotebookLayoutInner({
   const sourcesPanelWidth = selectedSource
     ? SOURCES_EXPANDED_WIDTH
     : SOURCES_LIST_WIDTH;
+  const [sourcesPanelVisible, setSourcesPanelVisible] = useState(true);
 
   // Determine the width of the studio panel based on whether a note is selected
   const studioPanelWidth = selectedNote
     ? STUDIO_EXPANDED_WIDTH
     : STUDIO_LIST_WIDTH;
+  const [studioPanelVisible, setStudioPanelVisible] = useState(true);
+
+  // Sync panel visibility with open state
+  useEffect(() => {
+    setSourcesPanelVisible(leftPanelOpen);
+  }, [leftPanelOpen]);
+
+  useEffect(() => {
+    setStudioPanelVisible(rightPanelOpen);
+  }, [rightPanelOpen]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -167,34 +178,31 @@ function NotebookLayoutInner({
       {/* Main Content - 3 Panel Grid */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sources Panel (Left) */}
-        <AnimatePresence initial={false}>
-          {leftPanelOpen && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-               animate={{ width: sourcesPanelWidth, opacity: 1 }}
-               exit={{ width: 0, opacity: 0 }}
-               transition={{ duration: 0.1, ease: "easeInOut" }}
-               className="h-full shrink-0 overflow-hidden border-r border-border"
-            >
-              <SourcesPanel
-                notebookId={notebook.id}
-                datasetId={notebook.ragflowDatasetId}
-                sources={sources}
-                selectedSource={selectedSource}
-                onSelectSource={setSelectedSource}
-                targetChunkId={targetChunkId}
-                targetContentPreview={targetContentPreview}
-                targetContentSuffix={targetContentSuffix}
-                navigationTrigger={navigationTrigger}
-                onChunkNavigated={() => {
-                  setTargetChunkId(null);
-                  setTargetContentPreview(null);
-                  setTargetContentSuffix(null);
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div
+          className="h-full shrink-0 border-r border-border"
+          style={{
+            width: `${sourcesPanelWidth}px`,
+            transform: sourcesPanelVisible ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 100ms ease-in-out'
+          }}
+        >
+          <SourcesPanel
+            notebookId={notebook.id}
+            datasetId={notebook.ragflowDatasetId}
+            sources={sources}
+            selectedSource={selectedSource}
+            onSelectSource={setSelectedSource}
+            targetChunkId={targetChunkId}
+            targetContentPreview={targetContentPreview}
+            targetContentSuffix={targetContentSuffix}
+            navigationTrigger={navigationTrigger}
+            onChunkNavigated={() => {
+              setTargetChunkId(null);
+              setTargetContentPreview(null);
+              setTargetContentSuffix(null);
+            }}
+          />
+        </div>
 
         {/* Chat Panel (Center) */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -217,24 +225,21 @@ function NotebookLayoutInner({
         </div>
 
         {/* Studio Panel (Right) */}
-        <AnimatePresence initial={false}>
-          {rightPanelOpen && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-               animate={{ width: studioPanelWidth, opacity: 1 }}
-               exit={{ width: 0, opacity: 0 }}
-               transition={{ duration: 0.1, ease: "easeInOut" }}
-               className="h-full shrink-0 overflow-hidden border-l border-border"
-            >
-              <StudioPanel
-                notebookId={notebook.id}
-                notes={notes}
-                selectedNote={selectedNote}
-                onSelectNote={setSelectedNote}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div
+          className="h-full shrink-0 border-l border-border"
+          style={{
+            width: `${studioPanelWidth}px`,
+            transform: studioPanelVisible ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 100ms ease-in-out'
+          }}
+        >
+          <StudioPanel
+            notebookId={notebook.id}
+            notes={notes}
+            selectedNote={selectedNote}
+            onSelectNote={setSelectedNote}
+          />
+        </div>
       </div>
     </div>
   );
