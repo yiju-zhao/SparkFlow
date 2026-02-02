@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { promptOptimizer } from "@/lib/prompt-optimizer";
 import { getNextMessageOrder } from "@/lib/utils/message-utils";
 import { randomUUID } from "crypto";
 import type { ChatSession, ChatMessage } from "@prisma/client";
@@ -129,13 +128,6 @@ class ChatService {
       where: { id: sessionId },
       data: { lastActivity: new Date() },
     });
-  }
-
-  /**
-   * Optimize a user prompt for better RAG search.
-   */
-  async optimizePrompt(content: string): Promise<string> {
-    return promptOptimizer.optimize(content);
   }
 
   /**

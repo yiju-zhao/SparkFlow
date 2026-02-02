@@ -10,15 +10,17 @@ from langchain.agents import create_agent
 from config.rag_agent import RAG_AGENT_CONFIG
 from prompts.rag_agent import RAG_AGENT_SYSTEM_PROMPT
 from tools.ragflow import explore, search, probe
+from middleware.query_optimizer import optimize_query
 
 
 model = f"{RAG_AGENT_CONFIG.model_provider}:{RAG_AGENT_CONFIG.model_name}"
 
-# Create the RAG agent
+# Create the RAG agent with query optimization middleware
 # Persistence is managed by LangGraph server (langgraph dev uses in-memory,
 # langgraph up uses PostgreSQL automatically)
 agent = create_agent(
     model=model,
     tools=[explore, search, probe],
     system_prompt=RAG_AGENT_SYSTEM_PROMPT,
+    middleware=[optimize_query],
 )
