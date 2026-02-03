@@ -305,6 +305,7 @@ function SourceContentView({
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
+  const [renderFullContent, setRenderFullContent] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -318,12 +319,31 @@ function SourceContentView({
   }, [source.id]);
 
   const markdownContent = source.content || "No content available";
-  const deferredMarkdownContent = useDeferredValue(markdownContent);
+  const shouldDeferFullRender = markdownContent.length > 20000;
+  const initialContent = shouldDeferFullRender
+    ? markdownContent.slice(0, 20000)
+    : markdownContent;
+  const contentForRender = renderFullContent ? markdownContent : initialContent;
+  const deferredMarkdownContent = useDeferredValue(contentForRender);
+
+  useEffect(() => {
+    if (!shouldDeferFullRender) {
+      setRenderFullContent(true);
+      return;
+    }
+
+    setRenderFullContent(false);
+    const timeoutId = window.setTimeout(() => {
+      setRenderFullContent(true);
+    }, 80);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [source.id, shouldDeferFullRender]);
 
   // Derive headings during render (Vercel best practice: rerender-derived-state-no-effect)
   const headings = useMemo(() => {
     const extracted: { id: string; text: string; level: number }[] = [];
-    const lines = (deferredMarkdownContent || markdownContent).split('\n');
+    const lines = (deferredMarkdownContent || contentForRender).split('\n');
     for (const line of lines) {
       const match = line.match(/^(#{1,3})\s+(.+)$/);
       if (match) {
@@ -337,7 +357,7 @@ function SourceContentView({
       }
     }
     return extracted;
-  }, [deferredMarkdownContent, markdownContent]);
+  }, [deferredMarkdownContent, contentForRender]);
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
   const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
@@ -355,7 +375,7 @@ function SourceContentView({
     container.normalize();
 
     // Find start and end positions in source content
-    const normalizedContent = (deferredMarkdownContent || markdownContent).replace(/\s+/g, " ");
+    const normalizedContent = markdownContent.replace(/\s+/g, " ");
     const startMarker = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
     const endMarker = contentSuffix?.replace(/\s+/g, " ").trim().slice(-50) || null;
 
@@ -470,8 +490,15 @@ function SourceContentView({
       preview: targetContentPreview,
       suffix: targetContentSuffix || null,
     };
-    scheduleScrollToChunk(250);
-  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk]);
+    if (renderFullContent) {
+      scheduleScrollToChunk(250);
+    }
+  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk, renderFullContent]);
+
+  useEffect(() => {
+    if (!renderFullContent || !pendingNavigationRef.current) return;
+    scheduleScrollToChunk(80);
+  }, [renderFullContent, scheduleScrollToChunk]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -606,6 +633,11 @@ function SourceContentView({
         <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
           {deferredMarkdownContent}
         </Markdown>
+        {!renderFullContent && shouldDeferFullRender && (
+          <div className="mt-4 text-xs text-muted-foreground">
+            Loading full content...
+          </div>
+        )}
       </div>
     </div>
   );
