@@ -321,6 +321,43 @@ function SourceContentView({
   // Get animation state from CollapsiblePanel context
   const panelContext = useCollapsiblePanel();
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
+  const [isPending, startTransition] = useTransition();
+
+  // Progressive rendering state
+  const [isHeavyContentReady, setIsHeavyContentReady] = useState(false);
+
+  useEffect(() => {
+    // If we have a target chunk, we need full content immediately to scroll to it
+    if (targetChunkId) {
+      setIsHeavyContentReady(true);
+      return;
+    }
+
+    if (isAnimationComplete) {
+      // Prioritize the first paint of the top content
+      // Then render the rest in a subsequent frame
+      const timer = setTimeout(() => {
+        startTransition(() => {
+          setIsHeavyContentReady(true);
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setIsHeavyContentReady(false);
+    }
+  }, [isAnimationComplete, targetChunkId, source.id]);
+
+  const displayedContent = useMemo(() => {
+    // Always show full content if ready or if it's short
+    if (isHeavyContentReady || source.content && source.content.length < 5000) {
+      return source.content || "No content available";
+    }
+
+    // Otherwise show distinct first chunk for fast render
+    const content = source.content || "No content available";
+    const sliceIndex = content.indexOf('\n', 3000);
+    return sliceIndex !== -1 ? content.slice(0, sliceIndex) : content;
+  }, [isHeavyContentReady, source.content]);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -645,7 +682,7 @@ function SourceContentView({
             transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-              {markdownContent}
+              {displayedContent}
             </Markdown>
           </motion.div>
         ) : (
