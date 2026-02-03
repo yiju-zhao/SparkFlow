@@ -15,9 +15,9 @@ interface CollapsiblePanelProps {
 // Slightly underdamped for subtle organic motion without being bouncy
 const springTransition: Transition = {
   type: "spring",
-  stiffness: 400,
-  damping: 35,
-  mass: 0.8,
+  stiffness: 320,
+  damping: 36,
+  mass: 0.95,
 };
 
 export function CollapsiblePanel({
