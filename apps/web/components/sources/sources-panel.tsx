@@ -23,7 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   addWebpageSource,
   uploadDocumentSource,
-  uploadDocumentFromUrl,
   deleteSource,
 } from "@/lib/actions/sources";
 import type { Source as PrismaSource } from "@prisma/client";
@@ -730,7 +729,7 @@ function AddSourceDialog({
     });
   };
 
-  const handleUrlUpload = () => {
+  const handleUrlUpload = async () => {
     if (!documentUrl.trim()) return;
 
     const tempId = `optimistic-${Date.now()}`;
@@ -770,12 +769,42 @@ function AddSourceDialog({
       onOpenChange(false);
 
       try {
-        const created = await uploadDocumentFromUrl(notebookId, documentUrl.trim());
+        // Client-side download: browser fetches the file directly
+        console.log(`[SourcesPanel] Downloading file from: ${documentUrl}`);
+        const response = await fetch(documentUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to download: HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const file = new File([blob], displayName, { type: blob.type || "application/octet-stream" });
+        
+        console.log(`[SourcesPanel] Downloaded ${file.size} bytes, uploading...`);
+
+        // Upload using existing document upload action
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const created = await uploadDocumentSource(notebookId, formData);
+        
         queryClient.setQueryData<Source[] | undefined>(
           ["notebook-sources", notebookId],
           (current) =>
             (current || []).map((item) =>
               item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
+            )
+        );
+      } catch (error) {
+        console.error("[SourcesPanel] URL upload failed:", error);
+        // Update optimistic item to show error
+        queryClient.setQueryData<Source[] | undefined>(
+          ["notebook-sources", notebookId],
+          (current) =>
+            (current || []).map((item) =>
+              item.id === tempId 
+                ? { ...item, status: "FAILED", errorMessage: error instanceof Error ? error.message : "Download failed" } 
+                : item
             )
         );
       } finally {
