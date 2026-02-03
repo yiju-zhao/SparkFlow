@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   addWebpageSource,
   uploadDocumentSource,
+  uploadDocumentFromUrl,
   deleteSource,
 } from "@/lib/actions/sources";
 import type { Source as PrismaSource } from "@prisma/client";
@@ -624,6 +625,8 @@ function AddSourceDialog({
 }: AddSourceDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [url, setUrl] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
+  const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
@@ -727,6 +730,61 @@ function AddSourceDialog({
     });
   };
 
+  const handleUrlUpload = () => {
+    if (!documentUrl.trim()) return;
+
+    const tempId = `optimistic-${Date.now()}`;
+    // Extract filename from URL for display
+    let displayName = "Document";
+    try {
+      const urlPath = new URL(documentUrl).pathname;
+      const lastSegment = urlPath.split("/").pop();
+      if (lastSegment) {
+        displayName = decodeURIComponent(lastSegment);
+      }
+    } catch {
+      displayName = documentUrl.slice(0, 50);
+    }
+
+    const optimistic: Source = {
+      id: tempId,
+      notebookId,
+      title: displayName,
+      sourceType: "DOCUMENT",
+      url: documentUrl.trim(),
+      status: "PROCESSING",
+      content: null,
+      fileKey: null,
+      ragflowDocumentId: null,
+      errorMessage: null,
+      metadata: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    startTransition(async () => {
+      queryClient.setQueryData<Source[] | undefined>(
+        ["notebook-sources", notebookId],
+        (current) => [optimistic, ...(current || [])]
+      );
+      onOpenChange(false);
+
+      try {
+        const created = await uploadDocumentFromUrl(notebookId, documentUrl.trim());
+        queryClient.setQueryData<Source[] | undefined>(
+          ["notebook-sources", notebookId],
+          (current) =>
+            (current || []).map((item) =>
+              item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
+            )
+        );
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
+        setDocumentUrl("");
+      }
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -793,55 +851,130 @@ function AddSourceDialog({
 
           <TabsContent value="document" className="mt-4">
             <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium">File</label>
-                <div
-                  className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-accent-red/50"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {selectedFile
-                      ? selectedFile.name
-                      : "Click to select a file"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    PDF, DOCX, TXT, MD
-                  </p>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.docx,.txt,.md"
-                  onChange={handleFileSelect}
-                />
-              </div>
-              <div className="flex justify-end gap-3">
+              {/* Upload Mode Toggle */}
+              <div className="flex gap-2">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
+                  variant={uploadMode === "file" ? "default" : "outline"}
+                  size="sm"
+                  className={uploadMode === "file" ? "bg-accent-red hover:bg-accent-red-hover" : ""}
+                  onClick={() => setUploadMode("file")}
                 >
-                  Cancel
+                  <Upload className="mr-2 h-3.5 w-3.5" />
+                  File Upload
                 </Button>
                 <Button
                   type="button"
-                  className="bg-accent-red hover:bg-accent-red-hover"
-                  disabled={isPending || !selectedFile}
-                  onClick={handleUpload}
+                  variant={uploadMode === "url" ? "default" : "outline"}
+                  size="sm"
+                  className={uploadMode === "url" ? "bg-accent-red hover:bg-accent-red-hover" : ""}
+                  onClick={() => setUploadMode("url")}
                 >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    "Upload"
-                  )}
+                  <Link className="mr-2 h-3.5 w-3.5" />
+                  URL Upload
                 </Button>
               </div>
+
+              {uploadMode === "file" ? (
+                <>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">File</label>
+                    <div
+                      className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-accent-red/50"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {selectedFile
+                          ? selectedFile.name
+                          : "Click to select a file"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        PDF, DOCX, TXT, MD
+                      </p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.docx,.txt,.md"
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      className="bg-accent-red hover:bg-accent-red-hover"
+                      disabled={isPending || !selectedFile}
+                      onClick={handleUpload}
+                    >
+                      {isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        "Upload"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label
+                      htmlFor="documentUrl"
+                      className="mb-2 block text-sm font-medium"
+                    >
+                      Document URL
+                    </label>
+                    <Input
+                      id="documentUrl"
+                      type="url"
+                      placeholder="https://example.com/document.pdf"
+                      value={documentUrl}
+                      onChange={(e) => setDocumentUrl(e.target.value)}
+                      disabled={isPending}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Supported formats: PDF, DOCX, TXT, MD
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      className="bg-accent-red hover:bg-accent-red-hover"
+                      disabled={isPending || !documentUrl.trim()}
+                      onClick={handleUrlUpload}
+                    >
+                      {isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Downloading...
+                        </>
+                      ) : (
+                        "Download & Process"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
         </Tabs>

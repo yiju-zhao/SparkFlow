@@ -159,6 +159,141 @@ export async function uploadDocumentSource(
   return source;
 }
 
+export async function uploadDocumentFromUrl(
+  notebookId: string,
+  documentUrl: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  // Verify notebook ownership
+  const notebook = await prisma.notebook.findFirst({
+    where: { id: notebookId, userId: session.user.id },
+  });
+
+  if (!notebook) {
+    throw new Error("Notebook not found");
+  }
+
+  // Validate URL
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(documentUrl);
+  } catch {
+    throw new Error("Invalid URL");
+  }
+
+  // Download the file
+  let response: Response;
+  try {
+    response = await fetch(documentUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; DeepSight/1.0)",
+      },
+    });
+  } catch {
+    throw new Error("Failed to fetch document from URL");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to download document: ${response.status} ${response.statusText}`);
+  }
+
+  // Extract filename from Content-Disposition header or URL
+  let filename = "";
+  const contentDisposition = response.headers.get("content-disposition");
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    if (match) {
+      filename = match[1].replace(/['"]/g, "").trim();
+    }
+  }
+
+  if (!filename) {
+    // Extract from URL path
+    const pathname = parsedUrl.pathname;
+    const lastSegment = pathname.split("/").pop() || "";
+    filename = decodeURIComponent(lastSegment) || "document";
+  }
+
+  // Ensure we have a valid extension
+  const fileExtension = filename.split(".").pop()?.toLowerCase() || "";
+  const supportedExtensions = ["pdf", "docx", "doc", "txt", "md"];
+
+  if (!supportedExtensions.includes(fileExtension)) {
+    // Try to infer from content-type
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("pdf")) {
+      filename = filename.includes(".") ? filename : `${filename}.pdf`;
+    } else if (contentType.includes("word") || contentType.includes("docx")) {
+      filename = filename.includes(".") ? filename : `${filename}.docx`;
+    } else if (contentType.includes("text/plain")) {
+      filename = filename.includes(".") ? filename : `${filename}.txt`;
+    } else if (contentType.includes("text/markdown")) {
+      filename = filename.includes(".") ? filename : `${filename}.md`;
+    } else {
+      throw new Error("Unsupported file type. Please provide a PDF, DOCX, TXT, or MD file.");
+    }
+  }
+
+  // Get file buffer
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  // Create a File-like object
+  const blob = new Blob([buffer]);
+  const file = new File([blob], filename, { type: response.headers.get("content-type") || "application/octet-stream" });
+
+  // Create source with PROCESSING status
+  const source = await prisma.source.create({
+    data: {
+      notebookId,
+      title: filename,
+      sourceType: "DOCUMENT",
+      url: documentUrl,
+      status: "PROCESSING",
+    },
+  });
+
+  // Revalidate immediately so it shows up in the list
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  // Process in the background using the new processors
+  const context: ProcessingContext = {
+    sourceId: source.id,
+    ragflowDatasetId: notebook.ragflowDatasetId,
+    notebookId,
+  };
+
+  const finalExtension = filename.split(".").pop()?.toLowerCase() || "";
+
+  const processDocument = async () => {
+    if (finalExtension === "txt" || finalExtension === "md") {
+      return processTextDocument(file, context);
+    } else if (finalExtension === "pdf") {
+      return processPdfDocument(file, context);
+    } else if (finalExtension === "docx" || finalExtension === "doc") {
+      return processDocxDocument(file, context);
+    } else {
+      return processFallbackDocument(file, context);
+    }
+  };
+
+  processDocument()
+    .catch(console.error)
+    .finally(() => {
+      try {
+        revalidatePath(`/deepdive/${notebookId}`);
+      } catch {
+        // Ignore revalidation errors in background context
+      }
+    });
+
+  return source;
+}
+
 export async function deleteSource(sourceId: string) {
   const session = await auth();
   if (!session?.user?.id) {
