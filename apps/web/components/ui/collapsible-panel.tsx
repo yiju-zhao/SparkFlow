@@ -38,7 +38,7 @@ export function CollapsiblePanel({
   children,
   className = "",
 }: CollapsiblePanelProps) {
-  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+  const [isAnimationComplete, setIsAnimationComplete] = useState(isOpen);
   const wasOpenRef = useRef(isOpen);
 
   useEffect(() => {
@@ -62,10 +62,7 @@ export function CollapsiblePanel({
         }}
         transition={springTransition}
         onAnimationStart={() => {
-          const wasOpen = wasOpenRef.current;
-          if ((isOpen && !wasOpen) || (!isOpen && wasOpen)) {
-            setIsAnimationComplete(false);
-          }
+          setIsAnimationComplete(false);
         }}
         onAnimationComplete={() => {
           if (isOpen) {

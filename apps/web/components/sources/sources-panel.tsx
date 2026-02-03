@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, memo } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
+import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -638,9 +639,15 @@ function SourceContentView({
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
       >
         {isAnimationComplete ? (
-          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-            {markdownContent}
-          </Markdown>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+              {markdownContent}
+            </Markdown>
+          </motion.div>
         ) : (
           <div className="space-y-3 animate-pulse">
             <div className="h-4 w-3/4 rounded bg-muted" />
@@ -813,9 +820,9 @@ function AddSourceDialog({
 
       try {
         const apiUrl = `/api/download?url=${encodeURIComponent(documentUrl)}`;
-        
+
         const response = await fetch(apiUrl);
-        
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || `HTTP ${response.status}`);
@@ -842,13 +849,13 @@ function AddSourceDialog({
         }
 
         const file = new File([blob], filename, { type: contentType });
-        
+
         // Upload using existing document upload action
         const formData = new FormData();
         formData.append("file", file);
-        
+
         const created = await uploadDocumentSource(notebookId, formData);
-        
+
         queryClient.setQueryData<Source[] | undefined>(
           ["notebook-sources", notebookId],
           (current) =>
@@ -863,8 +870,8 @@ function AddSourceDialog({
           ["notebook-sources", notebookId],
           (current) =>
             (current || []).map((item) =>
-              item.id === tempId 
-                ? { ...item, status: "FAILED", errorMessage: error instanceof Error ? error.message : "Download failed" } 
+              item.id === tempId
+                ? { ...item, status: "FAILED", errorMessage: error instanceof Error ? error.message : "Download failed" }
                 : item
             )
         );
