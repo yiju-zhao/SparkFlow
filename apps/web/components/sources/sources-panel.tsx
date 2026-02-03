@@ -306,10 +306,39 @@ function SourceContentView({
 }) {
   const [showToc, setShowToc] = useState(false);
   const [renderFullContent, setRenderFullContent] = useState(false);
+  const [fullHeadings, setFullHeadings] = useState<{ id: string; text: string; level: number }[] | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const idleHandleRef = useRef<number | null>(null);
+
+  const scheduleIdle = useCallback((fn: () => void, timeoutMs = 800) => {
+    if (idleHandleRef.current !== null) {
+      if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleHandleRef.current);
+      } else {
+        window.clearTimeout(idleHandleRef.current);
+      }
+    }
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleHandleRef.current = window.requestIdleCallback(fn, { timeout: timeoutMs });
+    } else {
+      idleHandleRef.current = window.setTimeout(fn, Math.min(200, timeoutMs));
+    }
+
+    return () => {
+      if (idleHandleRef.current !== null) {
+        if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
+          window.cancelIdleCallback(idleHandleRef.current);
+        } else {
+          window.clearTimeout(idleHandleRef.current);
+        }
+        idleHandleRef.current = null;
+      }
+    };
+  }, []);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -329,21 +358,42 @@ function SourceContentView({
   useEffect(() => {
     if (!shouldDeferFullRender) {
       setRenderFullContent(true);
+      setFullHeadings(null);
       return;
     }
 
     setRenderFullContent(false);
-    const timeoutId = window.setTimeout(() => {
+    setFullHeadings(null);
+    return scheduleIdle(() => {
       setRenderFullContent(true);
-    }, 80);
+    });
+  }, [scheduleIdle, source.id, shouldDeferFullRender]);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [source.id, shouldDeferFullRender]);
+  useEffect(() => {
+    if (!shouldDeferFullRender || renderFullContent) return;
+    const container = scrollRef.current;
+    if (!container) return;
 
-  // Derive headings during render (Vercel best practice: rerender-derived-state-no-effect)
-  const headings = useMemo(() => {
+    const handleScroll = () => {
+      const nearEnd = container.scrollTop + container.clientHeight >= container.scrollHeight * 0.6;
+      if (nearEnd) {
+        setRenderFullContent(true);
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [renderFullContent, shouldDeferFullRender]);
+
+  useEffect(() => {
+    if (targetChunkId && shouldDeferFullRender) {
+      setRenderFullContent(true);
+    }
+  }, [targetChunkId, shouldDeferFullRender]);
+
+  const computeHeadings = useCallback((content: string) => {
     const extracted: { id: string; text: string; level: number }[] = [];
-    const lines = (deferredMarkdownContent || contentForRender).split('\n');
+    const lines = content.split('\n');
     for (const line of lines) {
       const match = line.match(/^(#{1,3})\s+(.+)$/);
       if (match) {
@@ -357,7 +407,23 @@ function SourceContentView({
       }
     }
     return extracted;
-  }, [deferredMarkdownContent, contentForRender]);
+  }, []);
+
+  // Derive headings during render (Vercel best practice: rerender-derived-state-no-effect)
+  const initialHeadings = useMemo(
+    () => computeHeadings(initialContent),
+    [computeHeadings, initialContent]
+  );
+  useEffect(() => {
+    if (!renderFullContent || fullHeadings) return;
+    if (showToc) {
+      setFullHeadings(computeHeadings(markdownContent));
+      return;
+    }
+    return scheduleIdle(() => {
+      setFullHeadings(computeHeadings(markdownContent));
+    });
+  }, [computeHeadings, fullHeadings, markdownContent, renderFullContent, scheduleIdle, showToc]);
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
   const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
@@ -586,7 +652,7 @@ function SourceContentView({
         </div>
 
         {/* TOC Toggle Button */}
-        {headings.length > 0 && (
+        {(initialHeadings.length > 0 || (fullHeadings?.length ?? 0) > 0) && (
           <div className="relative">
             <Button
               size="sm"
@@ -604,7 +670,7 @@ function SourceContentView({
                 <div className="p-3">
                   <h3 className="mb-2 text-xs font-semibold">Table of Contents</h3>
                   <nav className="max-h-96 space-y-1 overflow-y-auto">
-                    {headings.map((heading, index) => (
+                    {(fullHeadings ?? initialHeadings).map((heading, index) => (
                       <button
                         key={index}
                         onClick={() => scrollToHeading(heading.text)}
