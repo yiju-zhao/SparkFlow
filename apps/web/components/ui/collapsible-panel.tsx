@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, createContext, useContext, useState, useLayoutEffect } from "react";
+import { type ReactNode, createContext, useContext, useState } from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
 
 // Context to expose animation state to children
@@ -40,13 +40,6 @@ export function CollapsiblePanel({
 }: CollapsiblePanelProps) {
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 
-  // Reset before paint when opening to avoid a one-frame flash of content.
-  useLayoutEffect(() => {
-    if (isOpen) {
-      setIsAnimationComplete(false);
-    }
-  }, [isOpen]);
-
   // Determine border based on side
   const borderClass = side === "left" ? "border-r" : "border-l";
 
@@ -64,9 +57,7 @@ export function CollapsiblePanel({
         }}
         transition={springTransition}
         onAnimationStart={() => {
-          if (isOpen) {
-            setIsAnimationComplete(false);
-          }
+          setIsAnimationComplete(false);
         }}
         onAnimationComplete={() => {
           if (isOpen) {
