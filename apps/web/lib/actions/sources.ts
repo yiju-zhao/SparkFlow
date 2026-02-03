@@ -185,7 +185,8 @@ export async function uploadDocumentFromUrl(
     throw new Error("Invalid URL");
   }
 
-  // Download the file using Crawl4AI
+  // Download the file
+  console.log(`[uploadDocumentFromUrl] Starting download for notebook ${notebookId} from URL: ${documentUrl}`);
   let buffer: Buffer;
   let filename: string;
   let contentType: string;
@@ -195,7 +196,9 @@ export async function uploadDocumentFromUrl(
     buffer = downloadResult.buffer;
     filename = downloadResult.filename;
     contentType = downloadResult.contentType;
+    console.log(`[uploadDocumentFromUrl] Successfully downloaded ${buffer.length} bytes as ${filename}`);
   } catch (error) {
+    console.error(`[uploadDocumentFromUrl] Download failed for URL: ${documentUrl}`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Failed to download document: ${errorMessage}`);
   }

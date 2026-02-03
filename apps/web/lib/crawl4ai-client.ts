@@ -550,23 +550,12 @@ class Crawl4AIClient {
     filename: string;
     contentType: string;
   }> {
-    // First, try using the /crawl endpoint to navigate and potentially download
-    // For direct file URLs, Crawl4AI should handle the download
-
-    // Make a direct request through Crawl4AI's proxy-like behavior
-    // by fetching the URL content
-    const response = await fetch(`${this.baseUrl}/download`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
-      },
-      body: JSON.stringify({ url }),
-    });
-
-    if (!response.ok) {
-      // Fall back to direct fetch with browser-like headers
-      const directResponse = await fetch(url, {
+    console.log(`[Crawl4AI] Downloading file from URL: ${url}`);
+    
+    // Download the file directly using fetch with browser-like headers
+    // This handles most direct file URLs reliably
+    try {
+      const response = await fetch(url, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "Accept": "*/*",
@@ -574,16 +563,16 @@ class Crawl4AIClient {
         redirect: "follow",
       });
 
-      if (!directResponse.ok) {
-        throw new Error(`Failed to download file: ${directResponse.status} ${directResponse.statusText}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const arrayBuffer = await directResponse.arrayBuffer();
-      const contentType = directResponse.headers.get("content-type") || "application/octet-stream";
+      const arrayBuffer = await response.arrayBuffer();
+      const contentType = response.headers.get("content-type") || "application/octet-stream";
 
-      // Extract filename
+      // Extract filename from Content-Disposition header or URL
       let filename = "";
-      const contentDisposition = directResponse.headers.get("content-disposition");
+      const contentDisposition = response.headers.get("content-disposition");
       if (contentDisposition) {
         const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (match) {
@@ -591,28 +580,115 @@ class Crawl4AIClient {
         }
       }
       if (!filename) {
-        const urlPath = new URL(url).pathname;
-        filename = decodeURIComponent(urlPath.split("/").pop() || "document");
+        try {
+          const urlPath = new URL(url).pathname;
+          filename = decodeURIComponent(urlPath.split("/").pop() || "document");
+        } catch {
+          filename = "document";
+        }
       }
+
+      console.log(`[Crawl4AI] Downloaded ${arrayBuffer.byteLength} bytes, filename: ${filename}, content-type: ${contentType}`);
 
       return {
         buffer: Buffer.from(arrayBuffer),
         filename,
         contentType,
       };
+    } catch (error) {
+      console.error(`[Crawl4AI] Direct fetch failed for ${url}:`, error);
+      
+      // For complex downloads that require browser automation (e.g., pages with download buttons),
+      // we would need to use the /crawl endpoint with accept_downloads.
+      // However, this requires a shared volume to access the downloaded files.
+      // For now, throw the error so the caller knows what happened.
+      throw new Error(`Failed to download from ${url}: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
+  }
 
-    const data = await response.json() as {
-      content: string; // Base64 encoded
-      filename: string;
-      content_type: string;
+  /**
+   * Download file using Crawl4AI browser automation
+   * This is useful for URLs that require JavaScript execution or button clicks to trigger downloads.
+   * Note: This requires the Crawl4AI container to have a shared volume with the web service
+   * to access the downloaded files.
+   * 
+   * @param url - The URL to crawl for downloads
+   * @param jsCode - JavaScript to execute to trigger download (optional)
+   * @param waitSeconds - Seconds to wait for download to complete
+   */
+  async downloadFileViaBrowser(
+    url: string,
+    jsCode?: string,
+    waitSeconds: number = 10
+  ): Promise<{
+    downloadedFiles: string[];
+    success: boolean;
+    errorMessage?: string;
+  }> {
+    console.log(`[Crawl4AI] Attempting browser-based download from: ${url}`);
+    
+    const crawlerConfig: CrawlerRunConfig = {
+      cache_mode: "disabled",
+      wait_for: `${waitSeconds}s`,
+      ...(jsCode && { js_code: jsCode }),
     };
 
-    return {
-      buffer: Buffer.from(data.content, "base64"),
-      filename: data.filename,
-      contentType: data.content_type,
+    const browserConfig: BrowserConfig = {
+      headless: true,
+      verbose: false,
     };
+
+    try {
+      const response = await this.request<{
+        results: Array<{
+          success: boolean;
+          downloaded_files?: string[];
+          error_message?: string;
+        }>;
+      }>("/crawl", {
+        method: "POST",
+        body: JSON.stringify({
+          urls: [url],
+          crawler_config: {
+            ...crawlerConfig,
+            accept_downloads: true,
+          },
+          browser_config: {
+            ...browserConfig,
+            accept_downloads: true,
+          },
+        }),
+      });
+
+      if (!response.results || response.results.length === 0) {
+        return {
+          downloadedFiles: [],
+          success: false,
+          errorMessage: "No results returned from crawl",
+        };
+      }
+
+      const result = response.results[0];
+      console.log(`[Crawl4AI] Browser download result:`, {
+        success: result.success,
+        files: result.downloaded_files,
+        error: result.error_message,
+      });
+      
+      return {
+        downloadedFiles: result.downloaded_files || [],
+        success: result.success && (result.downloaded_files?.length ?? 0) > 0,
+        errorMessage: result.error_message,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Browser download failed";
+      console.error(`[Crawl4AI] Browser download failed for ${url}:`, error);
+      return {
+        downloadedFiles: [],
+        success: false,
+        errorMessage: errorMsg,
+      };
+    }
   }
 }
 
