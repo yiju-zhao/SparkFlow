@@ -305,7 +305,6 @@ function SourceContentView({
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
-  const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -320,6 +319,25 @@ function SourceContentView({
 
   const markdownContent = source.content || "No content available";
   const deferredMarkdownContent = useDeferredValue(markdownContent);
+
+  // Derive headings during render (Vercel best practice: rerender-derived-state-no-effect)
+  const headings = useMemo(() => {
+    const extracted: { id: string; text: string; level: number }[] = [];
+    const lines = (deferredMarkdownContent || markdownContent).split('\n');
+    for (const line of lines) {
+      const match = line.match(/^(#{1,3})\s+(.+)$/);
+      if (match) {
+        const level = match[1].length;
+        const text = match[2].trim();
+        const id = text
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-');
+        extracted.push({ id, text, level });
+      }
+    }
+    return extracted;
+  }, [deferredMarkdownContent, markdownContent]);
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
   const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
@@ -483,28 +501,6 @@ function SourceContentView({
       }
     };
   }, []);
-
-  // Extract headings from markdown
-  useEffect(() => {
-    const extractedHeadings: { id: string; text: string; level: number }[] = [];
-    const lines = (deferredMarkdownContent || markdownContent).split('\n');
-
-    for (const line of lines) {
-      const match = line.match(/^(#{1,3})\s+(.+)$/);
-      if (match) {
-        const level = match[1].length;
-        const text = match[2].trim();
-        // Generate ID similar to rehype-slug
-        const id = text
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-');
-        extractedHeadings.push({ id, text, level });
-      }
-    }
-
-    setHeadings(extractedHeadings);
-  }, [deferredMarkdownContent, markdownContent]);
 
   const scrollToHeading = (headingText: string) => {
     const container = scrollRef.current;

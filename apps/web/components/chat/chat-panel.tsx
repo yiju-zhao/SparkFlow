@@ -113,13 +113,16 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = EMPTY_SESSI
 
     // Detect transition from loading to not loading (streaming just completed)
     if (wasLoading && !stream.isLoading && !stream.error && streamSessionId) {
-      const messagesToSave = stream.messages
-        .filter((m) => m.type === "human" || m.type === "ai")
-        .map((m) => ({
-          sender: m.type === "human" ? "USER" : "ASSISTANT",
-          content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
-        }))
-        .filter((m) => m.content.trim().length > 0);
+      // Combine iterations into single reduce (Vercel best practice: js-combine-iterations)
+      const messagesToSave = stream.messages.reduce<{ sender: string; content: string }[]>((acc, m) => {
+        if (m.type === "human" || m.type === "ai") {
+          const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+          if (content.trim().length > 0) {
+            acc.push({ sender: m.type === "human" ? "USER" : "ASSISTANT", content });
+          }
+        }
+        return acc;
+      }, []);
 
       if (messagesToSave.length > 0) {
         fetch("/api/chat/messages", {

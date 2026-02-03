@@ -63,13 +63,28 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
       })
     : [];
 
+  // Transform data in RSC to minimize client-side serialization (Vercel best practice: server-serialization)
+  const transformedSessions = chatSessions.map((s) => ({
+    id: s.id,
+    title: s.title,
+    lastActivity: s.lastActivity.toISOString(),
+    langgraphThreadId: s.langgraphThreadId,
+    _count: { messages: s._count?.messages ?? 0 },
+  }));
+
+  const transformedMessages = initialMessages.map((m) => ({
+    id: m.id,
+    role: m.sender === "USER" ? ("user" as const) : ("assistant" as const),
+    content: m.content,
+  }));
+
   return (
     <NotebookLayout
       notebook={notebook}
       sources={sources}
       notes={notes}
-      initialChatSessions={chatSessions}
-      initialMessages={initialMessages}
+      initialChatSessions={transformedSessions}
+      initialMessages={transformedMessages}
     />
   );
 }

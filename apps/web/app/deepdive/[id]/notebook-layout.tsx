@@ -18,17 +18,20 @@ import { StudioPanel } from "@/components/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 
-import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
+import type { Source, Note, Notebook } from "@prisma/client";
 
-type ChatSessionWithCount = ChatSession & {
-  _count?: {
-    messages: number;
-  };
-};
-
-interface PreloadedMessage {
+// Pre-transformed types from RSC (avoids client-side transformation)
+interface TransformedChatSession {
   id: string;
-  sender: string;
+  title: string;
+  lastActivity: string;
+  langgraphThreadId: string | null;
+  _count: { messages: number };
+}
+
+interface TransformedMessage {
+  id: string;
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -36,9 +39,13 @@ interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
-  initialChatSessions?: ChatSessionWithCount[];
-  initialMessages?: PreloadedMessage[];
+  initialChatSessions?: TransformedChatSession[];
+  initialMessages?: TransformedMessage[];
 }
+
+// Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
+const EMPTY_SESSIONS: TransformedChatSession[] = [];
+const EMPTY_MESSAGES: TransformedMessage[] = [];
 
 // Panel widths
 const SOURCES_LIST_WIDTH = 280;
@@ -58,8 +65,8 @@ function NotebookLayoutInner({
   notebook,
   sources,
   notes,
-  initialChatSessions = [],
-  initialMessages = [],
+  initialChatSessions = EMPTY_SESSIONS,
+  initialMessages = EMPTY_MESSAGES,
 }: NotebookLayoutProps) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -226,18 +233,8 @@ function NotebookLayoutInner({
           <ChatPanel
             notebookId={notebook.id}
             datasetId={notebook.ragflowDatasetId}
-            initialSessions={initialChatSessions.map((s) => ({
-              id: s.id,
-              title: s.title,
-              lastActivity: s.lastActivity.toISOString(),
-              langgraphThreadId: s.langgraphThreadId,
-              _count: { messages: s._count?.messages ?? 0 },
-            }))}
-            initialMessages={initialMessages.map((m) => ({
-              id: m.id,
-              role: m.sender === "USER" ? "user" : "assistant",
-              content: m.content,
-            }))}
+            initialSessions={initialChatSessions}
+            initialMessages={initialMessages}
           />
         </motion.div>
 
