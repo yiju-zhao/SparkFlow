@@ -71,7 +71,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = EMPTY_SESSI
   const [input, setInput] = useState("");
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [isChatReady, setIsChatReady] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevIsLoadingRef = useRef<boolean>(false);
 
@@ -151,32 +150,6 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = EMPTY_SESSI
 
   // Load stored messages for the active session
   const hasLoadedPreloaded = useRef(preloadedSessionId !== null && initialMessages.length > 0);
-
-  // Detect panel resize and delay rendering for smooth animation
-  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver(() => {
-      setIsChatReady(false);
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-      resizeTimeoutRef.current = setTimeout(() => {
-        setIsChatReady(true);
-      }, 110); // Match panel animation duration + buffer
-    });
-
-    const container = messagesContainerRef.current?.parentElement;
-    if (container) {
-      resizeObserver.observe(container);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (!activeSessionId) {
@@ -470,28 +443,16 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = EMPTY_SESSI
         className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4"
         style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 500px' }}
       >
-        {isChatReady ? (
-          filteredMessages.length === 0 ? (
+        {filteredMessages.length === 0 && (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
               <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
               <p className="text-sm">Start a conversation</p>
             </div>
           </div>
-        ) : null) : (
-          <div className="space-y-4 animate-pulse">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex w-full justify-center">
-                <div className="w-[70%] space-y-2">
-                  <div className="h-4 rounded bg-muted" style={{ width: `${Math.random() * 30 + 40}%` }} />
-                  <div className="h-4 rounded bg-muted" style={{ width: `${Math.random() * 50 + 40}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
         )}
 
-        {isChatReady && filteredMessages.length > 0 && (
+        {filteredMessages.length > 0 && (
           filteredMessages.map((message, idx) => {
               const messageKey = message.id ?? `msg-${idx}`;
               const isUser = message.type === "human";

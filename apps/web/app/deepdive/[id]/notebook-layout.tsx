@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   PanelLeftClose,
@@ -15,6 +16,7 @@ import { SourcesPanel } from "@/components/sources/sources-panel";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { StudioPanel } from "@/components/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
+import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 
 import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
 
@@ -145,26 +147,42 @@ function NotebookLayoutInner({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 transition-colors"
             onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+            aria-label={leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"}
           >
-            {leftPanelOpen ? (
-              <PanelLeftClose className="h-4 w-4" />
-            ) : (
-              <PanelLeftOpen className="h-4 w-4" />
-            )}
+            <motion.div
+              initial={false}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            >
+              {leftPanelOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
+            </motion.div>
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 transition-colors"
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
+            aria-label={rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"}
           >
-            {rightPanelOpen ? (
-              <PanelRightClose className="h-4 w-4" />
-            ) : (
-              <PanelRightOpen className="h-4 w-4" />
-            )}
+            <motion.div
+              initial={false}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            >
+              {rightPanelOpen ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <PanelRightOpen className="h-4 w-4" />
+              )}
+            </motion.div>
           </Button>
           <ThemeToggle />
         </div>
@@ -173,14 +191,10 @@ function NotebookLayoutInner({
       {/* Main Content - 3 Panel Grid */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sources Panel (Left) */}
-        <div
-          className="h-full shrink-0 border-r border-border"
-          style={{
-            width: leftPanelOpen ? `${sourcesPanelWidth}px` : '0px',
-            minWidth: '0',
-            willChange: 'width',
-            transition: 'width 100ms ease-in-out'
-          }}
+        <CollapsiblePanel
+          isOpen={leftPanelOpen}
+          width={sourcesPanelWidth}
+          side="left"
         >
           <SourcesPanel
             notebookId={notebook.id}
@@ -194,10 +208,21 @@ function NotebookLayoutInner({
             navigationTrigger={navigationTrigger}
             onChunkNavigated={handleChunkNavigated}
           />
-        </div>
+        </CollapsiblePanel>
 
         {/* Chat Panel (Center) */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <motion.div
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          layout
+          transition={{
+            layout: {
+              type: "spring",
+              stiffness: 400,
+              damping: 35,
+              mass: 0.8,
+            },
+          }}
+        >
           <ChatPanel
             notebookId={notebook.id}
             datasetId={notebook.ragflowDatasetId}
@@ -214,17 +239,13 @@ function NotebookLayoutInner({
               content: m.content,
             }))}
           />
-        </div>
+        </motion.div>
 
         {/* Studio Panel (Right) */}
-        <div
-          className="h-full shrink-0 border-l border-border"
-          style={{
-            width: rightPanelOpen ? `${studioPanelWidth}px` : '0px',
-            minWidth: '0',
-            willChange: 'width',
-            transition: 'width 100ms ease-in-out'
-          }}
+        <CollapsiblePanel
+          isOpen={rightPanelOpen}
+          width={studioPanelWidth}
+          side="right"
         >
           <StudioPanel
             notebookId={notebook.id}
@@ -232,7 +253,7 @@ function NotebookLayoutInner({
             selectedNote={selectedNote}
             onSelectNote={setSelectedNote}
           />
-        </div>
+        </CollapsiblePanel>
       </div>
     </div>
   );
