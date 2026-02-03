@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
 import { createNote } from "@/lib/actions/notes";
+import type { TocHeading } from "@/lib/utils/toc-extractor";
+import type { Source } from "@prisma/client";
 
 interface PreloadedMessage {
   id: string;
@@ -15,9 +17,16 @@ interface PreloadedMessage {
   content: string;
 }
 
+interface SourceContext {
+  id: string;
+  title: string;
+  toc: TocHeading[];
+}
+
 interface ChatPanelProps {
   notebookId: string;
   datasetId?: string | null;
+  sources?: Source[];
   initialSessions?: ChatSession[];
   initialMessages?: PreloadedMessage[];
 }
@@ -40,8 +49,9 @@ const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://l
 // Stable default props to avoid creating new arrays on each render
 const EMPTY_SESSIONS: ChatSession[] = [];
 const EMPTY_MESSAGES: PreloadedMessage[] = [];
+const EMPTY_SOURCES: Source[] = [];
 
-export function ChatPanel({ notebookId, datasetId, initialSessions = EMPTY_SESSIONS, initialMessages = EMPTY_MESSAGES }: ChatPanelProps) {
+export function ChatPanel({ notebookId, datasetId, sources = EMPTY_SOURCES, initialSessions = EMPTY_SESSIONS, initialMessages = EMPTY_MESSAGES }: ChatPanelProps) {
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0 ? (initialSessions[0].langgraphThreadId || null) : null
@@ -300,6 +310,24 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = EMPTY_SESSI
     }
   };
 
+  // Build sources context for agent (title + TOC headings)
+  const sourcesContext = useMemo((): SourceContext[] => {
+    return sources
+      .filter((s) => {
+        if (s.status !== "READY") return false;
+        const meta = s.metadata as Record<string, unknown> | null;
+        return meta?.toc && Array.isArray(meta.toc);
+      })
+      .map((s) => {
+        const meta = s.metadata as Record<string, unknown>;
+        return {
+          id: s.id,
+          title: s.title,
+          toc: meta.toc as TocHeading[],
+        };
+      });
+  }, [sources]);
+
   // Submit message - follows docs pattern exactly
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -325,6 +353,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = EMPTY_SESSI
             configurable: {
               dataset_ids: datasetId ? [datasetId] : [],
               notebook_id: notebookId,
+              sources_context: sourcesContext,
             },
           },
         }

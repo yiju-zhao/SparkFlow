@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { ragflowClient } from "@/lib/ragflow-client";
+import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
+import type { Prisma } from "@prisma/client";
 import type { ProcessingContext, ProcessingResult } from "./types";
 
 /**
@@ -103,7 +105,8 @@ export async function processPdfDocument(
               processedAt: new Date().toISOString(),
               ragflowRun: "RUNNING",
               ragflowProgress: doc.progress ?? 0,
-            },
+              toc: extractTocFromMarkdown(markdown),
+            } as Prisma.InputJsonValue,
           },
         });
 
@@ -135,7 +138,8 @@ export async function processPdfDocument(
                 ragflowError instanceof Error
                   ? ragflowError.message
                   : "Upload failed",
-            },
+              toc: extractTocFromMarkdown(markdown),
+            } as Prisma.InputJsonValue,
           },
         });
 
@@ -162,7 +166,8 @@ export async function processPdfDocument(
             markdownLength: markdown.length,
             imageCount: Object.keys(imageMapping).length,
             processedAt: new Date().toISOString(),
-          },
+            toc: extractTocFromMarkdown(markdown),
+          } as Prisma.InputJsonValue,
         },
       });
 

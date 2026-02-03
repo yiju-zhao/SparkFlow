@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import { crawl4aiClient } from "@/lib/crawl4ai-client";
 import { ragflowClient } from "@/lib/ragflow-client";
+import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
+import type { Prisma } from "@prisma/client";
 import type { ProcessingContext, ProcessingResult } from "./types";
 
 /**
@@ -45,7 +47,8 @@ export async function processWebpage(
               convertedAt: new Date().toISOString(),
               ragflowRun: "RUNNING",
               ragflowProgress: doc.progress ?? 0,
-            },
+              toc: extractTocFromMarkdown(markdown),
+            } as Prisma.InputJsonValue,
           },
         });
 
@@ -73,7 +76,8 @@ export async function processWebpage(
                 ragflowError instanceof Error
                   ? ragflowError.message
                   : "Upload failed",
-            },
+              toc: extractTocFromMarkdown(markdown),
+            } as Prisma.InputJsonValue,
           },
         });
 
@@ -94,7 +98,8 @@ export async function processWebpage(
           metadata: {
             markdownLength: markdown.length,
             convertedAt: new Date().toISOString(),
-          },
+            toc: extractTocFromMarkdown(markdown),
+          } as Prisma.InputJsonValue,
         },
       });
 

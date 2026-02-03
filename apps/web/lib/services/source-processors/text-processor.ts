@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { ragflowClient } from "@/lib/ragflow-client";
+import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
+import type { Prisma } from "@prisma/client";
 import type { ProcessingContext, ProcessingResult } from "./types";
 
 /**
@@ -44,7 +46,8 @@ export async function processTextDocument(
               ragflowRun: "RUNNING",
               ragflowProgress: doc.progress ?? 0,
               uploadStartedAt: new Date().toISOString(),
-            },
+              toc: extractTocFromMarkdown(content),
+            } as Prisma.InputJsonValue,
           },
         });
 
@@ -71,7 +74,8 @@ export async function processTextDocument(
                 ragflowError instanceof Error
                   ? ragflowError.message
                   : "Upload failed",
-            },
+              toc: extractTocFromMarkdown(content),
+            } as Prisma.InputJsonValue,
           },
         });
 
@@ -92,7 +96,8 @@ export async function processTextDocument(
             fileType,
             contentLength: content.length,
             processedAt: new Date().toISOString(),
-          },
+            toc: extractTocFromMarkdown(content),
+          } as Prisma.InputJsonValue,
         },
       });
 

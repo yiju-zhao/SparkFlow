@@ -27,11 +27,17 @@ import {
 } from "@/lib/actions/sources";
 import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
+import type { TocHeading } from "@/lib/utils/toc-extractor";
 
 // Extended Source type with the new content field (until Prisma client is regenerated)
 type Source = PrismaSource & {
   content?: string | null;
 };
+
+interface SourceMetadata {
+  toc?: TocHeading[];
+  [key: string]: unknown;
+}
 
 interface SourcesPanelProps {
   notebookId: string;
@@ -409,12 +415,31 @@ function SourceContentView({
     return extracted;
   }, []);
 
+  // Use stored TOC from metadata if available, else compute from content
+  const storedToc = useMemo(() => {
+    const meta = source.metadata as SourceMetadata | null;
+    if (meta?.toc && Array.isArray(meta.toc)) {
+      return meta.toc.map((h) => ({
+        id: h.text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
+        text: h.text,
+        level: h.level,
+      }));
+    }
+    return null;
+  }, [source.metadata]);
+
   // Derive headings during render (Vercel best practice: rerender-derived-state-no-effect)
+  // Use stored TOC if available, otherwise compute from content
   const initialHeadings = useMemo(
-    () => computeHeadings(initialContent),
-    [computeHeadings, initialContent]
+    () => storedToc ?? computeHeadings(initialContent),
+    [storedToc, computeHeadings, initialContent]
   );
   useEffect(() => {
+    // If we have stored TOC, use it directly without computing
+    if (storedToc) {
+      setFullHeadings(storedToc);
+      return;
+    }
     if (!renderFullContent || fullHeadings) return;
     if (showToc) {
       setFullHeadings(computeHeadings(markdownContent));
@@ -423,7 +448,7 @@ function SourceContentView({
     return scheduleIdle(() => {
       setFullHeadings(computeHeadings(markdownContent));
     });
-  }, [computeHeadings, fullHeadings, markdownContent, renderFullContent, scheduleIdle, showToc]);
+  }, [storedToc, computeHeadings, fullHeadings, markdownContent, renderFullContent, scheduleIdle, showToc]);
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
   const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
