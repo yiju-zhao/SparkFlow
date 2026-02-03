@@ -642,7 +642,7 @@ function SourceContentView({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
               {markdownContent}
