@@ -769,19 +769,37 @@ function AddSourceDialog({
       onOpenChange(false);
 
       try {
-        // Client-side download: browser fetches the file directly
-        console.log(`[SourcesPanel] Downloading file from: ${documentUrl}`);
-        const response = await fetch(documentUrl);
+        const apiUrl = `/api/download?url=${encodeURIComponent(documentUrl)}`;
+        
+        const response = await fetch(apiUrl);
         
         if (!response.ok) {
-          throw new Error(`Failed to download: HTTP ${response.status}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
         }
 
         const blob = await response.blob();
-        const file = new File([blob], displayName, { type: blob.type || "application/octet-stream" });
-        
-        console.log(`[SourcesPanel] Downloaded ${file.size} bytes, uploading...`);
+        const contentType =
+          response.headers.get("content-type") ||
+          blob.type ||
+          "application/octet-stream";
+        const headerFilename = response.headers.get("x-filename") || displayName;
+        let filename = headerFilename;
 
+        if (!/\.[a-z0-9]+$/i.test(filename)) {
+          if (contentType.includes("pdf")) {
+            filename = `${filename}.pdf`;
+          } else if (contentType.includes("word") || contentType.includes("docx")) {
+            filename = `${filename}.docx`;
+          } else if (contentType.includes("text/markdown")) {
+            filename = `${filename}.md`;
+          } else if (contentType.includes("text/plain")) {
+            filename = `${filename}.txt`;
+          }
+        }
+
+        const file = new File([blob], filename, { type: contentType });
+        
         // Upload using existing document upload action
         const formData = new FormData();
         formData.append("file", file);
