@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
+import { type ReactNode, createContext, useContext, useState, useLayoutEffect } from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
 
 // Context to expose animation state to children
@@ -38,10 +38,10 @@ export function CollapsiblePanel({
   children,
   className = "",
 }: CollapsiblePanelProps) {
-  const [isAnimationComplete, setIsAnimationComplete] = useState(isOpen);
+  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 
-  // Reset animation complete state when panel starts opening
-  useEffect(() => {
+  // Reset before paint when opening to avoid a one-frame flash of content.
+  useLayoutEffect(() => {
     if (isOpen) {
       setIsAnimationComplete(false);
     }
@@ -63,6 +63,11 @@ export function CollapsiblePanel({
           opacity: isOpen ? 1 : 0,
         }}
         transition={springTransition}
+        onAnimationStart={() => {
+          if (isOpen) {
+            setIsAnimationComplete(false);
+          }
+        }}
         onAnimationComplete={() => {
           if (isOpen) {
             setIsAnimationComplete(true);
