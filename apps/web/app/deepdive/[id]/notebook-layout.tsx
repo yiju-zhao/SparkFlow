@@ -114,15 +114,19 @@ function NotebookLayoutInner({
     return () => setOnNavigate(null);
   }, [setOnNavigate, handleCitationNavigate]);
 
-  // Determine the width of the sources panel based on whether a source is selected
-  const sourcesPanelWidth = selectedSource
-    ? SOURCES_EXPANDED_WIDTH
-    : SOURCES_LIST_WIDTH;
+  // Base widths (what they would be if open)
+  const baseSourcesWidth = selectedSource ? SOURCES_EXPANDED_WIDTH : SOURCES_LIST_WIDTH;
+  const baseStudioWidth = selectedNote ? STUDIO_EXPANDED_WIDTH : STUDIO_LIST_WIDTH;
 
-  // Determine the width of the studio panel based on whether a note is selected
-  const studioPanelWidth = selectedNote
-    ? STUDIO_EXPANDED_WIDTH
-    : STUDIO_LIST_WIDTH;
+  // Distribute space: if one panel is closed, the other gets half its space
+  // The center panel (flex-1) inherently gets the other half
+  const sourcesPanelWidth = !rightPanelOpen && leftPanelOpen
+    ? baseSourcesWidth + (baseStudioWidth / 2)
+    : baseSourcesWidth;
+
+  const studioPanelWidth = !leftPanelOpen && rightPanelOpen
+    ? baseStudioWidth + (baseSourcesWidth / 2)
+    : baseStudioWidth;
 
   // Memoized callback for chunk navigation cleanup
   const handleChunkNavigated = useCallback(() => {
