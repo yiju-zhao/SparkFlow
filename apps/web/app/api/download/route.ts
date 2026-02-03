@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { ProxyAgent } from "undici";
 
 /**
  * Server-side download proxy for external files.
@@ -42,6 +43,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const proxyUrl =
+      process.env.HTTPS_PROXY ||
+      process.env.HTTP_PROXY ||
+      process.env.https_proxy ||
+      process.env.http_proxy ||
+      "";
+    const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
@@ -52,6 +61,7 @@ export async function GET(request: NextRequest) {
       },
       redirect: "follow",
       signal: controller.signal,
+      ...(dispatcher ? { dispatcher } : {}),
     });
 
     clearTimeout(timeoutId);
