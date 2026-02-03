@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useDeferredValue, memo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, memo } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,7 @@ import {
 } from "@/lib/actions/sources";
 import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
+import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
 import type { TocHeading } from "@/lib/utils/toc-extractor";
 
 // Extended Source type with the new content field (until Prisma client is regenerated)
@@ -311,40 +312,14 @@ function SourceContentView({
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
-  const [renderFullContent, setRenderFullContent] = useState(false);
-  const [fullHeadings, setFullHeadings] = useState<{ id: string; text: string; level: number }[] | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const idleHandleRef = useRef<number | null>(null);
 
-  const scheduleIdle = useCallback((fn: () => void, timeoutMs = 800) => {
-    if (idleHandleRef.current !== null) {
-      if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleHandleRef.current);
-      } else {
-        window.clearTimeout(idleHandleRef.current);
-      }
-    }
-
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      idleHandleRef.current = window.requestIdleCallback(fn, { timeout: timeoutMs });
-    } else {
-      idleHandleRef.current = window.setTimeout(fn, Math.min(200, timeoutMs));
-    }
-
-    return () => {
-      if (idleHandleRef.current !== null) {
-        if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
-          window.cancelIdleCallback(idleHandleRef.current);
-        } else {
-          window.clearTimeout(idleHandleRef.current);
-        }
-        idleHandleRef.current = null;
-      }
-    };
-  }, []);
+  // Get animation state from CollapsiblePanel context
+  const panelContext = useCollapsiblePanel();
+  const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -354,48 +329,6 @@ function SourceContentView({
   }, [source.id]);
 
   const markdownContent = source.content || "No content available";
-  const shouldDeferFullRender = markdownContent.length > 20000;
-  const initialContent = shouldDeferFullRender
-    ? markdownContent.slice(0, 20000)
-    : markdownContent;
-  const contentForRender = renderFullContent ? markdownContent : initialContent;
-  const deferredMarkdownContent = useDeferredValue(contentForRender);
-
-  useEffect(() => {
-    if (!shouldDeferFullRender) {
-      setRenderFullContent(true);
-      setFullHeadings(null);
-      return;
-    }
-
-    setRenderFullContent(false);
-    setFullHeadings(null);
-    return scheduleIdle(() => {
-      setRenderFullContent(true);
-    });
-  }, [scheduleIdle, source.id, shouldDeferFullRender]);
-
-  useEffect(() => {
-    if (!shouldDeferFullRender || renderFullContent) return;
-    const container = scrollRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const nearEnd = container.scrollTop + container.clientHeight >= container.scrollHeight * 0.6;
-      if (nearEnd) {
-        setRenderFullContent(true);
-      }
-    };
-
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [renderFullContent, shouldDeferFullRender]);
-
-  useEffect(() => {
-    if (targetChunkId && shouldDeferFullRender) {
-      setRenderFullContent(true);
-    }
-  }, [targetChunkId, shouldDeferFullRender]);
 
   const computeHeadings = useCallback((content: string) => {
     const extracted: { id: string; text: string; level: number }[] = [];
@@ -428,27 +361,11 @@ function SourceContentView({
     return null;
   }, [source.metadata]);
 
-  // Derive headings during render (Vercel best practice: rerender-derived-state-no-effect)
-  // Use stored TOC if available, otherwise compute from content
-  const initialHeadings = useMemo(
-    () => storedToc ?? computeHeadings(initialContent),
-    [storedToc, computeHeadings, initialContent]
+  // Derive headings: use stored TOC if available, otherwise compute from content
+  const headings = useMemo(
+    () => storedToc ?? computeHeadings(markdownContent),
+    [storedToc, computeHeadings, markdownContent]
   );
-  useEffect(() => {
-    // If we have stored TOC, use it directly without computing
-    if (storedToc) {
-      setFullHeadings(storedToc);
-      return;
-    }
-    if (!renderFullContent || fullHeadings) return;
-    if (showToc) {
-      setFullHeadings(computeHeadings(markdownContent));
-      return;
-    }
-    return scheduleIdle(() => {
-      setFullHeadings(computeHeadings(markdownContent));
-    });
-  }, [storedToc, computeHeadings, fullHeadings, markdownContent, renderFullContent, scheduleIdle, showToc]);
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
   const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
@@ -558,7 +475,7 @@ function SourceContentView({
       });
       container.normalize();
     }, 60000);
-  }, [deferredMarkdownContent, markdownContent]);
+  }, [markdownContent]);
 
   const scheduleScrollToChunk = useCallback((delayMs: number) => {
     if (!pendingNavigationRef.current) return;
@@ -581,15 +498,15 @@ function SourceContentView({
       preview: targetContentPreview,
       suffix: targetContentSuffix || null,
     };
-    if (renderFullContent) {
+    if (isAnimationComplete) {
       scheduleScrollToChunk(250);
     }
-  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk, renderFullContent]);
+  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk, isAnimationComplete]);
 
   useEffect(() => {
-    if (!renderFullContent || !pendingNavigationRef.current) return;
+    if (!isAnimationComplete || !pendingNavigationRef.current) return;
     scheduleScrollToChunk(80);
-  }, [renderFullContent, scheduleScrollToChunk]);
+  }, [isAnimationComplete, scheduleScrollToChunk]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -677,7 +594,7 @@ function SourceContentView({
         </div>
 
         {/* TOC Toggle Button */}
-        {(initialHeadings.length > 0 || (fullHeadings?.length ?? 0) > 0) && (
+        {headings.length > 0 && (
           <div className="relative">
             <Button
               size="sm"
@@ -695,7 +612,7 @@ function SourceContentView({
                 <div className="p-3">
                   <h3 className="mb-2 text-xs font-semibold">Table of Contents</h3>
                   <nav className="max-h-96 space-y-1 overflow-y-auto">
-                    {(fullHeadings ?? initialHeadings).map((heading, index) => (
+                    {headings.map((heading, index) => (
                       <button
                         key={index}
                         onClick={() => scrollToHeading(heading.text)}
@@ -719,14 +636,17 @@ function SourceContentView({
       <div
         ref={scrollRef}
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
-        style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 500px' }}
       >
-        <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-          {deferredMarkdownContent}
-        </Markdown>
-        {!renderFullContent && shouldDeferFullRender && (
-          <div className="mt-4 text-xs text-muted-foreground">
-            Loading full content...
+        {isAnimationComplete ? (
+          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+            {markdownContent}
+          </Markdown>
+        ) : (
+          <div className="space-y-3 animate-pulse">
+            <div className="h-4 w-3/4 rounded bg-muted" />
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="h-4 w-5/6 rounded bg-muted" />
+            <div className="h-4 w-2/3 rounded bg-muted" />
           </div>
         )}
       </div>
