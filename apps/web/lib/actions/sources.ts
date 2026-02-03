@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { ragflowClient } from "@/lib/ragflow-client";
+import { crawl4aiClient } from "@/lib/crawl4ai-client";
 import { mapRagFlowStatus } from "@/lib/utils/ragflow-status";
 import { processWebpage } from "@/lib/services/source-processors/webpage-processor";
 import { processTextDocument } from "@/lib/services/source-processors/text-processor";
@@ -178,73 +179,54 @@ export async function uploadDocumentFromUrl(
   }
 
   // Validate URL
-  let parsedUrl: URL;
   try {
-    parsedUrl = new URL(documentUrl);
+    new URL(documentUrl);
   } catch {
     throw new Error("Invalid URL");
   }
 
-  // Download the file
-  let response: Response;
+  // Download the file using Crawl4AI
+  let buffer: Buffer;
+  let filename: string;
+  let contentType: string;
+
   try {
-    response = await fetch(documentUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; DeepSight/1.0)",
-      },
-    });
-  } catch {
-    throw new Error("Failed to fetch document from URL");
-  }
-
-  if (!response.ok) {
-    throw new Error(`Failed to download document: ${response.status} ${response.statusText}`);
-  }
-
-  // Extract filename from Content-Disposition header or URL
-  let filename = "";
-  const contentDisposition = response.headers.get("content-disposition");
-  if (contentDisposition) {
-    const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-    if (match) {
-      filename = match[1].replace(/['"]/g, "").trim();
-    }
-  }
-
-  if (!filename) {
-    // Extract from URL path
-    const pathname = parsedUrl.pathname;
-    const lastSegment = pathname.split("/").pop() || "";
-    filename = decodeURIComponent(lastSegment) || "document";
+    const downloadResult = await crawl4aiClient.downloadFileAsBuffer(documentUrl);
+    buffer = downloadResult.buffer;
+    filename = downloadResult.filename;
+    contentType = downloadResult.contentType;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to download document: ${errorMessage}`);
   }
 
   // Ensure we have a valid extension
-  const fileExtension = filename.split(".").pop()?.toLowerCase() || "";
+  let fileExtension = filename.split(".").pop()?.toLowerCase() || "";
   const supportedExtensions = ["pdf", "docx", "doc", "txt", "md"];
 
   if (!supportedExtensions.includes(fileExtension)) {
     // Try to infer from content-type
-    const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("pdf")) {
       filename = filename.includes(".") ? filename : `${filename}.pdf`;
+      fileExtension = "pdf";
     } else if (contentType.includes("word") || contentType.includes("docx")) {
       filename = filename.includes(".") ? filename : `${filename}.docx`;
+      fileExtension = "docx";
     } else if (contentType.includes("text/plain")) {
       filename = filename.includes(".") ? filename : `${filename}.txt`;
+      fileExtension = "txt";
     } else if (contentType.includes("text/markdown")) {
       filename = filename.includes(".") ? filename : `${filename}.md`;
+      fileExtension = "md";
     } else {
       throw new Error("Unsupported file type. Please provide a PDF, DOCX, TXT, or MD file.");
     }
   }
 
-  // Get file buffer
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
   // Create a File-like object
-  const blob = new Blob([buffer]);
-  const file = new File([blob], filename, { type: response.headers.get("content-type") || "application/octet-stream" });
+  const uint8Array = new Uint8Array(buffer);
+  const blob = new Blob([uint8Array]);
+  const file = new File([blob], filename, { type: contentType || "application/octet-stream" });
 
   // Create source with PROCESSING status
   const source = await prisma.source.create({

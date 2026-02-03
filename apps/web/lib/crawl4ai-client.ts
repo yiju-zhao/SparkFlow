@@ -451,6 +451,169 @@ class Crawl4AIClient {
       rawMarkdown,
     };
   }
+
+  /**
+   * Download a file from a URL using Crawl4AI's browser automation
+   * This handles downloads that require browser context (redirects, cookies, etc.)
+   *
+   * @param url - The URL of the file to download
+   * @param options - Download options
+   */
+  async downloadFile(
+    url: string,
+    options: {
+      timeout?: number; // Wait time in seconds for download to complete
+    } = {}
+  ): Promise<{
+    downloadedFiles: string[];
+    success: boolean;
+    errorMessage?: string;
+  }> {
+    const { timeout = 30 } = options;
+
+    // Use the /crawl endpoint with download configuration
+    const crawlerConfig: CrawlerRunConfig = {
+      cache_mode: "disabled", // Don't cache downloads
+      wait_for: `${timeout}`, // Wait for download to complete
+      js_code: `
+        // For direct file URLs, the browser will automatically download
+        // For pages with download buttons, we try to find and click them
+        const downloadLinks = document.querySelectorAll('a[download], a[href$=".pdf"], a[href$=".docx"], a[href$=".doc"], a[href$=".txt"], a[href$=".md"]');
+        if (downloadLinks.length > 0) {
+          downloadLinks[0].click();
+        }
+      `,
+    };
+
+    const browserConfig: BrowserConfig = {
+      headless: true,
+      verbose: false,
+    };
+
+    try {
+      // Make request to crawl endpoint with download support
+      // Note: The API needs an extension to support downloads - using direct endpoint
+      const response = await this.request<{
+        results: Array<{
+          success: boolean;
+          downloaded_files?: string[];
+          error_message?: string;
+        }>;
+      }>("/crawl", {
+        method: "POST",
+        body: JSON.stringify({
+          urls: [url],
+          crawler_config: {
+            ...crawlerConfig,
+            accept_downloads: true,
+          },
+          browser_config: {
+            ...browserConfig,
+            accept_downloads: true,
+          },
+        }),
+      });
+
+      if (!response.results || response.results.length === 0) {
+        return {
+          downloadedFiles: [],
+          success: false,
+          errorMessage: "No results returned from crawl",
+        };
+      }
+
+      const result = response.results[0];
+      return {
+        downloadedFiles: result.downloaded_files || [],
+        success: result.success && (result.downloaded_files?.length ?? 0) > 0,
+        errorMessage: result.error_message,
+      };
+    } catch (error) {
+      return {
+        downloadedFiles: [],
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Download failed",
+      };
+    }
+  }
+
+  /**
+   * Download a file and return its contents as a Buffer
+   * Falls back to direct fetch if Crawl4AI download doesn't work
+   *
+   * @param url - The URL of the file to download
+   */
+  async downloadFileAsBuffer(
+    url: string
+  ): Promise<{
+    buffer: Buffer;
+    filename: string;
+    contentType: string;
+  }> {
+    // First, try using the /crawl endpoint to navigate and potentially download
+    // For direct file URLs, Crawl4AI should handle the download
+
+    // Make a direct request through Crawl4AI's proxy-like behavior
+    // by fetching the URL content
+    const response = await fetch(`${this.baseUrl}/download`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      // Fall back to direct fetch with browser-like headers
+      const directResponse = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "*/*",
+        },
+        redirect: "follow",
+      });
+
+      if (!directResponse.ok) {
+        throw new Error(`Failed to download file: ${directResponse.status} ${directResponse.statusText}`);
+      }
+
+      const arrayBuffer = await directResponse.arrayBuffer();
+      const contentType = directResponse.headers.get("content-type") || "application/octet-stream";
+
+      // Extract filename
+      let filename = "";
+      const contentDisposition = directResponse.headers.get("content-disposition");
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match) {
+          filename = match[1].replace(/['"]/g, "").trim();
+        }
+      }
+      if (!filename) {
+        const urlPath = new URL(url).pathname;
+        filename = decodeURIComponent(urlPath.split("/").pop() || "document");
+      }
+
+      return {
+        buffer: Buffer.from(arrayBuffer),
+        filename,
+        contentType,
+      };
+    }
+
+    const data = await response.json() as {
+      content: string; // Base64 encoded
+      filename: string;
+      content_type: string;
+    };
+
+    return {
+      buffer: Buffer.from(data.content, "base64"),
+      filename: data.filename,
+      contentType: data.content_type,
+    };
+  }
 }
 
 // Export singleton instance
