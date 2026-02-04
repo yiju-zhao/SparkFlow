@@ -93,36 +93,37 @@
   /* Premium Obsidian/Slate Theme */
   --background: oklch(0.12 0.02 265);
   /* Deep obsidian base */
-  --foreground: oklch(0.98 0.005 265);
-  /* Crisp white with hint of cold */
+  --foreground: oklch(0.88 0.01 265);
+  /* Softened white (was 0.98) */
 
   --card: oklch(0.16 0.025 265);
   /* Distinct surface but clearly related */
-  --card-foreground: oklch(0.98 0.005 265);
+  --card-foreground: oklch(0.88 0.01 265);
 
   --popover: oklch(0.16 0.025 265);
-  --popover-foreground: oklch(0.98 0.005 265);
+  --popover-foreground: oklch(0.88 0.01 265);
 
-  --primary: oklch(0.98 0.005 265);
+  --primary: oklch(0.88 0.01 265);
   --primary-foreground: oklch(0.12 0.02 265);
 
   --secondary: oklch(0.22 0.035 265);
   /* Lighter interactive surface */
-  --secondary-foreground: oklch(0.98 0.005 265);
+  --secondary-foreground: oklch(0.88 0.01 265);
 
   --muted: oklch(0.22 0.035 265);
   --muted-foreground: oklch(0.65 0.02 265);
 
   --accent: oklch(0.22 0.035 265);
-  --accent-foreground: oklch(0.98 0.005 265);
+  --accent-foreground: oklch(0.88 0.01 265);
 
   --destructive: oklch(0.55 0.22 25);
   /* Adjusted red for dark mode ease */
-  --destructive-foreground: oklch(0.98 0.005 265);
+  --destructive-foreground: oklch(0.88 0.01 265);
 
-  --border: oklch(1 0 0 / 12%);
-  /* Subtle border */
-  --input: oklch(1 0 0 / 18%);
+  --border: oklch(0.28 0.03 265);
+  /* Much more obvious border (Solid Lighter Slate) */
+  --input: oklch(0.28 0.03 265);
+  /* Matching border for inputs */
   --ring: oklch(0.40 0.06 265);
   /* Focus ring matching theme */
 }
@@ -270,9 +271,12 @@
 /* Chunk highlight animation for citation navigation */
 /* Stay solid for 95% of duration (57s), then fade over last 5% (3s) */
 @keyframes highlight-fade {
-  0%, 95% {
+
+  0%,
+  95% {
     background-color: rgba(234, 179, 8, 0.4);
   }
+
   100% {
     background-color: transparent;
   }
@@ -283,4 +287,3 @@
   border-radius: 4px;
   padding: 2px 0;
 }
-
