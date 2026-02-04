@@ -87,6 +87,11 @@
   /* Border Radius System */
   --radius: 0.5rem;
   /* 8px - default */
+
+  /* Chunk Highlight Colors */
+  --highlight-bg: oklch(0.92 0.12 95 / 0.6);
+  --highlight-border: oklch(0.70 0.15 85);
+  /* Light Mode: Vibrant Amber Border */
 }
 
 .dark {
@@ -126,6 +131,10 @@
   /* Matching border for inputs */
   --ring: oklch(0.40 0.06 265);
   /* Focus ring matching theme */
+
+  --highlight-bg: oklch(0.35 0.10 265 / 0.5);
+  --highlight-border: oklch(0.60 0.15 250);
+  /* Dark Mode: Luminous Indigo Border */
 }
 
 @layer base {
@@ -274,16 +283,25 @@
 
   0%,
   95% {
-    background-color: rgba(234, 179, 8, 0.4);
+    background-color: var(--highlight-bg);
+    box-shadow: 0 0 0 2px var(--highlight-bg);
+    /* Subtle bleed for visibility */
   }
 
   100% {
     background-color: transparent;
+    box-shadow: none;
   }
 }
 
 .chunk-highlight {
   animation: highlight-fade 60s ease-out forwards;
   border-radius: 4px;
-  padding: 2px 0;
+  padding: 1px 3px;
+
+  /* Format Emphasis */
+  font-weight: 500;
+  border-bottom: 2px solid var(--highlight-border);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
