@@ -1,0 +1,10 @@
+{
+  "name": "sparkflow",
+  "version": "0.3.0-beta",
+  "private": true,
+  "scripts": {
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
+  }
+}
