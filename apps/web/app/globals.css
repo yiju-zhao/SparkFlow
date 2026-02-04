@@ -299,9 +299,11 @@
   border-radius: 4px;
   padding: 1px 3px;
 
-  /* Format Emphasis */
-  font-weight: 500;
-  border-bottom: 2px solid var(--highlight-border);
+  /* Format Emphasis - Reinforced */
+  font-weight: 500 !important;
+  border-bottom: 2px solid var(--highlight-border) !important;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
+  display: inline;
+  /* Ensure exact decoration behavior */
 }

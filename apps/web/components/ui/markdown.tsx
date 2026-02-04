@@ -103,7 +103,7 @@ function CitationLink({ "data-chunk": chunkId, "data-index": index }: { "data-ch
     return (
         <button
             onClick={handleClick}
-            className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors cursor-pointer"
+            className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-indigo-500/20 text-amber-700 dark:text-indigo-300 border border-amber-200 dark:border-indigo-500/30 rounded hover:bg-amber-200 dark:hover:bg-indigo-500/30 transition-colors cursor-pointer"
             title="Navigate to source"
         >
             [{index}]
