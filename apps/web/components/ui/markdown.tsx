@@ -24,18 +24,24 @@ function MathInline({ math }: { math: string }) {
     return <TeX>{math}</TeX>;
 }
 
+// Hoisted regexes for better performance
+const BLOCK_MATH_REGEX = /\$\$([\s\S]*?)\$\$/g;
+const INLINE_MATH_REGEX = /(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)/g;
+const HTML_TABLE_REGEX = /<table[\s\S]*?<\/table>/gi;
+const CITATION_REGEX = /\[ref:([a-zA-Z0-9_-]+)\]/g;
+
 // Preprocess markdown to convert LaTeX delimiters to custom components
 function preprocessMath(content: string): string {
     // Replace block math $$...$$ with a custom marker
     let processed = content.replace(
-        /\$\$([\s\S]*?)\$\$/g,
+        BLOCK_MATH_REGEX,
         (_, math) => `<math-block math="${encodeURIComponent(math.trim())}"></math-block>`
     );
 
     // Replace inline math $...$ (but not $$)
     // Use negative lookbehind/lookahead to avoid matching $$
     processed = processed.replace(
-        /(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)/g,
+        INLINE_MATH_REGEX,
         (_, math) => `<math-inline math="${encodeURIComponent(math.trim())}"></math-inline>`
     );
 
@@ -45,7 +51,7 @@ function preprocessMath(content: string): string {
 // Extract HTML tables and replace with placeholders to avoid markdown-to-jsx parsing issues
 function extractHtmlTables(content: string): { processed: string; tables: string[] } {
     const tables: string[] = [];
-    const processed = content.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
+    const processed = content.replace(HTML_TABLE_REGEX, (match) => {
         const index = tables.length;
         tables.push(match);
         return `<html-table-placeholder data-index="${index}"></html-table-placeholder>`;
@@ -72,7 +78,7 @@ function preprocessCitations(content: string): string {
     let nextIndex = 1;
 
     return content.replace(
-        /\[ref:([a-zA-Z0-9_-]+)\]/g,
+        CITATION_REGEX,
         (_, chunkId) => {
             let index = chunkIndexMap.get(chunkId);
             if (index === undefined) {
@@ -121,7 +127,7 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
     );
 
     return (
-        <div className={cn("break-words", className)}>
+        <div className={cn("wrap-break-word", className)}>
             <MarkdownToJsx
                 options={{
                     overrides: {
@@ -154,7 +160,7 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             },
                         },
                         code: {
-                            component: ({ className: codeClassName, children: codeChildren, ...props }) => {
+                            component: ({ className: codeClassName, children: codeChildren, ...props }: { className?: string; children: React.ReactNode }) => {
                                 const isBlock = codeClassName?.includes("lang-");
                                 return isBlock ? (
                                     <div className="relative my-4 rounded-lg bg-zinc-950 p-4 overflow-x-auto max-w-full">
@@ -190,7 +196,7 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             },
                         },
                         p: {
-                            component: ({ children: pChildren, ...props }) => {
+                            component: ({ children: pChildren, ...props }: { children: React.ReactNode }) => {
                                 // Helper to check if a single child is a block-level element
                                 const isBlockElement = (child: unknown): boolean => {
                                     if (!child || typeof child !== 'object') return false;
@@ -286,8 +292,9 @@ export const Markdown = memo(function Markdown({ children, className }: Markdown
                             ),
                         },
                         img: {
-                            component: ({ src, alt, width, height }) => (
+                            component: ({ src, alt, width, height }: { src: string; alt?: string; width?: string | number; height?: string | number }) => (
                                 <span className="block max-w-full overflow-hidden">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={src}
                                         alt={alt || ''}

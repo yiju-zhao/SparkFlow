@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   PanelLeftClose,
@@ -16,18 +16,22 @@ import { SourcesPanel } from "@/components/sources/sources-panel";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { StudioPanel } from "@/components/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
+import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 
-import type { Source, Note, Notebook, ChatSession } from "@prisma/client";
+import type { Source, Note, Notebook } from "@prisma/client";
 
-type ChatSessionWithCount = ChatSession & {
-  _count?: {
-    messages: number;
-  };
-};
-
-interface PreloadedMessage {
+// Pre-transformed types from RSC (avoids client-side transformation)
+interface TransformedChatSession {
   id: string;
-  sender: string;
+  title: string;
+  lastActivity: string;
+  langgraphThreadId: string | null;
+  _count: { messages: number };
+}
+
+interface TransformedMessage {
+  id: string;
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -35,9 +39,13 @@ interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
-  initialChatSessions?: ChatSessionWithCount[];
-  initialMessages?: PreloadedMessage[];
+  initialChatSessions?: TransformedChatSession[];
+  initialMessages?: TransformedMessage[];
 }
+
+// Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
+const EMPTY_SESSIONS: TransformedChatSession[] = [];
+const EMPTY_MESSAGES: TransformedMessage[] = [];
 
 // Panel widths
 const SOURCES_LIST_WIDTH = 280;
@@ -57,8 +65,8 @@ function NotebookLayoutInner({
   notebook,
   sources,
   notes,
-  initialChatSessions = [],
-  initialMessages = [],
+  initialChatSessions = EMPTY_SESSIONS,
+  initialMessages = EMPTY_MESSAGES,
 }: NotebookLayoutProps) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -106,15 +114,26 @@ function NotebookLayoutInner({
     return () => setOnNavigate(null);
   }, [setOnNavigate, handleCitationNavigate]);
 
-  // Determine the width of the sources panel based on whether a source is selected
-  const sourcesPanelWidth = selectedSource
-    ? SOURCES_EXPANDED_WIDTH
-    : SOURCES_LIST_WIDTH;
+  // Base widths (what they would be if open)
+  const baseSourcesWidth = selectedSource ? SOURCES_EXPANDED_WIDTH : SOURCES_LIST_WIDTH;
+  const baseStudioWidth = selectedNote ? STUDIO_EXPANDED_WIDTH : STUDIO_LIST_WIDTH;
 
-  // Determine the width of the studio panel based on whether a note is selected
-  const studioPanelWidth = selectedNote
-    ? STUDIO_EXPANDED_WIDTH
-    : STUDIO_LIST_WIDTH;
+  // Distribute space: if one panel is closed, the other gets half its space
+  // The center panel (flex-1) inherently gets the other half
+  const sourcesPanelWidth = !rightPanelOpen && leftPanelOpen
+    ? baseSourcesWidth + (baseStudioWidth / 2)
+    : baseSourcesWidth;
+
+  const studioPanelWidth = !leftPanelOpen && rightPanelOpen
+    ? baseStudioWidth + (baseSourcesWidth / 2)
+    : baseStudioWidth;
+
+  // Memoized callback for chunk navigation cleanup
+  const handleChunkNavigated = useCallback(() => {
+    setTargetChunkId(null);
+    setTargetContentPreview(null);
+    setTargetContentSuffix(null);
+  }, []);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -139,26 +158,42 @@ function NotebookLayoutInner({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 transition-colors"
             onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+            aria-label={leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"}
           >
-            {leftPanelOpen ? (
-              <PanelLeftClose className="h-4 w-4" />
-            ) : (
-              <PanelLeftOpen className="h-4 w-4" />
-            )}
+            <motion.div
+              initial={false}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            >
+              {leftPanelOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
+            </motion.div>
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 transition-colors"
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
+            aria-label={rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"}
           >
-            {rightPanelOpen ? (
-              <PanelRightClose className="h-4 w-4" />
-            ) : (
-              <PanelRightOpen className="h-4 w-4" />
-            )}
+            <motion.div
+              initial={false}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            >
+              {rightPanelOpen ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <PanelRightOpen className="h-4 w-4" />
+              )}
+            </motion.div>
           </Button>
           <ThemeToggle />
         </div>
@@ -167,74 +202,60 @@ function NotebookLayoutInner({
       {/* Main Content - 3 Panel Grid */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sources Panel (Left) */}
-        <AnimatePresence initial={false}>
-          {leftPanelOpen && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: sourcesPanelWidth, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="h-full shrink-0 overflow-hidden border-r border-border"
-            >
-              <SourcesPanel
-                notebookId={notebook.id}
-                datasetId={notebook.ragflowDatasetId}
-                sources={sources}
-                selectedSource={selectedSource}
-                onSelectSource={setSelectedSource}
-                targetChunkId={targetChunkId}
-                targetContentPreview={targetContentPreview}
-                targetContentSuffix={targetContentSuffix}
-                navigationTrigger={navigationTrigger}
-                onChunkNavigated={() => {
-                  setTargetChunkId(null);
-                  setTargetContentPreview(null);
-                  setTargetContentSuffix(null);
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <CollapsiblePanel
+          isOpen={leftPanelOpen}
+          width={sourcesPanelWidth}
+          side="left"
+        >
+          <SourcesPanel
+            notebookId={notebook.id}
+            datasetId={notebook.ragflowDatasetId}
+            sources={sources}
+            selectedSource={selectedSource}
+            onSelectSource={setSelectedSource}
+            targetChunkId={targetChunkId}
+            targetContentPreview={targetContentPreview}
+            targetContentSuffix={targetContentSuffix}
+            navigationTrigger={navigationTrigger}
+            onChunkNavigated={handleChunkNavigated}
+          />
+        </CollapsiblePanel>
 
         {/* Chat Panel (Center) */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <motion.div
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          layout
+          transition={{
+            layout: {
+              type: "spring",
+              stiffness: 400,
+              damping: 35,
+              mass: 0.8,
+            },
+          }}
+        >
           <ChatPanel
             notebookId={notebook.id}
             datasetId={notebook.ragflowDatasetId}
-            initialSessions={initialChatSessions.map((s) => ({
-              id: s.id,
-              title: s.title,
-              lastActivity: s.lastActivity.toISOString(),
-              langgraphThreadId: s.langgraphThreadId,
-              _count: { messages: s._count?.messages ?? 0 },
-            }))}
-            initialMessages={initialMessages.map((m) => ({
-              id: m.id,
-              role: m.sender === "USER" ? "user" : "assistant",
-              content: m.content,
-            }))}
+            sources={sources}
+            initialSessions={initialChatSessions}
+            initialMessages={initialMessages}
           />
-        </div>
+        </motion.div>
 
         {/* Studio Panel (Right) */}
-        <AnimatePresence initial={false}>
-          {rightPanelOpen && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: studioPanelWidth, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="h-full shrink-0 overflow-hidden border-l border-border"
-            >
-              <StudioPanel
-                notebookId={notebook.id}
-                notes={notes}
-                selectedNote={selectedNote}
-                onSelectNote={setSelectedNote}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <CollapsiblePanel
+          isOpen={rightPanelOpen}
+          width={studioPanelWidth}
+          side="right"
+        >
+          <StudioPanel
+            notebookId={notebook.id}
+            notes={notes}
+            selectedNote={selectedNote}
+            onSelectNote={setSelectedNote}
+          />
+        </CollapsiblePanel>
       </div>
     </div>
   );

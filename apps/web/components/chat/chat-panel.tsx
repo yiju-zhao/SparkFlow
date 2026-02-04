@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import type { Message } from "@langchain/langgraph-sdk";
 import { Send, Loader2, Sparkles, Plus, History, X, Trash2, StickyNote, Copy, Check } from "lucide-react";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
 import { createNote } from "@/lib/actions/notes";
+import type { TocHeading } from "@/lib/utils/toc-extractor";
+import type { Source } from "@prisma/client";
 
 interface PreloadedMessage {
   id: string;
@@ -15,9 +17,16 @@ interface PreloadedMessage {
   content: string;
 }
 
+interface SourceContext {
+  id: string;
+  title: string;
+  toc: TocHeading[];
+}
+
 interface ChatPanelProps {
   notebookId: string;
   datasetId?: string | null;
+  sources?: Source[];
   initialSessions?: ChatSession[];
   initialMessages?: PreloadedMessage[];
 }
@@ -37,7 +46,12 @@ interface AgentState {
 
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
-export function ChatPanel({ notebookId, datasetId, initialSessions = [], initialMessages = [] }: ChatPanelProps) {
+// Stable default props to avoid creating new arrays on each render
+const EMPTY_SESSIONS: ChatSession[] = [];
+const EMPTY_MESSAGES: PreloadedMessage[] = [];
+const EMPTY_SOURCES: Source[] = [];
+
+export function ChatPanel({ notebookId, datasetId, sources = EMPTY_SOURCES, initialSessions = EMPTY_SESSIONS, initialMessages = EMPTY_MESSAGES }: ChatPanelProps) {
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0 ? (initialSessions[0].langgraphThreadId || null) : null
@@ -58,10 +72,10 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
     })) as Message[]
   );
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
-  // Track which session was preloaded to avoid refetching
-  const [preloadedSessionId] = useState<string | null>(
+  // Track which session was preloaded to avoid refetching (immutable, use ref)
+  const preloadedSessionId = useRef<string | null>(
     initialSessions.length > 0 ? initialSessions[0].id : null
-  );
+  ).current;
 
   // Input state
   const [input, setInput] = useState("");
@@ -109,13 +123,16 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
 
     // Detect transition from loading to not loading (streaming just completed)
     if (wasLoading && !stream.isLoading && !stream.error && streamSessionId) {
-      const messagesToSave = stream.messages
-        .filter((m) => m.type === "human" || m.type === "ai")
-        .map((m) => ({
-          sender: m.type === "human" ? "USER" : "ASSISTANT",
-          content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
-        }))
-        .filter((m) => m.content.trim().length > 0);
+      // Combine iterations into single reduce (Vercel best practice: js-combine-iterations)
+      const messagesToSave = stream.messages.reduce<{ sender: string; content: string }[]>((acc, m) => {
+        if (m.type === "human" || m.type === "ai") {
+          const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+          if (content.trim().length > 0) {
+            acc.push({ sender: m.type === "human" ? "USER" : "ASSISTANT", content });
+          }
+        }
+        return acc;
+      }, []);
 
       if (messagesToSave.length > 0) {
         fetch("/api/chat/messages", {
@@ -293,6 +310,24 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
     }
   };
 
+  // Build sources context for agent (title + TOC headings)
+  const sourcesContext = useMemo((): SourceContext[] => {
+    return sources
+      .filter((s) => {
+        if (s.status !== "READY") return false;
+        const meta = s.metadata as Record<string, unknown> | null;
+        return meta?.toc && Array.isArray(meta.toc);
+      })
+      .map((s) => {
+        const meta = s.metadata as Record<string, unknown>;
+        return {
+          id: s.id,
+          title: s.title,
+          toc: meta.toc as TocHeading[],
+        };
+      });
+  }, [sources]);
+
   // Submit message - follows docs pattern exactly
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,7 +345,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
       }
       setStreamSessionId(targetSessionId ?? null);
 
-      // Submit to LangGraph with config for dataset
+      // Submit to LangGraph (optimization happens in agent)
       stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
@@ -318,6 +353,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
             configurable: {
               dataset_ids: datasetId ? [datasetId] : [],
               notebook_id: notebookId,
+              sources_context: sourcesContext,
             },
           },
         }
@@ -359,6 +395,32 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
     streamSessionId && streamSessionId === activeSessionId && stream.messages.length > 0
       ? stream.messages
       : sessionMessages;
+
+  // Memoize message filtering to avoid O(n²) computation on every render
+  const { filteredMessages, completedToolCallIds } = useMemo(() => {
+    const completedToolCallIds = new Set<string>();
+    displayMessages.forEach((message) => {
+      if (message.type === "tool") {
+        const toolCallId = (message as unknown as { tool_call_id?: string }).tool_call_id;
+        if (toolCallId) completedToolCallIds.add(toolCallId);
+      }
+    });
+
+    const filteredMessages = displayMessages.filter((message) => {
+      if (message.type === "human") return true;
+
+      if (message.type === "ai") {
+        const toolCalls = (message as unknown as { tool_calls?: { id: string; name: string }[] }).tool_calls;
+        const content = getMessageContent(message);
+        const hasInProgressToolCalls = toolCalls?.some(tc => !completedToolCallIds.has(tc.id)) ?? false;
+        return hasInProgressToolCalls || content.trim().length > 0;
+      }
+
+      return false;
+    });
+
+    return { filteredMessages, completedToolCallIds };
+  }, [displayMessages]);
 
   return (
     <div className="flex h-full min-w-0 flex-col relative overflow-hidden">
@@ -408,48 +470,22 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
       )}
 
       {/* Messages - using stream.messages directly */}
-      <div ref={messagesContainerRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4">
-        {displayMessages.length === 0 ? (
+      <div
+        ref={messagesContainerRef}
+        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4"
+        style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 500px' }}
+      >
+        {filteredMessages.length === 0 && (
           <div className="flex h-full items-center justify-center">
             <div className="text-center text-muted-foreground">
               <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
               <p className="text-sm">Start a conversation</p>
             </div>
           </div>
-        ) : (
-          // Filter to show human messages, in-progress tool calls, and final AI responses
-          (() => {
-            // Collect all tool_call_ids that have received responses
-            const completedToolCallIds = new Set<string>();
-            displayMessages.forEach((message) => {
-              if (message.type === "tool") {
-                const toolCallId = (message as unknown as { tool_call_id?: string }).tool_call_id;
-                if (toolCallId) completedToolCallIds.add(toolCallId);
-              }
-            });
+        )}
 
-            // Get messages to display: human messages + AI messages (with or without tool_calls)
-            const filteredMessages = displayMessages.filter((message) => {
-              // Always show human messages
-              if (message.type === "human") return true;
-
-              // For AI messages, show if they have content OR in-progress tool_calls
-              if (message.type === "ai") {
-                const toolCalls = (message as unknown as { tool_calls?: { id: string; name: string }[] }).tool_calls;
-                const content = getMessageContent(message);
-
-                // Check if this message has tool calls that are still in progress
-                const hasInProgressToolCalls = toolCalls?.some(tc => !completedToolCallIds.has(tc.id)) ?? false;
-
-                // Show AI message if it has in-progress tool calls or has content
-                return hasInProgressToolCalls || content.trim().length > 0;
-              }
-
-              // Hide tool response messages and other types
-              return false;
-            });
-
-            return filteredMessages.map((message, idx) => {
+        {filteredMessages.length > 0 && (
+          filteredMessages.map((message, idx) => {
               const messageKey = message.id ?? `msg-${idx}`;
               const isUser = message.type === "human";
               const content = getMessageContent(message);
@@ -504,8 +540,7 @@ export function ChatPanel({ notebookId, datasetId, initialSessions = [], initial
                   </div>
                 </div>
               );
-            });
-          })()
+            })
         )}
 
         {/* Loading indicator */}

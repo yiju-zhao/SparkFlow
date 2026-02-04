@@ -6,11 +6,11 @@
  */
 
 import {
-    S3Client,
-    PutObjectCommand,
-    GetObjectCommand,
-    DeleteObjectCommand,
-    ListObjectsV2Command,
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
 
@@ -18,195 +18,201 @@ import { Readable } from "stream";
 const S3_ENDPOINT = process.env.S3_ENDPOINT || "http://localhost:9002";
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY || "minioadmin";
 const S3_SECRET_KEY = process.env.S3_SECRET_KEY || "minioadmin";
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || "sparkflow-images";
+const DEFAULT_BUCKET_NAME = process.env.S3_BUCKET_NAME || "sparkflow-images";
 const S3_REGION = process.env.S3_REGION || "us-east-1";
 
-// Initialize S3 client
-const s3Client = new S3Client({
-    endpoint: S3_ENDPOINT,
-    region: S3_REGION,
-    credentials: {
+/**
+ * S3 Storage Client class for consistent API pattern.
+ */
+class S3StorageClient {
+  private client: S3Client;
+  private bucketName: string;
+
+  constructor() {
+    this.client = new S3Client({
+      endpoint: S3_ENDPOINT,
+      region: S3_REGION,
+      credentials: {
         accessKeyId: S3_ACCESS_KEY,
         secretAccessKey: S3_SECRET_KEY,
-    },
-    forcePathStyle: true, // Required for MinIO
-});
+      },
+      forcePathStyle: true, // Required for MinIO
+    });
+    this.bucketName = DEFAULT_BUCKET_NAME;
+  }
 
-/**
- * Upload an image to S3/MinIO
- *
- * @param key - Storage key (path) for the object
- * @param data - Image data as Buffer or Uint8Array
- * @param contentType - MIME type of the image
- * @returns The storage key
- */
-export async function uploadImage(
+  /**
+   * Upload an image to S3/MinIO
+   */
+  async uploadImage(
     key: string,
     data: Buffer | Uint8Array,
-    contentType: string = "image/png"
-): Promise<string> {
+    contentType = "image/png"
+  ): Promise<string> {
     const command = new PutObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: key,
-        Body: data,
-        ContentType: contentType,
+      Bucket: this.bucketName,
+      Key: key,
+      Body: data,
+      ContentType: contentType,
     });
 
-    await s3Client.send(command);
+    await this.client.send(command);
     return key;
-}
+  }
 
-/**
- * Get an image from S3/MinIO as a stream
- *
- * @param key - Storage key of the object
- * @returns Object containing the readable stream and content type
- */
-export async function getImageStream(
+  /**
+   * Get an image from S3/MinIO as a stream
+   */
+  async getImageStream(
     key: string
-): Promise<{ stream: Readable; contentType: string | undefined }> {
+  ): Promise<{ stream: Readable; contentType: string | undefined }> {
     const command = new GetObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: key,
+      Bucket: this.bucketName,
+      Key: key,
     });
 
-    const response = await s3Client.send(command);
+    const response = await this.client.send(command);
 
     if (!response.Body) {
-        throw new Error("No body in S3 response");
+      throw new Error("No body in S3 response");
     }
 
-    // Convert to Node.js Readable stream
     const stream = response.Body as Readable;
 
     return {
-        stream,
-        contentType: response.ContentType,
+      stream,
+      contentType: response.ContentType,
     };
-}
+  }
 
-/**
- * Delete an image from S3/MinIO
- *
- * @param key - Storage key of the object to delete
- */
-export async function deleteImage(key: string): Promise<void> {
+  /**
+   * Delete an image from S3/MinIO
+   */
+  async deleteImage(key: string): Promise<void> {
     const command = new DeleteObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: key,
+      Bucket: this.bucketName,
+      Key: key,
     });
 
-    await s3Client.send(command);
-}
+    await this.client.send(command);
+  }
 
-/**
- * Delete all images for a source
- *
- * @param sourceId - ID of the source document
- * @returns Number of deleted objects
- */
-export async function deleteSourceImages(sourceId: string): Promise<number> {
+  /**
+   * Delete all images for a source
+   */
+  async deleteSourceImages(sourceId: string): Promise<number> {
     const prefix = `sources/${sourceId}/images/`;
     let deletedCount = 0;
 
-    // List all objects with the prefix
     const listCommand = new ListObjectsV2Command({
-        Bucket: S3_BUCKET_NAME,
-        Prefix: prefix,
+      Bucket: this.bucketName,
+      Prefix: prefix,
     });
 
-    const listResponse = await s3Client.send(listCommand);
+    const listResponse = await this.client.send(listCommand);
 
     if (!listResponse.Contents || listResponse.Contents.length === 0) {
-        return 0;
+      return 0;
     }
 
-    // Delete each object
     for (const obj of listResponse.Contents) {
-        if (obj.Key) {
-            await deleteImage(obj.Key);
-            deletedCount++;
-        }
+      if (obj.Key) {
+        await this.deleteImage(obj.Key);
+        deletedCount++;
+      }
     }
 
     return deletedCount;
-}
+  }
 
-/**
- * Generate a storage key for a source image
- *
- * @param sourceId - ID of the source document
- * @param originalName - Original filename from MinerU
- * @returns A unique storage key
- */
-export function generateImageKey(
-    sourceId: string,
-    originalName: string
-): string {
-    // Format: sources/{sourceId}/images/{originalName}
+  /**
+   * Generate a storage key for a source image
+   */
+  generateImageKey(sourceId: string, originalName: string): string {
     return `sources/${sourceId}/images/${originalName}`;
-}
+  }
 
-/**
- * Upload multiple images for a source
- *
- * @param sourceId - ID of the source document
- * @param images - Record of image names to base64 data (may include data URI prefix)
- * @returns Array of uploaded image info
- */
-export async function uploadSourceImages(
+  /**
+   * Upload multiple images for a source
+   */
+  async uploadSourceImages(
     sourceId: string,
     images: Record<string, string>
-): Promise<
+  ): Promise<
     Array<{ originalName: string; storageKey: string; contentType: string }>
-> {
+  > {
     const results: Array<{
-        originalName: string;
-        storageKey: string;
-        contentType: string;
+      originalName: string;
+      storageKey: string;
+      contentType: string;
     }> = [];
 
     for (const [imageName, rawData] of Object.entries(images)) {
-        // Handle data URI format: "data:image/jpeg;base64,/9j/4AAQ..."
-        let base64Data = rawData;
-        let contentType = "image/png";
+      let base64Data = rawData;
+      let contentType = "image/png";
 
-        if (rawData.startsWith("data:")) {
-            const match = rawData.match(/^data:([^;]+);base64,(.*)$/);
-            if (match) {
-                contentType = match[1]; // e.g., "image/jpeg"
-                base64Data = match[2];  // pure base64 without prefix
-            }
-        } else {
-            // Fallback: detect content type from image name
-            const ext = imageName.split(".").pop()?.toLowerCase() || "png";
-            contentType =
-                ext === "jpg" || ext === "jpeg"
-                    ? "image/jpeg"
-                    : ext === "gif"
-                        ? "image/gif"
-                        : ext === "webp"
-                            ? "image/webp"
-                            : "image/png";
+      if (rawData.startsWith("data:")) {
+        const match = rawData.match(/^data:([^;]+);base64,(.*)$/);
+        if (match) {
+          contentType = match[1];
+          base64Data = match[2];
         }
+      } else {
+        const ext = imageName.split(".").pop()?.toLowerCase() || "png";
+        contentType =
+          ext === "jpg" || ext === "jpeg"
+            ? "image/jpeg"
+            : ext === "gif"
+              ? "image/gif"
+              : ext === "webp"
+                ? "image/webp"
+                : "image/png";
+      }
 
-        // Convert base64 to Buffer
-        const buffer = Buffer.from(base64Data, "base64");
+      const buffer = Buffer.from(base64Data, "base64");
+      const storageKey = this.generateImageKey(sourceId, imageName);
 
-        // Generate storage key
-        const storageKey = generateImageKey(sourceId, imageName);
+      await this.uploadImage(storageKey, buffer, contentType);
 
-        // Upload to S3
-        await uploadImage(storageKey, buffer, contentType);
-
-        results.push({
-            originalName: imageName,
-            storageKey,
-            contentType,
-        });
+      results.push({
+        originalName: imageName,
+        storageKey,
+        contentType,
+      });
     }
 
     return results;
+  }
+
+  /**
+   * Get the underlying S3 client (for advanced usage)
+   */
+  getClient(): S3Client {
+    return this.client;
+  }
+
+  /**
+   * Get the bucket name
+   */
+  getBucketName(): string {
+    return this.bucketName;
+  }
 }
 
-export { s3Client, S3_BUCKET_NAME };
+// Export singleton instance
+export const s3StorageClient = new S3StorageClient();
+
+// Export class for testing
+export { S3StorageClient };
+
+// Legacy function exports for backward compatibility
+export const uploadImage = s3StorageClient.uploadImage.bind(s3StorageClient);
+export const getImageStream = s3StorageClient.getImageStream.bind(s3StorageClient);
+export const deleteImage = s3StorageClient.deleteImage.bind(s3StorageClient);
+export const deleteSourceImages = s3StorageClient.deleteSourceImages.bind(s3StorageClient);
+export const generateImageKey = s3StorageClient.generateImageKey.bind(s3StorageClient);
+export const uploadSourceImages = s3StorageClient.uploadSourceImages.bind(s3StorageClient);
+
+// Legacy exports
+export const s3Client = s3StorageClient.getClient();
+export const S3_BUCKET_NAME = s3StorageClient.getBucketName();

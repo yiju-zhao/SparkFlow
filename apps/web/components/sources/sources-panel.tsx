@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, memo } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
+import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,11 +28,18 @@ import {
 } from "@/lib/actions/sources";
 import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
+import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
+import type { TocHeading } from "@/lib/utils/toc-extractor";
 
 // Extended Source type with the new content field (until Prisma client is regenerated)
 type Source = PrismaSource & {
   content?: string | null;
 };
+
+interface SourceMetadata {
+  toc?: TocHeading[];
+  [key: string]: unknown;
+}
 
 interface SourcesPanelProps {
   notebookId: string;
@@ -149,7 +157,7 @@ export function SourcesPanel({
   );
 }
 
-function SourceItem({
+const SourceItem = memo(function SourceItem({
   source,
   onSelect,
 }: {
@@ -283,7 +291,7 @@ function SourceItem({
       </div>
     </div>
   );
-}
+});
 
 // Source content viewer - shows title and markdown content with TOC button
 function SourceContentView({
@@ -305,11 +313,51 @@ function SourceContentView({
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
-  const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
+
+  // Get animation state from CollapsiblePanel context
+  const panelContext = useCollapsiblePanel();
+  const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
+  const [isPending, startTransition] = useTransition();
+
+  // Progressive rendering state
+  const [isHeavyContentReady, setIsHeavyContentReady] = useState(false);
+
+  useEffect(() => {
+    // If we have a target chunk, we need full content immediately to scroll to it
+    if (targetChunkId) {
+      setIsHeavyContentReady(true);
+      return;
+    }
+
+    if (isAnimationComplete) {
+      // Prioritize the first paint of the top content
+      // Then render the rest in a subsequent frame
+      const timer = setTimeout(() => {
+        startTransition(() => {
+          setIsHeavyContentReady(true);
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setIsHeavyContentReady(false);
+    }
+  }, [isAnimationComplete, targetChunkId, source.id]);
+
+  const displayedContent = useMemo(() => {
+    // Always show full content if ready or if it's short
+    if (isHeavyContentReady || source.content && source.content.length < 5000) {
+      return source.content || "No content available";
+    }
+
+    // Otherwise show distinct first chunk for fast render
+    const content = source.content || "No content available";
+    const sliceIndex = content.indexOf('\n', 3000);
+    return sliceIndex !== -1 ? content.slice(0, sliceIndex) : content;
+  }, [isHeavyContentReady, source.content]);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -318,8 +366,44 @@ function SourceContentView({
     }
   }, [source.id]);
 
-  // Get markdown content from the content column
   const markdownContent = source.content || "No content available";
+
+  const computeHeadings = useCallback((content: string) => {
+    const extracted: { id: string; text: string; level: number }[] = [];
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^(#{1,3})\s+(.+)$/);
+      if (match) {
+        const level = match[1].length;
+        const text = match[2].trim();
+        const id = text
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-');
+        extracted.push({ id, text, level });
+      }
+    }
+    return extracted;
+  }, []);
+
+  // Use stored TOC from metadata if available, else compute from content
+  const storedToc = useMemo(() => {
+    const meta = source.metadata as SourceMetadata | null;
+    if (meta?.toc && Array.isArray(meta.toc)) {
+      return meta.toc.map((h) => ({
+        id: h.text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
+        text: h.text,
+        level: h.level,
+      }));
+    }
+    return null;
+  }, [source.metadata]);
+
+  // Derive headings: use stored TOC if available, otherwise compute from content
+  const headings = useMemo(
+    () => storedToc ?? computeHeadings(markdownContent),
+    [storedToc, computeHeadings, markdownContent]
+  );
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
   const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
@@ -452,8 +536,15 @@ function SourceContentView({
       preview: targetContentPreview,
       suffix: targetContentSuffix || null,
     };
-    scheduleScrollToChunk(250);
-  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk]);
+    if (isAnimationComplete) {
+      scheduleScrollToChunk(250);
+    }
+  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk, isAnimationComplete]);
+
+  useEffect(() => {
+    if (!isAnimationComplete || !pendingNavigationRef.current) return;
+    scheduleScrollToChunk(80);
+  }, [isAnimationComplete, scheduleScrollToChunk]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -483,28 +574,6 @@ function SourceContentView({
       }
     };
   }, []);
-
-  // Extract headings from markdown
-  useEffect(() => {
-    const extractedHeadings: { id: string; text: string; level: number }[] = [];
-    const lines = markdownContent.split('\n');
-
-    for (const line of lines) {
-      const match = line.match(/^(#{1,3})\s+(.+)$/);
-      if (match) {
-        const level = match[1].length;
-        const text = match[2].trim();
-        // Generate ID similar to rehype-slug
-        const id = text
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-');
-        extractedHeadings.push({ id, text, level });
-      }
-    }
-
-    setHeadings(extractedHeadings);
-  }, [markdownContent]);
 
   const scrollToHeading = (headingText: string) => {
     const container = scrollRef.current;
@@ -606,9 +675,24 @@ function SourceContentView({
         ref={scrollRef}
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
       >
-        <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-          {markdownContent}
-        </Markdown>
+        {isAnimationComplete ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+          >
+            <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+              {displayedContent}
+            </Markdown>
+          </motion.div>
+        ) : (
+          <div className="space-y-3 animate-pulse">
+            <div className="h-4 w-3/4 rounded bg-muted" />
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="h-4 w-5/6 rounded bg-muted" />
+            <div className="h-4 w-2/3 rounded bg-muted" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -627,6 +711,8 @@ function AddSourceDialog({
 }: AddSourceDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [url, setUrl] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
+  const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
@@ -730,6 +816,109 @@ function AddSourceDialog({
     });
   };
 
+  const handleUrlUpload = async () => {
+    if (!documentUrl.trim()) return;
+
+    const tempId = `optimistic-${Date.now()}`;
+    // Extract filename from URL for display
+    let displayName = "Document";
+    try {
+      const urlPath = new URL(documentUrl).pathname;
+      const lastSegment = urlPath.split("/").pop();
+      if (lastSegment) {
+        displayName = decodeURIComponent(lastSegment);
+      }
+    } catch {
+      displayName = documentUrl.slice(0, 50);
+    }
+
+    const optimistic: Source = {
+      id: tempId,
+      notebookId,
+      title: displayName,
+      sourceType: "DOCUMENT",
+      url: documentUrl.trim(),
+      status: "PROCESSING",
+      content: null,
+      fileKey: null,
+      ragflowDocumentId: null,
+      errorMessage: null,
+      metadata: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    startTransition(async () => {
+      queryClient.setQueryData<Source[] | undefined>(
+        ["notebook-sources", notebookId],
+        (current) => [optimistic, ...(current || [])]
+      );
+      onOpenChange(false);
+
+      try {
+        const apiUrl = `/api/download?url=${encodeURIComponent(documentUrl)}`;
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const contentType =
+          response.headers.get("content-type") ||
+          blob.type ||
+          "application/octet-stream";
+        const headerFilename = response.headers.get("x-filename") || displayName;
+        let filename = headerFilename;
+
+        if (!/\.[a-z0-9]+$/i.test(filename)) {
+          if (contentType.includes("pdf")) {
+            filename = `${filename}.pdf`;
+          } else if (contentType.includes("word") || contentType.includes("docx")) {
+            filename = `${filename}.docx`;
+          } else if (contentType.includes("text/markdown")) {
+            filename = `${filename}.md`;
+          } else if (contentType.includes("text/plain")) {
+            filename = `${filename}.txt`;
+          }
+        }
+
+        const file = new File([blob], filename, { type: contentType });
+
+        // Upload using existing document upload action
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const created = await uploadDocumentSource(notebookId, formData);
+
+        queryClient.setQueryData<Source[] | undefined>(
+          ["notebook-sources", notebookId],
+          (current) =>
+            (current || []).map((item) =>
+              item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
+            )
+        );
+      } catch (error) {
+        console.error("[SourcesPanel] URL upload failed:", error);
+        // Update optimistic item to show error
+        queryClient.setQueryData<Source[] | undefined>(
+          ["notebook-sources", notebookId],
+          (current) =>
+            (current || []).map((item) =>
+              item.id === tempId
+                ? { ...item, status: "FAILED", errorMessage: error instanceof Error ? error.message : "Download failed" }
+                : item
+            )
+        );
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
+        setDocumentUrl("");
+      }
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -796,55 +985,130 @@ function AddSourceDialog({
 
           <TabsContent value="document" className="mt-4">
             <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium">File</label>
-                <div
-                  className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-accent-red/50"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {selectedFile
-                      ? selectedFile.name
-                      : "Click to select a file"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    PDF, DOCX, TXT, MD
-                  </p>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.docx,.txt,.md"
-                  onChange={handleFileSelect}
-                />
-              </div>
-              <div className="flex justify-end gap-3">
+              {/* Upload Mode Toggle */}
+              <div className="flex gap-2">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
+                  variant={uploadMode === "file" ? "default" : "outline"}
+                  size="sm"
+                  className={uploadMode === "file" ? "bg-accent-red hover:bg-accent-red-hover" : ""}
+                  onClick={() => setUploadMode("file")}
                 >
-                  Cancel
+                  <Upload className="mr-2 h-3.5 w-3.5" />
+                  File Upload
                 </Button>
                 <Button
                   type="button"
-                  className="bg-accent-red hover:bg-accent-red-hover"
-                  disabled={isPending || !selectedFile}
-                  onClick={handleUpload}
+                  variant={uploadMode === "url" ? "default" : "outline"}
+                  size="sm"
+                  className={uploadMode === "url" ? "bg-accent-red hover:bg-accent-red-hover" : ""}
+                  onClick={() => setUploadMode("url")}
                 >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    "Upload"
-                  )}
+                  <Link className="mr-2 h-3.5 w-3.5" />
+                  URL Upload
                 </Button>
               </div>
+
+              {uploadMode === "file" ? (
+                <>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">File</label>
+                    <div
+                      className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-accent-red/50"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {selectedFile
+                          ? selectedFile.name
+                          : "Click to select a file"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        PDF, DOCX, TXT, MD
+                      </p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.docx,.txt,.md"
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      className="bg-accent-red hover:bg-accent-red-hover"
+                      disabled={isPending || !selectedFile}
+                      onClick={handleUpload}
+                    >
+                      {isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        "Upload"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label
+                      htmlFor="documentUrl"
+                      className="mb-2 block text-sm font-medium"
+                    >
+                      Document URL
+                    </label>
+                    <Input
+                      id="documentUrl"
+                      type="url"
+                      placeholder="https://example.com/document.pdf"
+                      value={documentUrl}
+                      onChange={(e) => setDocumentUrl(e.target.value)}
+                      disabled={isPending}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Supported formats: PDF, DOCX, TXT, MD
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      className="bg-accent-red hover:bg-accent-red-hover"
+                      disabled={isPending || !documentUrl.trim()}
+                      onClick={handleUrlUpload}
+                    >
+                      {isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Downloading...
+                        </>
+                      ) : (
+                        "Download & Process"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
         </Tabs>

@@ -4,6 +4,12 @@ langchain
 langchain-openai
 langchain-core
 langgraph-cli[inmem]
+langchain-mcp-adapters
+deepagents
+
+# LangGraph Checkpointing
+langgraph-checkpoint-postgres
+psycopg[binary]
 
 # RAGFlow Python SDK
 ragflow-sdk

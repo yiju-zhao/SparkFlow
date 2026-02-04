@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "20mb",
     },
+    // Optimize barrel file imports for faster cold starts
+    optimizePackageImports: ["lucide-react", "framer-motion"],
   },
   // Allow dev server access from local network IPs (for remote development)
   allowedDevOrigins: ["10.218.163.144", "*.local"],

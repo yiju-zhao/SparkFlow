@@ -451,6 +451,92 @@ class Crawl4AIClient {
       rawMarkdown,
     };
   }
+
+  /**
+   * Download a file from a URL using Crawl4AI's browser automation
+   * This handles downloads that require browser context (redirects, cookies, etc.)
+   *
+   * @param url - The URL of the file to download
+   * @param options - Download options
+   */
+  async downloadFile(
+    url: string,
+    options: {
+      timeout?: number; // Wait time in seconds for download to complete
+    } = {}
+  ): Promise<{
+    downloadedFiles: string[];
+    success: boolean;
+    errorMessage?: string;
+  }> {
+    const { timeout = 30 } = options;
+
+    // Use the /crawl endpoint with download configuration
+    const crawlerConfig: CrawlerRunConfig = {
+      cache_mode: "disabled", // Don't cache downloads
+      wait_for: `${timeout}`, // Wait for download to complete
+      js_code: `
+        // For direct file URLs, the browser will automatically download
+        // For pages with download buttons, we try to find and click them
+        const downloadLinks = document.querySelectorAll('a[download], a[href$=".pdf"], a[href$=".docx"], a[href$=".doc"], a[href$=".txt"], a[href$=".md"]');
+        if (downloadLinks.length > 0) {
+          downloadLinks[0].click();
+        }
+      `,
+    };
+
+    const browserConfig: BrowserConfig = {
+      headless: true,
+      verbose: false,
+    };
+
+    try {
+      // Make request to crawl endpoint with download support
+      // Note: The API needs an extension to support downloads - using direct endpoint
+      const response = await this.request<{
+        results: Array<{
+          success: boolean;
+          downloaded_files?: string[];
+          error_message?: string;
+        }>;
+      }>("/crawl", {
+        method: "POST",
+        body: JSON.stringify({
+          urls: [url],
+          crawler_config: {
+            ...crawlerConfig,
+            accept_downloads: true,
+          },
+          browser_config: {
+            ...browserConfig,
+            accept_downloads: true,
+          },
+        }),
+      });
+
+      if (!response.results || response.results.length === 0) {
+        return {
+          downloadedFiles: [],
+          success: false,
+          errorMessage: "No results returned from crawl",
+        };
+      }
+
+      const result = response.results[0];
+      return {
+        downloadedFiles: result.downloaded_files || [],
+        success: result.success && (result.downloaded_files?.length ?? 0) > 0,
+        errorMessage: result.error_message,
+      };
+    } catch (error) {
+      return {
+        downloadedFiles: [],
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Download failed",
+      };
+    }
+  }
+
 }
 
 // Export singleton instance

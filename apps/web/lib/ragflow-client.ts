@@ -107,6 +107,7 @@ class RagFlowClient {
         chunk_method: "naive",
         parser_config: {
           chunk_token_num: RAGFLOW_CHUNK_SIZE,
+          delimiter: "#\n",
           auto_keywords: RAGFLOW_AUTO_KEYWORDS,
           auto_questions: RAGFLOW_AUTO_QUESTIONS,
         },

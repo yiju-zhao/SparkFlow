@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 export const authConfig: NextAuthConfig = {
+  trustHost: true,  // Trust host when external port differs from internal
   providers: [
     Credentials({
       name: "credentials",

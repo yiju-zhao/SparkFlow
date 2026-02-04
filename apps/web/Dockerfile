@@ -1,42 +1,59 @@
 # Base stage
-FROM node:20-alpine AS base
+FROM node:20 AS base
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
-
-# Dependencies stage
-FROM base AS deps
-COPY package.json package-lock.json* ./
-RUN npm ci
 
 # Builder stage
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Skip SSL verification for npm/prisma during build
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+# Install dependencies and generate Prisma client
+RUN npm ci && npx prisma generate
+
+COPY . .
 
 # Build the application
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Production stage
+# Development stage - keeps full node_modules for hot reload
+FROM base AS dev
+ENV NODE_ENV=development
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
+
+EXPOSE 3001
+ENV PORT=3001
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["npm", "run", "dev"]
+
+# Production stage - standalone output only
 FROM base AS runner
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd -r nodejs && useradd -r -g nodejs nextjs
 
 # Copy built application
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma files for migrations
+# Copy Prisma files and CLI for migrations
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 
