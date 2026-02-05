@@ -1,0 +1,45 @@
+{
+  "venue": "CHI",
+  "year": 2024,
+  "sessions": [
+    {
+      "title": "Virtual Reality and Immersive Experiences",
+      "type": "Paper Session",
+      "date": "2024-05-12",
+      "startTime": "09:00",
+      "endTime": "10:30",
+      "location": "Room 301A",
+      "abstract": "This session features cutting-edge research on virtual reality interfaces and immersive user experiences.",
+      "publicationTitles": [
+        "Understanding User Behavior in Virtual Reality Environments"
+      ]
+    },
+    {
+      "title": "Accessibility and Inclusive Design",
+      "type": "Paper Session",
+      "date": "2024-05-12",
+      "startTime": "11:00",
+      "endTime": "12:30",
+      "location": "Room 302B",
+      "abstract": "Papers exploring accessibility challenges and solutions for diverse user populations.",
+      "publicationTitles": [
+        "AI-Powered Accessibility Tools for Web Navigation"
+      ]
+    },
+    {
+      "title": "Future of Remote Collaboration",
+      "type": "Panel",
+      "date": "2024-05-13",
+      "startTime": "14:00",
+      "endTime": "15:30",
+      "location": "Main Hall",
+      "speaker": "Dr. Jane Doe",
+      "abstract": "A panel discussion on emerging trends in remote collaboration tools and practices.",
+      "overview": "Industry experts discuss the evolution of collaboration tools post-pandemic.",
+      "publicationTitles": [
+        "Collaborative Design in Distributed Teams",
+        "Paper That Does Not Exist"
+      ]
+    }
+  ]
+}
