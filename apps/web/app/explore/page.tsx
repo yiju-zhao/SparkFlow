@@ -24,14 +24,14 @@ async function ChartsSectionWrapper() {
 
 export default function ExplorePage() {
   return (
-    <div className="flex flex-col pb-20" style={{ gap: '30px' }}>
+    <div className="flex flex-col pb-20" style={{ gap: '35px' }}>
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-muted/50 to-background border p-8 md:p-12">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-muted/50 to-background border p-6 md:p-10">
         <div className="relative z-10 max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          <h1 className="text-2xl md:text-10xl font-bold tracking-tight mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Research Hub
           </h1>
-          <p className="text-xl md:text-2xl font-medium text-muted-foreground leading-relaxed">
+          <p className="text-md md:text-xl font-small text-muted-foreground leading-relaxed">
             Discover conferences, publications, and sessions in the knowledge base
           </p>
         </div>
