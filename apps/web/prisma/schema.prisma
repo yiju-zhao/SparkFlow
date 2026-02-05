@@ -310,6 +310,7 @@ model ConferenceSession {
   abstract    String?                @db.Text
   overview    String?                @db.Text
   transcript  String?                @db.Text
+  sessionUrl  String?
 
   publications SessionPublication[]
 

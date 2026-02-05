@@ -10,6 +10,7 @@
       "endTime": "10:30",
       "location": "Room 301A",
       "abstract": "This session features cutting-edge research on virtual reality interfaces and immersive user experiences.",
+      "sessionUrl": "https://programs.sigchi.org/chi/2024/program/session/vr-immersive",
       "publicationTitles": [
         "Understanding User Behavior in Virtual Reality Environments"
       ]
@@ -22,6 +23,7 @@
       "endTime": "12:30",
       "location": "Room 302B",
       "abstract": "Papers exploring accessibility challenges and solutions for diverse user populations.",
+      "sessionUrl": "https://programs.sigchi.org/chi/2024/program/session/accessibility",
       "publicationTitles": [
         "AI-Powered Accessibility Tools for Web Navigation"
       ]
@@ -36,6 +38,7 @@
       "speaker": "Dr. Jane Doe",
       "abstract": "A panel discussion on emerging trends in remote collaboration tools and practices.",
       "overview": "Industry experts discuss the evolution of collaboration tools post-pandemic.",
+      "sessionUrl": "https://programs.sigchi.org/chi/2024/program/session/remote-collab-panel",
       "publicationTitles": [
         "Collaborative Design in Distributed Teams",
         "Paper That Does Not Exist"

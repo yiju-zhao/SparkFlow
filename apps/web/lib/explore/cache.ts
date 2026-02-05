@@ -8,7 +8,8 @@ export const filterOptionsCache = new LRUCache<string, FilterOptions>({
   ttl: 5 * 60 * 1000 // 5 minutes
 })
 
-export const statsCache = new LRUCache<string, unknown>({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const statsCache = new LRUCache<string, any>({
   max: 50,
   ttl: 5 * 60 * 1000 // 5 minutes
 })
