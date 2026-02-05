@@ -220,3 +220,115 @@ model Note {
 
   @@map("notes")
 }
+
+// ============================================
+// Conference Domain (Explore Feature)
+// ============================================
+
+model Venue {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  type        String?
+  description String?
+
+  instances   Instance[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("venues")
+}
+
+model Instance {
+  id          String               @id @default(cuid())
+  venueId     String
+  venue       Venue                @relation(fields: [venueId], references: [id])
+
+  year        Int
+  name        String
+  startDate   DateTime?
+  endDate     DateTime?
+  location    String?
+  website     String?
+  summary     String?              @db.Text
+
+  publications Publication[]
+  sessions     ConferenceSession[]
+
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([venueId, year])
+  @@index([year])
+  @@map("instances")
+}
+
+model Publication {
+  id            String                 @id @default(cuid())
+  instanceId    String
+  instance      Instance               @relation(fields: [instanceId], references: [id])
+
+  title         String
+  authors       String[]
+  abstract      String?                @db.Text
+  summary       String?                @db.Text
+
+  affiliations  String[]
+  countries     String[]
+  keywords      String[]
+  researchTopic String?
+
+  rating        Float?
+  doi           String?
+  pdfUrl        String?
+  githubUrl     String?
+  websiteUrl    String?
+
+  sessions      SessionPublication[]
+
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([instanceId])
+  @@index([researchTopic])
+  @@map("publications")
+}
+
+model ConferenceSession {
+  id          String                 @id @default(cuid())
+  instanceId  String
+  instance    Instance               @relation(fields: [instanceId], references: [id])
+
+  title       String
+  type        String?
+  date        DateTime?
+  startTime   String?
+  endTime     String?
+  location    String?
+  speaker     String?
+
+  abstract    String?                @db.Text
+  overview    String?                @db.Text
+  transcript  String?                @db.Text
+
+  publications SessionPublication[]
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([instanceId])
+  @@index([type])
+  @@map("conference_sessions")
+}
+
+model SessionPublication {
+  sessionId     String
+  session       ConferenceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  publicationId String
+  publication   Publication       @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  presentationOrder Int?
+
+  @@id([sessionId, publicationId])
+  @@map("session_publications")
+}
