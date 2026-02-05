@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { SourcesPanel } from "@/components/sources/sources-panel";
-import { ChatPanel } from "@/components/chat/chat-panel";
-import { StudioPanel } from "@/components/studio/studio-panel";
+import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
+import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
+import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 
