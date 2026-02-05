@@ -35,7 +35,7 @@ export interface PublicationListItem {
   authors: string[]
   rating: number | null
   researchTopic: string | null
-  instance: { name: string; year: number }
+  instance: { name: string; year: number; venue: { name: string } }
 }
 
 export interface PublicationDetail {
@@ -53,7 +53,7 @@ export interface PublicationDetail {
   pdfUrl: string | null
   githubUrl: string | null
   websiteUrl: string | null
-  instance: { id: string; name: string; year: number }
+  instance: { id: string; name: string; year: number; venue: { name: string } }
   sessions: { id: string; title: string; type: string | null }[]
 }
 
@@ -64,7 +64,7 @@ export interface SessionListItem {
   date: Date | null
   startTime: string | null
   endTime: string | null
-  instance: { name: string; year: number }
+  instance: { name: string; year: number; venue: { name: string } }
 }
 
 export interface SessionDetail {
@@ -79,7 +79,7 @@ export interface SessionDetail {
   abstract: string | null
   overview: string | null
   transcript: string | null
-  instance: { id: string; name: string; year: number }
+  instance: { id: string; name: string; year: number; venue: { name: string } }
   publications: { id: string; title: string; authors: string[] }[]
 }
 

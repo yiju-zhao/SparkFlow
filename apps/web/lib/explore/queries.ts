@@ -231,7 +231,7 @@ export const getPublications = cache(async (filters: PublicationFilters): Promis
         authors: true,
         rating: true,
         researchTopic: true,
-        instance: { select: { name: true, year: true } }
+        instance: { select: { name: true, year: true, venue: { select: { name: true } } } }
       },
       orderBy,
       skip: filters.page * PAGE_SIZE,
@@ -266,7 +266,7 @@ export const getPublication = cache(async (id: string): Promise<PublicationDetai
       pdfUrl: true,
       githubUrl: true,
       websiteUrl: true,
-      instance: { select: { id: true, name: true, year: true } },
+      instance: { select: { id: true, name: true, year: true, venue: { select: { name: true } } } },
       sessions: {
         select: {
           session: { select: { id: true, title: true, type: true } }
@@ -315,7 +315,7 @@ export const getSessions = cache(async (filters: SessionFilters): Promise<Pagina
         date: true,
         startTime: true,
         endTime: true,
-        instance: { select: { name: true, year: true } }
+        instance: { select: { name: true, year: true, venue: { select: { name: true } } } }
       },
       orderBy,
       skip: filters.page * PAGE_SIZE,
@@ -347,7 +347,7 @@ export const getSession = cache(async (id: string): Promise<SessionDetail | null
       abstract: true,
       overview: true,
       transcript: true,
-      instance: { select: { id: true, name: true, year: true } },
+      instance: { select: { id: true, name: true, year: true, venue: { select: { name: true } } } },
       publications: {
         select: {
           publication: { select: { id: true, title: true, authors: true } }

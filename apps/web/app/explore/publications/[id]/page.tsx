@@ -26,12 +26,12 @@ export default async function PublicationDetailPage({ params }: PageProps) {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
-          <Badge variant="secondary">{publication.instance.year}</Badge>
-          <Link href={`/explore/conferences/${publication.instance.id}`}>
-            <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-              {publication.instance.name}
-            </Badge>
+          <Link href={`/explore/conferences/${publication.instance.id}`} className="font-semibold hover:underline">
+            {publication.instance.venue.name}
           </Link>
+          <Badge variant="secondary" className="font-normal text-muted-foreground">
+            {publication.instance.year}
+          </Badge>
           {publication.rating && (
             <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
               <Star className="h-3 w-3 mr-1 fill-current" />

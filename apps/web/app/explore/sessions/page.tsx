@@ -63,9 +63,14 @@ export default async function SessionsPage({ searchParams }: PageProps) {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-medium">{session.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {session.instance.name} ({session.instance.year})
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-muted-foreground">
+                        {session.instance.venue.name}
+                      </span>
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-medium">
+                        {session.instance.year}
+                      </Badge>
+                    </div>
                     {session.date && (
                       <p className="text-sm text-muted-foreground">
                         {new Date(session.date).toLocaleDateString()}

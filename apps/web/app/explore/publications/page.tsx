@@ -67,9 +67,14 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
                       {pub.authors.slice(0, 3).join(', ')}
                       {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {pub.instance.name} ({pub.instance.year})
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-muted-foreground">
+                        {pub.instance.venue.name}
+                      </span>
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-medium">
+                        {pub.instance.year}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {pub.rating && (

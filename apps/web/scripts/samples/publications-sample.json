@@ -1,0 +1,45 @@
+{
+  "venue": "CHI",
+  "year": 2024,
+  "instanceMetadata": {
+    "name": "CHI 2024",
+    "location": "Honolulu, Hawaii",
+    "startDate": "2024-05-11",
+    "endDate": "2024-05-16",
+    "website": "https://chi2024.acm.org"
+  },
+  "publications": [
+    {
+      "title": "Understanding User Behavior in Virtual Reality Environments",
+      "authors": ["Alice Smith", "Bob Jones", "Carol White"],
+      "abstract": "This paper presents a comprehensive study of user behavior patterns in immersive virtual reality environments. We conducted a longitudinal study with 120 participants over 6 months.",
+      "affiliations": ["Stanford University", "MIT"],
+      "countries": ["USA"],
+      "keywords": ["HCI", "VR", "user behavior", "immersive environments"],
+      "researchTopic": "Virtual Reality",
+      "rating": 4.5,
+      "doi": "10.1145/3613904.3642001",
+      "pdfUrl": "https://example.com/papers/vr-user-behavior.pdf",
+      "githubUrl": "https://github.com/example/vr-study"
+    },
+    {
+      "title": "AI-Powered Accessibility Tools for Web Navigation",
+      "authors": ["David Lee", "Emma Garcia"],
+      "abstract": "We introduce a novel AI-powered browser extension that enhances web accessibility for users with visual impairments through intelligent content summarization and navigation assistance.",
+      "affiliations": ["University of Washington", "Google Research"],
+      "countries": ["USA"],
+      "keywords": ["accessibility", "AI", "web navigation", "assistive technology"],
+      "researchTopic": "Accessibility",
+      "rating": 4.8
+    },
+    {
+      "title": "Collaborative Design in Distributed Teams",
+      "authors": ["Frank Miller", "Grace Kim", "Henry Chen"],
+      "abstract": "An exploration of collaboration patterns and tool usage in geographically distributed design teams, with implications for remote work tool design.",
+      "affiliations": ["Carnegie Mellon University"],
+      "countries": ["USA", "South Korea"],
+      "keywords": ["CSCW", "collaboration", "remote work", "design teams"],
+      "researchTopic": "CSCW"
+    }
+  ]
+}

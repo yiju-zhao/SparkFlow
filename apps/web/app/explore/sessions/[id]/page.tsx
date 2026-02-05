@@ -24,12 +24,12 @@ export default async function SessionDetailPage({ params }: PageProps) {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
-          <Badge variant="secondary">{session.instance.year}</Badge>
-          <Link href={`/explore/conferences/${session.instance.id}`}>
-            <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-              {session.instance.name}
-            </Badge>
+          <Link href={`/explore/conferences/${session.instance.id}`} className="font-semibold hover:underline">
+            {session.instance.venue.name}
           </Link>
+          <Badge variant="secondary" className="font-normal text-muted-foreground">
+            {session.instance.year}
+          </Badge>
           {session.type && (
             <Badge>{session.type}</Badge>
           )}
