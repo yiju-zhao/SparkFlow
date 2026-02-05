@@ -206,8 +206,11 @@ export const getPublications = cache(async (filters: PublicationFilters): Promis
   if (filters.conference) {
     where.instanceId = filters.conference
   }
-  if (filters.year) {
-    where.instance = { year: filters.year }
+  if (filters.year || filters.venue) {
+    where.instance = {
+      ...(filters.year && { year: filters.year }),
+      ...(filters.venue && { venueId: filters.venue })
+    }
   }
   if (filters.topic) {
     where.researchTopic = filters.topic
@@ -231,6 +234,7 @@ export const getPublications = cache(async (filters: PublicationFilters): Promis
         authors: true,
         rating: true,
         researchTopic: true,
+        pdfUrl: true,
         instance: { select: { name: true, year: true, venue: { select: { name: true } } } }
       },
       orderBy,
@@ -291,8 +295,11 @@ export const getSessions = cache(async (filters: SessionFilters): Promise<Pagina
   if (filters.conference) {
     where.instanceId = filters.conference
   }
-  if (filters.year) {
-    where.instance = { year: filters.year }
+  if (filters.year || filters.venue) {
+    where.instance = {
+      ...(filters.year && { year: filters.year }),
+      ...(filters.venue && { venueId: filters.venue })
+    }
   }
   if (filters.type) {
     where.type = filters.type
@@ -315,6 +322,7 @@ export const getSessions = cache(async (filters: SessionFilters): Promise<Pagina
         date: true,
         startTime: true,
         endTime: true,
+        sessionUrl: true,
         instance: { select: { name: true, year: true, venue: { select: { name: true } } } }
       },
       orderBy,
@@ -347,6 +355,7 @@ export const getSession = cache(async (id: string): Promise<SessionDetail | null
       abstract: true,
       overview: true,
       transcript: true,
+      sessionUrl: true,
       instance: { select: { id: true, name: true, year: true, venue: { select: { name: true } } } },
       publications: {
         select: {

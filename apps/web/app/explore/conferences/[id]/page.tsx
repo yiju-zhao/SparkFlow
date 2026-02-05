@@ -8,6 +8,8 @@ import { ConferenceHero } from '@/components/explore/conferences'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { FileText } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -22,36 +24,50 @@ async function PublicationsSection({ conferenceId }: { conferenceId: string }) {
         Showing top {result.data.length} of {result.total} publications
       </p>
       <div className="space-y-2">
-        {result.data.map((pub) => (
-          <Link
-            key={pub.id}
-            href={`/explore/publications/${pub.id}`}
-            className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-medium">{pub.title}</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {pub.authors.slice(0, 3).join(', ')}
-                  {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
-                </p>
+        <div className="space-y-2">
+          {result.data.map((pub) => (
+            <div
+              key={pub.id}
+              className="relative block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="font-medium">
+                    <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
+                      {pub.title}
+                    </Link>
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {pub.authors.slice(0, 3).join(', ')}
+                    {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
+                  </p>
+                  {pub.researchTopic && (
+                    <Badge variant="outline" className="mt-2 text-xs">{pub.researchTopic}</Badge>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-2 relative z-10 w-24">
+                  {pub.rating && (
+                    <Badge variant="secondary">{pub.rating.toFixed(1)}</Badge>
+                  )}
+                  {pub.pdfUrl && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6 p-0" asChild>
+                      <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
+                        <FileText className="h-4 w-4" />
+                        <span className="sr-only">PDF</span>
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
-              {pub.rating && (
-                <Badge variant="secondary">{pub.rating.toFixed(1)}</Badge>
-              )}
             </div>
-            {pub.researchTopic && (
-              <Badge variant="outline" className="mt-2">{pub.researchTopic}</Badge>
-            )}
-          </Link>
-        ))}
+          ))}
+        </div>
+        <Link
+          href={`/explore/publications?conference=${conferenceId}`}
+          className="text-sm text-primary hover:underline"
+        >
+        </Link>
       </div>
-      <Link
-        href={`/explore/publications?conference=${conferenceId}`}
-        className="text-sm text-primary hover:underline"
-      >
-        View all publications →
-      </Link>
     </div>
   )
 }
@@ -65,35 +81,49 @@ async function SessionsSection({ conferenceId }: { conferenceId: string }) {
         Showing {result.data.length} of {result.total} sessions
       </p>
       <div className="space-y-2">
-        {result.data.map((session) => (
-          <Link
-            key={session.id}
-            href={`/explore/sessions/${session.id}`}
-            className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-medium">{session.title}</h3>
-                {session.date && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {new Date(session.date).toLocaleDateString()}
-                    {session.startTime && ` at ${session.startTime}`}
-                  </p>
-                )}
+        <div className="space-y-6">
+          {Object.entries(result.data.reduce((acc, session) => {
+            const date = session.date ? new Date(session.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Unscheduled'
+            if (!acc[date]) acc[date] = []
+            acc[date].push(session)
+            return acc
+          }, {} as Record<string, typeof result.data>)).map(([date, sessions]) => (
+            <div key={date}>
+              <h3 className="font-semibold text-lg mb-3 sticky top-0 bg-background/95 backdrop-blur py-2 z-10">{date}</h3>
+              <div className="space-y-px border rounded-lg overflow-hidden">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="relative group bg-card p-4 hover:bg-muted/50 transition-colors border-b last:border-b-0 flex gap-4"
+                  >
+                    <div className="w-32 shrink-0 text-sm text-muted-foreground pt-0.5">
+                      {session.startTime || 'Time TBD'}
+                      {session.endTime && ` - ${session.endTime}`}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <h4 className="font-medium truncate pr-8">
+                          <Link href={`/explore/sessions/${session.id}`} className="after:absolute after:inset-0">
+                            {session.title}
+                          </Link>
+                        </h4>
+                        {session.type && (
+                          <Badge variant="secondary" className="shrink-0">{session.type}</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              {session.type && (
-                <Badge variant="outline">{session.type}</Badge>
-              )}
             </div>
-          </Link>
-        ))}
+          ))}
+        </div>
+        <Link
+          href={`/explore/sessions?conference=${conferenceId}`}
+          className="text-sm text-primary hover:underline"
+        >
+        </Link>
       </div>
-      <Link
-        href={`/explore/sessions?conference=${conferenceId}`}
-        className="text-sm text-primary hover:underline"
-      >
-        View all sessions →
-      </Link>
     </div>
   )
 }

@@ -7,6 +7,7 @@ export const PAGE_SIZE = 20
 export const publicationFiltersSchema = z.object({
   year: z.coerce.number().optional(),
   conference: z.string().optional(),
+  venue: z.string().optional(),
   topic: z.string().optional(),
   sortBy: z.enum(['rating', 'title', 'year']).default('rating'),
   sortDir: z.enum(['asc', 'desc']).default('desc'),
@@ -16,6 +17,7 @@ export const publicationFiltersSchema = z.object({
 export const sessionFiltersSchema = z.object({
   year: z.coerce.number().optional(),
   conference: z.string().optional(),
+  venue: z.string().optional(),
   type: z.string().optional(),
   sortBy: z.enum(['date', 'title']).default('date'),
   sortDir: z.enum(['asc', 'desc']).default('asc'),

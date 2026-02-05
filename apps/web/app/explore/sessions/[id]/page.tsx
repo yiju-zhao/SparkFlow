@@ -4,8 +4,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/explore/queries'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, Clock, MapPin, User } from 'lucide-react'
+import { Calendar, Clock, MapPin, User, ExternalLink } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -65,6 +66,18 @@ export default async function SessionDetailPage({ params }: PageProps) {
           )}
         </div>
       </div>
+
+      {/* Actions */}
+      {session.sessionUrl && (
+        <div className="flex flex-wrap gap-3 mb-8">
+          <Button variant="outline" asChild>
+            <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View Session
+            </a>
+          </Button>
+        </div>
+      )}
 
       {/* Abstract */}
       {session.abstract && (

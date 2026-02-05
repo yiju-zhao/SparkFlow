@@ -133,6 +133,7 @@ async function main() {
           speaker: session.speaker,
           abstract: session.abstract,
           overview: session.overview,
+          sessionUrl: session.sessionUrl,
           publications: {
             create: publicationLinks,
           },

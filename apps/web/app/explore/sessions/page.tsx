@@ -5,6 +5,8 @@ import { getSessions, getFilterOptions } from '@/lib/explore/queries'
 import { parseSessionFilters, PAGE_SIZE } from '@/lib/explore/filters'
 import { FilterBar, Pagination, EmptyState, type FilterConfig } from '@/components/explore/shared'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { ExternalLink } from 'lucide-react'
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -21,6 +23,11 @@ export default async function SessionsPage({ searchParams }: PageProps) {
   ])
 
   const filterConfigs: FilterConfig[] = [
+    {
+      key: 'venue',
+      label: 'Conference',
+      options: filterOptions.venues.map(v => ({ value: v.id, label: v.name }))
+    },
     {
       key: 'year',
       label: 'Year',
@@ -55,14 +62,17 @@ export default async function SessionsPage({ searchParams }: PageProps) {
         <>
           <div className="space-y-2">
             {result.data.map((session) => (
-              <Link
+              <div
                 key={session.id}
-                href={`/explore/sessions/${session.id}`}
-                className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="relative block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-medium">{session.title}</h3>
+                    <h3 className="font-medium">
+                      <Link href={`/explore/sessions/${session.id}`} className="after:absolute after:inset-0">
+                        {session.title}
+                      </Link>
+                    </h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm text-muted-foreground">
                         {session.instance.venue.name}
@@ -79,11 +89,21 @@ export default async function SessionsPage({ searchParams }: PageProps) {
                       </p>
                     )}
                   </div>
-                  {session.type && (
-                    <Badge variant="outline">{session.type}</Badge>
-                  )}
+                  <div className="flex flex-col items-end gap-2 relative z-10">
+                    {session.type && (
+                      <Badge variant="outline">{session.type}</Badge>
+                    )}
+                    {session.sessionUrl && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 p-0" asChild>
+                        <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          <span className="sr-only">View Session</span>
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 

@@ -49,6 +49,7 @@ export const SessionInputSchema = z.object({
   speaker: z.string().optional(),
   abstract: z.string().optional(),
   overview: z.string().optional(),
+  sessionUrl: z.string().url().optional(),
   publicationTitles: z.array(z.string()).default([]),
 });
 
