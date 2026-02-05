@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { getGlobalStats, getYearTrendData, getTopicsChartData } from '@/lib/explore/queries'
 import { GlobalStats } from '@/components/explore/hub'
 import { ChartsSection } from '@/components/explore/hub/charts-section'
+
 import { Skeleton } from '@/components/ui/skeleton'
 
 async function StatsSection() {
@@ -23,22 +24,33 @@ async function ChartsSectionWrapper() {
 
 export default function ExplorePage() {
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Explore</h1>
-        <p className="text-muted-foreground mt-2">
-          Discover conferences, publications, and sessions in the knowledge base
-        </p>
+    <div className="flex flex-col pb-20" style={{ gap: '30px' }}>
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-muted/50 to-background border p-8 md:p-12">
+        <div className="relative z-10 max-w-3xl">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Research Hub
+          </h1>
+          <p className="text-xl md:text-2xl font-medium text-muted-foreground leading-relaxed">
+            Discover conferences, publications, and sessions in the knowledge base
+          </p>
+        </div>
       </div>
 
+      {/* Navigation Cards - Hierarchy Enforcement */}
+
+
+      {/* Stats Overview */}
       <section>
+        <h2 className="text-xl font-semibold tracking-tight mb-6">Platform Overview</h2>
         <Suspense fallback={<StatsSkeleton />}>
           <StatsSection />
         </Suspense>
       </section>
 
+      {/* Analytics */}
       <section>
-        <h2 className="text-lg font-medium mb-4">Analytics</h2>
+        <h2 className="text-xl font-semibold tracking-tight mb-6">Analytics & Trends</h2>
         <Suspense fallback={<ChartsSkeleton />}>
           <ChartsSectionWrapper />
         </Suspense>
