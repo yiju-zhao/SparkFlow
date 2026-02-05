@@ -126,6 +126,7 @@ async function main() {
           countries: pub.countries,
           keywords: pub.keywords,
           researchTopic: pub.researchTopic,
+          status: pub.status,
           rating: pub.rating,
           doi: pub.doi,
           pdfUrl: pub.pdfUrl,

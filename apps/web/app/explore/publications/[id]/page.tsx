@@ -32,6 +32,11 @@ export default async function PublicationDetailPage({ params }: PageProps) {
           <Badge variant="secondary" className="font-normal text-muted-foreground">
             {publication.instance.year}
           </Badge>
+          {publication.status && (
+            <Badge variant="outline" className="font-normal">
+              {publication.status}
+            </Badge>
+          )}
           {publication.rating && (
             <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
               <Star className="h-3 w-3 mr-1 fill-current" />

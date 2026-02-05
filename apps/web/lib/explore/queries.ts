@@ -233,6 +233,7 @@ export const getPublications = cache(async (filters: PublicationFilters): Promis
         title: true,
         authors: true,
         rating: true,
+        status: true,
         researchTopic: true,
         pdfUrl: true,
         instance: { select: { name: true, year: true, venue: { select: { name: true } } } }
@@ -266,6 +267,7 @@ export const getPublication = cache(async (id: string): Promise<PublicationDetai
       keywords: true,
       researchTopic: true,
       rating: true,
+      status: true,
       doi: true,
       pdfUrl: true,
       githubUrl: true,

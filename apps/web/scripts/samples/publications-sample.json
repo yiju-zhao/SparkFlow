@@ -17,6 +17,7 @@
       "countries": ["USA"],
       "keywords": ["HCI", "VR", "user behavior", "immersive environments"],
       "researchTopic": "Virtual Reality",
+      "status": "Accepted",
       "rating": 4.5,
       "doi": "10.1145/3613904.3642001",
       "pdfUrl": "https://example.com/papers/vr-user-behavior.pdf",
@@ -30,6 +31,7 @@
       "countries": ["USA"],
       "keywords": ["accessibility", "AI", "web navigation", "assistive technology"],
       "researchTopic": "Accessibility",
+      "status": "Best Paper",
       "rating": 4.8
     },
     {
@@ -39,7 +41,8 @@
       "affiliations": ["Carnegie Mellon University"],
       "countries": ["USA", "South Korea"],
       "keywords": ["CSCW", "collaboration", "remote work", "design teams"],
-      "researchTopic": "CSCW"
+      "researchTopic": "CSCW",
+      "status": "Poster"
     }
   ]
 }

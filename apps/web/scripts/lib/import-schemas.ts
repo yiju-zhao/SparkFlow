@@ -12,6 +12,7 @@ export const PublicationInputSchema = z.object({
   countries: z.array(z.string()).default([]),
   keywords: z.array(z.string()).default([]),
   researchTopic: z.string().optional(),
+  status: z.string().optional(),
   rating: z.number().optional(),
   doi: z.string().optional(),
   pdfUrl: z.string().url().optional(),

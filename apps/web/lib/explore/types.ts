@@ -34,6 +34,7 @@ export interface PublicationListItem {
   title: string
   authors: string[]
   rating: number | null
+  status: string | null
   researchTopic: string | null
   pdfUrl: string | null
   instance: { name: string; year: number; venue: { name: string } }
@@ -50,6 +51,7 @@ export interface PublicationDetail {
   keywords: string[]
   researchTopic: string | null
   rating: number | null
+  status: string | null
   doi: string | null
   pdfUrl: string | null
   githubUrl: string | null

@@ -66,41 +66,50 @@ export default async function SessionsPage({ searchParams }: PageProps) {
                 key={session.id}
                 className="relative block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-medium">
-                      <Link href={`/explore/sessions/${session.id}`} className="after:absolute after:inset-0">
-                        {session.title}
-                      </Link>
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-muted-foreground">
-                        {session.instance.venue.name}
-                      </span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-medium">
-                        {session.instance.year}
-                      </Badge>
+                <div className="grid grid-cols-[1fr_auto] gap-4">
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium">
+                        <Link href={`/explore/sessions/${session.id}`} className="after:absolute after:inset-0">
+                          {session.title}
+                        </Link>
+                      </h3>
+                      {session.sessionUrl && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
+                          <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                            <span className="sr-only">View Session</span>
+                          </a>
+                        </Button>
+                      )}
                     </div>
                     {session.date && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {new Date(session.date).toLocaleDateString()}
                         {session.startTime && ` at ${session.startTime}`}
                         {session.endTime && ` - ${session.endTime}`}
                       </p>
                     )}
+                    <div className="flex items-center gap-2 mt-auto pt-2">
+                      <span className="text-sm text-muted-foreground">
+                        {session.instance.venue.name}
+                      </span>
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium">
+                        {session.instance.year}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 relative z-10">
-                    {session.type && (
-                      <Badge variant="outline">{session.type}</Badge>
-                    )}
-                    {session.sessionUrl && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6 p-0" asChild>
-                        <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                          <span className="sr-only">View Session</span>
-                        </a>
-                      </Button>
-                    )}
+                  <div className="flex flex-col justify-between items-end h-full pointer-events-none min-w-[100px]">
+                    {/* Top: Placeholder (matches Rating slot) */}
+                    <div className="h-6 flex items-center">
+                    </div>
+
+                    {/* Bottom: Type (matches Topic slot) */}
+                    <div className="h-6 flex items-center mt-auto">
+                      {session.type && (
+                        <Badge variant="outline">{session.type}</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

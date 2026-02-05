@@ -283,6 +283,7 @@ model Publication {
   pdfUrl        String?
   githubUrl     String?
   websiteUrl    String?
+  status        String?
 
   sessions      SessionPublication[]
 

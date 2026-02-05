@@ -30,33 +30,45 @@ async function PublicationsSection({ conferenceId }: { conferenceId: string }) {
               key={pub.id}
               className="relative block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-medium">
-                    <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
-                      {pub.title}
-                    </Link>
-                  </h3>
+              <div className="grid grid-cols-[1fr_auto] gap-4">
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center gap-2">
+                    {pub.status && (
+                      <Badge variant="secondary">{pub.status}</Badge>
+                    )}
+                    <h3 className="font-medium">
+                      <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
+                        {pub.title}
+                      </Link>
+                    </h3>
+                    {pub.pdfUrl && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
+                        <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
+                          <FileText className="h-4 w-4" />
+                          <span className="sr-only">PDF</span>
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     {pub.authors.slice(0, 3).join(', ')}
                     {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
                   </p>
-                  {pub.researchTopic && (
-                    <Badge variant="outline" className="mt-2 text-xs">{pub.researchTopic}</Badge>
-                  )}
                 </div>
-                <div className="flex flex-col items-end gap-2 relative z-10 w-24">
-                  {pub.rating && (
-                    <Badge variant="secondary">{pub.rating.toFixed(1)}</Badge>
-                  )}
-                  {pub.pdfUrl && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6 p-0" asChild>
-                      <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
-                        <FileText className="h-4 w-4" />
-                        <span className="sr-only">PDF</span>
-                      </a>
-                    </Button>
-                  )}
+                <div className="flex flex-col justify-between items-end h-full pointer-events-none min-w-[100px] min-h-[3.5rem]">
+                  {/* Top: Rating */}
+                  <div className="h-6 flex items-center">
+                    {pub.rating && (
+                      <Badge variant="secondary">{pub.rating.toFixed(1)}</Badge>
+                    )}
+                  </div>
+
+                  {/* Bottom: Topic */}
+                  <div className="h-6 flex items-center mt-auto">
+                    {pub.researchTopic && (
+                      <Badge variant="outline">{pub.researchTopic}</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
