@@ -51,7 +51,7 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">Notebooks</h2>
+            <h2 className="text-2xl font-semibold">Inspiration</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Your research notebooks and knowledge bases
             </p>
