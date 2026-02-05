@@ -32,7 +32,7 @@ export default async function DashboardPage() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <h1 className="text-xl font-semibold">SparkFlow</h1>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="default" size="sm" asChild className="font-medium px-4 shadow-sm hover:-translate-y-px transition-all">
               <Link href="/explore">
                 <Compass className="h-4 w-4 mr-2" />
                 Explore
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">Inspiration</h2>
+            <h2 className="text-xl font-semibold">Inspiration</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Your research notebooks and knowledge bases
             </p>

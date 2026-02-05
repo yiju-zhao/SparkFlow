@@ -33,11 +33,11 @@ export default function ExplorePage() {
         <div className="relative z-10 max-w-3xl">
 
 
-          <h1 className="text-2xl md:text-10xl font-bold tracking-tight mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Research Hub
+          <h1 className="text-xl md:text-10xl font-bold tracking-tight mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Knowledge Base
           </h1>
           <p className="text-md md:text-xl font-small text-muted-foreground leading-relaxed mb-8">
-            Discover conferences, publications, and sessions in the knowledge base
+            Discover conferences, publications, and sessions in the global knowledge base
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
