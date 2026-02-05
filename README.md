@@ -1,6 +1,6 @@
 # SparkFlow
 
-[![Version](https://img.shields.io/badge/version-0.4.0--beta-blue.svg)](https://github.com/yiju-zhao/SparkFlow)
+[![Version](https://img.shields.io/badge/version-0.5.0--beta-blue.svg)](https://github.com/yiju-zhao/SparkFlow)
 
 AI-powered research notebook with RAG (Retrieval-Augmented Generation) capabilities.
 
