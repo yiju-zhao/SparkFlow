@@ -80,7 +80,7 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
                       {pub.status && (
                         <Badge variant="secondary">{pub.status}</Badge>
                       )}
-                      <h3 className="font-medium">
+                      <h3 className="font-medium truncate flex-1 min-w-0">
                         <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
                           {pub.title}
                         </Link>
