@@ -85,14 +85,6 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
                           {pub.title}
                         </Link>
                       </h3>
-                      {pub.pdfUrl && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
-                          <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-4 w-4" />
-                            <span className="sr-only">PDF</span>
-                          </a>
-                        </Button>
-                      )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                       {pub.authors.slice(0, 3).join(', ')}
@@ -107,16 +99,24 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex flex-col justify-between items-end h-full pointer-events-none min-w-[100px]">
-                    {/* Top: Rating */}
-                    <div className="h-6 flex items-center">
+                  <div className="flex flex-col justify-between items-end h-full min-w-[100px]">
+                    {/* Top: PDF Link + Rating */}
+                    <div className="h-6 flex items-center gap-2">
+                      {pub.pdfUrl && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
+                          <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
+                            <FileText className="h-4 w-4" />
+                            <span className="sr-only">PDF</span>
+                          </a>
+                        </Button>
+                      )}
                       {pub.rating && (
                         <Badge variant="secondary">{pub.rating.toFixed(1)}</Badge>
                       )}
                     </div>
 
                     {/* Bottom: Topic */}
-                    <div className="h-6 flex items-center mt-auto">
+                    <div className="h-6 flex items-center mt-auto pointer-events-none">
                       {pub.researchTopic && (
                         <Badge variant="outline">{pub.researchTopic}</Badge>
                       )}

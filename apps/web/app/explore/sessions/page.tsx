@@ -69,27 +69,15 @@ export default async function SessionsPage({ searchParams }: PageProps) {
                 <div className="grid grid-cols-[1fr_auto] gap-4">
                   <div className="flex flex-col h-full">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium">
+                      {session.type && (
+                        <Badge variant="secondary">{session.type}</Badge>
+                      )}
+                      <h3 className="font-medium truncate flex-1 min-w-0">
                         <Link href={`/explore/sessions/${session.id}`} className="after:absolute after:inset-0">
                           {session.title}
                         </Link>
                       </h3>
-                      {session.sessionUrl && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
-                          <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                            <span className="sr-only">View Session</span>
-                          </a>
-                        </Button>
-                      )}
                     </div>
-                    {session.date && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(session.date).toLocaleDateString()}
-                        {session.startTime && ` at ${session.startTime}`}
-                        {session.endTime && ` - ${session.endTime}`}
-                      </p>
-                    )}
                     <div className="flex items-center gap-2 mt-auto pt-2">
                       <span className="text-sm text-muted-foreground">
                         {session.instance.venue.name}
@@ -99,15 +87,27 @@ export default async function SessionsPage({ searchParams }: PageProps) {
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex flex-col justify-between items-end h-full pointer-events-none min-w-[100px]">
-                    {/* Top: Placeholder (matches Rating slot) */}
+                  <div className="flex flex-col justify-between items-end h-full min-w-[100px]">
+                    {/* Top: Session Link */}
                     <div className="h-6 flex items-center">
+                      {session.sessionUrl && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
+                          <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                            <span className="sr-only">View Session</span>
+                          </a>
+                        </Button>
+                      )}
                     </div>
 
-                    {/* Bottom: Type (matches Topic slot) */}
-                    <div className="h-6 flex items-center mt-auto">
-                      {session.type && (
-                        <Badge variant="outline">{session.type}</Badge>
+                    {/* Bottom: Date/Time */}
+                    <div className="h-6 flex items-center mt-auto pointer-events-none">
+                      {session.date && (
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(session.date).toLocaleDateString()}
+                          {session.startTime && ` ${session.startTime}`}
+                          {session.endTime && ` - ${session.endTime}`}
+                        </span>
                       )}
                     </div>
                   </div>
