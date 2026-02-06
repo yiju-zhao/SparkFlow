@@ -1,13 +1,82 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { useMemo } from 'react'
+import { useECharts } from '@/hooks/use-echarts'
 import { ConferenceStats } from '@/lib/explore/types'
+import type { EChartsOption } from 'echarts'
 
 interface AffiliationBarChartProps {
     data: ConferenceStats['topAffiliations']
 }
 
 export function AffiliationBarChart({ data }: AffiliationBarChartProps) {
+    const option = useMemo<EChartsOption>(() => {
+        if (!data || data.length === 0) return {}
+
+        // Sort ascending and take top 15
+        const sortedData = [...data]
+            .sort((a, b) => a.count - b.count)
+            .slice(-15)
+
+        const names = sortedData.map(d =>
+            d.affiliation.length > 30 ? `${d.affiliation.substring(0, 30)}...` : d.affiliation
+        )
+        const values = sortedData.map(d => d.count)
+
+        return {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                formatter: (params: any) => {
+                    const idx = params[0].dataIndex
+                    const fullName = sortedData[idx].affiliation
+                    return `${fullName}<br/>Publications: <strong>${params[0].value}</strong>`
+                }
+            },
+            grid: {
+                left: 10,
+                right: 30,
+                top: 10,
+                bottom: 10,
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                axisLabel: { show: false },
+                splitLine: { show: false },
+                axisLine: { show: false }
+            },
+            yAxis: {
+                type: 'category',
+                data: names,
+                axisLine: { show: false },
+                axisTick: { show: false },
+                axisLabel: {
+                    fontSize: 11,
+                    width: 140,
+                    overflow: 'truncate'
+                }
+            },
+            series: [{
+                type: 'bar',
+                data: values,
+                itemStyle: {
+                    color: 'hsl(221.2, 83.2%, 53.3%)', // primary color
+                    borderRadius: [0, 4, 4, 0]
+                },
+                barWidth: 16,
+                label: {
+                    show: true,
+                    position: 'right',
+                    fontSize: 10,
+                    color: 'inherit'
+                }
+            }]
+        }
+    }, [data])
+
+    const chartRef = useECharts({ option })
+
     if (!data || data.length === 0) {
         return (
             <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -16,53 +85,5 @@ export function AffiliationBarChart({ data }: AffiliationBarChartProps) {
         )
     }
 
-    // Sort by count ascending for horizontal bar chart (top items at top)
-    const chartData = [...data].sort((a, b) => a.count - b.count).slice(-15) // Top 15
-
-    return (
-        <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-                layout="vertical"
-                data={chartData}
-                margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-            >
-                <XAxis type="number" hide />
-                <YAxis
-                    type="category"
-                    dataKey="affiliation"
-                    width={150}
-                    tick={({ x, y, payload }) => (
-                        <g transform={`translate(${x},${y})`}>
-                            <text
-                                x={0}
-                                y={0}
-                                dy={3}
-                                textAnchor="end"
-                                fill="currentColor"
-                                className="text-[10px] fill-muted-foreground font-medium"
-                                width={140}
-                            >
-                                {payload.value.length > 25 ? `${payload.value.substring(0, 25)}...` : payload.value}
-                            </text>
-                        </g>
-                    )}
-                />
-                <Tooltip
-                    cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
-                    contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                    }}
-                    itemStyle={{ color: 'hsl(var(--foreground))' }}
-                />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={16}>
-                    {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? "hsl(var(--primary))" : "hsl(var(--primary)/0.7)"} />
-                    ))}
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    )
+    return <div ref={chartRef} className="w-full h-full min-h-[300px]" />
 }

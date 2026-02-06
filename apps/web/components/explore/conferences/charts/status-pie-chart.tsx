@@ -1,30 +1,82 @@
 'use client'
 
 import { useMemo } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import { useECharts } from '@/hooks/use-echarts'
 import { StatusStats } from '@/lib/explore/types'
+import type { EChartsOption } from 'echarts'
 
 interface StatusPieChartProps {
     data: StatusStats[]
 }
 
-const COLORS = {
-    'Accept': '#22c55e', // green-500
-    'Spotlight': '#eab308', // yellow-500
-    'Poster': '#3b82f6', // blue-500
-    'Oral': '#a855f7', // purple-500
-    'Reject': '#ef4444', // red-500
-    'Withdrawal': '#6b7280', // gray-500
-    'Other': '#f97316' // orange-500
+const STATUS_COLORS: Record<string, string> = {
+    'Accept': '#22c55e',
+    'Spotlight': '#eab308',
+    'Poster': '#3b82f6',
+    'Oral': '#a855f7',
+    'Reject': '#ef4444',
+    'Withdrawal': '#6b7280',
+    'Other': '#f97316'
 }
 
 export function StatusPieChart({ data }: StatusPieChartProps) {
-    const chartData = useMemo(() => {
-        return data.map(item => ({
-            name: item.status || 'Unknown',
-            value: item.count
-        })).sort((a, b) => b.value - a.value)
+    const option = useMemo<EChartsOption>(() => {
+        if (!data || data.length === 0) return {}
+
+        const chartData = data
+            .map(item => ({
+                name: item.status || 'Unknown',
+                value: item.count,
+                itemStyle: {
+                    color: STATUS_COLORS[item.status] || STATUS_COLORS['Other']
+                }
+            }))
+            .sort((a, b) => b.value - a.value)
+
+        return {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{b}: {c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                right: 10,
+                top: 'center',
+                textStyle: {
+                    fontSize: 12
+                }
+            },
+            series: [{
+                type: 'pie',
+                radius: ['45%', '70%'],
+                center: ['35%', '50%'],
+                avoidLabelOverlap: true,
+                itemStyle: {
+                    borderRadius: 4,
+                    borderWidth: 2,
+                    borderColor: 'transparent'
+                },
+                label: {
+                    show: false
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: 14,
+                        fontWeight: 'bold'
+                    },
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.3)'
+                    }
+                },
+                data: chartData
+            }]
+        }
     }, [data])
+
+    const chartRef = useECharts({ option })
 
     if (!data || data.length === 0) {
         return (
@@ -34,43 +86,5 @@ export function StatusPieChart({ data }: StatusPieChartProps) {
         )
     }
 
-    return (
-        <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-                <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                >
-                    {chartData.map((entry, index) => {
-                        const color = COLORS[entry.name as keyof typeof COLORS] || COLORS['Other']
-                        return <Cell key={`cell-${index}`} fill={color} stroke="none" />
-                    })}
-                </Pie>
-                <Tooltip
-                    contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                    }}
-                    itemStyle={{ color: 'hsl(var(--foreground))' }}
-                />
-                <Legend
-                    layout="vertical"
-                    verticalAlign="middle"
-                    align="right"
-                    formatter={(value, entry: any) => (
-                        <span className="text-sm font-medium text-foreground ml-1">
-                            {value} <span className="text-muted-foreground ml-1">({entry.payload.value})</span>
-                        </span>
-                    )}
-                />
-            </PieChart>
-        </ResponsiveContainer>
-    )
+    return <div ref={chartRef} className="w-full h-full min-h-[250px]" />
 }

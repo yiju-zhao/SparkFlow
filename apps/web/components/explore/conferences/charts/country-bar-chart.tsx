@@ -1,13 +1,75 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { useMemo } from 'react'
+import { useECharts } from '@/hooks/use-echarts'
 import { CountryStats } from '@/lib/explore/types'
+import type { EChartsOption } from 'echarts'
 
 interface CountryBarChartProps {
     data: CountryStats[]
 }
 
 export function CountryBarChart({ data }: CountryBarChartProps) {
+    const option = useMemo<EChartsOption>(() => {
+        if (!data || data.length === 0) return {}
+
+        // Sort ascending and take top 15
+        const sortedData = [...data]
+            .sort((a, b) => a.count - b.count)
+            .slice(-15)
+
+        const names = sortedData.map(d => d.country)
+        const values = sortedData.map(d => d.count)
+
+        return {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' }
+            },
+            grid: {
+                left: 10,
+                right: 30,
+                top: 10,
+                bottom: 10,
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                axisLabel: { show: false },
+                splitLine: { show: false },
+                axisLine: { show: false }
+            },
+            yAxis: {
+                type: 'category',
+                data: names,
+                axisLine: { show: false },
+                axisTick: { show: false },
+                axisLabel: {
+                    fontSize: 11,
+                    width: 100,
+                    overflow: 'truncate'
+                }
+            },
+            series: [{
+                type: 'bar',
+                data: values,
+                itemStyle: {
+                    color: 'hsl(142.1, 76.2%, 36.3%)', // green-600
+                    borderRadius: [0, 4, 4, 0]
+                },
+                barWidth: 16,
+                label: {
+                    show: true,
+                    position: 'right',
+                    fontSize: 10,
+                    color: 'inherit'
+                }
+            }]
+        }
+    }, [data])
+
+    const chartRef = useECharts({ option })
+
     if (!data || data.length === 0) {
         return (
             <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -16,52 +78,5 @@ export function CountryBarChart({ data }: CountryBarChartProps) {
         )
     }
 
-    // Sort by count ascending
-    const chartData = [...data].sort((a, b) => a.count - b.count).slice(-15)
-
-    return (
-        <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-                layout="vertical"
-                data={chartData}
-                margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-            >
-                <XAxis type="number" hide />
-                <YAxis
-                    type="category"
-                    dataKey="country"
-                    width={100}
-                    tick={({ x, y, payload }) => (
-                        <g transform={`translate(${x},${y})`}>
-                            <text
-                                x={0}
-                                y={0}
-                                dy={3}
-                                textAnchor="end"
-                                fill="currentColor"
-                                className="text-xs fill-muted-foreground font-medium"
-                            >
-                                {payload.value}
-                            </text>
-                        </g>
-                    )}
-                />
-                <Tooltip
-                    cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
-                    contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        color: 'hsl(var(--foreground))'
-                    }}
-                    itemStyle={{ color: 'hsl(var(--foreground))' }}
-                />
-                <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[0, 4, 4, 0]} barSize={16}>
-                    {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? "hsl(var(--chart-3))" : "hsl(var(--chart-3)/0.7)"} />
-                    ))}
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    )
+    return <div ref={chartRef} className="w-full h-full min-h-[300px]" />
 }
