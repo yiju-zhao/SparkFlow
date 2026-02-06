@@ -54,7 +54,7 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
   const cached = filterOptionsCache.get(cacheKey)
   if (cached) return cached
 
-  const [venues, years, topics, sessionTypes] = await Promise.all([
+  const [venues, years, topics, statuses, sessionTypes] = await Promise.all([
     prisma.venue.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' }
@@ -69,6 +69,11 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
       distinct: ['researchTopic'],
       where: { researchTopic: { not: null, notIn: [''] } }
     }),
+    prisma.publication.findMany({
+      select: { status: true },
+      distinct: ['status'],
+      where: { status: { not: null, notIn: [''] } }
+    }),
     prisma.conferenceSession.findMany({
       select: { type: true },
       distinct: ['type'],
@@ -80,6 +85,7 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
     venues,
     years: years.map(y => y.year),
     topics: topics.map(t => t.researchTopic).filter((t): t is string => t !== null).sort((a, b) => a.localeCompare(b)),
+    statuses: statuses.map(s => s.status).filter((s): s is string => s !== null).sort((a, b) => a.localeCompare(b)),
     sessionTypes: sessionTypes.map(s => s.type).filter((s): s is string => s !== null)
   }
 
@@ -216,13 +222,14 @@ export const getPublications = cache(async (filters: PublicationFilters): Promis
     where.researchTopic = filters.topic
   }
 
-  // Build status exclusion list based on toggle states
-  const excludeStatuses: string[] = []
-  if (!filters.showRejected) excludeStatuses.push('Reject')
-  if (!filters.showWithdrawal) excludeStatuses.push('Withdrawal')
-  if (excludeStatuses.length > 0) {
+  // Handle status filtering
+  if (filters.status) {
+    // If a specific status is selected in the dropdown, filter by it
+    where.status = filters.status
+  } else if (!filters.showExcluded) {
+    // Hide Reject and Withdrawal by default unless toggle is checked
     where.OR = [
-      { status: { notIn: excludeStatuses } },
+      { status: { notIn: ['Reject', 'Withdrawal'] } },
       { status: null }
     ]
   }

@@ -37,6 +37,11 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
       key: 'topic',
       label: 'Topic',
       options: filterOptions.topics.map(t => ({ value: t, label: t }))
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      options: filterOptions.statuses.map(s => ({ value: s, label: s }))
     }
   ]
 

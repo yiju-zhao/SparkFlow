@@ -18,15 +18,14 @@ export function StatusToggles({ className }: StatusTogglesProps) {
     const searchParams = useSearchParams()
     const [isPending, startTransition] = useTransition()
 
-    const showRejected = searchParams.get('showRejected') === 'true'
-    const showWithdrawal = searchParams.get('showWithdrawal') === 'true'
+    const showExcluded = searchParams.get('showExcluded') === 'true'
 
-    const updateToggle = (key: string, checked: boolean) => {
+    const updateToggle = (checked: boolean) => {
         const params = new URLSearchParams(searchParams.toString())
         if (checked) {
-            params.set(key, 'true')
+            params.set('showExcluded', 'true')
         } else {
-            params.delete(key)
+            params.delete('showExcluded')
         }
         params.set('page', '0')
 
@@ -36,27 +35,15 @@ export function StatusToggles({ className }: StatusTogglesProps) {
     }
 
     return (
-        <div className={`flex items-center gap-4 ${className} ${isPending ? 'opacity-70' : ''}`}>
-            <div className="flex items-center gap-2">
-                <Checkbox
-                    id="showRejected"
-                    checked={showRejected}
-                    onCheckedChange={(checked: CheckedState) => updateToggle('showRejected', checked === true)}
-                />
-                <Label htmlFor="showRejected" className="text-sm cursor-pointer">
-                    Show Rejected
-                </Label>
-            </div>
-            <div className="flex items-center gap-2">
-                <Checkbox
-                    id="showWithdrawal"
-                    checked={showWithdrawal}
-                    onCheckedChange={(checked: CheckedState) => updateToggle('showWithdrawal', checked === true)}
-                />
-                <Label htmlFor="showWithdrawal" className="text-sm cursor-pointer">
-                    Show Withdrawal
-                </Label>
-            </div>
+        <div className={`flex items-center gap-2 ${className} ${isPending ? 'opacity-70' : ''}`}>
+            <Checkbox
+                id="showExcluded"
+                checked={showExcluded}
+                onCheckedChange={(checked: CheckedState) => updateToggle(checked === true)}
+            />
+            <Label htmlFor="showExcluded" className="text-sm cursor-pointer">
+                Show Rejected/Withdrawal
+            </Label>
         </div>
     )
 }

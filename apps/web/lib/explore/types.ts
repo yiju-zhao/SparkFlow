@@ -92,6 +92,7 @@ export interface FilterOptions {
   venues: { id: string; name: string }[]
   years: number[]
   topics: string[]
+  statuses: string[]
   sessionTypes: string[]
 }
 
