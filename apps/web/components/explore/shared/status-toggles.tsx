@@ -41,7 +41,10 @@ export function StatusToggles({ className }: StatusTogglesProps) {
                 checked={showExcluded}
                 onCheckedChange={(checked: CheckedState) => updateToggle(checked === true)}
             />
-            <Label htmlFor="showExcluded" className="text-sm cursor-pointer">
+            <Label
+                htmlFor="showExcluded"
+                className={`text-sm cursor-pointer ${showExcluded ? '' : 'text-muted-foreground'}`}
+            >
                 Show Rejected/Withdrawal
             </Label>
         </div>

@@ -29,6 +29,58 @@ export interface ConferenceDetail {
   summary: string | null
 }
 
+// Chart Data Types
+export interface StatusStats {
+  status: string
+  count: number
+}
+
+export interface KeywordStats {
+  keyword: string
+  count: number
+}
+
+export interface CountryStats {
+  country: string
+  count: number
+}
+
+export interface NetworkNode {
+  id: string
+  val: number
+  group?: number
+}
+
+export interface NetworkLink {
+  source: string
+  target: string
+  value: number
+}
+
+
+export interface NetworkGraphData {
+  nodes: NetworkNode[]
+  links: NetworkLink[]
+}
+
+export interface ConferenceStats {
+  publicationCount: number
+  sessionCount: number
+  topTopics: {
+    topic: string
+    count: number
+  }[]
+  topAffiliations: {
+    affiliation: string
+    count: number
+  }[]
+  statusBreakdown: StatusStats[]
+  topKeywords: KeywordStats[]
+  topCountries: CountryStats[]
+  orgCollaboration: NetworkGraphData
+  geoCollaboration: NetworkGraphData
+}
+
 export interface PublicationListItem {
   id: string
   title: string

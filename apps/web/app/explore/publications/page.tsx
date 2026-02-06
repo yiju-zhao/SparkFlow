@@ -25,7 +25,7 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
   const filterConfigs: FilterConfig[] = [
     {
       key: 'venue',
-      label: 'Conference',
+      label: 'Venue',
       options: filterOptions.venues.map(v => ({ value: v.id, label: v.name }))
     },
     {
@@ -56,7 +56,7 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="space-y-3">
         <FilterBar filters={filterConfigs} />
         <StatusToggles />
       </div>

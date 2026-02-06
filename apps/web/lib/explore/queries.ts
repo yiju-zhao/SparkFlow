@@ -170,9 +170,24 @@ export const getConference = cache(async (id: string): Promise<ConferenceDetail 
 })
 
 export const getConferenceStats = cache(async (id: string) => {
-  const [pubCount, sessionCount, topTopics, topAffiliations] = await Promise.all([
+  const [
+    pubCount,
+    sessionCount,
+    topTopics,
+    topAffiliations,
+    statusBreakdown,
+    topKeywords,
+    topCountries,
+    orgNodes,
+    orgLinks,
+    geoNodes,
+    geoLinks
+  ] = await Promise.all([
+    // Basic Counts
     prisma.publication.count({ where: { instanceId: id } }),
     prisma.conferenceSession.count({ where: { instanceId: id } }),
+
+    // Top Topics
     prisma.publication.groupBy({
       by: ['researchTopic'],
       where: { instanceId: id, researchTopic: { not: null } },
@@ -180,13 +195,125 @@ export const getConferenceStats = cache(async (id: string) => {
       orderBy: { _count: { researchTopic: 'desc' } },
       take: 10
     }),
+
+    // Top Affiliations
     prisma.$queryRaw<{ affiliation: string; count: bigint }[]>`
       SELECT unnest(affiliations) as affiliation, COUNT(*) as count
       FROM "publications"
       WHERE "instanceId" = ${id}
       GROUP BY affiliation
       ORDER BY count DESC
-      LIMIT 10
+      LIMIT 15
+    `,
+
+    // Status Breakdown
+    prisma.publication.groupBy({
+      by: ['status'],
+      where: { instanceId: id, status: { not: null } },
+      _count: { status: true },
+      orderBy: { _count: { status: 'desc' } }
+    }),
+
+    // Top Keywords
+    prisma.$queryRaw<{ keyword: string; count: bigint }[]>`
+      SELECT unnest(keywords) as keyword, COUNT(*) as count
+      FROM "publications"
+      WHERE "instanceId" = ${id}
+      GROUP BY keyword
+      ORDER BY count DESC
+      LIMIT 50
+    `,
+
+    // Top Countries
+    prisma.$queryRaw<{ country: string; count: bigint }[]>`
+      SELECT unnest(countries) as country, COUNT(*) as count
+      FROM "publications"
+      WHERE "instanceId" = ${id}
+      GROUP BY country
+      ORDER BY count DESC
+      LIMIT 15
+    `,
+
+    // Org Network Nodes
+    prisma.$queryRaw<{ id: string; val: bigint }[]>`
+      SELECT unnest(affiliations) as id, COUNT(*) as val
+      FROM "publications"
+      WHERE "instanceId" = ${id}
+      GROUP BY id
+      ORDER BY val DESC
+      LIMIT 30
+    `,
+
+    // Org Network Links
+    prisma.$queryRaw<{ source: string; target: string; value: bigint }[]>`
+      WITH PubAffiliations AS (
+        SELECT id, unnest(affiliations) as org
+        FROM "publications"
+        WHERE "instanceId" = ${id}
+      )
+      SELECT t1.org as source, t2.org as target, COUNT(*) as "value"
+      FROM PubAffiliations t1
+      JOIN PubAffiliations t2 ON t1.id = t2.id AND t1.org < t2.org
+      WHERE t1.org IN (
+        SELECT unnest(affiliations) 
+        FROM "publications" 
+        WHERE "instanceId" = ${id} 
+        GROUP BY unnest(affiliations) 
+        ORDER BY COUNT(*) DESC 
+        LIMIT 30
+      )
+      AND t2.org IN (
+        SELECT unnest(affiliations) 
+        FROM "publications" 
+        WHERE "instanceId" = ${id} 
+        GROUP BY unnest(affiliations) 
+        ORDER BY COUNT(*) DESC 
+        LIMIT 30
+      )
+      GROUP BY source, target
+      ORDER BY "value" DESC
+      LIMIT 100
+    `,
+
+    // Geo Network Nodes
+    prisma.$queryRaw<{ id: string; val: bigint }[]>`
+      SELECT unnest(countries) as id, COUNT(*) as val
+      FROM "publications"
+      WHERE "instanceId" = ${id}
+      GROUP BY id
+      ORDER BY val DESC
+      LIMIT 30
+    `,
+
+    // Geo Network Links
+    prisma.$queryRaw<{ source: string; target: string; value: bigint }[]>`
+      WITH PubCountries AS (
+        SELECT id, unnest(countries) as country
+        FROM "publications"
+        WHERE "instanceId" = ${id}
+      )
+      SELECT t1.country as source, t2.country as target, COUNT(*) as "value"
+      FROM PubCountries t1
+      JOIN PubCountries t2 ON t1.id = t2.id AND t1.country < t2.country
+      WHERE t1.country IN (
+        SELECT unnest(countries) 
+        FROM "publications" 
+        WHERE "instanceId" = ${id} 
+        GROUP BY unnest(countries) 
+        ORDER BY COUNT(*) DESC 
+        LIMIT 30
+      )
+      AND t2.country IN (
+        SELECT unnest(countries) 
+        FROM "publications" 
+        WHERE "instanceId" = ${id} 
+        GROUP BY unnest(countries) 
+        ORDER BY COUNT(*) DESC 
+        LIMIT 30
+      )
+      GROUP BY source, target
+      ORDER BY "value" DESC
+      LIMIT 100
     `
   ])
 
@@ -200,7 +327,27 @@ export const getConferenceStats = cache(async (id: string) => {
     topAffiliations: topAffiliations.map(a => ({
       affiliation: a.affiliation,
       count: Number(a.count)
-    }))
+    })),
+    statusBreakdown: statusBreakdown.map(s => ({
+      status: s.status as string,
+      count: s._count.status
+    })),
+    topKeywords: topKeywords.map(k => ({
+      keyword: k.keyword,
+      count: Number(k.count)
+    })),
+    topCountries: topCountries.map(c => ({
+      country: c.country,
+      count: Number(c.count)
+    })),
+    orgCollaboration: {
+      nodes: orgNodes.map(n => ({ id: n.id, val: Number(n.val) })),
+      links: orgLinks.map(l => ({ source: l.source, target: l.target, value: Number(l.value) }))
+    },
+    geoCollaboration: {
+      nodes: geoNodes.map(n => ({ id: n.id, val: Number(n.val) })),
+      links: geoLinks.map(l => ({ source: l.source, target: l.target, value: Number(l.value) }))
+    }
   }
 })
 

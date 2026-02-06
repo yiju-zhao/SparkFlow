@@ -1,88 +1,21 @@
-// apps/web/app/explore/conferences/[id]/page.tsx
-
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getConference, getConferenceStats, getPublications, getSessions } from '@/lib/explore/queries'
+import { getConference, getConferenceStats, getSessions } from '@/lib/explore/queries'
 import { ConferenceHero } from '@/components/explore/conferences'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { FileText } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
-async function PublicationsSection({ conferenceId }: { conferenceId: string }) {
-  const result = await getPublications({ conference: conferenceId, page: 0, sortBy: 'rating', sortDir: 'desc' })
+import { PublicationStatsSection } from '@/components/explore/conferences/publication-stats-section'
 
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Showing top {result.data.length} of {result.total} publications
-      </p>
-      <div className="space-y-2">
-        <div className="space-y-2">
-          {result.data.map((pub) => (
-            <div
-              key={pub.id}
-              className="relative block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="grid grid-cols-[1fr_auto] gap-4">
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center gap-2">
-                    {pub.status && (
-                      <Badge variant="secondary">{pub.status}</Badge>
-                    )}
-                    <h3 className="font-medium">
-                      <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
-                        {pub.title}
-                      </Link>
-                    </h3>
-                    {pub.pdfUrl && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
-                        <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-4 w-4" />
-                          <span className="sr-only">PDF</span>
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {pub.authors.slice(0, 3).join(', ')}
-                    {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
-                  </p>
-                </div>
-                <div className="flex flex-col justify-between items-end h-full pointer-events-none min-w-[100px] min-h-[3.5rem]">
-                  {/* Top: Rating */}
-                  <div className="h-6 flex items-center">
-                    {pub.rating && (
-                      <Badge variant="secondary">{pub.rating.toFixed(1)}</Badge>
-                    )}
-                  </div>
-
-                  {/* Bottom: Topic */}
-                  <div className="h-6 flex items-center mt-auto">
-                    {pub.researchTopic && (
-                      <Badge variant="outline">{pub.researchTopic}</Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <Link
-          href={`/explore/publications?conference=${conferenceId}`}
-          className="text-sm text-primary hover:underline"
-        >
-        </Link>
-      </div>
-    </div>
-  )
-}
+// Wrapper for PublicationStatsSection to handle Suspense if needed, 
+// though stats are already fetched in parent.
+// We can just use the component directly in the page.
 
 async function SessionsSection({ conferenceId }: { conferenceId: string }) {
   const result = await getSessions({ conference: conferenceId, page: 0, sortBy: 'date', sortDir: 'asc' })
@@ -130,11 +63,6 @@ async function SessionsSection({ conferenceId }: { conferenceId: string }) {
             </div>
           ))}
         </div>
-        <Link
-          href={`/explore/sessions?conference=${conferenceId}`}
-          className="text-sm text-primary hover:underline"
-        >
-        </Link>
       </div>
     </div>
   )
@@ -165,7 +93,7 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
 
         <TabsContent value="publications" className="mt-6">
           <Suspense fallback={<ContentSkeleton />}>
-            <PublicationsSection conferenceId={id} />
+            <PublicationStatsSection venueId={conference.venue.id} year={conference.year} stats={stats} />
           </Suspense>
         </TabsContent>
 

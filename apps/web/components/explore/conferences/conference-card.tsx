@@ -14,14 +14,14 @@ export function ConferenceCard({ conference }: ConferenceCardProps) {
   return (
     <Link href={`/explore/conferences/${conference.id}`}>
       <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-lg">{conference.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">{conference.venue.name}</p>
-            </div>
+        <CardHeader className="pb-2">
+          {/* Top: Venue + Year */}
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground font-medium">{conference.venue.name}</span>
             <Badge variant="secondary">{conference.year}</Badge>
           </div>
+          {/* Title below */}
+          <CardTitle className="text-lg mt-1">{conference.name}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
