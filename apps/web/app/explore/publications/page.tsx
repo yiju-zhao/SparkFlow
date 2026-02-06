@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { getPublications, getFilterOptions } from '@/lib/explore/queries'
 import { parsePublicationFilters, PAGE_SIZE } from '@/lib/explore/filters'
-import { FilterBar, Pagination, EmptyState, type FilterConfig } from '@/components/explore/shared'
+import { FilterBar, Pagination, EmptyState, StatusToggles, type FilterConfig } from '@/components/explore/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FileText } from 'lucide-react'
@@ -51,7 +51,10 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <FilterBar filters={filterConfigs} />
+      <div className="flex flex-wrap items-center gap-4">
+        <FilterBar filters={filterConfigs} />
+        <StatusToggles />
+      </div>
 
       {result.data.length === 0 ? (
         <EmptyState

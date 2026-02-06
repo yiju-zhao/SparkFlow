@@ -9,6 +9,8 @@ export const publicationFiltersSchema = z.object({
   conference: z.string().optional(),
   venue: z.string().optional(),
   topic: z.string().optional(),
+  showRejected: z.coerce.boolean().default(false),
+  showWithdrawal: z.coerce.boolean().default(false),
   sortBy: z.enum(['rating', 'title', 'year']).default('rating'),
   sortDir: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().default(0)

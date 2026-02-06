@@ -79,7 +79,7 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
   const result: FilterOptions = {
     venues,
     years: years.map(y => y.year),
-    topics: topics.map(t => t.researchTopic).filter((t): t is string => t !== null),
+    topics: topics.map(t => t.researchTopic).filter((t): t is string => t !== null).sort((a, b) => a.localeCompare(b)),
     sessionTypes: sessionTypes.map(s => s.type).filter((s): s is string => s !== null)
   }
 
@@ -214,6 +214,17 @@ export const getPublications = cache(async (filters: PublicationFilters): Promis
   }
   if (filters.topic) {
     where.researchTopic = filters.topic
+  }
+
+  // Build status exclusion list based on toggle states
+  const excludeStatuses: string[] = []
+  if (!filters.showRejected) excludeStatuses.push('Reject')
+  if (!filters.showWithdrawal) excludeStatuses.push('Withdrawal')
+  if (excludeStatuses.length > 0) {
+    where.OR = [
+      { status: { notIn: excludeStatuses } },
+      { status: null }
+    ]
   }
 
   let orderBy: Prisma.PublicationOrderByWithRelationInput = {}
