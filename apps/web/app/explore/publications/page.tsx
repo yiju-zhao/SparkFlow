@@ -74,7 +74,7 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
                 key={pub.id}
                 className="relative block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
-                <div className="grid grid-cols-[9fr_1fr] gap-4">
+                <div className="grid grid-cols-[8fr_2fr] gap-4">
                   <div className="flex flex-col h-full">
                     <div className="flex items-center gap-2">
                       {pub.status && (
