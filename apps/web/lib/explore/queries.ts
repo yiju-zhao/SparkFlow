@@ -67,12 +67,12 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
     prisma.publication.findMany({
       select: { researchTopic: true },
       distinct: ['researchTopic'],
-      where: { researchTopic: { not: null } }
+      where: { researchTopic: { not: null, notIn: [''] } }
     }),
     prisma.conferenceSession.findMany({
       select: { type: true },
       distinct: ['type'],
-      where: { type: { not: null } }
+      where: { type: { not: null, notIn: [''] } }
     })
   ])
 
