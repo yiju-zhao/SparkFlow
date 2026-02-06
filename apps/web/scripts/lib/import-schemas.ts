@@ -15,9 +15,9 @@ export const PublicationInputSchema = z.object({
   status: z.string().optional(),
   rating: z.number().optional(),
   doi: z.string().optional(),
-  pdfUrl: z.string().url().optional(),
-  githubUrl: z.string().url().optional(),
-  websiteUrl: z.string().url().optional(),
+  pdfUrl: z.string().url().or(z.literal("")).optional(),
+  githubUrl: z.string().url().or(z.literal("")).optional(),
+  websiteUrl: z.string().url().or(z.literal("")).optional(),
 });
 
 export const InstanceMetadataSchema = z.object({
@@ -50,7 +50,7 @@ export const SessionInputSchema = z.object({
   speaker: z.string().optional(),
   abstract: z.string().optional(),
   overview: z.string().optional(),
-  sessionUrl: z.string().url().optional(),
+  sessionUrl: z.string().url().or(z.literal("")).optional(),
   publicationTitles: z.array(z.string()).default([]),
 });
 
