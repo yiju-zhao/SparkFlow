@@ -173,6 +173,10 @@ export const getConferences = cache(async (filters: ConferenceFilters): Promise<
 })
 
 export const getConference = cache(async (id: string): Promise<ConferenceDetail | null> => {
+  const cacheKey = `conference-${id}`
+  const cached = statsCache.get(cacheKey) as ConferenceDetail | undefined
+  if (cached) return cached
+
   const instance = await prisma.instance.findUnique({
     where: { id },
     select: {
@@ -188,10 +192,15 @@ export const getConference = cache(async (id: string): Promise<ConferenceDetail 
     }
   })
 
+  if (instance) statsCache.set(cacheKey, instance)
   return instance
 })
 
 export const getConferenceStats = cache(async (id: string) => {
+  const cacheKey = `conference-stats-${id}`
+  const cached = statsCache.get(cacheKey)
+  if (cached) return cached
+
   const [
     pubCount,
     sessionCount,
@@ -353,7 +362,7 @@ export const getConferenceStats = cache(async (id: string) => {
     `
   ])
 
-  return {
+  const result = {
     publicationCount: pubCount,
     sessionCount: sessionCount,
     topTopics: topTopics.map(t => ({
@@ -385,6 +394,9 @@ export const getConferenceStats = cache(async (id: string) => {
       links: geoLinks.map(l => ({ source: l.source, target: l.target, value: Number(l.value) }))
     }
   }
+
+  statsCache.set(cacheKey, result)
+  return result
 })
 
 // ============ PUBLICATIONS ============
