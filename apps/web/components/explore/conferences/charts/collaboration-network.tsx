@@ -88,9 +88,7 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                         fontSize: 12,
                         fontWeight: 'bold'
                     },
-                    lineStyle: {
-                        width: 'inherit'
-                    }
+                    lineStyle: {}
                 },
                 data: nodes.map(node => ({
                     name: node.id,
