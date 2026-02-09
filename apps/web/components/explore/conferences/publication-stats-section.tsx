@@ -62,18 +62,18 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                 ))}
             </div>
 
-            {/* Unified Bento Dashboard Panel */}
-            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+            {/* Unified Dashboard Panel */}
+            <div className="rounded-2xl border border-border/60 overflow-hidden">
 
                 {/* Row 1: Composition — Pie + Word Cloud */}
-                <div className="grid grid-cols-1 md:grid-cols-5">
+                <div className="grid grid-cols-1 md:grid-cols-5 bg-card">
                     <div className="md:col-span-2 p-5">
                         <SectionLabel>Status Breakdown</SectionLabel>
                         <div className="h-[260px]">
                             <StatusPieChart data={stats.statusBreakdown} />
                         </div>
                     </div>
-                    <div className="md:col-span-3 p-5 md:border-l border-t md:border-t-0 border-border/40">
+                    <div className="md:col-span-3 p-5">
                         <SectionLabel>Popular Keywords</SectionLabel>
                         <div className="h-[260px]">
                             <KeywordCloud data={stats.topKeywords} className="min-h-0" />
@@ -81,22 +81,16 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                     </div>
                 </div>
 
-                {/* Divider */}
-                <div className="border-t border-border/40" />
-
-                {/* Row 2: Research Topics — full width for readability */}
-                <div className="p-5">
+                {/* Row 2: Research Topics — full width (accent band) */}
+                <div className="p-5 bg-muted/30 dark:bg-muted/15">
                     <SectionLabel>Top Research Topics</SectionLabel>
                     <div className="h-[280px]">
                         <TopicBarChart data={stats.topTopics} />
                     </div>
                 </div>
 
-                {/* Divider */}
-                <div className="border-t border-border/40" />
-
-                {/* Row 3: Community — Countries + Organizations side by side */}
-                <div className="grid grid-cols-1 md:grid-cols-2">
+                {/* Row 3: Community — Organizations + Countries side by side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 bg-card">
                     <div className="p-5">
                         <SectionLabel>
                             <Users className="h-3.5 w-3.5" />
@@ -106,7 +100,7 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                             <AffiliationBarChart data={stats.topAffiliations} />
                         </div>
                     </div>
-                    <div className="p-5 md:border-l border-t md:border-t-0 border-border/40">
+                    <div className="p-5">
                         <SectionLabel>
                             <Globe className="h-3.5 w-3.5" />
                             Top Countries
@@ -117,11 +111,8 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                     </div>
                 </div>
 
-                {/* Divider */}
-                <div className="border-t border-border/40" />
-
-                {/* Row 3: Collaboration Networks */}
-                <div className="grid grid-cols-1 md:grid-cols-2">
+                {/* Row 4: Collaboration Networks (accent band) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 bg-muted/30 dark:bg-muted/15">
                     <div className="p-5">
                         <SectionLabel>
                             <Network className="h-3.5 w-3.5" />
@@ -135,7 +126,7 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                             />
                         </div>
                     </div>
-                    <div className="p-5 md:border-l border-t md:border-t-0 border-border/40">
+                    <div className="p-5">
                         <SectionLabel>
                             <Globe className="h-3.5 w-3.5" />
                             Geographic Collaboration
