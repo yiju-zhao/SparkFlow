@@ -65,7 +65,7 @@ export function ConferenceHero({ conference, stats }: ConferenceHeroProps) {
         )}
         <span className="flex items-center gap-1">
           <FileText className="h-4 w-4" />
-          {stats.publicationCount} publications
+          {stats.publicationCount} accepted publications
         </span>
         <span className="flex items-center gap-1">
           <Calendar className="h-4 w-4" />

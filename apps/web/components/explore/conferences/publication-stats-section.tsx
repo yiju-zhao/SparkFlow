@@ -22,7 +22,7 @@ interface PublicationStatsSectionProps {
 
 export function PublicationStatsSection({ venueId, year, stats }: PublicationStatsSectionProps) {
     // Calculate status counts for header cards
-    const acceptedCount = stats.statusBreakdown.find(s => s.status === 'Accept')?.count || 0
+    const acceptedCount = stats.publicationCount
     const spotlightCount = stats.statusBreakdown.find(s => s.status === 'Spotlight')?.count || 0
     const posterCount = stats.statusBreakdown.find(s => s.status === 'Poster')?.count || 0
     const oralCount = stats.statusBreakdown.find(s => s.status === 'Oral')?.count || 0

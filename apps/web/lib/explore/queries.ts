@@ -248,6 +248,7 @@ export const getConferenceStats = cache(async (id: string) => {
       SELECT unnest(affiliations) as id, COUNT(*) as val
       FROM "publications"
       WHERE "instanceId" = ${id}
+        AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
       GROUP BY id
       ORDER BY val DESC
       LIMIT 30
@@ -259,24 +260,27 @@ export const getConferenceStats = cache(async (id: string) => {
         SELECT id, unnest(affiliations) as org
         FROM "publications"
         WHERE "instanceId" = ${id}
+          AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
       )
       SELECT t1.org as source, t2.org as target, COUNT(*) as "value"
       FROM PubAffiliations t1
       JOIN PubAffiliations t2 ON t1.id = t2.id AND t1.org < t2.org
       WHERE t1.org IN (
-        SELECT unnest(affiliations) 
-        FROM "publications" 
-        WHERE "instanceId" = ${id} 
-        GROUP BY unnest(affiliations) 
-        ORDER BY COUNT(*) DESC 
+        SELECT unnest(affiliations)
+        FROM "publications"
+        WHERE "instanceId" = ${id}
+          AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
+        GROUP BY unnest(affiliations)
+        ORDER BY COUNT(*) DESC
         LIMIT 30
       )
       AND t2.org IN (
-        SELECT unnest(affiliations) 
-        FROM "publications" 
-        WHERE "instanceId" = ${id} 
-        GROUP BY unnest(affiliations) 
-        ORDER BY COUNT(*) DESC 
+        SELECT unnest(affiliations)
+        FROM "publications"
+        WHERE "instanceId" = ${id}
+          AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
+        GROUP BY unnest(affiliations)
+        ORDER BY COUNT(*) DESC
         LIMIT 30
       )
       GROUP BY source, target
@@ -289,6 +293,7 @@ export const getConferenceStats = cache(async (id: string) => {
       SELECT unnest(countries) as id, COUNT(*) as val
       FROM "publications"
       WHERE "instanceId" = ${id}
+        AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
       GROUP BY id
       ORDER BY val DESC
       LIMIT 30
@@ -300,24 +305,27 @@ export const getConferenceStats = cache(async (id: string) => {
         SELECT id, unnest(countries) as country
         FROM "publications"
         WHERE "instanceId" = ${id}
+          AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
       )
       SELECT t1.country as source, t2.country as target, COUNT(*) as "value"
       FROM PubCountries t1
       JOIN PubCountries t2 ON t1.id = t2.id AND t1.country < t2.country
       WHERE t1.country IN (
-        SELECT unnest(countries) 
-        FROM "publications" 
-        WHERE "instanceId" = ${id} 
-        GROUP BY unnest(countries) 
-        ORDER BY COUNT(*) DESC 
+        SELECT unnest(countries)
+        FROM "publications"
+        WHERE "instanceId" = ${id}
+          AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
+        GROUP BY unnest(countries)
+        ORDER BY COUNT(*) DESC
         LIMIT 30
       )
       AND t2.country IN (
-        SELECT unnest(countries) 
-        FROM "publications" 
-        WHERE "instanceId" = ${id} 
-        GROUP BY unnest(countries) 
-        ORDER BY COUNT(*) DESC 
+        SELECT unnest(countries)
+        FROM "publications"
+        WHERE "instanceId" = ${id}
+          AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
+        GROUP BY unnest(countries)
+        ORDER BY COUNT(*) DESC
         LIMIT 30
       )
       GROUP BY source, target
