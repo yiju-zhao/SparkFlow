@@ -117,7 +117,11 @@ export const getConferences = cache(async (filters: ConferenceFilters): Promise<
       venue: { select: { id: true, name: true } },
       _count: {
         select: {
-          publications: true,
+          publications: {
+            where: {
+              status: { notIn: ['Reject', 'Withdrawal'] }
+            }
+          },
           sessions: true
         }
       }
@@ -183,8 +187,13 @@ export const getConferenceStats = cache(async (id: string) => {
     geoNodes,
     geoLinks
   ] = await Promise.all([
-    // Basic Counts
-    prisma.publication.count({ where: { instanceId: id } }),
+    // Basic Counts (excluding rejected/withdrawn papers)
+    prisma.publication.count({
+      where: {
+        instanceId: id,
+        status: { notIn: ['Reject', 'Withdrawal'] }
+      }
+    }),
     prisma.conferenceSession.count({ where: { instanceId: id } }),
 
     // Top Topics

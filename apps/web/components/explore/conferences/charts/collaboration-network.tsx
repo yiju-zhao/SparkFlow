@@ -1,16 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import dynamic from 'next/dynamic'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTheme } from 'next-themes'
+import * as echarts from 'echarts'
 import { NetworkGraphData } from '@/lib/explore/types'
 import { Maximize2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-
-// Dynamically import ForceGraph2D with no SSR
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
-    ssr: false,
-    loading: () => <div className="flex h-full items-center justify-center text-muted-foreground">Loading graph...</div>
-})
+import type { ECharts } from 'echarts'
 
 interface CollaborationNetworkProps {
     data: NetworkGraphData
@@ -20,78 +16,181 @@ interface CollaborationNetworkProps {
 
 export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: CollaborationNetworkProps) {
     const [isExpanded, setIsExpanded] = useState(false)
-    const [dimensions, setDimensions] = useState({ width: 400, height: 300 })
-    const containerRef = useRef<HTMLDivElement>(null)
-    const [isMounted, setIsMounted] = useState(false)
+    const [isReady, setIsReady] = useState(false)
+    const chartRef = useRef<HTMLDivElement>(null)
+    const expandedChartRef = useRef<HTMLDivElement>(null)
+    const chartInstance = useRef<ECharts | null>(null)
+    const expandedChartInstance = useRef<ECharts | null>(null)
+    const { resolvedTheme } = useTheme()
 
-    // Mount check
     useEffect(() => {
-        setIsMounted(true)
+        setIsReady(true)
     }, [])
 
-    // Measure container dimensions with ResizeObserver
-    useEffect(() => {
-        if (!containerRef.current) return
+    const chartOption = useMemo(() => {
+        if (!data || data.nodes.length === 0) return null
 
-        const observer = new ResizeObserver((entries) => {
-            const entry = entries[0]
-            if (entry) {
-                const { width, height } = entry.contentRect
-                if (width > 0 && height > 0) {
-                    setDimensions({ width, height })
+        // Deduplicate nodes by id
+        const uniqueNodesMap = new Map<string, { id: string; val: number }>()
+        data.nodes.forEach(node => {
+            if (!uniqueNodesMap.has(node.id)) {
+                uniqueNodesMap.set(node.id, node)
+            } else {
+                // If duplicate, keep the one with higher val
+                const existing = uniqueNodesMap.get(node.id)!
+                if (node.val > existing.val) {
+                    uniqueNodesMap.set(node.id, node)
                 }
             }
         })
+        const uniqueNodes = Array.from(uniqueNodesMap.values())
 
-        observer.observe(containerRef.current)
-        return () => observer.disconnect()
-    }, [])
+        const maxVal = Math.max(...uniqueNodes.map(n => n.val))
+        const maxLinkVal = Math.max(...data.links.map(l => l.value), 1)
 
-    const renderGraph = useCallback((width: number, height: number, isFullscreen = false) => (
-        <ForceGraph2D
-            graphData={data}
-            width={width}
-            height={height}
-            nodeLabel="id"
-            nodeAutoColorBy="group"
-            nodeRelSize={6}
-            linkWidth={1}
-            linkColor={() => isFullscreen ? 'rgba(150,150,150,0.4)' : 'rgba(200,200,200,0.5)'}
-            backgroundColor={isFullscreen ? '#ffffff' : 'rgba(0,0,0,0)'}
-            cooldownTicks={100}
-            minZoom={2}
-            maxZoom={10}
-            nodeCanvasObject={(node: any, ctx, globalScale) => {
-                const label = node.id
-                const fontSize = isFullscreen ? 14 / globalScale : 12 / globalScale
-                ctx.font = `${fontSize}px Sans-Serif`
-                const textWidth = ctx.measureText(label).width
-                const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2)
+        // Only include links where both source and target exist in uniqueNodes
+        const nodeIds = new Set(uniqueNodes.map(n => n.id))
+        const validLinks = data.links.filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
 
-                if (typeof node.x === 'number' && typeof node.y === 'number') {
-                    ctx.beginPath()
-                    ctx.arc(node.x, node.y, isFullscreen ? 5 : 4, 0, 2 * Math.PI, false)
-                    ctx.fillStyle = nodeColor
-                    ctx.fill()
-
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-                    ctx.fillRect(
-                        node.x - bckgDimensions[0] / 2,
-                        node.y - bckgDimensions[1] / 2,
-                        bckgDimensions[0],
-                        bckgDimensions[1]
-                    )
-
-                    ctx.textAlign = 'center'
-                    ctx.textBaseline = 'middle'
-                    ctx.fillStyle = '#000000'
-                    ctx.fillText(label, node.x, node.y)
+        return {
+            tooltip: {
+                trigger: 'item',
+                formatter: (params: any) => {
+                    if (params.dataType === 'node') {
+                        return `<strong>${params.name}</strong><br/>Publications: ${params.data.value}`
+                    } else if (params.dataType === 'edge') {
+                        return `${params.data.source} ↔ ${params.data.target}<br/>Collaborations: ${params.data.value}`
+                    }
+                    return ''
                 }
-            }}
-        />
-    ), [data, nodeColor])
+            },
+            series: [{
+                type: 'graph',
+                layout: 'force',
+                roam: true,
+                draggable: true,
+                force: {
+                    repulsion: 200,
+                    gravity: 0.1,
+                    edgeLength: [80, 200],
+                    friction: 0.6
+                },
+                label: {
+                    show: true,
+                    position: 'right',
+                    fontSize: 10,
+                    formatter: (params: any) => {
+                        const name = params.name
+                        return name.length > 20 ? name.substring(0, 20) + '...' : name
+                    }
+                },
+                emphasis: {
+                    focus: 'adjacency',
+                    label: {
+                        show: true,
+                        fontSize: 12,
+                        fontWeight: 'bold'
+                    },
+                    lineStyle: {
+                        width: 4
+                    }
+                },
+                data: uniqueNodes.map(node => ({
+                    name: node.id,
+                    value: node.val,
+                    symbolSize: Math.max(10, Math.sqrt(node.val / maxVal) * 40),
+                    itemStyle: {
+                        color: nodeColor
+                    }
+                })),
+                links: validLinks.map(link => ({
+                    source: link.source,
+                    target: link.target,
+                    value: link.value,
+                    lineStyle: {
+                        width: Math.max(1, (link.value / maxLinkVal) * 5),
+                        opacity: 0.4 + (link.value / maxLinkVal) * 0.4,
+                        curveness: 0.1
+                    }
+                }))
+            }]
+        }
+    }, [data, nodeColor])
 
-    if (!isMounted) return null
+    // Initialize main chart
+    useEffect(() => {
+        if (!isReady || !chartRef.current || !chartOption) return
+
+        if (chartInstance.current && !chartInstance.current.isDisposed()) {
+            chartInstance.current.dispose()
+        }
+
+        chartInstance.current = echarts.init(
+            chartRef.current,
+            resolvedTheme === 'dark' ? 'dark' : undefined
+        )
+        chartInstance.current.setOption(chartOption)
+
+        const handleResize = () => {
+            if (chartInstance.current && !chartInstance.current.isDisposed()) {
+                chartInstance.current.resize()
+            }
+        }
+        window.addEventListener('resize', handleResize)
+
+        return () => {
+            window.removeEventListener('resize', handleResize)
+            if (chartInstance.current && !chartInstance.current.isDisposed()) {
+                chartInstance.current.dispose()
+            }
+        }
+    }, [isReady, chartOption, resolvedTheme])
+
+    // Initialize expanded chart
+    useEffect(() => {
+        if (!isExpanded || !expandedChartRef.current || !chartOption) return
+
+        if (expandedChartInstance.current && !expandedChartInstance.current.isDisposed()) {
+            expandedChartInstance.current.dispose()
+        }
+
+        expandedChartInstance.current = echarts.init(
+            expandedChartRef.current,
+            resolvedTheme === 'dark' ? 'dark' : undefined
+        )
+
+        // Enhanced options for expanded view
+        const expandedOption = {
+            ...chartOption,
+            series: [{
+                ...chartOption.series[0],
+                force: {
+                    ...chartOption.series[0].force,
+                    repulsion: 300,
+                    edgeLength: [100, 300]
+                },
+                label: {
+                    ...chartOption.series[0].label,
+                    fontSize: 12
+                }
+            }]
+        }
+        expandedChartInstance.current.setOption(expandedOption)
+
+        const handleResize = () => {
+            if (expandedChartInstance.current && !expandedChartInstance.current.isDisposed()) {
+                expandedChartInstance.current.resize()
+            }
+        }
+        window.addEventListener('resize', handleResize)
+
+        return () => {
+            window.removeEventListener('resize', handleResize)
+            if (expandedChartInstance.current && !expandedChartInstance.current.isDisposed()) {
+                expandedChartInstance.current.dispose()
+            }
+        }
+    }, [isExpanded, chartOption, resolvedTheme])
 
     if (!data || data.nodes.length === 0) {
         return (
@@ -112,9 +211,7 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                         </Button>
                     </div>
                     <div className="flex-1 relative">
-                        <div className="absolute inset-0">
-                            {renderGraph(window.innerWidth - 32, window.innerHeight - 100, true)}
-                        </div>
+                        <div ref={expandedChartRef} className="absolute inset-0" />
                     </div>
                 </div>
             </div>
@@ -131,10 +228,7 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
             >
                 <Maximize2 className="h-4 w-4" />
             </Button>
-
-            <div ref={containerRef} className="w-full h-full">
-                {dimensions.width > 0 && renderGraph(dimensions.width, dimensions.height)}
-            </div>
+            <div ref={chartRef} className="w-full h-full min-h-[300px]" />
         </div>
     )
 }
