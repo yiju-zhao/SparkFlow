@@ -337,6 +337,10 @@ export const getConferenceStats = cache(async (id: string) => {
     `
   ])
 
+  // DEBUG: check raw SQL results
+  console.log('[getConferenceStats] orgNodes sample:', orgNodes.slice(0, 3))
+  console.log('[getConferenceStats] orgNodes sample val types:', orgNodes.slice(0, 3).map(n => ({ id: n.id, val: n.val, type: typeof n.val })))
+
   return {
     publicationCount: pubCount,
     sessionCount: sessionCount,
