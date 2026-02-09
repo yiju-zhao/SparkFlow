@@ -99,20 +99,20 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                 <div className="grid grid-cols-1 md:grid-cols-2">
                     <div className="p-5">
                         <SectionLabel>
-                            <Globe className="h-3.5 w-3.5" />
-                            Top Countries
-                        </SectionLabel>
-                        <div className="h-[320px]">
-                            <CountryBarChart data={stats.topCountries} />
-                        </div>
-                    </div>
-                    <div className="p-5 md:border-l border-t md:border-t-0 border-border/40">
-                        <SectionLabel>
                             <Users className="h-3.5 w-3.5" />
                             Top Organizations
                         </SectionLabel>
                         <div className="h-[320px]">
                             <AffiliationBarChart data={stats.topAffiliations} />
+                        </div>
+                    </div>
+                    <div className="p-5 md:border-l border-t md:border-t-0 border-border/40">
+                        <SectionLabel>
+                            <Globe className="h-3.5 w-3.5" />
+                            Top Countries
+                        </SectionLabel>
+                        <div className="h-[320px]">
+                            <CountryBarChart data={stats.topCountries} />
                         </div>
                     </div>
                 </div>
