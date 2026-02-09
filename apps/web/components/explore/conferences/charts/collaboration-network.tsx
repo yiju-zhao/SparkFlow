@@ -30,10 +30,6 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
     const chartOption = useMemo(() => {
         if (!data || data.nodes.length === 0) return null
 
-        // DEBUG: check raw data from server
-        console.log('[CollaborationNetwork] raw nodes sample:', data.nodes.slice(0, 3))
-        console.log('[CollaborationNetwork] raw links sample:', data.links.slice(0, 3))
-
         // Deduplicate nodes by id (ECharts requires unique names)
         const nodeMap = new Map<string, { id: string; val: number }>()
         data.nodes.forEach(node => {

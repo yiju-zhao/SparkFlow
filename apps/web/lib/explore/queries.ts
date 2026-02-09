@@ -246,13 +246,13 @@ export const getConferenceStats = cache(async (id: string) => {
       LIMIT 15
     `,
 
-    // Org Network Nodes
-    prisma.$queryRaw<{ id: string; val: bigint }[]>`
-      SELECT unnest(affiliations) as id, COUNT(*) as val
+    // Org Network Nodes (alias as "node_name" to avoid conflict with publications.id)
+    prisma.$queryRaw<{ node_name: string; val: bigint }[]>`
+      SELECT unnest(affiliations) as node_name, COUNT(*) as val
       FROM "publications"
       WHERE "instanceId" = ${id}
         AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
-      GROUP BY id
+      GROUP BY node_name
       ORDER BY val DESC
       LIMIT 30
     `,
@@ -291,13 +291,13 @@ export const getConferenceStats = cache(async (id: string) => {
       LIMIT 100
     `,
 
-    // Geo Network Nodes
-    prisma.$queryRaw<{ id: string; val: bigint }[]>`
-      SELECT unnest(countries) as id, COUNT(*) as val
+    // Geo Network Nodes (alias as "node_name" to avoid conflict with publications.id)
+    prisma.$queryRaw<{ node_name: string; val: bigint }[]>`
+      SELECT unnest(countries) as node_name, COUNT(*) as val
       FROM "publications"
       WHERE "instanceId" = ${id}
         AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
-      GROUP BY id
+      GROUP BY node_name
       ORDER BY val DESC
       LIMIT 30
     `,
@@ -337,10 +337,6 @@ export const getConferenceStats = cache(async (id: string) => {
     `
   ])
 
-  // DEBUG: check raw SQL results
-  console.log('[getConferenceStats] orgNodes sample:', orgNodes.slice(0, 3))
-  console.log('[getConferenceStats] orgNodes sample val types:', orgNodes.slice(0, 3).map(n => ({ id: n.id, val: n.val, type: typeof n.val })))
-
   return {
     publicationCount: pubCount,
     sessionCount: sessionCount,
@@ -365,11 +361,11 @@ export const getConferenceStats = cache(async (id: string) => {
       count: Number(c.count)
     })),
     orgCollaboration: {
-      nodes: orgNodes.map(n => ({ id: n.id, val: Number(n.val) })),
+      nodes: orgNodes.map(n => ({ id: n.node_name, val: Number(n.val) })),
       links: orgLinks.map(l => ({ source: l.source, target: l.target, value: Number(l.value) }))
     },
     geoCollaboration: {
-      nodes: geoNodes.map(n => ({ id: n.id, val: Number(n.val) })),
+      nodes: geoNodes.map(n => ({ id: n.node_name, val: Number(n.val) })),
       links: geoLinks.map(l => ({ source: l.source, target: l.target, value: Number(l.value) }))
     }
   }
