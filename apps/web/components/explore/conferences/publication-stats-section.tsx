@@ -84,33 +84,35 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                 {/* Divider */}
                 <div className="border-t border-border/40" />
 
-                {/* Row 2: Bento — Topics (tall left) | Countries + Orgs (stacked right) */}
-                <div className="grid grid-cols-1 md:grid-cols-12">
-                    <div className="md:col-span-7 p-5">
-                        <SectionLabel>Top Research Topics</SectionLabel>
-                        <div className="h-[380px]">
-                            <TopicBarChart data={stats.topTopics} />
+                {/* Row 2: Research Topics — full width for readability */}
+                <div className="p-5">
+                    <SectionLabel>Top Research Topics</SectionLabel>
+                    <div className="h-[280px]">
+                        <TopicBarChart data={stats.topTopics} />
+                    </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border/40" />
+
+                {/* Row 3: Community — Countries + Organizations side by side */}
+                <div className="grid grid-cols-1 md:grid-cols-2">
+                    <div className="p-5">
+                        <SectionLabel>
+                            <Globe className="h-3.5 w-3.5" />
+                            Top Countries
+                        </SectionLabel>
+                        <div className="h-[320px]">
+                            <CountryBarChart data={stats.topCountries} />
                         </div>
                     </div>
-                    <div className="md:col-span-5 md:border-l border-t md:border-t-0 border-border/40 flex flex-col">
-                        <div className="flex-1 p-5 flex flex-col min-h-0">
-                            <SectionLabel>
-                                <Globe className="h-3.5 w-3.5" />
-                                Top Countries
-                            </SectionLabel>
-                            <div className="flex-1 min-h-[140px]">
-                                <CountryBarChart data={stats.topCountries.slice(0, 8)} className="min-h-0" />
-                            </div>
-                        </div>
-                        <div className="border-t border-border/40" />
-                        <div className="flex-1 p-5 flex flex-col min-h-0">
-                            <SectionLabel>
-                                <Users className="h-3.5 w-3.5" />
-                                Top Organizations
-                            </SectionLabel>
-                            <div className="flex-1 min-h-[140px]">
-                                <AffiliationBarChart data={stats.topAffiliations.slice(0, 8)} className="min-h-0" />
-                            </div>
+                    <div className="p-5 md:border-l border-t md:border-t-0 border-border/40">
+                        <SectionLabel>
+                            <Users className="h-3.5 w-3.5" />
+                            Top Organizations
+                        </SectionLabel>
+                        <div className="h-[320px]">
+                            <AffiliationBarChart data={stats.topAffiliations} />
                         </div>
                     </div>
                 </div>
