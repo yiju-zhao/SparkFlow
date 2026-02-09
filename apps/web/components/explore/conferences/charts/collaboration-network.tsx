@@ -105,8 +105,8 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                     target: link.target,
                     value: link.value,
                     lineStyle: {
-                        width: Math.max(1, (link.value / maxLinkVal) * 5),
-                        opacity: 0.4 + (link.value / maxLinkVal) * 0.4,
+                        width: Math.max(0.5, (link.value / maxLinkVal) * 8),
+                        opacity: 0.15 + (link.value / maxLinkVal) * 0.7,
                         curveness: 0.1
                     }
                 }))
