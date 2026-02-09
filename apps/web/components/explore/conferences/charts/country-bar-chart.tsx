@@ -3,13 +3,15 @@
 import { useMemo } from 'react'
 import { useECharts } from '@/hooks/use-echarts'
 import { CountryStats } from '@/lib/explore/types'
+import { cn } from '@/lib/utils'
 import type { EChartsOption } from 'echarts'
 
 interface CountryBarChartProps {
     data: CountryStats[]
+    className?: string
 }
 
-export function CountryBarChart({ data }: CountryBarChartProps) {
+export function CountryBarChart({ data, className }: CountryBarChartProps) {
     const option = useMemo<EChartsOption>(() => {
         if (!data || data.length === 0) return {}
 
@@ -78,5 +80,5 @@ export function CountryBarChart({ data }: CountryBarChartProps) {
         )
     }
 
-    return <div ref={chartRef} className="w-full h-full min-h-[300px]" />
+    return <div ref={chartRef} className={cn("w-full h-full min-h-[300px]", className)} />
 }

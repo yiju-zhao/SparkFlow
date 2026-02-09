@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { ConferenceStats } from '@/lib/explore/types'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Sparkles, Layers, Mic, Users, Globe, Network } from 'lucide-react'
-import { ChartCard } from './charts/chart-card'
 import { StatusPieChart } from './charts/status-pie-chart'
 import { KeywordCloud } from './charts/keyword-cloud'
 import { AffiliationBarChart } from './charts/affiliation-bar-chart'
@@ -17,6 +16,14 @@ interface PublicationStatsSectionProps {
     venueId: string
     year: number
     stats: ConferenceStats
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+    return (
+        <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+            {children}
+        </h3>
+    )
 }
 
 export function PublicationStatsSection({ venueId, year, stats }: PublicationStatsSectionProps) {
@@ -55,72 +62,92 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                 ))}
             </div>
 
-            {/* Section: Composition */}
-            <section>
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-                    Composition
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                    <div className="md:col-span-2">
-                        <ChartCard title="Status Breakdown">
+            {/* Unified Bento Dashboard Panel */}
+            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+
+                {/* Row 1: Composition — Pie + Word Cloud */}
+                <div className="grid grid-cols-1 md:grid-cols-5">
+                    <div className="md:col-span-2 p-5">
+                        <SectionLabel>Status Breakdown</SectionLabel>
+                        <div className="h-[260px]">
                             <StatusPieChart data={stats.statusBreakdown} />
-                        </ChartCard>
+                        </div>
                     </div>
-                    <div className="md:col-span-3">
-                        <ChartCard title="Popular Keywords" height="h-[300px]">
-                            <KeywordCloud data={stats.topKeywords} />
-                        </ChartCard>
+                    <div className="md:col-span-3 p-5 md:border-l border-t md:border-t-0 border-border/40">
+                        <SectionLabel>Popular Keywords</SectionLabel>
+                        <div className="h-[260px]">
+                            <KeywordCloud data={stats.topKeywords} className="min-h-0" />
+                        </div>
                     </div>
                 </div>
-            </section>
 
-            {/* Section: Landscape */}
-            <section>
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-                    Research Landscape
-                </h3>
-                <ChartCard title="Top Research Topics" height="h-[280px]">
-                    <TopicBarChart data={stats.topTopics} />
-                </ChartCard>
-            </section>
+                {/* Divider */}
+                <div className="border-t border-border/40" />
 
-            {/* Section: Community */}
-            <section>
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-                    Community
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ChartCard title="Top Organizations" height="h-[400px]" action={<Users className="h-4 w-4 text-muted-foreground" />}>
-                        <AffiliationBarChart data={stats.topAffiliations} />
-                    </ChartCard>
-                    <ChartCard title="Top Countries" height="h-[400px]" action={<Globe className="h-4 w-4 text-muted-foreground" />}>
-                        <CountryBarChart data={stats.topCountries} />
-                    </ChartCard>
+                {/* Row 2: Bento — Topics (tall left) | Countries + Orgs (stacked right) */}
+                <div className="grid grid-cols-1 md:grid-cols-12">
+                    <div className="md:col-span-7 p-5">
+                        <SectionLabel>Top Research Topics</SectionLabel>
+                        <div className="h-[380px]">
+                            <TopicBarChart data={stats.topTopics} />
+                        </div>
+                    </div>
+                    <div className="md:col-span-5 md:border-l border-t md:border-t-0 border-border/40 flex flex-col">
+                        <div className="flex-1 p-5 flex flex-col min-h-0">
+                            <SectionLabel>
+                                <Globe className="h-3.5 w-3.5" />
+                                Top Countries
+                            </SectionLabel>
+                            <div className="flex-1 min-h-[140px]">
+                                <CountryBarChart data={stats.topCountries.slice(0, 8)} className="min-h-0" />
+                            </div>
+                        </div>
+                        <div className="border-t border-border/40" />
+                        <div className="flex-1 p-5 flex flex-col min-h-0">
+                            <SectionLabel>
+                                <Users className="h-3.5 w-3.5" />
+                                Top Organizations
+                            </SectionLabel>
+                            <div className="flex-1 min-h-[140px]">
+                                <AffiliationBarChart data={stats.topAffiliations.slice(0, 8)} className="min-h-0" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </section>
 
-            {/* Section: Collaboration */}
-            <section>
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-                    Collaboration Networks
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ChartCard title="Organization Collaboration" height="h-[500px]" action={<Network className="h-4 w-4 text-muted-foreground" />}>
-                        <CollaborationNetwork
-                            data={stats.orgCollaboration}
-                            title="Organization Collaboration Network"
-                            nodeColor="#3b82f6"
-                        />
-                    </ChartCard>
-                    <ChartCard title="Geographic Collaboration" height="h-[500px]" action={<Globe className="h-4 w-4 text-muted-foreground" />}>
-                        <CollaborationNetwork
-                            data={stats.geoCollaboration}
-                            title="Geographic Collaboration Network"
-                            nodeColor="#ef4444"
-                        />
-                    </ChartCard>
+                {/* Divider */}
+                <div className="border-t border-border/40" />
+
+                {/* Row 3: Collaboration Networks */}
+                <div className="grid grid-cols-1 md:grid-cols-2">
+                    <div className="p-5">
+                        <SectionLabel>
+                            <Network className="h-3.5 w-3.5" />
+                            Organization Collaboration
+                        </SectionLabel>
+                        <div className="h-[400px]">
+                            <CollaborationNetwork
+                                data={stats.orgCollaboration}
+                                title="Organization Collaboration Network"
+                                nodeColor="#3b82f6"
+                            />
+                        </div>
+                    </div>
+                    <div className="p-5 md:border-l border-t md:border-t-0 border-border/40">
+                        <SectionLabel>
+                            <Globe className="h-3.5 w-3.5" />
+                            Geographic Collaboration
+                        </SectionLabel>
+                        <div className="h-[400px]">
+                            <CollaborationNetwork
+                                data={stats.geoCollaboration}
+                                title="Geographic Collaboration Network"
+                                nodeColor="#ef4444"
+                            />
+                        </div>
+                    </div>
                 </div>
-            </section>
+            </div>
 
             {/* CTA */}
             <div className="flex justify-center pt-6 pb-4">

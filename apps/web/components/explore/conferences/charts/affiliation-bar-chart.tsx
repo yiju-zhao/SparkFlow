@@ -3,13 +3,15 @@
 import { useMemo } from 'react'
 import { useECharts } from '@/hooks/use-echarts'
 import { ConferenceStats } from '@/lib/explore/types'
+import { cn } from '@/lib/utils'
 import type { EChartsOption } from 'echarts'
 
 interface AffiliationBarChartProps {
     data: ConferenceStats['topAffiliations']
+    className?: string
 }
 
-export function AffiliationBarChart({ data }: AffiliationBarChartProps) {
+export function AffiliationBarChart({ data, className }: AffiliationBarChartProps) {
     const option = useMemo<EChartsOption>(() => {
         if (!data || data.length === 0) return {}
 
@@ -85,5 +87,5 @@ export function AffiliationBarChart({ data }: AffiliationBarChartProps) {
         )
     }
 
-    return <div ref={chartRef} className="w-full h-full min-h-[300px]" />
+    return <div ref={chartRef} className={cn("w-full h-full min-h-[300px]", className)} />
 }

@@ -8,6 +8,7 @@ import type { ECharts } from 'echarts'
 
 interface KeywordCloudProps {
     data: KeywordStats[]
+    className?: string
 }
 
 const COLORS = [
@@ -15,7 +16,7 @@ const COLORS = [
     '#65a30d', '#ca8a04', '#ea580c', '#dc2626', '#7c3aed'
 ]
 
-export function KeywordCloud({ data }: KeywordCloudProps) {
+export function KeywordCloud({ data, className }: KeywordCloudProps) {
     const chartRef = useRef<HTMLDivElement>(null)
     const chartInstance = useRef<ECharts | null>(null)
     const { resolvedTheme } = useTheme()
@@ -107,5 +108,5 @@ export function KeywordCloud({ data }: KeywordCloudProps) {
         )
     }
 
-    return <div ref={chartRef} className="w-full h-full min-h-[300px]" />
+    return <div ref={chartRef} className={`w-full h-full min-h-[300px] ${className || ''}`} />
 }
