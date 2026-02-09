@@ -1,8 +1,6 @@
 // apps/web/components/explore/conferences/conference-hero.tsx
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Calendar, MapPin, Globe, FileText } from 'lucide-react'
+import { Calendar, MapPin, Globe, FileText, Presentation, ArrowUpRight } from 'lucide-react'
 import type { ConferenceDetail } from '@/lib/explore/types'
 
 interface ConferenceHeroProps {
@@ -24,58 +22,91 @@ export function ConferenceHero({ conference, stats }: ConferenceHeroProps) {
   }
 
   const dateRange = conference.startDate && conference.endDate
-    ? `${formatDate(conference.startDate)} - ${formatDate(conference.endDate)}`
+    ? `${formatDate(conference.startDate)} – ${formatDate(conference.endDate)}`
     : conference.startDate
       ? formatDate(conference.startDate)
       : null
 
   return (
-    <div className="border-b pb-6 mb-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="secondary">{conference.year}</Badge>
-            <Badge variant="outline">{conference.venue.name}</Badge>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">{conference.name}</h1>
+    <div className="relative -mx-6 -mt-8 mb-10">
+      {/* Atmospheric gradient backdrop */}
+      <div className="absolute inset-0 bg-gradient-to-br from-foreground/[0.03] via-transparent to-foreground/[0.06] dark:from-white/[0.04] dark:via-transparent dark:to-white/[0.02]" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-accent-red/[0.04] via-transparent to-transparent dark:from-accent-red/[0.06] rounded-full blur-3xl" />
+
+      <div className="relative px-6 pt-12 pb-10">
+        {/* Breadcrumb line */}
+        <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
+          <span>Conferences</span>
+          <span className="text-border">/</span>
+          <span className="font-medium text-foreground">{conference.venue.name}</span>
+          <span className="text-border">/</span>
+          <span className="font-medium text-foreground">{conference.year}</span>
         </div>
 
-        {conference.website && (
-          <Button variant="outline" asChild>
-            <a href={conference.website} target="_blank" rel="noopener noreferrer">
-              <Globe className="h-4 w-4 mr-2" />
-              Website
+        {/* Title block */}
+        <div className="max-w-4xl">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-5">
+            {conference.name}
+          </h1>
+
+          {conference.summary && (
+            <p className="text-lg text-muted-foreground leading-relaxed max-w-3xl">
+              {conference.summary}
+            </p>
+          )}
+        </div>
+
+        {/* Metadata row */}
+        <div className="flex flex-wrap items-center gap-3 mt-8">
+          {dateRange && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/[0.05] dark:bg-white/[0.06] text-sm font-medium">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              {dateRange}
+            </div>
+          )}
+          {conference.location && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/[0.05] dark:bg-white/[0.06] text-sm font-medium">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+              {conference.location}
+            </div>
+          )}
+          {conference.website && (
+            <a
+              href={conference.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/[0.05] dark:bg-white/[0.06] text-sm font-medium hover:bg-foreground/[0.08] dark:hover:bg-white/[0.1] transition-colors group"
+            >
+              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+              Official Website
+              <ArrowUpRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </a>
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
-        {dateRange && (
-          <span className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            {dateRange}
-          </span>
-        )}
-        {conference.location && (
-          <span className="flex items-center gap-1">
-            <MapPin className="h-4 w-4" />
-            {conference.location}
-          </span>
-        )}
-        <span className="flex items-center gap-1">
-          <FileText className="h-4 w-4" />
-          {stats.publicationCount} publications
-        </span>
-        <span className="flex items-center gap-1">
-          <Calendar className="h-4 w-4" />
-          {stats.sessionCount} sessions
-        </span>
+        {/* Stats strip */}
+        <div className="flex items-center gap-8 mt-8 pt-8 border-t border-border/60">
+          <div>
+            <div className="text-3xl font-bold tracking-tight tabular-nums">
+              {stats.publicationCount.toLocaleString()}
+            </div>
+            <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              Publications
+            </div>
+          </div>
+          <div className="w-px h-10 bg-border/60" />
+          <div>
+            <div className="text-3xl font-bold tracking-tight tabular-nums">
+              {stats.sessionCount.toLocaleString()}
+            </div>
+            <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
+              <Presentation className="h-3.5 w-3.5" />
+              Sessions
+            </div>
+          </div>
+        </div>
       </div>
-
-      {conference.summary && (
-        <p className="mt-4 text-muted-foreground">{conference.summary}</p>
-      )}
     </div>
   )
 }
