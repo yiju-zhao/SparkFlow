@@ -42,6 +42,16 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
       key: 'status',
       label: 'Status',
       options: filterOptions.statuses.map(s => ({ value: s, label: s }))
+    },
+    {
+      key: 'affiliation',
+      label: 'Organization',
+      options: filterOptions.affiliations.map(a => ({ value: a, label: a }))
+    },
+    {
+      key: 'country',
+      label: 'Country',
+      options: filterOptions.countries.map(c => ({ value: c, label: c }))
     }
   ]
 

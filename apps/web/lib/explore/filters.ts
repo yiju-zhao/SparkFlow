@@ -10,6 +10,8 @@ export const publicationFiltersSchema = z.object({
   venue: z.string().optional(),
   topic: z.string().optional(),
   status: z.string().optional(),
+  affiliation: z.string().optional(),
+  country: z.string().optional(),
   showExcluded: z.coerce.boolean().default(false),
   sortBy: z.enum(['rating', 'title', 'year']).default('rating'),
   sortDir: z.enum(['asc', 'desc']).default('desc'),

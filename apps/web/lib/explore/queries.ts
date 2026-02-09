@@ -54,7 +54,7 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
   const cached = filterOptionsCache.get(cacheKey)
   if (cached) return cached
 
-  const [venues, years, topics, statuses, sessionTypes] = await Promise.all([
+  const [venues, years, topics, statuses, sessionTypes, affiliations, countries] = await Promise.all([
     prisma.venue.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' }
@@ -78,7 +78,23 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
       select: { type: true },
       distinct: ['type'],
       where: { type: { not: null, notIn: [''] } }
-    })
+    }),
+    // Get unique affiliations (top 100 most common)
+    prisma.$queryRaw<{ affiliation: string }[]>`
+      SELECT unnest(affiliations) as affiliation
+      FROM "publications"
+      GROUP BY affiliation
+      ORDER BY COUNT(*) DESC
+      LIMIT 100
+    `,
+    // Get unique countries
+    prisma.$queryRaw<{ country: string }[]>`
+      SELECT unnest(countries) as country
+      FROM "publications"
+      GROUP BY country
+      ORDER BY COUNT(*) DESC
+      LIMIT 50
+    `
   ])
 
   const result: FilterOptions = {
@@ -86,7 +102,9 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
     years: years.map(y => y.year),
     topics: topics.map(t => t.researchTopic).filter((t): t is string => t !== null).sort((a, b) => a.localeCompare(b)),
     statuses: statuses.map(s => s.status).filter((s): s is string => s !== null).sort((a, b) => a.localeCompare(b)),
-    sessionTypes: sessionTypes.map(s => s.type).filter((s): s is string => s !== null)
+    sessionTypes: sessionTypes.map(s => s.type).filter((s): s is string => s !== null),
+    affiliations: affiliations.map(a => a.affiliation).filter(Boolean).sort((a, b) => a.localeCompare(b)),
+    countries: countries.map(c => c.country).filter(Boolean).sort((a, b) => a.localeCompare(b))
   }
 
   filterOptionsCache.set(cacheKey, result)
@@ -387,6 +405,12 @@ export const getPublications = cache(async (filters: PublicationFilters): Promis
   }
   if (filters.topic) {
     where.researchTopic = filters.topic
+  }
+  if (filters.affiliation) {
+    where.affiliations = { has: filters.affiliation }
+  }
+  if (filters.country) {
+    where.countries = { has: filters.country }
   }
 
   // Handle status filtering

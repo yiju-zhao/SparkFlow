@@ -146,6 +146,8 @@ export interface FilterOptions {
   topics: string[]
   statuses: string[]
   sessionTypes: string[]
+  affiliations: string[]
+  countries: string[]
 }
 
 export interface PaginatedResult<T> {
