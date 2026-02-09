@@ -264,7 +264,7 @@ export const getConferenceStats = cache(async (id: string) => {
       LIMIT 15
     `,
 
-    // Org Network Nodes (alias as "node_name" to avoid conflict with publications.id)
+    // Org Network Nodes
     prisma.$queryRaw<{ node_name: string; val: bigint }[]>`
       SELECT unnest(affiliations) as node_name, COUNT(*) as val
       FROM "publications"
@@ -287,20 +287,20 @@ export const getConferenceStats = cache(async (id: string) => {
       FROM PubAffiliations t1
       JOIN PubAffiliations t2 ON t1.id = t2.id AND t1.org < t2.org
       WHERE t1.org IN (
-        SELECT unnest(affiliations)
+        SELECT unnest(affiliations) as org
         FROM "publications"
         WHERE "instanceId" = ${id}
           AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
-        GROUP BY unnest(affiliations)
+        GROUP BY org
         ORDER BY COUNT(*) DESC
         LIMIT 30
       )
       AND t2.org IN (
-        SELECT unnest(affiliations)
+        SELECT unnest(affiliations) as org
         FROM "publications"
         WHERE "instanceId" = ${id}
           AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
-        GROUP BY unnest(affiliations)
+        GROUP BY org
         ORDER BY COUNT(*) DESC
         LIMIT 30
       )
@@ -309,7 +309,7 @@ export const getConferenceStats = cache(async (id: string) => {
       LIMIT 100
     `,
 
-    // Geo Network Nodes (alias as "node_name" to avoid conflict with publications.id)
+    // Geo Network Nodes
     prisma.$queryRaw<{ node_name: string; val: bigint }[]>`
       SELECT unnest(countries) as node_name, COUNT(*) as val
       FROM "publications"
@@ -332,20 +332,20 @@ export const getConferenceStats = cache(async (id: string) => {
       FROM PubCountries t1
       JOIN PubCountries t2 ON t1.id = t2.id AND t1.country < t2.country
       WHERE t1.country IN (
-        SELECT unnest(countries)
+        SELECT unnest(countries) as country
         FROM "publications"
         WHERE "instanceId" = ${id}
           AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
-        GROUP BY unnest(countries)
+        GROUP BY country
         ORDER BY COUNT(*) DESC
         LIMIT 30
       )
       AND t2.country IN (
-        SELECT unnest(countries)
+        SELECT unnest(countries) as country
         FROM "publications"
         WHERE "instanceId" = ${id}
           AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
-        GROUP BY unnest(countries)
+        GROUP BY country
         ORDER BY COUNT(*) DESC
         LIMIT 30
       )
