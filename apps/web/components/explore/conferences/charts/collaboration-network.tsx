@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useTheme } from 'next-themes'
 import * as echarts from 'echarts'
 import { NetworkGraphData } from '@/lib/explore/types'
@@ -27,7 +27,17 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
         setIsReady(true)
     }, [])
 
-    const chartOption = useMemo(() => {
+    // Close expanded view on Escape
+    useEffect(() => {
+        if (!isExpanded) return
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsExpanded(false)
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [isExpanded])
+
+    const buildOption = useCallback((compact: boolean) => {
         if (!data || data.nodes.length === 0) return null
 
         // Deduplicate nodes by id (ECharts requires unique names)
@@ -49,14 +59,24 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
         const nodeIds = new Set(nodes.map(n => n.id))
         const validLinks = data.links.filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
 
+        const labelTruncate = compact ? 15 : 25
+
         return {
             tooltip: {
-                trigger: 'item',
+                trigger: 'item' as const,
+                backgroundColor: resolvedTheme === 'dark' ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                borderColor: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                borderWidth: 1,
+                textStyle: {
+                    color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333',
+                    fontSize: 12,
+                },
+                padding: [8, 12],
                 formatter: (params: any) => {
                     if (params.dataType === 'node') {
-                        return `<strong>${params.name}</strong><br/>Publications: ${params.data.value}`
+                        return `<strong>${params.name}</strong><br/><span style="opacity:0.7">Publications:</span> ${params.data.value}`
                     } else if (params.dataType === 'edge') {
-                        return `${params.data.source} ↔ ${params.data.target}<br/>Collaborations: ${params.data.value}`
+                        return `${params.data.source} <span style="opacity:0.5">↔</span> ${params.data.target}<br/><span style="opacity:0.7">Collaborations:</span> ${params.data.value}`
                     }
                     return ''
                 }
@@ -66,36 +86,34 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                 layout: 'force',
                 roam: true,
                 draggable: true,
-                force: {
-                    repulsion: 200,
-                    gravity: 0.1,
-                    edgeLength: [80, 200],
-                    friction: 0.6
-                },
+                force: compact
+                    ? { repulsion: 260, gravity: 0.12, edgeLength: [80, 200], friction: 0.6 }
+                    : { repulsion: 400, gravity: 0.08, edgeLength: [120, 350], friction: 0.6 },
                 label: {
                     show: true,
-                    position: 'right',
-                    fontSize: 10,
+                    position: 'right' as const,
+                    fontSize: compact ? 9 : 12,
                     formatter: (params: any) => {
                         const name = params.name
-                        return name.length > 20 ? name.substring(0, 20) + '...' : name
+                        return name.length > labelTruncate ? name.substring(0, labelTruncate) + '...' : name
                     }
                 },
                 emphasis: {
-                    focus: 'adjacency',
+                    focus: 'adjacency' as const,
                     label: {
                         show: true,
-                        fontSize: 12,
-                        fontWeight: 'bold'
-                    },
-                    lineStyle: {}
+                        fontSize: compact ? 11 : 13,
+                        fontWeight: 'bold' as const
+                    }
                 },
                 data: nodes.map(node => ({
                     name: node.id,
                     value: node.val,
-                    symbolSize: Math.max(10, Math.sqrt(node.val / maxVal) * 40),
+                    symbolSize: Math.max(compact ? 8 : 12, Math.sqrt(node.val / maxVal) * (compact ? 36 : 50)),
                     itemStyle: {
-                        color: nodeColor
+                        color: nodeColor,
+                        shadowBlur: 4,
+                        shadowColor: 'rgba(0,0,0,0.15)'
                     }
                 })),
                 links: validLinks.map(link => ({
@@ -110,13 +128,15 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                 }))
             }]
         }
-    }, [data, nodeColor])
+    }, [data, nodeColor, resolvedTheme])
 
-    // Initialize main chart - add isExpanded to deps so it reinits when closing fullscreen
+    const compactOption = useMemo(() => buildOption(true), [buildOption])
+    const expandedOption = useMemo(() => buildOption(false), [buildOption])
+
+    // Initialize main chart
     useEffect(() => {
-        if (!isReady || !chartRef.current || !chartOption || isExpanded) return
+        if (!isReady || !chartRef.current || !compactOption || isExpanded) return
 
-        // Small delay to ensure DOM is ready after closing expanded view
         const timer = setTimeout(() => {
             if (chartInstance.current && !chartInstance.current.isDisposed()) {
                 chartInstance.current.dispose()
@@ -127,7 +147,7 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                     chartRef.current,
                     resolvedTheme === 'dark' ? 'dark' : undefined
                 )
-                chartInstance.current.setOption(chartOption)
+                chartInstance.current.setOption(compactOption)
             }
         }, 50)
 
@@ -141,9 +161,8 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
         return () => {
             clearTimeout(timer)
             window.removeEventListener('resize', handleResize)
-            // Don't dispose here - let it persist when expanding
         }
-    }, [isReady, chartOption, resolvedTheme, isExpanded])
+    }, [isReady, compactOption, resolvedTheme, isExpanded])
 
     // Cleanup on unmount only
     useEffect(() => {
@@ -156,9 +175,8 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
 
     // Initialize expanded chart
     useEffect(() => {
-        if (!isExpanded || !expandedChartRef.current || !chartOption) return
+        if (!isExpanded || !expandedChartRef.current || !expandedOption) return
 
-        // Small delay to ensure DOM is ready
         const timer = setTimeout(() => {
             if (expandedChartInstance.current && !expandedChartInstance.current.isDisposed()) {
                 expandedChartInstance.current.dispose()
@@ -169,23 +187,6 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                     expandedChartRef.current,
                     resolvedTheme === 'dark' ? 'dark' : undefined
                 )
-
-                // Enhanced options for expanded view
-                const expandedOption = {
-                    ...chartOption,
-                    series: [{
-                        ...chartOption.series[0],
-                        force: {
-                            ...chartOption.series[0].force,
-                            repulsion: 300,
-                            edgeLength: [100, 300]
-                        },
-                        label: {
-                            ...chartOption.series[0].label,
-                            fontSize: 12
-                        }
-                    }]
-                }
                 expandedChartInstance.current.setOption(expandedOption)
             }
         }, 50)
@@ -205,11 +206,11 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                 expandedChartInstance.current = null
             }
         }
-    }, [isExpanded, chartOption, resolvedTheme])
+    }, [isExpanded, expandedOption, resolvedTheme])
 
     if (!data || data.nodes.length === 0) {
         return (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
                 No collaboration data available
             </div>
         )
@@ -217,27 +218,32 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
 
     return (
         <>
-            {/* Main preview chart - always render it */}
+            {/* Compact preview */}
             <div className={`w-full h-full relative group ${isExpanded ? 'invisible' : ''}`}>
                 <Button
                     variant="outline"
                     size="icon"
-                    className="absolute top-2 right-2 z-10 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80"
+                    className="absolute top-2 right-2 z-10 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-background/80 backdrop-blur-sm border-border/50 shadow-sm"
                     onClick={() => setIsExpanded(true)}
                 >
-                    <Maximize2 className="h-4 w-4" />
+                    <Maximize2 className="h-3.5 w-3.5" />
                 </Button>
                 <div ref={chartRef} className="w-full h-full min-h-[300px]" />
             </div>
 
-            {/* Expanded fullscreen chart */}
+            {/* Expanded fullscreen */}
             {isExpanded && (
-                <div className="fixed inset-0 bg-background/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-card w-full h-full rounded-lg shadow-2xl flex flex-col overflow-hidden border">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <h3 className="text-xl font-bold">{title}</h3>
-                            <Button variant="ghost" size="icon" onClick={() => setIsExpanded(false)}>
-                                <X className="h-6 w-6" />
+                <div className="fixed inset-0 bg-background/95 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-card w-full h-full rounded-xl shadow-2xl flex flex-col overflow-hidden border">
+                        <div className="flex items-center justify-between px-6 py-4 border-b">
+                            <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full hover:bg-muted"
+                                onClick={() => setIsExpanded(false)}
+                            >
+                                <X className="h-5 w-5" />
                             </Button>
                         </div>
                         <div className="flex-1 relative">
