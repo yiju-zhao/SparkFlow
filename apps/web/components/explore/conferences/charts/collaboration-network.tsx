@@ -89,7 +89,7 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                         fontWeight: 'bold'
                     },
                     lineStyle: {
-                        width: 4
+                        width: 'inherit'
                     }
                 },
                 data: nodes.map(node => ({
@@ -105,7 +105,7 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                     target: link.target,
                     value: link.value,
                     lineStyle: {
-                        width: Math.max(1, (link.value / maxLinkVal) * 16),
+                        width: Math.max(1, (link.value / maxLinkVal) * 32),
                         opacity: 0.15 + (link.value / maxLinkVal) * 0.75,
                         curveness: 0.1
                     }
