@@ -306,7 +306,6 @@ export const getConferenceStats = cache(async (id: string) => {
       )
       GROUP BY source, target
       ORDER BY "value" DESC
-      LIMIT 100
     `,
 
     // Geo Network Nodes
@@ -351,7 +350,6 @@ export const getConferenceStats = cache(async (id: string) => {
       )
       GROUP BY source, target
       ORDER BY "value" DESC
-      LIMIT 100
     `
   ])
 
