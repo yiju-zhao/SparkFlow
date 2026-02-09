@@ -135,7 +135,7 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                             <CollaborationNetwork
                                 data={stats.geoCollaboration}
                                 title="Geographic Collaboration Network"
-                                nodeColor="#ef4444"
+                                nodeColor="#22c55e"
                             />
                         </div>
                     </div>
