@@ -30,25 +30,23 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
     const chartOption = useMemo(() => {
         if (!data || data.nodes.length === 0) return null
 
-        // Deduplicate nodes by id and ensure numeric values
-        const uniqueNodesMap = new Map<string, { id: string; val: number }>()
+        // Deduplicate nodes by id (ECharts requires unique names)
+        const nodeMap = new Map<string, { id: string; val: number }>()
         data.nodes.forEach(node => {
-            const nodeVal = Number(node.val) || 1
-            if (!uniqueNodesMap.has(node.id)) {
-                uniqueNodesMap.set(node.id, { id: node.id, val: nodeVal })
+            if (!nodeMap.has(node.id)) {
+                nodeMap.set(node.id, { id: node.id, val: node.val })
             } else {
-                // If duplicate, sum the values
-                const existing = uniqueNodesMap.get(node.id)!
-                uniqueNodesMap.set(node.id, { id: node.id, val: existing.val + nodeVal })
+                const existing = nodeMap.get(node.id)!
+                existing.val += node.val
             }
         })
-        const uniqueNodes = Array.from(uniqueNodesMap.values())
+        const nodes = Array.from(nodeMap.values())
 
-        const maxVal = Math.max(...uniqueNodes.map(n => n.val), 1)
-        const maxLinkVal = Math.max(...data.links.map(l => Number(l.value) || 1), 1)
+        const maxVal = Math.max(...nodes.map(n => n.val), 1)
+        const maxLinkVal = Math.max(...data.links.map(l => l.value), 1)
 
-        // Only include links where both source and target exist in uniqueNodes
-        const nodeIds = new Set(uniqueNodes.map(n => n.id))
+        // Only include links where both source and target exist in nodes
+        const nodeIds = new Set(nodes.map(n => n.id))
         const validLinks = data.links.filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
 
         return {
@@ -94,7 +92,7 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                         width: 4
                     }
                 },
-                data: uniqueNodes.map(node => ({
+                data: nodes.map(node => ({
                     name: node.id,
                     value: node.val,
                     symbolSize: Math.max(10, Math.sqrt(node.val / maxVal) * 40),
@@ -102,19 +100,16 @@ export function CollaborationNetwork({ data, title, nodeColor = '#ef4444' }: Col
                         color: nodeColor
                     }
                 })),
-                links: validLinks.map(link => {
-                    const linkVal = Number(link.value) || 1
-                    return {
-                        source: link.source,
-                        target: link.target,
-                        value: linkVal,
-                        lineStyle: {
-                            width: Math.max(1, (linkVal / maxLinkVal) * 5),
-                            opacity: 0.4 + (linkVal / maxLinkVal) * 0.4,
-                            curveness: 0.1
-                        }
+                links: validLinks.map(link => ({
+                    source: link.source,
+                    target: link.target,
+                    value: link.value,
+                    lineStyle: {
+                        width: Math.max(1, (link.value / maxLinkVal) * 5),
+                        opacity: 0.4 + (link.value / maxLinkVal) * 0.4,
+                        curveness: 0.1
                     }
-                })
+                }))
             }]
         }
     }, [data, nodeColor])

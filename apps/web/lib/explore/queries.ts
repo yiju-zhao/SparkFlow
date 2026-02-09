@@ -199,7 +199,7 @@ export const getConferenceStats = cache(async (id: string) => {
     // Top Topics
     prisma.publication.groupBy({
       by: ['researchTopic'],
-      where: { instanceId: id, researchTopic: { not: null } },
+      where: { instanceId: id, researchTopic: { not: null }, status: { notIn: ['Reject', 'Withdrawal'] } },
       _count: { researchTopic: true },
       orderBy: { _count: { researchTopic: 'desc' } },
       take: 10
@@ -210,6 +210,7 @@ export const getConferenceStats = cache(async (id: string) => {
       SELECT unnest(affiliations) as affiliation, COUNT(*) as count
       FROM "publications"
       WHERE "instanceId" = ${id}
+        AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
       GROUP BY affiliation
       ORDER BY count DESC
       LIMIT 15
@@ -228,6 +229,7 @@ export const getConferenceStats = cache(async (id: string) => {
       SELECT unnest(keywords) as keyword, COUNT(*) as count
       FROM "publications"
       WHERE "instanceId" = ${id}
+        AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
       GROUP BY keyword
       ORDER BY count DESC
       LIMIT 50
@@ -238,6 +240,7 @@ export const getConferenceStats = cache(async (id: string) => {
       SELECT unnest(countries) as country, COUNT(*) as count
       FROM "publications"
       WHERE "instanceId" = ${id}
+        AND (status NOT IN ('Reject', 'Withdrawal') OR status IS NULL)
       GROUP BY country
       ORDER BY count DESC
       LIMIT 15
