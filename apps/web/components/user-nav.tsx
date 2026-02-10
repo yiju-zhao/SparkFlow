@@ -87,7 +87,7 @@ export function UserNav({ user }: UserNavProps) {
                     </DropdownMenuSub>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+                <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                 </DropdownMenuItem>

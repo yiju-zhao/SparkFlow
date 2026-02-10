@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="flex flex-col h-screen">
       {/* Header */}
       <UnifiedHeader
         theme="red"
@@ -42,7 +42,8 @@ export default async function DashboardPage() {
         user={session.user}
       />
 
-      {/* Main Content */}
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto bg-secondary">
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -56,6 +57,7 @@ export default async function DashboardPage() {
 
         <NotebookList notebooks={notebooks} />
       </main>
+      </div>
     </div>
   );
 }

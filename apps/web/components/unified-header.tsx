@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserNav } from "./user-nav";
+import { cn } from "@/lib/utils";
 
 interface UnifiedHeaderProps {
     theme: "green" | "red";
@@ -16,19 +18,56 @@ interface UnifiedHeaderProps {
 }
 
 export function UnifiedHeader({ theme, title, navLinks, actionButton, user }: UnifiedHeaderProps) {
-    const accentColor = theme === "green" ? "text-[#00D084]" : "text-[#CE0E2D]"; // Huawei Red approximation
-
-    // Base link for logo - if in Explore (green), go to Explore root. If in Deepdive (red), go to Deepdive.
+    const accentColor = theme === "green" ? "text-[#00D084]" : "text-[#CE0E2D]";
     const logoHref = theme === "green" ? "/explore" : "/deepdive";
+    const [hidden, setHidden] = useState(false);
+    const lastScrollY = useRef(0);
+    const navRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        // Find the scrollable sibling container
+        const nav = navRef.current;
+        if (!nav) return;
+        const parent = nav.parentElement;
+        if (!parent) return;
+
+        const scrollContainer = Array.from(parent.children).find(
+            (el) => el !== nav && (el as HTMLElement).scrollHeight > (el as HTMLElement).clientHeight
+        ) as HTMLElement | undefined;
+
+        if (!scrollContainer) return;
+
+        const handleScroll = () => {
+            const currentY = scrollContainer.scrollTop;
+            if (currentY > lastScrollY.current && currentY > 50) {
+                setHidden(true);
+            } else {
+                setHidden(false);
+            }
+            lastScrollY.current = currentY;
+        };
+
+        scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+        return () => scrollContainer.removeEventListener("scroll", handleScroll);
+    }, []);
 
     return (
-        <nav className="shrink-0 bg-foreground text-background z-[100]">
+        <nav
+            ref={navRef}
+            className={cn(
+                "shrink-0 bg-foreground/75 backdrop-blur-lg text-background z-100 border-b border-white/10 transition-all duration-300",
+                hidden ? "-mt-14 opacity-0" : "mt-0 opacity-100"
+            )}
+        >
             <div className="grid grid-cols-3 h-14 items-center px-12">
                 {/* Left: Logo */}
-                <div className="flex items-center">
+                <div className="flex items-center gap-3">
+                    <Link href="/" className="font-medium text-sm opacity-60 hover:opacity-100 transition-opacity">
+                        sparkflow
+                    </Link>
                     <Link href={logoHref} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <span className={`${accentColor} font-bold text-base`}>&gt;</span>
-                        <span className="font-medium text-lg">{title}</span>
+                        <span className="font-medium text-sm">{title}</span>
                     </Link>
                 </div>
 
