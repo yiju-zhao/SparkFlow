@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 interface UnifiedHeaderProps {
     theme: "green" | "red";
     title: string;
+    subtitle?: string;
     navLinks?: React.ReactNode;
     actionButton?: React.ReactNode;
     user?: {
@@ -17,7 +18,7 @@ interface UnifiedHeaderProps {
     };
 }
 
-export function UnifiedHeader({ theme, title, navLinks, actionButton, user }: UnifiedHeaderProps) {
+export function UnifiedHeader({ theme, title, subtitle, navLinks, actionButton, user }: UnifiedHeaderProps) {
     const accentColor = theme === "green" ? "text-[#00D084]" : "text-[#CE0E2D]";
     const logoHref = theme === "green" ? "/explore" : "/deepdive";
     const [hidden, setHidden] = useState(false);
@@ -69,6 +70,12 @@ export function UnifiedHeader({ theme, title, navLinks, actionButton, user }: Un
                         <span className={`${accentColor} font-bold text-base`}>&gt;</span>
                         <span className="font-medium text-sm">{title}</span>
                     </Link>
+                    {subtitle && (
+                        <>
+                            <span className={`${accentColor} font-bold text-base`}>&gt;</span>
+                            <span className="font-medium text-sm truncate max-w-[300px]">{subtitle}</span>
+                        </>
+                    )}
                 </div>
 
                 {/* Center: Nav links */}
