@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { getPublication } from '@/lib/explore/queries'
 import { AddToNotebook } from '@/components/explore/shared'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { FileText, Github, Globe, ExternalLink, Star, Building2, MapPin, Tag } from 'lucide-react'
 
 interface PageProps {
@@ -21,34 +20,39 @@ export default async function PublicationDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-4xl flex flex-col gap-6">
-      {/* Header */}
+    <div className="flex flex-col gap-6">
+      {/* Breadcrumb */}
+      <p className="text-sm text-muted-foreground">
+        ~/research-hub/publications/{publication.instance.venue.name.toLowerCase()}/{publication.instance.year}
+      </p>
+
+      {/* Title */}
       <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Link href={`/explore/conferences/${publication.instance.id}`} className="font-semibold hover:underline">
-            {publication.instance.venue.name}
-          </Link>
-          <Badge variant="secondary" className="font-normal text-muted-foreground">
-            {publication.instance.year}
-          </Badge>
-          {publication.status && (
-            <Badge variant="outline" className="font-normal">
-              {publication.status}
-            </Badge>
-          )}
-          {publication.rating && (
-            <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-              <Star className="h-3 w-3 mr-1 fill-current" />
-              {publication.rating.toFixed(1)}
-            </Badge>
-          )}
-        </div>
-
-        <h1 className="text-3xl font-bold tracking-tight mb-4">{publication.title}</h1>
-
+        <h1 className="text-4xl font-bold tracking-tight mb-4">{publication.title}</h1>
         <p className="text-muted-foreground">
           {publication.authors.join(', ')}
         </p>
+      </div>
+
+      {/* Metadata pills */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          href={`/explore/conferences/${publication.instance.id}`}
+          className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors"
+        >
+          {publication.instance.venue.name} {publication.instance.year}
+        </Link>
+        {publication.status && (
+          <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm text-muted-foreground">
+            {publication.status}
+          </span>
+        )}
+        {publication.rating && (
+          <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm">
+            <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+            {publication.rating.toFixed(1)}
+          </span>
+        )}
       </div>
 
       {/* Actions */}
@@ -56,39 +60,51 @@ export default async function PublicationDetailPage({ params }: PageProps) {
         <AddToNotebook publication={publication} />
 
         {publication.pdfUrl && (
-          <Button variant="outline" asChild>
-            <a href={publication.pdfUrl} target="_blank" rel="noopener noreferrer">
-              <FileText className="h-4 w-4 mr-2" />
-              View PDF
-            </a>
-          </Button>
+          <a
+            href={publication.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+            View PDF
+          </a>
         )}
 
         {publication.githubUrl && (
-          <Button variant="outline" asChild>
-            <a href={publication.githubUrl} target="_blank" rel="noopener noreferrer">
-              <Github className="h-4 w-4 mr-2" />
-              GitHub
-            </a>
-          </Button>
+          <a
+            href={publication.githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors"
+          >
+            <Github className="h-3.5 w-3.5 text-muted-foreground" />
+            GitHub
+          </a>
         )}
 
         {publication.websiteUrl && (
-          <Button variant="outline" asChild>
-            <a href={publication.websiteUrl} target="_blank" rel="noopener noreferrer">
-              <Globe className="h-4 w-4 mr-2" />
-              Website
-            </a>
-          </Button>
+          <a
+            href={publication.websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors"
+          >
+            <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+            Website
+          </a>
         )}
 
         {publication.doi && (
-          <Button variant="outline" asChild>
-            <a href={`https://doi.org/${publication.doi}`} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              DOI
-            </a>
-          </Button>
+          <a
+            href={`https://doi.org/${publication.doi}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors"
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+            DOI
+          </a>
         )}
       </div>
 

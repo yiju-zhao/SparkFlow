@@ -9,7 +9,7 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, description, icon }: StatsCardProps) {
   return (
-    <div className="bg-card rounded-lg p-6 transition-colors hover:bg-card/80">
+    <div className="bg-card rounded-lg p-6 h-full transition-colors hover:bg-card/80">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">{title}</p>

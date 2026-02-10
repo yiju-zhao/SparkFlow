@@ -26,13 +26,8 @@ export default async function ConferencesPage({ searchParams }: PageProps) {
       options: filterOptions.venues.map(v => ({ value: v.id, label: v.name }))
     },
     {
-      key: 'yearFrom',
-      label: 'From Year',
-      options: filterOptions.years.map(y => ({ value: y.toString(), label: y.toString() }))
-    },
-    {
-      key: 'yearTo',
-      label: 'To Year',
+      key: 'year',
+      label: 'Year',
       options: filterOptions.years.map(y => ({ value: y.toString(), label: y.toString() }))
     }
   ]

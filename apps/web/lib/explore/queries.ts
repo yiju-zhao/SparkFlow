@@ -7,6 +7,7 @@ import { filterOptionsCache, statsCache } from './cache'
 import { PAGE_SIZE, type PublicationFilters, type SessionFilters, type ConferenceFilters } from './filters'
 import type {
   GlobalStats,
+  RecentConferenceItem,
   ConferenceCard,
   ConferenceDetail,
   PublicationListItem,
@@ -45,6 +46,57 @@ export const getGlobalStats = cache(async (): Promise<GlobalStats> => {
 
   statsCache.set(cacheKey, result)
   return result
+})
+
+export const getRecentConferences = cache(async (limit = 5): Promise<RecentConferenceItem[]> => {
+  const cacheKey = `recent-conferences-${limit}`
+  const cached = statsCache.get(cacheKey) as RecentConferenceItem[] | undefined
+  if (cached) return cached
+
+  const instances = await prisma.instance.findMany({
+    where: {
+      startDate: { not: null }
+    },
+    select: {
+      id: true,
+      name: true,
+      year: true,
+      startDate: true,
+      endDate: true,
+      location: true,
+      venue: { select: { name: true } },
+      _count: {
+        select: {
+          publications: {
+            where: {
+              status: { notIn: ['Reject', 'Withdrawal'] }
+            }
+          },
+          sessions: true
+        }
+      }
+    },
+    orderBy: [
+      { startDate: 'desc' },
+      { name: 'asc' }
+    ],
+    take: limit
+  })
+
+  const results: RecentConferenceItem[] = instances.map((inst) => ({
+    id: inst.id,
+    name: inst.name,
+    year: inst.year,
+    venueName: inst.venue.name,
+    startDate: inst.startDate,
+    endDate: inst.endDate,
+    location: inst.location,
+    publicationCount: inst._count.publications,
+    sessionCount: inst._count.sessions
+  }))
+
+  statsCache.set(cacheKey, results)
+  return results
 })
 
 // ============ FILTER OPTIONS ============
@@ -119,11 +171,8 @@ export const getConferences = cache(async (filters: ConferenceFilters): Promise<
   if (filters.venue) {
     where.venueId = filters.venue
   }
-  if (filters.yearFrom || filters.yearTo) {
-    where.year = {
-      ...(filters.yearFrom && { gte: filters.yearFrom }),
-      ...(filters.yearTo && { lte: filters.yearTo })
-    }
+  if (filters.year) {
+    where.year = filters.year
   }
 
   const instances = await prisma.instance.findMany({

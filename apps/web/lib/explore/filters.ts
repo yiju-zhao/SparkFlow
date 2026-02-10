@@ -30,8 +30,7 @@ export const sessionFiltersSchema = z.object({
 
 export const conferenceFiltersSchema = z.object({
   venue: z.string().optional(),
-  yearFrom: z.coerce.number().optional(),
-  yearTo: z.coerce.number().optional()
+  year: z.coerce.number().optional()
 })
 
 export type PublicationFilters = z.infer<typeof publicationFiltersSchema>

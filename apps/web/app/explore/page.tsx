@@ -1,13 +1,10 @@
-// apps/web/app/explore/page.tsx
-
 import { Suspense } from 'react'
-import { getGlobalStats, getYearTrendData, getTopicsChartData } from '@/lib/explore/queries'
-import { GlobalStats } from '@/components/explore/hub'
+import Link from 'next/link'
+import { getGlobalStats, getYearTrendData, getTopicsChartData, getRecentConferences } from '@/lib/explore/queries'
+import { GlobalStats, RecentConferences } from '@/components/explore/hub'
 import { ChartsSection } from '@/components/explore/hub/charts-section'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import Link from 'next/link'
-import { ArrowRight, Building2, FileText, Calendar } from 'lucide-react'
 
 async function StatsSection() {
   const stats = await getGlobalStats()
@@ -23,11 +20,10 @@ async function ChartsSectionWrapper() {
   return <ChartsSection yearData={yearData} topicsData={topicsData} />
 }
 
-const quickLinks = [
-  { href: '/explore/conferences', label: 'Conferences', icon: Building2 },
-  { href: '/explore/publications', label: 'Publications', icon: FileText },
-  { href: '/explore/sessions', label: 'Sessions', icon: Calendar },
-] as const
+async function RecentConferencesSection() {
+  const conferences = await getRecentConferences(5)
+  return <RecentConferences conferences={conferences} />
+}
 
 export default function ExplorePage() {
   return (
@@ -36,28 +32,13 @@ export default function ExplorePage() {
       <div>
         <p className="text-sm text-muted-foreground mb-2">~/research-hub/overview</p>
         <h1 className="text-4xl font-bold tracking-tight mb-2">Knowledge Base</h1>
-        <p className="text-muted-foreground mb-6">
+        <p className="text-muted-foreground">
           Discover conferences, publications, and sessions in the global knowledge base
         </p>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {quickLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-border rounded-lg bg-card hover:bg-muted transition-colors"
-            >
-              <Icon className="h-4 w-4 text-muted-foreground" />
-              {label}
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* Stats Overview */}
       <section>
-        <h2 className="text-lg font-semibold tracking-tight mb-4">Platform Overview</h2>
         <Suspense fallback={<StatsSkeleton />}>
           <StatsSection />
         </Suspense>
@@ -65,9 +46,23 @@ export default function ExplorePage() {
 
       {/* Analytics */}
       <section>
-        <h2 className="text-lg font-semibold tracking-tight mb-4">Analytics & Trends</h2>
         <Suspense fallback={<ChartsSkeleton />}>
           <ChartsSectionWrapper />
+        </Suspense>
+      </section>
+
+      {/* Recent Conferences */}
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold font-mono tracking-tight">recent conferences</h2>
+          </div>
+          <Link href="/explore/conferences" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors">
+            view all
+          </Link>
+        </div>
+        <Suspense fallback={<RecentConferencesSkeleton />}>
+          <RecentConferencesSection />
         </Suspense>
       </section>
     </div>
@@ -95,6 +90,31 @@ function ChartsSkeleton() {
         <Skeleton className="h-6 w-48 mb-4" />
         <Skeleton className="h-[300px] w-full" />
       </div>
+    </div>
+  )
+}
+
+function RecentConferencesSkeleton() {
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex items-center justify-between gap-6 px-5 py-4 border-b border-border last:border-b-0">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-11 w-11 rounded-md" />
+            <div>
+              <Skeleton className="h-4 w-48 mb-2" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <Skeleton className="h-5 w-20 rounded-full" />
+            <div className="text-right">
+              <Skeleton className="h-4 w-12 mb-2" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

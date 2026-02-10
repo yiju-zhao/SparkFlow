@@ -17,6 +17,18 @@ export interface ConferenceCard {
   topTopics: string[]
 }
 
+export interface RecentConferenceItem {
+  id: string
+  name: string
+  year: number
+  venueName: string
+  startDate: Date | null
+  endDate: Date | null
+  location: string | null
+  publicationCount: number
+  sessionCount: number
+}
+
 export interface ConferenceDetail {
   id: string
   name: string
