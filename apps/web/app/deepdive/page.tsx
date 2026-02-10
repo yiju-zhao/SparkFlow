@@ -3,10 +3,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { NotebookList } from "./notebook-list";
+import { UnifiedHeader } from "@/components/unified-header";
 import { CreateNotebookDialog } from "./create-notebook-dialog";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { LogoutButton } from "./logout-button";
-import { Button } from "@/components/ui/button";
+
 import { Compass } from "lucide-react";
 
 export default async function DashboardPage() {
@@ -28,32 +27,28 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-secondary">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-sm">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <h1 className="text-xl font-semibold">SparkFlow</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="default" size="sm" asChild className="font-medium px-4 shadow-sm hover:-translate-y-px transition-all">
-              <Link href="/explore">
-                <Compass className="h-4 w-4 mr-2" />
-                Explore
-              </Link>
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {session.user.name || session.user.email}
-            </span>
-            <ThemeToggle />
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+      <UnifiedHeader
+        theme="red"
+        title="deepdive"
+        actionButton={
+          <Link
+            href="/explore"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm border border-[#555] rounded text-[#ccc] hover:text-white hover:border-[#00D084] transition-colors"
+          >
+            <Compass className="h-4 w-4" />
+            explore research-hub
+          </Link>
+        }
+        user={session.user}
+      />
 
       {/* Main Content */}
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Inspiration</h2>
+            <h2 className="text-sm font-semibold font-mono tracking-tight">research notebooks</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your research notebooks and knowledge bases
+              Personalized knowledge bases and AI insights
             </p>
           </div>
           <CreateNotebookDialog />

@@ -139,16 +139,17 @@ function NotebookLayoutInner({
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Link href="/deepdive">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-sm font-medium">{notebook.name}</h1>
+          <div className="h-4 w-px bg-border/50" />
+          <div className="flex flex-col">
+            <h1 className="text-sm font-semibold tracking-tight">{notebook.name}</h1>
             {notebook.description && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[400px]">
                 {notebook.description}
               </p>
             )}
