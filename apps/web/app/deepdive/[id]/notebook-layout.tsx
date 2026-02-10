@@ -4,14 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
 import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
@@ -138,28 +136,23 @@ function NotebookLayoutInner({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-4">
-          <Link href="/deepdive">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+      <header className="flex h-14 shrink-0 items-center justify-between bg-foreground/75 backdrop-blur-lg text-background border-b border-white/10 px-6">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="font-medium text-sm opacity-60 hover:opacity-100 transition-opacity">
+            sparkflow
           </Link>
-          <div className="h-4 w-px bg-border/50" />
-          <div className="flex flex-col">
-            <h1 className="text-sm font-semibold tracking-tight">{notebook.name}</h1>
-            {notebook.description && (
-              <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[400px]">
-                {notebook.description}
-              </p>
-            )}
-          </div>
+          <Link href="/deepdive" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <span className="text-[#CE0E2D] font-bold text-base">&gt;</span>
+            <span className="font-medium text-sm">deepdive</span>
+          </Link>
+          <span className="text-[#CE0E2D] font-bold text-base">&gt;</span>
+          <span className="font-medium text-sm truncate max-w-[300px]">{notebook.name}</span>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 transition-colors"
+            className="h-8 w-8 transition-colors text-background/60 hover:text-background hover:bg-white/10"
             onClick={() => setLeftPanelOpen(!leftPanelOpen)}
             aria-label={leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"}
           >
@@ -167,7 +160,7 @@ function NotebookLayoutInner({
               initial={false}
               animate={{ scale: 1 }}
               whileTap={{ scale: 0.92 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
             >
               {leftPanelOpen ? (
                 <PanelLeftClose className="h-4 w-4" />
@@ -179,7 +172,7 @@ function NotebookLayoutInner({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 transition-colors"
+            className="h-8 w-8 transition-colors text-background/60 hover:text-background hover:bg-white/10"
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
             aria-label={rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"}
           >
@@ -187,7 +180,7 @@ function NotebookLayoutInner({
               initial={false}
               animate={{ scale: 1 }}
               whileTap={{ scale: 0.92 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
             >
               {rightPanelOpen ? (
                 <PanelRightClose className="h-4 w-4" />
@@ -196,7 +189,6 @@ function NotebookLayoutInner({
               )}
             </motion.div>
           </Button>
-          <ThemeToggle />
         </div>
       </header>
 
