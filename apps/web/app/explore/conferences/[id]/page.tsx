@@ -6,7 +6,6 @@ import { ConferenceHero } from '@/components/explore/conferences'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { BarChart3, Calendar } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -30,16 +29,16 @@ async function SessionsSection({ conferenceId }: { conferenceId: string }) {
           return acc
         }, {} as Record<string, typeof result.data>)).map(([date, sessions]) => (
           <div key={date}>
-            <div className="flex items-center gap-3 mb-4 sticky top-0 bg-background/95 backdrop-blur py-3 z-10">
-              <div className="h-px flex-1 bg-border/60" />
+            <div className="flex items-center gap-3 mb-4 sticky top-0 bg-secondary/95 backdrop-blur py-3 z-10">
+              <div className="h-px flex-1 bg-border" />
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{date}</h3>
-              <div className="h-px flex-1 bg-border/60" />
+              <div className="h-px flex-1 bg-border" />
             </div>
-            <div className="space-y-2">
+            <div className="bg-card rounded-lg divide-y divide-border">
               {sessions.map((session) => (
                 <div
                   key={session.id}
-                  className="relative group rounded-lg border border-border/50 bg-card p-4 hover:border-border hover:shadow-sm transition-all flex gap-4"
+                  className="relative group p-4 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg flex gap-4"
                 >
                   <div className="w-28 shrink-0 text-sm text-muted-foreground pt-0.5 tabular-nums">
                     {session.startTime || 'TBD'}
@@ -85,23 +84,21 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-10">
       <ConferenceHero conference={conference} stats={stats} />
 
       <Tabs defaultValue="publications" className="relative">
-        <TabsList className="bg-transparent border-b border-border/60 rounded-none w-full justify-start h-auto p-0 gap-0">
+        <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-4">
           <TabsTrigger
             value="publications"
-            className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 py-3 text-sm font-medium text-muted-foreground data-[state=active]:text-foreground transition-colors"
+            className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
-            <BarChart3 className="h-3.5 w-3.5 mr-2" />
             Publications
           </TabsTrigger>
           <TabsTrigger
             value="sessions"
-            className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-5 py-3 text-sm font-medium text-muted-foreground data-[state=active]:text-foreground transition-colors"
+            className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
-            <Calendar className="h-3.5 w-3.5 mr-2" />
             Sessions
           </TabsTrigger>
         </TabsList>

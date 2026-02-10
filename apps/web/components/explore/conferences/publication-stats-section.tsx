@@ -10,7 +10,6 @@ import { AffiliationBarChart } from './charts/affiliation-bar-chart'
 import { CountryBarChart } from './charts/country-bar-chart'
 import { TopicBarChart } from './charts/topic-bar-chart'
 import { CollaborationNetwork } from './charts/collaboration-network'
-import { cn } from '@/lib/utils'
 
 interface PublicationStatsSectionProps {
     venueId: string
@@ -20,7 +19,7 @@ interface PublicationStatsSectionProps {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
-        <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
             {children}
         </h3>
     )
@@ -32,48 +31,41 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
     const oralCount = stats.statusBreakdown.find(s => s.status === 'Oral')?.count || 0
 
     const statItems = [
-        { label: 'Spotlights', value: spotlightCount, icon: Sparkles, accent: 'from-amber-500/20 to-orange-500/20 dark:from-amber-500/10 dark:to-orange-500/10', iconColor: 'text-amber-500' },
-        { label: 'Posters', value: posterCount, icon: Layers, accent: 'from-blue-500/20 to-cyan-500/20 dark:from-blue-500/10 dark:to-cyan-500/10', iconColor: 'text-blue-500' },
-        { label: 'Orals', value: oralCount, icon: Mic, accent: 'from-violet-500/20 to-purple-500/20 dark:from-violet-500/10 dark:to-purple-500/10', iconColor: 'text-violet-500' },
+        { label: 'spotlights', value: spotlightCount, icon: Sparkles },
+        { label: 'posters', value: posterCount, icon: Layers },
+        { label: 'orals', value: oralCount, icon: Mic },
     ]
 
     return (
-        <div className="space-y-8">
-            {/* Stat pills — compact, scannable */}
-            <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-10">
+            {/* Stat metric cards */}
+            <div className="grid grid-cols-3 gap-6">
                 {statItems.map((item, i) => (
-                    <div
-                        key={i}
-                        className={cn(
-                            "flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-xl",
-                            "bg-gradient-to-r border border-border/50",
-                            item.accent
-                        )}
-                        style={{ animationDelay: `${i * 80}ms` }}
-                    >
-                        <div className={cn("p-1.5 rounded-lg bg-background/80", item.iconColor)}>
-                            <item.icon className="h-4 w-4" />
+                    <div key={i} className="bg-card rounded-lg p-6">
+                        <span className="text-sm text-muted-foreground">{item.label}</span>
+                        <div className="text-3xl font-bold tracking-tight tabular-nums mt-2">
+                            {item.value.toLocaleString()}
                         </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-bold tracking-tight tabular-nums">{item.value.toLocaleString()}</span>
-                            <span className="text-sm text-muted-foreground font-medium">{item.label}</span>
+                        <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+                            <item.icon className="h-3.5 w-3.5" />
+                            papers
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Unified Dashboard Panel */}
-            <div className="rounded-2xl border border-border/60 overflow-hidden">
+            {/* Dashboard Panel */}
+            <div className="flex flex-col gap-6">
 
                 {/* Row 1: Composition — Pie + Word Cloud */}
-                <div className="grid grid-cols-1 md:grid-cols-5 bg-card">
-                    <div className="md:col-span-2 p-5">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div className="md:col-span-2 bg-card rounded-lg p-6">
                         <SectionLabel>Status Breakdown</SectionLabel>
                         <div className="h-[260px]">
                             <StatusPieChart data={stats.statusBreakdown} />
                         </div>
                     </div>
-                    <div className="md:col-span-3 p-5">
+                    <div className="md:col-span-3 bg-card rounded-lg p-6">
                         <SectionLabel>Popular Keywords</SectionLabel>
                         <div className="h-[260px]">
                             <KeywordCloud data={stats.topKeywords} className="min-h-0" />
@@ -81,17 +73,17 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                     </div>
                 </div>
 
-                {/* Row 2: Research Topics — full width (accent band) */}
-                <div className="p-5 bg-muted/30 dark:bg-muted/15">
+                {/* Row 2: Research Topics — full width */}
+                <div className="bg-card rounded-lg p-6">
                     <SectionLabel>Top Research Topics</SectionLabel>
                     <div className="h-[280px]">
                         <TopicBarChart data={stats.topTopics} />
                     </div>
                 </div>
 
-                {/* Row 3: Community — Organizations + Countries side by side */}
-                <div className="grid grid-cols-1 md:grid-cols-2 bg-card">
-                    <div className="p-5">
+                {/* Row 3: Community — Organizations + Countries */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-card rounded-lg p-6">
                         <SectionLabel>
                             <Users className="h-3.5 w-3.5" />
                             Top Organizations
@@ -100,7 +92,7 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                             <AffiliationBarChart data={stats.topAffiliations} />
                         </div>
                     </div>
-                    <div className="p-5">
+                    <div className="bg-card rounded-lg p-6">
                         <SectionLabel>
                             <Globe className="h-3.5 w-3.5" />
                             Top Countries
@@ -111,9 +103,9 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                     </div>
                 </div>
 
-                {/* Row 4: Collaboration Networks (accent band) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 bg-muted/30 dark:bg-muted/15">
-                    <div className="p-5">
+                {/* Row 4: Collaboration Networks */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-card rounded-lg p-6">
                         <SectionLabel>
                             <Network className="h-3.5 w-3.5" />
                             Organization Collaboration
@@ -126,7 +118,7 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                             />
                         </div>
                     </div>
-                    <div className="p-5">
+                    <div className="bg-card rounded-lg p-6">
                         <SectionLabel>
                             <Globe className="h-3.5 w-3.5" />
                             Geographic Collaboration
@@ -143,8 +135,8 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
             </div>
 
             {/* CTA */}
-            <div className="flex justify-center pt-6 pb-4">
-                <Button size="lg" asChild className="group rounded-full px-8">
+            <div className="flex justify-center">
+                <Button size="lg" asChild className="group">
                     <Link href={`/explore/publications?venue=${venueId}&year=${year}`}>
                         View All {stats.publicationCount.toLocaleString()} Publications
                         <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -154,3 +146,4 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
         </div>
     )
 }
+

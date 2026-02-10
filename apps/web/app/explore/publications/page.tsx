@@ -58,14 +58,17 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(result.total / PAGE_SIZE)
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-10">
+      {/* Title Section */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Publications</h1>
+        <p className="text-sm text-muted-foreground mb-2">~/research-hub/publications</p>
+        <h1 className="text-4xl font-bold tracking-tight">Publications</h1>
         <p className="text-muted-foreground mt-2">
           {result.total.toLocaleString()} publications found
         </p>
       </div>
 
+      {/* Filters */}
       <div className="space-y-3">
         <FilterBar filters={filterConfigs} />
         <StatusToggles />
@@ -77,12 +80,13 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
           description="Try adjusting your filters"
         />
       ) : (
-        <>
-          <div className="space-y-2">
+        <div className="bg-card rounded-lg">
+          {/* Publication List */}
+          <div className="divide-y divide-border">
             {result.data.map((pub) => (
               <div
                 key={pub.id}
-                className="relative block p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="relative p-5 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
               >
                 <div className="grid grid-cols-[8fr_2fr] gap-4">
                   <div className="flex flex-col h-full">
@@ -137,13 +141,16 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
             ))}
           </div>
 
-          <Pagination
-            currentPage={result.page}
-            totalPages={totalPages}
-            totalItems={result.total}
-            pageSize={PAGE_SIZE}
-          />
-        </>
+          {/* Pagination */}
+          <div className="border-t border-border p-5">
+            <Pagination
+              currentPage={result.page}
+              totalPages={totalPages}
+              totalItems={result.total}
+              pageSize={PAGE_SIZE}
+            />
+          </div>
+        </div>
       )}
     </div>
   )

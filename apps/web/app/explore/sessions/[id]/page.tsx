@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { getSession } from '@/lib/explore/queries'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Clock, MapPin, User, ExternalLink } from 'lucide-react'
 
 interface PageProps {
@@ -21,9 +20,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl flex flex-col gap-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex items-center gap-2 mb-3">
           <Link href={`/explore/conferences/${session.instance.id}`} className="font-semibold hover:underline">
             {session.instance.venue.name}
@@ -69,7 +68,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
 
       {/* Actions */}
       {session.sessionUrl && (
-        <div className="flex flex-wrap gap-3 mb-8">
+        <div className="flex flex-wrap gap-3">
           <Button variant="outline" asChild>
             <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4 mr-2" />
@@ -81,67 +80,52 @@ export default async function SessionDetailPage({ params }: PageProps) {
 
       {/* Abstract */}
       {session.abstract && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Abstract</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground whitespace-pre-wrap">{session.abstract}</p>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-lg p-6">
+          <h2 className="text-sm font-semibold mb-3">Abstract</h2>
+          <p className="text-muted-foreground whitespace-pre-wrap">{session.abstract}</p>
+        </div>
       )}
 
       {/* Overview */}
       {session.overview && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground whitespace-pre-wrap">{session.overview}</p>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-lg p-6">
+          <h2 className="text-sm font-semibold mb-3">Overview</h2>
+          <p className="text-muted-foreground whitespace-pre-wrap">{session.overview}</p>
+        </div>
       )}
 
       {/* Transcript */}
       {session.transcript && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Transcript</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="max-h-96 overflow-y-auto">
-              <p className="text-muted-foreground whitespace-pre-wrap text-sm">{session.transcript}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-lg p-6">
+          <h2 className="text-sm font-semibold mb-3">Transcript</h2>
+          <div className="max-h-96 overflow-y-auto">
+            <p className="text-muted-foreground whitespace-pre-wrap text-sm">{session.transcript}</p>
+          </div>
+        </div>
       )}
 
       {/* Related Publications */}
       {session.publications.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Related Publications</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {session.publications.map((pub) => (
-                <Link
-                  key={pub.id}
-                  href={`/explore/publications/${pub.id}`}
-                  className="block p-3 border rounded hover:bg-muted/50 transition-colors"
-                >
-                  <h3 className="font-medium">{pub.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {pub.authors.slice(0, 3).join(', ')}
-                    {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-lg">
+          <h2 className="text-sm font-semibold p-6 pb-0">Related Publications</h2>
+          <div className="divide-y divide-border mt-3">
+            {session.publications.map((pub) => (
+              <Link
+                key={pub.id}
+                href={`/explore/publications/${pub.id}`}
+                className="block p-5 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
+              >
+                <h3 className="font-medium">{pub.title}</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {pub.authors.slice(0, 3).join(', ')}
+                  {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
 }
+

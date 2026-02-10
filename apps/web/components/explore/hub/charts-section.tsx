@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 function ChartSkeleton() {
   return (
-    <div className="border rounded-lg p-6">
+    <div className="bg-card rounded-lg p-6">
       <Skeleton className="h-6 w-48 mb-4" />
       <Skeleton className="h-[300px] w-full" />
     </div>

@@ -38,17 +38,23 @@ export default async function ConferencesPage({ searchParams }: PageProps) {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-10">
+      {/* Title Section */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Conferences</h1>
+        <p className="text-sm text-muted-foreground mb-2">~/research-hub/conferences</p>
+        <h1 className="text-4xl font-bold tracking-tight">Conferences</h1>
         <p className="text-muted-foreground mt-2">
           Browse {conferences.length} conferences
         </p>
       </div>
 
+      {/* Filters */}
       <FilterBar filters={filterConfigs} />
 
-      <ConferenceGrid conferences={conferences} />
+      {/* Conference List */}
+      <div className="bg-card rounded-lg p-6">
+        <ConferenceGrid conferences={conferences} />
+      </div>
     </div>
   )
 }

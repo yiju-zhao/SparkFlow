@@ -6,7 +6,6 @@ import { getPublication } from '@/lib/explore/queries'
 import { AddToNotebook } from '@/components/explore/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FileText, Github, Globe, ExternalLink, Star, Building2, MapPin, Tag } from 'lucide-react'
 
 interface PageProps {
@@ -22,9 +21,9 @@ export default async function PublicationDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl flex flex-col gap-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex items-center gap-2 mb-3">
           <Link href={`/explore/conferences/${publication.instance.id}`} className="font-semibold hover:underline">
             {publication.instance.venue.name}
@@ -53,7 +52,7 @@ export default async function PublicationDetailPage({ params }: PageProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-3 mb-8">
+      <div className="flex flex-wrap gap-3">
         <AddToNotebook publication={publication} />
 
         {publication.pdfUrl && (
@@ -95,127 +94,100 @@ export default async function PublicationDetailPage({ params }: PageProps) {
 
       {/* Abstract */}
       {publication.abstract && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Abstract</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground whitespace-pre-wrap">{publication.abstract}</p>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-lg p-6">
+          <h2 className="text-sm font-semibold mb-3">Abstract</h2>
+          <p className="text-muted-foreground whitespace-pre-wrap">{publication.abstract}</p>
+        </div>
       )}
 
       {/* Summary */}
       {publication.summary && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground whitespace-pre-wrap">{publication.summary}</p>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-lg p-6">
+          <h2 className="text-sm font-semibold mb-3">Summary</h2>
+          <p className="text-muted-foreground whitespace-pre-wrap">{publication.summary}</p>
+        </div>
       )}
 
       {/* Metadata */}
-      <div className="grid gap-6 md:grid-cols-2 mb-6">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Affiliations */}
         {publication.affiliations.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Affiliations
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {publication.affiliations.map((aff, i) => (
-                  <Badge key={i} variant="outline">{aff}</Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-card rounded-lg p-6">
+            <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <Building2 className="h-4 w-4" />
+              Affiliations
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {publication.affiliations.map((aff, i) => (
+                <Badge key={i} variant="outline">{aff}</Badge>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Countries */}
         {publication.countries.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Countries
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {publication.countries.map((country, i) => (
-                  <Badge key={i} variant="outline">{country}</Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-card rounded-lg p-6">
+            <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <MapPin className="h-4 w-4" />
+              Countries
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {publication.countries.map((country, i) => (
+                <Badge key={i} variant="outline">{country}</Badge>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
       {/* Keywords & Topic */}
-      <div className="grid gap-6 md:grid-cols-2 mb-6">
+      <div className="grid gap-6 md:grid-cols-2">
         {publication.keywords.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Tag className="h-4 w-4" />
-                Keywords
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {publication.keywords.map((kw, i) => (
-                  <Badge key={i} variant="secondary">{kw}</Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-card rounded-lg p-6">
+            <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <Tag className="h-4 w-4" />
+              Keywords
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {publication.keywords.map((kw, i) => (
+                <Badge key={i} variant="secondary">{kw}</Badge>
+              ))}
+            </div>
+          </div>
         )}
 
         {publication.researchTopic && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Research Topic</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge>{publication.researchTopic}</Badge>
-            </CardContent>
-          </Card>
+          <div className="bg-card rounded-lg p-6">
+            <h2 className="text-sm font-semibold mb-3">Research Topic</h2>
+            <Badge>{publication.researchTopic}</Badge>
+          </div>
         )}
       </div>
 
       {/* Related Sessions */}
       {publication.sessions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Related Sessions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {publication.sessions.map((session) => (
-                <Link
-                  key={session.id}
-                  href={`/explore/sessions/${session.id}`}
-                  className="block p-3 border rounded hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{session.title}</span>
-                    {session.type && (
-                      <Badge variant="outline">{session.type}</Badge>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-card rounded-lg">
+          <h2 className="text-sm font-semibold p-6 pb-0">Related Sessions</h2>
+          <div className="divide-y divide-border mt-3">
+            {publication.sessions.map((session) => (
+              <Link
+                key={session.id}
+                href={`/explore/sessions/${session.id}`}
+                className="block p-5 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{session.title}</span>
+                  {session.type && (
+                    <Badge variant="outline">{session.type}</Badge>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
 }
+
