@@ -85,7 +85,7 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-col gap-10">
-      <ConferenceHero conference={conference} stats={stats} />
+      <ConferenceHero conference={conference} />
 
       <Tabs defaultValue="publications" className="relative">
         <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-4">

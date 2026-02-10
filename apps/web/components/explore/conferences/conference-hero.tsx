@@ -1,17 +1,13 @@
 // apps/web/components/explore/conferences/conference-hero.tsx
 
-import { Calendar, MapPin, Globe, FileText, Presentation, ArrowUpRight } from 'lucide-react'
+import { Calendar, MapPin, Globe, ArrowUpRight } from 'lucide-react'
 import type { ConferenceDetail } from '@/lib/explore/types'
 
 interface ConferenceHeroProps {
   conference: ConferenceDetail
-  stats: {
-    publicationCount: number
-    sessionCount: number
-  }
 }
 
-export function ConferenceHero({ conference, stats }: ConferenceHeroProps) {
+export function ConferenceHero({ conference }: ConferenceHeroProps) {
   const formatDate = (date: Date | null) => {
     if (!date) return null
     return new Intl.DateTimeFormat('en-US', {
@@ -34,8 +30,7 @@ export function ConferenceHero({ conference, stats }: ConferenceHeroProps) {
         ~/research-hub/conferences/{conference.venue.name.toLowerCase()}/{conference.year}
       </p>
 
-      {/* Title */}
-      <div className="max-w-4xl">
+      <div>
         <h1 className="text-4xl font-bold tracking-tight mb-4">
           {conference.name}
         </h1>
@@ -73,31 +68,6 @@ export function ConferenceHero({ conference, stats }: ConferenceHeroProps) {
           </a>
         )}
       </div>
-
-      {/* Stats metric cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <div className="bg-card rounded-lg p-6">
-          <span className="text-sm text-muted-foreground">publications</span>
-          <div className="text-3xl font-bold tracking-tight tabular-nums mt-2">
-            {stats.publicationCount.toLocaleString()}
-          </div>
-          <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-            <FileText className="h-3.5 w-3.5" />
-            total papers
-          </div>
-        </div>
-        <div className="bg-card rounded-lg p-6">
-          <span className="text-sm text-muted-foreground">sessions</span>
-          <div className="text-3xl font-bold tracking-tight tabular-nums mt-2">
-            {stats.sessionCount.toLocaleString()}
-          </div>
-          <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-            <Presentation className="h-3.5 w-3.5" />
-            scheduled events
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
-

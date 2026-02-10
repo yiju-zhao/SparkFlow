@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ConferenceStats } from '@/lib/explore/types'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Sparkles, Layers, Mic, Users, Globe, Network } from 'lucide-react'
+import { ArrowRight, FileText, Presentation } from 'lucide-react'
 import { StatusPieChart } from './charts/status-pie-chart'
 import { KeywordCloud } from './charts/keyword-cloud'
 import { AffiliationBarChart } from './charts/affiliation-bar-chart'
@@ -17,38 +17,31 @@ interface PublicationStatsSectionProps {
     stats: ConferenceStats
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-    return (
-        <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-            {children}
-        </h3>
-    )
-}
-
 export function PublicationStatsSection({ venueId, year, stats }: PublicationStatsSectionProps) {
     const spotlightCount = stats.statusBreakdown.find(s => s.status === 'Spotlight')?.count || 0
     const posterCount = stats.statusBreakdown.find(s => s.status === 'Poster')?.count || 0
     const oralCount = stats.statusBreakdown.find(s => s.status === 'Oral')?.count || 0
 
     const statItems = [
-        { label: 'spotlights', value: spotlightCount, icon: Sparkles },
-        { label: 'posters', value: posterCount, icon: Layers },
-        { label: 'orals', value: oralCount, icon: Mic },
+        { label: 'publications', value: stats.publicationCount, icon: FileText },
+        { label: 'sessions', value: stats.sessionCount, icon: Presentation },
+        { label: 'spotlights', value: spotlightCount },
+        { label: 'posters', value: posterCount },
+        { label: 'orals', value: oralCount },
     ]
 
     return (
         <div className="flex flex-col gap-10">
             {/* Stat metric cards */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
                 {statItems.map((item, i) => (
                     <div key={i} className="bg-card rounded-lg p-6">
-                        <span className="text-sm text-muted-foreground">{item.label}</span>
+                        <span className="text-sm text-muted-foreground flex items-center gap-2">
+                            {item.icon && <item.icon className="h-3.5 w-3.5" />}
+                            {item.label}
+                        </span>
                         <div className="text-3xl font-bold tracking-tight tabular-nums mt-2">
                             {item.value.toLocaleString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-                            <item.icon className="h-3.5 w-3.5" />
-                            papers
                         </div>
                     </div>
                 ))}
@@ -60,13 +53,11 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                 {/* Row 1: Composition — Pie + Word Cloud */}
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                     <div className="md:col-span-2 bg-card rounded-lg p-6">
-                        <SectionLabel>Status Breakdown</SectionLabel>
                         <div className="h-[260px]">
                             <StatusPieChart data={stats.statusBreakdown} />
                         </div>
                     </div>
                     <div className="md:col-span-3 bg-card rounded-lg p-6">
-                        <SectionLabel>Popular Keywords</SectionLabel>
                         <div className="h-[260px]">
                             <KeywordCloud data={stats.topKeywords} className="min-h-0" />
                         </div>
@@ -75,7 +66,6 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
 
                 {/* Row 2: Research Topics — full width */}
                 <div className="bg-card rounded-lg p-6">
-                    <SectionLabel>Top Research Topics</SectionLabel>
                     <div className="h-[280px]">
                         <TopicBarChart data={stats.topTopics} />
                     </div>
@@ -84,19 +74,11 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                 {/* Row 3: Community — Organizations + Countries */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-card rounded-lg p-6">
-                        <SectionLabel>
-                            <Users className="h-3.5 w-3.5" />
-                            Top Organizations
-                        </SectionLabel>
                         <div className="h-[320px]">
                             <AffiliationBarChart data={stats.topAffiliations} />
                         </div>
                     </div>
                     <div className="bg-card rounded-lg p-6">
-                        <SectionLabel>
-                            <Globe className="h-3.5 w-3.5" />
-                            Top Countries
-                        </SectionLabel>
                         <div className="h-[320px]">
                             <CountryBarChart data={stats.topCountries} />
                         </div>
@@ -106,10 +88,6 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                 {/* Row 4: Collaboration Networks */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-card rounded-lg p-6">
-                        <SectionLabel>
-                            <Network className="h-3.5 w-3.5" />
-                            Organization Collaboration
-                        </SectionLabel>
                         <div className="h-[400px]">
                             <CollaborationNetwork
                                 data={stats.orgCollaboration}
@@ -119,10 +97,6 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
                         </div>
                     </div>
                     <div className="bg-card rounded-lg p-6">
-                        <SectionLabel>
-                            <Globe className="h-3.5 w-3.5" />
-                            Geographic Collaboration
-                        </SectionLabel>
                         <div className="h-[400px]">
                             <CollaborationNetwork
                                 data={stats.geoCollaboration}
@@ -146,4 +120,3 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
         </div>
     )
 }
-
