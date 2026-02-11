@@ -39,9 +39,13 @@ export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }:
         const handleScroll = () => {
             const currentY = scrollContainer.scrollTop;
             const delta = currentY - lastScrollY.current;
+            const atBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 1;
 
-            // Only react to meaningful scroll deltas (ignores bounce/jitter at boundaries)
-            if (Math.abs(delta) < 5) return;
+            // Ignore tiny deltas (sub-pixel jitter) and elastic bounce at boundaries
+            if (Math.abs(delta) < 5 || currentY <= 0 || atBottom) {
+                lastScrollY.current = currentY;
+                return;
+            }
 
             if (delta > 0 && currentY > 50) {
                 setHidden(true);
@@ -60,7 +64,7 @@ export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }:
             ref={navRef}
             className={cn(
                 "shrink-0 bg-foreground/75 backdrop-blur-lg text-background z-100 border-b border-white/10 transition-all duration-300",
-                hidden ? "-mt-14 opacity-0" : "mt-0 opacity-100"
+                hidden ? "-translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
             )}
         >
             <div className="grid grid-cols-3 h-14 items-center px-12">
