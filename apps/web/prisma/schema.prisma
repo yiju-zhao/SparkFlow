@@ -313,6 +313,10 @@ model ConferenceSession {
   transcript  String?                @db.Text
   sessionUrl  String?
 
+  topic       String?
+  affiliation String?
+  technology  String?
+
   publications SessionPublication[]
 
   createdAt   DateTime               @default(now())
