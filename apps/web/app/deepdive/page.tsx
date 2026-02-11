@@ -44,10 +44,10 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-end gap-3">
             <Link
               href="/explore"
-              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="group flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-mono font-bold uppercase tracking-widest transition-all hover:bg-muted"
             >
-              <Compass className="h-4 w-4" />
-              research-hub
+              <Compass className="h-4 w-4 text-[#00D084] transition-transform group-hover:scale-110" />
+              <span>research-hub</span>
             </Link>
             {session.user && <UserNav user={session.user} />}
           </div>

@@ -19,9 +19,12 @@ export default async function ExploreLayout({
       actionButton={
         <Link
           href="/deepdive"
-          className="px-3 py-1.5 text-sm border border-[#555] rounded text-[#ccc] hover:text-white hover:border-accent-red transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-[0.15em] opacity-80 hover:opacity-100 transition-all group"
         >
-          ← back to deepdive
+          <span className="group-hover:-translate-x-1 transition-transform">
+            ←
+          </span>
+          <span>deepdive</span>
         </Link>
       }
       user={session?.user}

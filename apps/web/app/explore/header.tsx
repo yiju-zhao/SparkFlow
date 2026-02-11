@@ -29,8 +29,8 @@ export function ExploreHeader({
   return (
     <nav
       className={`z-100 shrink-0 transition-all duration-500 ease-in-out ${isScrolled
-        ? "bg-transparent border-transparent pt-4 px-6"
-        : "border-b border-white/10 bg-foreground text-background"
+          ? "bg-transparent border-transparent pt-4 px-6"
+          : "border-b border-border bg-[#0A0A0A] text-white"
         }`}
     >
       <div

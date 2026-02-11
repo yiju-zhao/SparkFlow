@@ -102,17 +102,17 @@ export function CollaborationNetwork({
             draggable: true,
             force: compact
               ? {
-                  repulsion: 260,
-                  gravity: 0.12,
-                  edgeLength: [80, 200],
-                  friction: 0.6,
-                }
+                repulsion: 260,
+                gravity: 0.12,
+                edgeLength: [80, 200],
+                friction: 0.6,
+              }
               : {
-                  repulsion: 400,
-                  gravity: 0.08,
-                  edgeLength: [120, 350],
-                  friction: 0.6,
-                },
+                repulsion: 400,
+                gravity: 0.08,
+                edgeLength: [120, 350],
+                friction: 0.6,
+              },
             label: {
               show: true,
               position: "right" as const,
@@ -276,22 +276,24 @@ export function CollaborationNetwork({
 
       {/* Expanded fullscreen */}
       {isExpanded && (
-        <div className="fixed inset-0 bg-background/95 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card w-full h-full rounded-xl shadow-2xl flex flex-col overflow-hidden border">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full hover:bg-muted"
-                onClick={() => setIsExpanded(false)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+        <div className="fixed inset-0 bg-background z-200 flex flex-col animate-in fade-in duration-300">
+          {/* Top Bar Overlay */}
+          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-8 py-6 pointer-events-none">
+            <div className="bg-background/50 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 shadow-huawei-lg pointer-events-auto">
+              <h3 className="text-xl font-bold tracking-tight">{title}</h3>
             </div>
-            <div className="flex-1 relative">
-              <div ref={expandedChartRef} className="absolute inset-0" />
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 rounded-full bg-background/50 backdrop-blur-md border-white/10 shadow-huawei-lg hover:bg-background/80 transition-all pointer-events-auto"
+              onClick={() => setIsExpanded(false)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+          </div>
+          {/* Full Screen Chart Area */}
+          <div className="flex-1 w-full h-full relative bg-background">
+            <div ref={expandedChartRef} className="absolute inset-0" />
           </div>
         </div>
       )}
