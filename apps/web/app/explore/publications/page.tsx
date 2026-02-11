@@ -86,55 +86,47 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
             {result.data.map((pub) => (
               <div
                 key={pub.id}
-                className="relative p-5 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                className="relative px-5 py-3 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
               >
-                <div className="grid grid-cols-[8fr_2fr] gap-4">
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center gap-2">
-                      {pub.status && (
-                        <Badge variant="secondary">{pub.status}</Badge>
-                      )}
-                      <h3 className="font-medium truncate flex-1 min-w-0">
-                        <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
-                          {pub.title}
-                        </Link>
-                      </h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {pub.authors.slice(0, 3).join(', ')}
-                      {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
-                    </p>
-                    <div className="flex items-center gap-2 mt-auto pt-2">
-                      <span className="text-sm text-muted-foreground">
-                        {pub.instance.venue.name}
-                      </span>
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium">
-                        {pub.instance.year}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-between items-end h-full min-w-[100px]">
-                    {/* Top: PDF Link + Rating */}
-                    <div className="h-6 flex items-center gap-2">
+                <div className="grid grid-cols-[auto_1px_1fr] items-center gap-x-3 gap-y-1">
+                  {/* Row 1: Title | Venue+Year + PDF/Rating */}
+                  <h3 className="font-medium truncate min-w-0">
+                    <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
+                      {pub.title}
+                    </Link>
+                  </h3>
+                  <span className="bg-border self-stretch" />
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium">{pub.instance.venue.name} {pub.instance.year}</span>
+                    <div className="flex items-center gap-2 shrink-0 ml-auto">
                       {pub.pdfUrl && (
                         <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
                           <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-4 w-4" />
+                            <FileText className="h-3.5 w-3.5" />
                             <span className="sr-only">PDF</span>
                           </a>
                         </Button>
                       )}
                       {pub.rating && (
-                        <Badge variant="secondary">{pub.rating.toFixed(1)}</Badge>
+                        <Badge variant="secondary" className="tabular-nums">{pub.rating.toFixed(1)}</Badge>
                       )}
                     </div>
+                  </div>
 
-                    {/* Bottom: Topic */}
-                    <div className="h-6 flex items-center mt-auto pointer-events-none">
-                      {pub.researchTopic && (
-                        <Badge variant="outline">{pub.researchTopic}</Badge>
-                      )}
-                    </div>
+                  {/* Row 2: Authors + Status + Topic (spans all columns) */}
+                  <div className="col-span-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="truncate">
+                      {pub.authors.slice(0, 3).join(', ')}
+                      {pub.authors.length > 3 && ` +${pub.authors.length - 3}`}
+                    </span>
+                    {pub.status && (
+                      <Badge variant="secondary" className="shrink-0">{pub.status}</Badge>
+                    )}
+                    {pub.researchTopic && (
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium pointer-events-none shrink-0 ml-auto">
+                        {pub.researchTopic}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
