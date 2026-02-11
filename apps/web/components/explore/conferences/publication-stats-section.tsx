@@ -26,19 +26,19 @@ export function PublicationStatsSection({
     <div className="flex flex-col gap-10">
       {/* Dashboard Panel */}
       <div className="flex flex-col gap-6">
-        {/* Row 1: Pie (1/4) + Word Cloud (3/8) + Topics (3/8) */}
-        <div className="grid grid-cols-1 md:grid-cols-8 gap-6 items-start">
-          <div className="md:col-span-2 bg-card rounded-lg p-6">
+        {/* Row 1: Pie + Word Cloud + Topics — evenly spaced */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          <div className="bg-card rounded-lg p-6">
             <div className="h-[280px]">
               <StatusPieChart data={stats.statusBreakdown} />
             </div>
           </div>
-          <div className="md:col-span-3 bg-card rounded-lg p-6">
+          <div className="bg-card rounded-lg p-6">
             <div className="h-[280px]">
               <KeywordCloud data={stats.topKeywords} className="min-h-0" />
             </div>
           </div>
-          <div className="md:col-span-3 bg-card rounded-lg p-6">
+          <div className="bg-card rounded-lg p-6">
             <div className="h-[280px]">
               <TopicBarChart data={stats.topTopics} />
             </div>
