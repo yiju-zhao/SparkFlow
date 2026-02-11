@@ -63,8 +63,8 @@ export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }:
         <nav
             ref={navRef}
             className={cn(
-                "shrink-0 bg-foreground/75 backdrop-blur-lg text-background z-100 border-b border-white/10 transition-all duration-300",
-                hidden ? "-translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
+                "bg-foreground/75 backdrop-blur-lg text-background z-100 border-b border-white/10 transition-all duration-300 overflow-hidden",
+                hidden ? "max-h-0 opacity-0" : "max-h-14 opacity-100"
             )}
         >
             <div className="grid grid-cols-3 h-14 items-center px-12">
