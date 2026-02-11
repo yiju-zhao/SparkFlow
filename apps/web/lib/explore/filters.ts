@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-export const PAGE_SIZE = 20
+export const PAGE_SIZE = 50
 
 export const publicationFiltersSchema = z.object({
   year: z.coerce.number().optional(),

@@ -88,17 +88,16 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
                 key={pub.id}
                 className="relative px-5 py-3 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
               >
-                <div className="grid grid-cols-[auto_1px_1fr] items-center gap-x-3 gap-y-1">
-                  {/* Row 1: Title | Venue+Year + PDF/Rating */}
-                  <h3 className="font-medium truncate min-w-0">
-                    <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
-                      {pub.title}
-                    </Link>
-                  </h3>
-                  <span className="bg-border self-stretch" />
+                <div className="flex flex-col gap-1">
+                  {/* Row 1: Venue+Year + Title + PDF/Rating */}
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">{pub.instance.venue.name} {pub.instance.year}</span>
-                    <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    <span className="shrink-0 text-xs font-mono uppercase tracking-wider text-muted-foreground">{pub.instance.venue.name} {pub.instance.year}</span>
+                    <h3 className="font-medium truncate flex-1 min-w-0">
+                      <Link href={`/explore/publications/${pub.id}`} className="after:absolute after:inset-0">
+                        {pub.title}
+                      </Link>
+                    </h3>
+                    <div className="flex items-center gap-2 shrink-0">
                       {pub.pdfUrl && (
                         <Button variant="ghost" size="icon" className="h-6 w-6 p-0 z-20 relative" asChild>
                           <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
@@ -113,8 +112,8 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
                     </div>
                   </div>
 
-                  {/* Row 2: Authors + Status + Topic (spans all columns) */}
-                  <div className="col-span-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  {/* Row 2: Authors + Status + Topic */}
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="truncate">
                       {pub.authors.slice(0, 3).join(', ')}
                       {pub.authors.length > 3 && ` +${pub.authors.length - 3}`}
