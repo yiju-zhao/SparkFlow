@@ -28,10 +28,11 @@ export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }:
     // Disable collapsing on detail pages (publications/[id], sessions/[id])
     const isDetailPage = /\/(publications|sessions)\/[^/]+$/.test(pathname);
 
-    // Reset header visibility when navigating to a detail page
+    // Reset header visibility on every route change
     useEffect(() => {
-        if (isDetailPage) setHidden(false);
-    }, [isDetailPage]);
+        setHidden(false);
+        lastScrollY.current = 0;
+    }, [pathname]);
 
     useEffect(() => {
         if (isDetailPage) return;
