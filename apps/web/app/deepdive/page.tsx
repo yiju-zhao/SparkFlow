@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { NotebookList } from "./notebook-list";
-import { UnifiedHeader } from "@/components/unified-header";
+import { UserNav } from "@/components/user-nav";
 import { CreateNotebookDialog } from "./create-notebook-dialog";
 
 import { Compass } from "lucide-react";
@@ -27,20 +27,32 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <UnifiedHeader
-        theme="red"
-        title="deepdive"
-        actionButton={
-          <Link
-            href="/explore"
-            className="flex items-center gap-2 px-3 py-1.5 text-sm border border-[#555] rounded text-[#ccc] hover:text-white hover:border-[#00D084] transition-colors"
-          >
-            <Compass className="h-4 w-4" />
-            explore research-hub
+      <header className="shrink-0 border-b border-border bg-background">
+        <div className="mx-auto grid h-16 max-w-6xl grid-cols-3 items-center px-6">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red">
+              <span className="text-sm font-bold text-white">S</span>
+            </div>
+            <span className="text-lg font-semibold">SparkFlow</span>
           </Link>
-        }
-        user={session.user}
-      />
+
+          {/* Center: empty */}
+          <div />
+
+          {/* Right: Explore link + User */}
+          <div className="flex items-center justify-end gap-3">
+            <Link
+              href="/explore"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Compass className="h-4 w-4" />
+              research-hub
+            </Link>
+            {session.user && <UserNav user={session.user} />}
+          </div>
+        </div>
+      </header>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto bg-secondary">

@@ -1,7 +1,6 @@
-import { UnifiedHeader } from '@/components/unified-header'
+import { ExploreHeader } from './header'
 import { auth } from '@/lib/auth'
 import Link from 'next/link'
-import { headers } from 'next/headers'
 
 // Nav links component for Explore
 import ExploreNavLinks from './nav-links'
@@ -15,8 +14,7 @@ export default async function ExploreLayout({
 
   return (
     <div className="flex flex-col h-screen">
-      <UnifiedHeader
-        theme="green"
+      <ExploreHeader
         title="research-hub"
         navLinks={<ExploreNavLinks />}
         actionButton={

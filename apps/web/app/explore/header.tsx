@@ -2,11 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { UserNav } from "./user-nav";
+import { UserNav } from "@/components/user-nav";
 import { cn } from "@/lib/utils";
 
-interface UnifiedHeaderProps {
-    theme: "green" | "red";
+interface ExploreHeaderProps {
     title: string;
     subtitle?: string;
     navLinks?: React.ReactNode;
@@ -18,9 +17,8 @@ interface UnifiedHeaderProps {
     };
 }
 
-export function UnifiedHeader({ theme, title, subtitle, navLinks, actionButton, user }: UnifiedHeaderProps) {
-    const accentColor = theme === "green" ? "text-[#00D084]" : "text-[#CE0E2D]";
-    const logoHref = theme === "green" ? "/explore" : "/deepdive";
+export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }: ExploreHeaderProps) {
+    const accentColor = "text-[#00D084]";
     const [hidden, setHidden] = useState(false);
     const lastScrollY = useRef(0);
     const navRef = useRef<HTMLElement>(null);
@@ -66,7 +64,7 @@ export function UnifiedHeader({ theme, title, subtitle, navLinks, actionButton, 
                     <Link href="/" className="font-medium text-sm opacity-60 hover:opacity-100 transition-opacity">
                         sparkflow
                     </Link>
-                    <Link href={logoHref} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                    <Link href="/explore" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <span className={`${accentColor} font-bold text-base`}>&gt;</span>
                         <span className="font-medium text-sm">{title}</span>
                     </Link>
