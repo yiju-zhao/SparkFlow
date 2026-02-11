@@ -13,14 +13,23 @@ interface ExploreShellProps extends ExploreHeaderProps {
 
 export function ExploreShell({ children, ...headerProps }: ExploreShellProps) {
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   return (
     <div className="flex flex-col h-screen">
-      {!assistantOpen && <ExploreHeader {...headerProps} />}
+      <div className="fixed top-0 left-0 right-0 z-100 pointer-events-none transition-all duration-300">
+        <ExploreHeader {...headerProps} isScrolled={isScrolled} />
+      </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto bg-secondary">
-        <main className="px-12 py-10 pb-16">{children}</main>
+      <div
+        className="flex-1 overflow-y-auto bg-secondary"
+        onScroll={(e) => {
+          const scrollTop = (e.target as HTMLDivElement).scrollTop;
+          setIsScrolled(scrollTop > 20);
+        }}
+      >
+        <main className="px-12 pt-24 pb-16">{children}</main>
       </div>
 
       {!assistantOpen && (

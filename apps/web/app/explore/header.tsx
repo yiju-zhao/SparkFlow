@@ -13,6 +13,7 @@ export interface ExploreHeaderProps {
     email?: string | null;
     image?: string | null;
   };
+  isScrolled?: boolean;
 }
 
 export function ExploreHeader({
@@ -21,14 +22,28 @@ export function ExploreHeader({
   navLinks,
   actionButton,
   user,
+  isScrolled,
 }: ExploreHeaderProps) {
   const accentColor = "text-[#00D084]";
 
   return (
-    <nav className="shrink-0 bg-foreground/75 backdrop-blur-lg text-background z-100 border-b border-white/10">
-      <div className="grid grid-cols-3 h-14 items-center px-12">
+    <nav
+      className={`z-100 shrink-0 transition-all duration-500 ease-in-out ${isScrolled
+        ? "bg-transparent border-transparent pt-4 px-6"
+        : "border-b border-white/10 bg-foreground text-background"
+        }`}
+    >
+      <div
+        className={`grid h-14 items-center transition-all duration-500 ${isScrolled ? "grid-cols-[auto_1fr_auto] gap-4" : "grid-cols-3 px-12"
+          }`}
+      >
         {/* Left: Logo */}
-        <div className="flex items-center gap-3">
+        <div
+          className={`flex items-center gap-3 transition-all duration-500 pointer-events-auto ${isScrolled
+            ? "bg-foreground/90 text-background backdrop-blur-md px-6 h-11 rounded-full shadow-huawei-md"
+            : ""
+            }`}
+        >
           <Link
             href="/"
             className="font-medium text-sm opacity-60 hover:opacity-100 transition-opacity"
@@ -45,7 +60,7 @@ export function ExploreHeader({
           {subtitle && (
             <>
               <span className={`${accentColor} font-bold text-base`}>&gt;</span>
-              <span className="font-medium text-sm truncate max-w-[300px]">
+              <span className="font-medium text-sm truncate max-w-[200px]">
                 {subtitle}
               </span>
             </>
@@ -53,13 +68,30 @@ export function ExploreHeader({
         </div>
 
         {/* Center: Nav links */}
-        <div className="flex items-center justify-center gap-8">{navLinks}</div>
+        <div className="flex items-center justify-center">
+          <div
+            className={`flex items-center gap-8 transition-all duration-500 pointer-events-auto ${isScrolled
+              ? "bg-foreground/80 text-background backdrop-blur-md px-8 h-11 rounded-full shadow-huawei-md"
+              : ""
+              }`}
+          >
+            {navLinks}
+          </div>
+        </div>
 
         {/* Right: Actions & User */}
-        <div className="flex items-center justify-end gap-4">
+        <div
+          className={`flex items-center gap-4 transition-all duration-500 pointer-events-auto ${isScrolled
+            ? "bg-foreground/90 text-background backdrop-blur-md px-6 h-11 rounded-full shadow-huawei-md"
+            : "justify-end"
+            }`}
+        >
           {actionButton}
           {user && (
-            <div className="text-secondary pl-4 border-l border-white/10">
+            <div
+              className={`pl-4 border-l border-white/10 ${isScrolled ? "text-background" : "text-secondary"
+                }`}
+            >
               <UserNav user={user} />
             </div>
           )}

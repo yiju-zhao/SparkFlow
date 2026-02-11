@@ -92,7 +92,7 @@ export function ResearchAssistantPanel({
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -101,7 +101,7 @@ export function ResearchAssistantPanel({
 
           {/* Panel */}
           <motion.div
-            className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md flex flex-col bg-background border-l border-border shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 z-[200] w-full max-w-md flex flex-col bg-background border-l border-border shadow-2xl"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}

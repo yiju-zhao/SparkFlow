@@ -20,9 +20,8 @@ export default function ExploreNavLinks() {
           <Link
             key={href}
             href={href}
-            className={`relative flex items-center justify-center text-sm transition-colors ${
-              isActive ? "text-white" : "text-[#999] hover:text-white"
-            }`}
+            className={`relative flex items-center justify-center text-sm transition-all ${isActive ? "font-medium opacity-100" : "opacity-60 hover:opacity-100"
+              }`}
           >
             {isActive && (
               <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#00D084]" />
