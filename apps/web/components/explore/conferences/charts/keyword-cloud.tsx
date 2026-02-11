@@ -72,7 +72,7 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
           type: "wordCloud",
           shape: "circle",
           left: "center",
-          top: "center",
+          top: "top",
           width: "85%",
           height: "75%",
           sizeRange: [14, 50],

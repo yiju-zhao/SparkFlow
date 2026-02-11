@@ -26,43 +26,32 @@ export function PublicationStatsSection({
     <div className="flex flex-col gap-10">
       {/* Dashboard Panel */}
       <div className="flex flex-col gap-6">
-        {/* Row 1: Composition — Pie + Word Cloud */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        {/* Row 1: Pie (1/4) + Word Cloud (3/8) + Topics (3/8) */}
+        <div className="grid grid-cols-1 md:grid-cols-8 gap-6 items-start">
           <div className="md:col-span-2 bg-card rounded-lg p-6">
-            <div className="h-[260px]">
+            <div className="h-[280px]">
               <StatusPieChart data={stats.statusBreakdown} />
             </div>
           </div>
           <div className="md:col-span-3 bg-card rounded-lg p-6">
-            <div className="h-[260px]">
+            <div className="h-[280px]">
               <KeywordCloud data={stats.topKeywords} className="min-h-0" />
             </div>
           </div>
-        </div>
-
-        {/* Row 2: Research Topics — full width */}
-        <div className="bg-card rounded-lg p-6">
-          <div className="h-[280px]">
-            <TopicBarChart data={stats.topTopics} />
+          <div className="md:col-span-3 bg-card rounded-lg p-6">
+            <div className="h-[280px]">
+              <TopicBarChart data={stats.topTopics} />
+            </div>
           </div>
         </div>
 
-        {/* Row 3: Community — Organizations + Countries */}
+        {/* Row 2: Affiliation Bar (left) + Org Network (right) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[320px]">
+            <div className="h-[400px]">
               <AffiliationBarChart data={stats.topAffiliations} />
             </div>
           </div>
-          <div className="bg-card rounded-lg p-6">
-            <div className="h-[320px]">
-              <CountryBarChart data={stats.topCountries} />
-            </div>
-          </div>
-        </div>
-
-        {/* Row 4: Collaboration Networks */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-card rounded-lg p-6">
             <div className="h-[400px]">
               <CollaborationNetwork
@@ -70,6 +59,15 @@ export function PublicationStatsSection({
                 title="Organization Collaboration Network"
                 nodeColor="#3b82f6"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Country Bar (left) + Geo Network (right) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-card rounded-lg p-6">
+            <div className="h-[400px]">
+              <CountryBarChart data={stats.topCountries} />
             </div>
           </div>
           <div className="bg-card rounded-lg p-6">
