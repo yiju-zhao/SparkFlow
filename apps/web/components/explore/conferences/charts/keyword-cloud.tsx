@@ -74,7 +74,7 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
           left: "center",
           top: "top",
           width: "85%",
-          height: "75%",
+          height: "95%",
           sizeRange: [14, 50],
           rotationRange: [0, 0],
           gridSize: 8,
