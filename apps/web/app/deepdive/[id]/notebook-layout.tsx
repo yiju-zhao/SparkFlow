@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -9,7 +10,7 @@ import {
   PanelRightOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UnifiedHeader } from "@/components/unified-header";
+import { UserNav } from "@/components/user-nav";
 import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
 import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
@@ -141,57 +142,70 @@ function NotebookLayoutInner({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      {/* Header */}
-      <UnifiedHeader
-        theme="red"
-        title="deepdive"
-        subtitle={notebook.name}
-        actionButton={
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 transition-colors text-background/60 hover:text-background hover:bg-white/10"
-              onClick={() => setLeftPanelOpen(!leftPanelOpen)}
-              aria-label={leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"}
+      {/* Inline Header */}
+      <div className="shrink-0 h-12 border-b border-border/60 bg-background flex items-center justify-between px-4">
+        {/* Left: Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm">
+          <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+            sparkflow
+          </Link>
+          <span className="text-[#CE0E2D] font-bold">&gt;</span>
+          <Link href="/deepdive" className="text-muted-foreground hover:text-foreground transition-colors">
+            deepdive
+          </Link>
+          <span className="text-[#CE0E2D] font-bold">&gt;</span>
+          <span className="text-foreground truncate max-w-[300px]">{notebook.name}</span>
+        </div>
+
+        {/* Right: Panel toggles + User */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+            aria-label={leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"}
+          >
+            <motion.div
+              initial={false}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
             >
-              <motion.div
-                initial={false}
-                animate={{ scale: 1 }}
-                whileTap={{ scale: 0.92 }}
-                transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
-              >
-                {leftPanelOpen ? (
-                  <PanelLeftClose className="h-4 w-4" />
-                ) : (
-                  <PanelLeftOpen className="h-4 w-4" />
-                )}
-              </motion.div>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 transition-colors text-background/60 hover:text-background hover:bg-white/10"
-              onClick={() => setRightPanelOpen(!rightPanelOpen)}
-              aria-label={rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"}
+              {leftPanelOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
+            </motion.div>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => setRightPanelOpen(!rightPanelOpen)}
+            aria-label={rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"}
+          >
+            <motion.div
+              initial={false}
+              animate={{ scale: 1 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
             >
-              <motion.div
-                initial={false}
-                animate={{ scale: 1 }}
-                whileTap={{ scale: 0.92 }}
-                transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
-              >
-                {rightPanelOpen ? (
-                  <PanelRightClose className="h-4 w-4" />
-                ) : (
-                  <PanelRightOpen className="h-4 w-4" />
-                )}
-              </motion.div>
-            </Button>
-          </div>
-        }
-        user={user}
-      />
+              {rightPanelOpen ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <PanelRightOpen className="h-4 w-4" />
+              )}
+            </motion.div>
+          </Button>
+          {user && (
+            <div className="ml-2 pl-2 border-l border-border/60">
+              <UserNav user={user} />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Main Content - 3 Panel Grid */}
       <div className="flex flex-1 overflow-hidden">
