@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ConferenceStats } from '@/lib/explore/types'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, FileText } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { StatusPieChart } from './charts/status-pie-chart'
 import { KeywordCloud } from './charts/keyword-cloud'
 import { AffiliationBarChart } from './charts/affiliation-bar-chart'
@@ -18,35 +18,8 @@ interface PublicationStatsSectionProps {
 }
 
 export function PublicationStatsSection({ venueId, year, stats }: PublicationStatsSectionProps) {
-    const spotlightCount = stats.statusBreakdown.find(s => s.status === 'Spotlight')?.count || 0
-    const posterCount = stats.statusBreakdown.find(s => s.status === 'Poster')?.count || 0
-    const oralCount = stats.statusBreakdown.find(s => s.status === 'Oral')?.count || 0
-
-    const statItems = [
-        { label: 'publications', value: stats.publicationCount, icon: FileText },
-
-        { label: 'spotlights', value: spotlightCount },
-        { label: 'posters', value: posterCount },
-        { label: 'orals', value: oralCount },
-    ]
-
     return (
         <div className="flex flex-col gap-10">
-            {/* Stat metric cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {statItems.map((item, i) => (
-                    <div key={i} className="bg-card rounded-lg p-6">
-                        <span className="text-sm text-muted-foreground flex items-center gap-2">
-                            {item.icon && <item.icon className="h-3.5 w-3.5" />}
-                            {item.label}
-                        </span>
-                        <div className="text-3xl font-bold tracking-tight tabular-nums mt-2">
-                            {item.value.toLocaleString()}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
             {/* Dashboard Panel */}
             <div className="flex flex-col gap-6">
 

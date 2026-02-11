@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { UserNav } from "@/components/user-nav";
 
-interface ExploreHeaderProps {
+export interface ExploreHeaderProps {
     title: string;
     subtitle?: string;
     navLinks?: React.ReactNode;
