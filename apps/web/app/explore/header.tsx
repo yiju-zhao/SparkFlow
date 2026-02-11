@@ -38,9 +38,14 @@ export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }:
 
         const handleScroll = () => {
             const currentY = scrollContainer.scrollTop;
-            if (currentY > lastScrollY.current && currentY > 50) {
+            const delta = currentY - lastScrollY.current;
+
+            // Only react to meaningful scroll deltas (ignores bounce/jitter at boundaries)
+            if (Math.abs(delta) < 5) return;
+
+            if (delta > 0 && currentY > 50) {
                 setHidden(true);
-            } else {
+            } else if (delta < 0) {
                 setHidden(false);
             }
             lastScrollY.current = currentY;
