@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ConferenceStats } from '@/lib/explore/types'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, FileText, Presentation } from 'lucide-react'
+import { ArrowRight, FileText } from 'lucide-react'
 import { StatusPieChart } from './charts/status-pie-chart'
 import { KeywordCloud } from './charts/keyword-cloud'
 import { AffiliationBarChart } from './charts/affiliation-bar-chart'
@@ -24,7 +24,7 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
 
     const statItems = [
         { label: 'publications', value: stats.publicationCount, icon: FileText },
-        { label: 'sessions', value: stats.sessionCount, icon: Presentation },
+
         { label: 'spotlights', value: spotlightCount },
         { label: 'posters', value: posterCount },
         { label: 'orals', value: oralCount },
@@ -33,7 +33,7 @@ export function PublicationStatsSection({ venueId, year, stats }: PublicationSta
     return (
         <div className="flex flex-col gap-10">
             {/* Stat metric cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {statItems.map((item, i) => (
                     <div key={i} className="bg-card rounded-lg p-6">
                         <span className="text-sm text-muted-foreground flex items-center gap-2">

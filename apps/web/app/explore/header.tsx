@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { UserNav } from "@/components/user-nav";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +20,22 @@ interface ExploreHeaderProps {
 
 export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }: ExploreHeaderProps) {
     const accentColor = "text-[#00D084]";
+    const pathname = usePathname();
     const [hidden, setHidden] = useState(false);
     const lastScrollY = useRef(0);
     const navRef = useRef<HTMLElement>(null);
 
+    // Disable collapsing on detail pages (publications/[id], sessions/[id])
+    const isDetailPage = /\/(publications|sessions)\/[^/]+$/.test(pathname);
+
+    // Reset header visibility when navigating to a detail page
     useEffect(() => {
+        if (isDetailPage) setHidden(false);
+    }, [isDetailPage]);
+
+    useEffect(() => {
+        if (isDetailPage) return;
+
         // Find the scrollable sibling container
         const nav = navRef.current;
         if (!nav) return;
@@ -57,7 +69,7 @@ export function ExploreHeader({ title, subtitle, navLinks, actionButton, user }:
 
         scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
         return () => scrollContainer.removeEventListener("scroll", handleScroll);
-    }, []);
+    }, [isDetailPage]);
 
     return (
         <nav
