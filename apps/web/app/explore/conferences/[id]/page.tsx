@@ -121,12 +121,18 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
             className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
             Publications
+            <span className="ml-1.5 tabular-nums">
+              ({stats.publicationCount.toLocaleString()})
+            </span>
           </TabsTrigger>
           <TabsTrigger
             value="sessions"
             className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
             Sessions
+            <span className="ml-1.5 tabular-nums">
+              ({stats.sessionCount.toLocaleString()})
+            </span>
           </TabsTrigger>
         </TabsList>
 
