@@ -1,10 +1,10 @@
 // apps/web/components/explore/shared/stats-card.tsx
 
 interface StatsCardProps {
-  title: string
-  value: string | number
-  description?: string
-  icon?: React.ReactNode
+  title: string;
+  value: string | number;
+  description?: string;
+  icon?: React.ReactNode;
 }
 
 export function StatsCard({ title, value, description, icon }: StatsCardProps) {
@@ -25,5 +25,5 @@ export function StatsCard({ title, value, description, icon }: StatsCardProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

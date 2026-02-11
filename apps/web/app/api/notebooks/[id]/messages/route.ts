@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -29,7 +29,10 @@ export async function GET(
     });
 
     if (!notebook) {
-      return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Notebook not found" },
+        { status: 404 },
+      );
     }
 
     // Get the active chat session
@@ -73,7 +76,7 @@ export async function GET(
     console.error("Fetch messages error:", error);
     return NextResponse.json(
       { error: "Failed to fetch messages" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -85,7 +88,7 @@ export async function GET(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -104,7 +107,10 @@ export async function DELETE(
     });
 
     if (!notebook) {
-      return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Notebook not found" },
+        { status: 404 },
+      );
     }
 
     // Delete all messages for this notebook
@@ -123,7 +129,7 @@ export async function DELETE(
     console.error("Clear messages error:", error);
     return NextResponse.json(
       { error: "Failed to clear messages" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

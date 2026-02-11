@@ -22,7 +22,10 @@ import { Textarea } from "@/components/ui/textarea";
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
   return (
-    <div className="mt-2 text-[10px] text-muted-foreground" suppressHydrationWarning>
+    <div
+      className="mt-2 text-[10px] text-muted-foreground"
+      suppressHydrationWarning
+    >
       {timeString}
     </div>
   );
@@ -155,8 +158,9 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group cursor-pointer rounded-lg border p-3 transition-all ${isPending ? "opacity-50" : ""
-        } border-border hover:border-accent-red/50 hover:bg-accent`}
+      className={`group cursor-pointer rounded-lg border p-3 transition-all ${
+        isPending ? "opacity-50" : ""
+      } border-border hover:border-accent-red/50 hover:bg-accent`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -388,10 +392,7 @@ function CreateNoteDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="title"
-              className="mb-2 block text-sm font-medium"
-            >
+            <label htmlFor="title" className="mb-2 block text-sm font-medium">
               Title
             </label>
             <Input
@@ -403,10 +404,7 @@ function CreateNoteDialog({
             />
           </div>
           <div>
-            <label
-              htmlFor="content"
-              className="mb-2 block text-sm font-medium"
-            >
+            <label htmlFor="content" className="mb-2 block text-sm font-medium">
               Content
             </label>
             <Textarea

@@ -10,14 +10,14 @@ export async function POST(req: Request) {
     if (!username || !email || !password) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (password.length < 8) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     if (existingUser) {
       return NextResponse.json(
         { error: "User with this email or username already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -48,13 +48,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { message: "User created successfully", userId: user.id },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Signup error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

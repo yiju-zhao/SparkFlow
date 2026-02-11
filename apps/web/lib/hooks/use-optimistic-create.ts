@@ -10,7 +10,7 @@ import { useTransition } from "react";
 export function useOptimisticCreate<T, TInput>(
   queryKey: string[],
   createAction: (input: TInput) => Promise<T>,
-  tempItemFactory: (input: TInput) => T
+  tempItemFactory: (input: TInput) => T,
 ) {
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
@@ -20,7 +20,7 @@ export function useOptimisticCreate<T, TInput>(
       // Create temporary item and add to cache
       const tempItem = tempItemFactory(input);
       queryClient.setQueryData(queryKey, (old: T[] | undefined) =>
-        old ? [tempItem, ...old] : [tempItem]
+        old ? [tempItem, ...old] : [tempItem],
       );
 
       // Call success callback early for UI feedback
@@ -35,8 +35,8 @@ export function useOptimisticCreate<T, TInput>(
           old?.map((item) =>
             (item as { id?: string }).id === (tempItem as { id?: string }).id
               ? created
-              : item
-          )
+              : item,
+          ),
         );
       } finally {
         // Invalidate to ensure consistency

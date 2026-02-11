@@ -1,28 +1,33 @@
-import { Suspense } from 'react'
-import Link from 'next/link'
-import { getGlobalStats, getYearTrendData, getTopicsChartData, getRecentConferences } from '@/lib/explore/queries'
-import { GlobalStats, RecentConferences } from '@/components/explore/hub'
-import { ChartsSection } from '@/components/explore/hub/charts-section'
+import { Suspense } from "react";
+import Link from "next/link";
+import {
+  getGlobalStats,
+  getYearTrendData,
+  getTopicsChartData,
+  getRecentConferences,
+} from "@/lib/explore/queries";
+import { GlobalStats, RecentConferences } from "@/components/explore/hub";
+import { ChartsSection } from "@/components/explore/hub/charts-section";
 
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from "@/components/ui/skeleton";
 
 async function StatsSection() {
-  const stats = await getGlobalStats()
-  return <GlobalStats stats={stats} />
+  const stats = await getGlobalStats();
+  return <GlobalStats stats={stats} />;
 }
 
 async function ChartsSectionWrapper() {
   const [yearData, topicsData] = await Promise.all([
     getYearTrendData(),
-    getTopicsChartData()
-  ])
+    getTopicsChartData(),
+  ]);
 
-  return <ChartsSection yearData={yearData} topicsData={topicsData} />
+  return <ChartsSection yearData={yearData} topicsData={topicsData} />;
 }
 
 async function RecentConferencesSection() {
-  const conferences = await getRecentConferences(5)
-  return <RecentConferences conferences={conferences} />
+  const conferences = await getRecentConferences(5);
+  return <RecentConferences conferences={conferences} />;
 }
 
 export default function ExplorePage() {
@@ -30,10 +35,15 @@ export default function ExplorePage() {
     <div className="flex flex-col gap-10">
       {/* Title Section */}
       <div>
-        <p className="text-sm text-muted-foreground mb-2">~/research-hub/overview</p>
-        <h1 className="text-4xl font-bold tracking-tight mb-2">Knowledge Base</h1>
+        <p className="text-sm text-muted-foreground mb-2">
+          ~/research-hub/overview
+        </p>
+        <h1 className="text-4xl font-bold tracking-tight mb-2">
+          Knowledge Base
+        </h1>
         <p className="text-muted-foreground">
-          Discover conferences, publications, and sessions in the global knowledge base
+          Discover conferences, publications, and sessions in the global
+          knowledge base
         </p>
       </div>
 
@@ -55,9 +65,14 @@ export default function ExplorePage() {
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold font-mono tracking-tight">recent conferences</h2>
+            <h2 className="text-sm font-semibold font-mono tracking-tight">
+              recent conferences
+            </h2>
           </div>
-          <Link href="/explore/conferences" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/explore/conferences"
+            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+          >
             view all
           </Link>
         </div>
@@ -66,7 +81,7 @@ export default function ExplorePage() {
         </Suspense>
       </section>
     </div>
-  )
+  );
 }
 
 function StatsSkeleton() {
@@ -76,7 +91,7 @@ function StatsSkeleton() {
         <Skeleton key={i} className="h-[100px] rounded-lg" />
       ))}
     </div>
-  )
+  );
 }
 
 function ChartsSkeleton() {
@@ -91,14 +106,17 @@ function ChartsSkeleton() {
         <Skeleton className="h-[300px] w-full" />
       </div>
     </div>
-  )
+  );
 }
 
 function RecentConferencesSkeleton() {
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between gap-6 px-5 py-4 border-b border-border last:border-b-0">
+        <div
+          key={i}
+          className="flex items-center justify-between gap-6 px-5 py-4 border-b border-border last:border-b-0"
+        >
           <div className="flex items-center gap-4">
             <Skeleton className="h-11 w-11 rounded-md" />
             <div>
@@ -116,5 +134,5 @@ function RecentConferencesSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }

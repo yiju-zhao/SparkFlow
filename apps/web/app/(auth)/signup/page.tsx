@@ -56,7 +56,10 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium mb-1"
+            >
               Username
             </label>
             <Input
@@ -82,7 +85,10 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium mb-1"
+            >
               Password
             </label>
             <Input
@@ -96,7 +102,10 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium mb-1"
+            >
               Confirm Password
             </label>
             <Input
@@ -109,9 +118,7 @@ export default function SignupPage() {
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating account..." : "Sign Up"}

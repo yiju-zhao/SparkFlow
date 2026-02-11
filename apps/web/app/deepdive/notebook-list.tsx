@@ -65,13 +65,18 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
 
   return (
     <div
-      className={`group relative flex flex-col rounded-lg border border-border bg-card p-5 transition-all hover:bg-muted/30 ${isDeleting ? "pointer-events-none opacity-50" : ""
-        }`}
+      className={`group relative flex flex-col rounded-lg border border-border bg-card p-5 transition-all hover:bg-muted/30 ${
+        isDeleting ? "pointer-events-none opacity-50" : ""
+      }`}
     >
       <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -95,7 +100,9 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
           </div>
         </div>
 
-        <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">{notebook.name}</h3>
+        <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">
+          {notebook.name}
+        </h3>
 
         {notebook.description && (
           <p className="text-sm text-muted-foreground line-clamp-2 mb-4">

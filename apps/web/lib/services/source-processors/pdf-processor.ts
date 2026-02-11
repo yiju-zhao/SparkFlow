@@ -16,7 +16,7 @@ function escapeRegExp(string: string): string {
  */
 export async function processPdfDocument(
   file: File,
-  context: ProcessingContext
+  context: ProcessingContext,
 ): Promise<ProcessingResult> {
   const { sourceId, ragflowDatasetId } = context;
 
@@ -39,7 +39,10 @@ export async function processPdfDocument(
       const { uploadSourceImages } = await import("@/lib/s3-client");
 
       // Upload images to S3
-      const uploadedImages = await uploadSourceImages(sourceId, extractedImages);
+      const uploadedImages = await uploadSourceImages(
+        sourceId,
+        extractedImages,
+      );
 
       // Create SourceImage records for each uploaded image
       for (const img of uploadedImages) {
@@ -59,12 +62,15 @@ export async function processPdfDocument(
         const patterns = [
           new RegExp(
             `!\\[([^\\]]*)\\]\\(images/${escapeRegExp(originalName)}\\)`,
-            "g"
+            "g",
           ),
-          new RegExp(`!\\[([^\\]]*)\\]\\(${escapeRegExp(originalName)}\\)`, "g"),
+          new RegExp(
+            `!\\[([^\\]]*)\\]\\(${escapeRegExp(originalName)}\\)`,
+            "g",
+          ),
           new RegExp(
             `!\\[([^\\]]*)\\]\\([^)]*/${escapeRegExp(originalName)}\\)`,
-            "g"
+            "g",
           ),
         ];
 
@@ -78,17 +84,15 @@ export async function processPdfDocument(
     if (ragflowDatasetId) {
       try {
         const mdBlob = new Blob([markdown], { type: "text/markdown" });
-        const mdFile = new File(
-          [mdBlob],
-          file.name.replace(/\.pdf$/i, ".md"),
-          { type: "text/markdown" }
-        );
+        const mdFile = new File([mdBlob], file.name.replace(/\.pdf$/i, ".md"), {
+          type: "text/markdown",
+        });
 
         const doc = await ragflowClient.uploadDocument(
           ragflowDatasetId,
           mdFile,
           mdFile.name,
-          { autoParse: true }
+          { autoParse: true },
         );
 
         await prisma.source.update({

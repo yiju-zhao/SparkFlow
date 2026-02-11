@@ -18,7 +18,7 @@ class SourceService {
     notebookId: string,
     ragflowDatasetId: string | null,
     url: string,
-    title?: string
+    title?: string,
   ): Promise<Source> {
     // Create source with PROCESSING status
     const source = await prisma.source.create({
@@ -43,7 +43,7 @@ class SourceService {
 
     this.processInBackground(
       () => processWebpage(url, title, context),
-      notebookId
+      notebookId,
     );
 
     return source;
@@ -55,7 +55,7 @@ class SourceService {
   async uploadDocumentSource(
     notebookId: string,
     ragflowDatasetId: string | null,
-    file: File
+    file: File,
   ): Promise<Source> {
     // Create source with PROCESSING status
     const source = await prisma.source.create({
@@ -80,7 +80,7 @@ class SourceService {
     const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
     this.processInBackground(
       () => this.processDocument(file, fileExtension, context),
-      notebookId
+      notebookId,
     );
 
     return source;
@@ -92,7 +92,7 @@ class SourceService {
   private async processDocument(
     file: File,
     fileExtension: string,
-    context: ProcessingContext
+    context: ProcessingContext,
   ) {
     if (fileExtension === "txt" || fileExtension === "md") {
       return processTextDocument(file, context);
@@ -110,7 +110,7 @@ class SourceService {
    */
   private processInBackground(
     processFn: () => Promise<unknown>,
-    notebookId: string
+    notebookId: string,
   ): void {
     processFn()
       .catch(console.error)

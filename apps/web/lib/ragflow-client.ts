@@ -8,13 +8,23 @@
  * Note: Chat/retrieval is handled by the LangGraph server.
  */
 
-const RAGFLOW_BASE_URL = process.env.RAGFLOW_BASE_URL || "http://localhost:9380";
+const RAGFLOW_BASE_URL =
+  process.env.RAGFLOW_BASE_URL || "http://localhost:9380";
 const RAGFLOW_API_KEY = process.env.RAGFLOW_API_KEY || "";
 const RAGFLOW_EMBEDDING_MODEL =
   process.env.RAGFLOW_EMBEDDING_MODEL || "BAAI/bge-large-en-v1.5@BAAI";
-const RAGFLOW_CHUNK_SIZE = parseInt(process.env.RAGFLOW_CHUNK_SIZE || "1024", 10);
-const RAGFLOW_AUTO_KEYWORDS = parseInt(process.env.RAGFLOW_AUTO_KEYWORDS || "0", 10);
-const RAGFLOW_AUTO_QUESTIONS = parseInt(process.env.RAGFLOW_AUTO_QUESTIONS || "0", 10);
+const RAGFLOW_CHUNK_SIZE = parseInt(
+  process.env.RAGFLOW_CHUNK_SIZE || "1024",
+  10,
+);
+const RAGFLOW_AUTO_KEYWORDS = parseInt(
+  process.env.RAGFLOW_AUTO_KEYWORDS || "0",
+  10,
+);
+const RAGFLOW_AUTO_QUESTIONS = parseInt(
+  process.env.RAGFLOW_AUTO_QUESTIONS || "0",
+  10,
+);
 
 interface RagFlowResponse<T = unknown> {
   code: number;
@@ -47,9 +57,9 @@ interface Chunk {
   id: string;
   content: string;
   document_id?: string;
-  docnm_kwd?: string;      // Document name keyword
+  docnm_kwd?: string; // Document name keyword
   available?: boolean;
-  positions?: unknown[];   // Layout positions from RagFlow (not character offsets)
+  positions?: unknown[]; // Layout positions from RagFlow (not character offsets)
   important_keywords?: string;
   image_id?: string;
 }
@@ -65,7 +75,7 @@ class RagFlowClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<RagFlowResponse<T>> {
     const url = `${this.baseUrl}/api${endpoint}`;
 
@@ -85,7 +95,9 @@ class RagFlowClient {
     });
 
     if (!response.ok) {
-      throw new Error(`RagFlow API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `RagFlow API error: ${response.status} ${response.statusText}`,
+      );
     }
     return response.json();
   }
@@ -166,7 +178,7 @@ class RagFlowClient {
     datasetId: string,
     file: File,
     filename: string,
-    options: { autoParse?: boolean } = {}
+    options: { autoParse?: boolean } = {},
   ): Promise<Document> {
     const formData = new FormData();
     formData.append("file", file, filename);
@@ -178,13 +190,10 @@ class RagFlowClient {
     const query = searchParams.toString();
     const endpoint = `/v1/datasets/${datasetId}/documents${query ? `?${query}` : ""}`;
 
-    const response = await this.request<Document[]>(
-      endpoint,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
+    const response = await this.request<Document[]>(endpoint, {
+      method: "POST",
+      body: formData,
+    });
 
     if (response.code !== 0 || !response.data?.[0]) {
       throw new Error(response.message || "Failed to upload document");
@@ -203,12 +212,13 @@ class RagFlowClient {
       page?: number;
       pageSize?: number;
       run?: string[];
-    } = {}
+    } = {},
   ): Promise<Document[]> {
     const searchParams = new URLSearchParams();
     if (params.id) searchParams.set("id", params.id);
     if (params.page) searchParams.set("page", params.page.toString());
-    if (params.pageSize) searchParams.set("page_size", params.pageSize.toString());
+    if (params.pageSize)
+      searchParams.set("page_size", params.pageSize.toString());
     if (params.run?.length) searchParams.set("run", params.run.join(","));
 
     const query = searchParams.toString();
@@ -236,7 +246,7 @@ class RagFlowClient {
    */
   async getDocumentStatus(
     datasetId: string,
-    documentId: string
+    documentId: string,
   ): Promise<Document | null> {
     try {
       const documents = await this.listDocuments(datasetId, {
@@ -264,7 +274,10 @@ class RagFlowClient {
   /**
    * Parse/process documents (trigger chunking and indexing)
    */
-  async parseDocuments(datasetId: string, documentIds: string[]): Promise<void> {
+  async parseDocuments(
+    datasetId: string,
+    documentIds: string[],
+  ): Promise<void> {
     await this.request(`/v1/datasets/${datasetId}/chunks`, {
       method: "POST",
       body: JSON.stringify({ document_ids: documentIds }),
@@ -296,7 +309,7 @@ class RagFlowClient {
   async listChunks(
     datasetId: string,
     documentId: string,
-    params: { page?: number; pageSize?: number; keywords?: string } = {}
+    params: { page?: number; pageSize?: number; keywords?: string } = {},
   ): Promise<{ chunks: Chunk[]; total: number }> {
     const searchParams = new URLSearchParams();
     searchParams.set("page", (params.page || 1).toString());
@@ -329,8 +342,12 @@ class RagFlowClient {
    */
   async getChunk(
     datasetId: string,
-    chunkId: string
-  ): Promise<{ content: string; documentId: string; documentName: string } | null> {
+    chunkId: string,
+  ): Promise<{
+    content: string;
+    documentId: string;
+    documentName: string;
+  } | null> {
     try {
       // List all documents in the dataset
       const documents = await this.listDocuments(datasetId, { pageSize: 100 });
@@ -339,7 +356,8 @@ class RagFlowClient {
       for (const doc of documents) {
         const endpoint = `/v1/datasets/${datasetId}/documents/${doc.id}/chunks?id=${chunkId}&page=1&page_size=1`;
         const response = await this.request<
-          { id: string; content: string }[] | { chunks?: { id: string; content: string }[] }
+          | { id: string; content: string }[]
+          | { chunks?: { id: string; content: string }[] }
         >(endpoint);
 
         const data = response.data;
@@ -379,7 +397,7 @@ class RagFlowClient {
   async addWebpage(
     datasetId: string,
     url: string,
-    name?: string
+    name?: string,
   ): Promise<Document | null> {
     try {
       const response = await this.request<Document>(
@@ -390,7 +408,7 @@ class RagFlowClient {
             url,
             name: name || new URL(url).hostname,
           }),
-        }
+        },
       );
 
       return response.data || null;

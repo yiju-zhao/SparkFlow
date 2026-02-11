@@ -78,40 +78,41 @@ function NotebookLayoutInner({
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [targetChunkId, setTargetChunkId] = useState<string | null>(null);
-  const [targetContentPreview, setTargetContentPreview] = useState<string | null>(null);
-  const [targetContentSuffix, setTargetContentSuffix] = useState<string | null>(null);
+  const [targetContentPreview, setTargetContentPreview] = useState<
+    string | null
+  >(null);
+  const [targetContentSuffix, setTargetContentSuffix] = useState<string | null>(
+    null,
+  );
   const [navigationTrigger, setNavigationTrigger] = useState(0);
 
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
 
   // Handle citation click - look up chunk via API to find source
-  const handleCitationNavigate = useCallback(
-    async (chunkId: string) => {
-      try {
-        const res = await fetch(`/api/chunks/${chunkId}`);
-        if (!res.ok) {
-          console.warn(`Chunk ${chunkId} not found`);
-          return;
-        }
-        const data = await res.json();
-        const { contentPreview, contentSuffix, source } = data;
-
-        if (source) {
-          setLeftPanelOpen(true);
-          // Use the source from API response (guaranteed to have fresh content)
-          setSelectedSource(source as Source);
-          setTargetChunkId(chunkId);
-          setTargetContentPreview(contentPreview);
-          setTargetContentSuffix(contentSuffix || null);
-          setNavigationTrigger((n) => n + 1); // Force effect to run
-        }
-      } catch (error) {
-        console.error("Failed to navigate to chunk:", error);
+  const handleCitationNavigate = useCallback(async (chunkId: string) => {
+    try {
+      const res = await fetch(`/api/chunks/${chunkId}`);
+      if (!res.ok) {
+        console.warn(`Chunk ${chunkId} not found`);
+        return;
       }
-    },
-    []
-  );
+      const data = await res.json();
+      const { contentPreview, contentSuffix, source } = data;
+
+      if (source) {
+        setLeftPanelOpen(true);
+        // Use the source from API response (guaranteed to have fresh content)
+        setSelectedSource(source as Source);
+        setTargetChunkId(chunkId);
+        setTargetContentPreview(contentPreview);
+        setTargetContentSuffix(contentSuffix || null);
+        setNavigationTrigger((n) => n + 1); // Force effect to run
+      }
+    } catch (error) {
+      console.error("Failed to navigate to chunk:", error);
+    }
+  }, []);
 
   // Register navigation handler with citation context
   useEffect(() => {
@@ -120,18 +121,24 @@ function NotebookLayoutInner({
   }, [setOnNavigate, handleCitationNavigate]);
 
   // Base widths (what they would be if open)
-  const baseSourcesWidth = selectedSource ? SOURCES_EXPANDED_WIDTH : SOURCES_LIST_WIDTH;
-  const baseStudioWidth = selectedNote ? STUDIO_EXPANDED_WIDTH : STUDIO_LIST_WIDTH;
+  const baseSourcesWidth = selectedSource
+    ? SOURCES_EXPANDED_WIDTH
+    : SOURCES_LIST_WIDTH;
+  const baseStudioWidth = selectedNote
+    ? STUDIO_EXPANDED_WIDTH
+    : STUDIO_LIST_WIDTH;
 
   // Distribute space: if one panel is closed, the other gets half its space
   // The center panel (flex-1) inherently gets the other half
-  const sourcesPanelWidth = !rightPanelOpen && leftPanelOpen
-    ? baseSourcesWidth + (baseStudioWidth / 2)
-    : baseSourcesWidth;
+  const sourcesPanelWidth =
+    !rightPanelOpen && leftPanelOpen
+      ? baseSourcesWidth + baseStudioWidth / 2
+      : baseSourcesWidth;
 
-  const studioPanelWidth = !leftPanelOpen && rightPanelOpen
-    ? baseStudioWidth + (baseSourcesWidth / 2)
-    : baseStudioWidth;
+  const studioPanelWidth =
+    !leftPanelOpen && rightPanelOpen
+      ? baseStudioWidth + baseSourcesWidth / 2
+      : baseStudioWidth;
 
   // Memoized callback for chunk navigation cleanup
   const handleChunkNavigated = useCallback(() => {
@@ -146,15 +153,23 @@ function NotebookLayoutInner({
       <div className="shrink-0 h-12 border-b border-border/60 bg-background flex items-center justify-between px-4">
         {/* Left: Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
-          <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             sparkflow
           </Link>
           <span className="text-[#CE0E2D] font-bold">&gt;</span>
-          <Link href="/deepdive" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/deepdive"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             deepdive
           </Link>
           <span className="text-[#CE0E2D] font-bold">&gt;</span>
-          <span className="text-foreground truncate max-w-[300px]">{notebook.name}</span>
+          <span className="text-foreground truncate max-w-[300px]">
+            {notebook.name}
+          </span>
         </div>
 
         {/* Right: Panel toggles + User */}
@@ -164,13 +179,19 @@ function NotebookLayoutInner({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() => setLeftPanelOpen(!leftPanelOpen)}
-            aria-label={leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"}
+            aria-label={
+              leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"
+            }
           >
             <motion.div
               initial={false}
               animate={{ scale: 1 }}
               whileTap={{ scale: 0.92 }}
-              transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
+              transition={{
+                type: "spring" as const,
+                stiffness: 500,
+                damping: 30,
+              }}
             >
               {leftPanelOpen ? (
                 <PanelLeftClose className="h-4 w-4" />
@@ -184,13 +205,19 @@ function NotebookLayoutInner({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
-            aria-label={rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"}
+            aria-label={
+              rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"
+            }
           >
             <motion.div
               initial={false}
               animate={{ scale: 1 }}
               whileTap={{ scale: 0.92 }}
-              transition={{ type: "spring" as const, stiffness: 500, damping: 30 }}
+              transition={{
+                type: "spring" as const,
+                stiffness: 500,
+                damping: 30,
+              }}
             >
               {rightPanelOpen ? (
                 <PanelRightClose className="h-4 w-4" />

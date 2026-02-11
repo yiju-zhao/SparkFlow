@@ -25,7 +25,7 @@ export { prisma };
  * @returns Venue ID and whether it was created
  */
 export async function findOrCreateVenue(
-  name: string
+  name: string,
 ): Promise<{ id: string; created: boolean }> {
   const existing = await prisma.venue.findUnique({
     where: { name },
@@ -56,7 +56,7 @@ export async function findOrCreateInstance(
     endDate?: string;
     website?: string;
     summary?: string;
-  }
+  },
 ): Promise<{ id: string; created: boolean }> {
   const existing = await prisma.instance.findUnique({
     where: {
@@ -92,7 +92,7 @@ export async function findOrCreateInstance(
  */
 export async function findPublicationByTitle(
   instanceId: string,
-  title: string
+  title: string,
 ): Promise<string | null> {
   const pub = await prisma.publication.findFirst({
     where: {
@@ -110,7 +110,7 @@ export async function findPublicationByTitle(
  */
 export async function findSessionByTitle(
   instanceId: string,
-  title: string
+  title: string,
 ): Promise<string | null> {
   const session = await prisma.conferenceSession.findFirst({
     where: {
@@ -129,8 +129,12 @@ export async function findSessionByTitle(
  */
 export async function findInstance(
   venueName: string,
-  year: number
-): Promise<{ venueId: string; instanceId: string; instanceName: string } | null> {
+  year: number,
+): Promise<{
+  venueId: string;
+  instanceId: string;
+  instanceName: string;
+} | null> {
   const venue = await prisma.venue.findUnique({
     where: { name: venueName },
   });
@@ -149,7 +153,11 @@ export async function findInstance(
     return null;
   }
 
-  return { venueId: venue.id, instanceId: instance.id, instanceName: instance.name };
+  return {
+    venueId: venue.id,
+    instanceId: instance.id,
+    instanceName: instance.name,
+  };
 }
 
 /**

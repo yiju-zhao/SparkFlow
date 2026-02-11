@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useCallback, useRef, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useRef,
+  ReactNode,
+} from "react";
 
 interface CitationContextValue {
   // Navigate to a chunk (called when citation is clicked)
@@ -18,7 +24,7 @@ export function CitationProvider({ children }: { children: ReactNode }) {
     (handler: ((chunkId: string) => void) | null) => {
       onNavigateRef.current = handler;
     },
-    []
+    [],
   );
 
   const navigateToChunk = useCallback((chunkId: string) => {

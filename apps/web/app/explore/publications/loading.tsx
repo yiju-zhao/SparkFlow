@@ -1,6 +1,6 @@
 // apps/web/app/explore/publications/loading.tsx
 
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PublicationsLoading() {
   return (
@@ -26,5 +26,5 @@ export default function PublicationsLoading() {
         <Skeleton className="h-10 w-64" />
       </div>
     </div>
-  )
+  );
 }

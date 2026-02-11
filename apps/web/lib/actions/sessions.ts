@@ -173,7 +173,7 @@ export async function saveMessage(
   notebookId: string,
   sender: "USER" | "ASSISTANT",
   content: string,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ) {
   const session = await auth();
   if (!session?.user?.id) {

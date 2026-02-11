@@ -1,6 +1,6 @@
 // apps/web/app/explore/conferences/[id]/loading.tsx
 
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ConferenceDetailLoading() {
   return (
@@ -26,5 +26,5 @@ export default function ConferenceDetailLoading() {
         ))}
       </div>
     </div>
-  )
+  );
 }

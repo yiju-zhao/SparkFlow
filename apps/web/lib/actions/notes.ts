@@ -28,7 +28,7 @@ export async function getNotes(notebookId: string) {
 
 export async function createNote(
   notebookId: string,
-  data: { title: string; content: string; tags?: string[] }
+  data: { title: string; content: string; tags?: string[] },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -61,7 +61,7 @@ export async function createNote(
 
 export async function updateNote(
   noteId: string,
-  data: { title?: string; content?: string; tags?: string[] }
+  data: { title?: string; content?: string; tags?: string[] },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -119,7 +119,11 @@ export async function togglePinNote(noteId: string) {
   // Verify ownership
   const note = await prisma.note.findUnique({
     where: { id: noteId },
-    select: { isPinned: true, notebookId: true, notebook: { select: { userId: true } } },
+    select: {
+      isPinned: true,
+      notebookId: true,
+      notebook: { select: { userId: true } },
+    },
   });
 
   if (!note || note.notebook.userId !== session.user.id) {

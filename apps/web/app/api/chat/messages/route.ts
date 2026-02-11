@@ -73,8 +73,8 @@ export async function POST(req: NextRequest) {
               : undefined,
             messageOrder: nextOrder++,
           },
-        })
-      )
+        }),
+      ),
     );
 
     // Update last activity timestamp

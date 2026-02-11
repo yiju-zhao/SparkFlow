@@ -1,33 +1,35 @@
 // apps/web/components/explore/conferences/conference-hero.tsx
 
-import { Calendar, MapPin, Globe, ArrowUpRight } from 'lucide-react'
-import type { ConferenceDetail } from '@/lib/explore/types'
+import { Calendar, MapPin, Globe, ArrowUpRight } from "lucide-react";
+import type { ConferenceDetail } from "@/lib/explore/types";
 
 interface ConferenceHeroProps {
-  conference: ConferenceDetail
+  conference: ConferenceDetail;
 }
 
 export function ConferenceHero({ conference }: ConferenceHeroProps) {
   const formatDate = (date: Date | null) => {
-    if (!date) return null
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(new Date(date))
-  }
+    if (!date) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(date));
+  };
 
-  const dateRange = conference.startDate && conference.endDate
-    ? `${formatDate(conference.startDate)} – ${formatDate(conference.endDate)}`
-    : conference.startDate
-      ? formatDate(conference.startDate)
-      : null
+  const dateRange =
+    conference.startDate && conference.endDate
+      ? `${formatDate(conference.startDate)} – ${formatDate(conference.endDate)}`
+      : conference.startDate
+        ? formatDate(conference.startDate)
+        : null;
 
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
-        ~/research-hub/conferences/{conference.venue.name.toLowerCase()}/{conference.year}
+        ~/research-hub/conferences/{conference.venue.name.toLowerCase()}/
+        {conference.year}
       </p>
 
       <div>
@@ -69,5 +71,5 @@ export function ConferenceHero({ conference }: ConferenceHeroProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

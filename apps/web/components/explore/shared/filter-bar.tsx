@@ -1,70 +1,72 @@
 // apps/web/components/explore/shared/filter-bar.tsx
 
-'use client'
+"use client";
 
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { useTransition } from 'react'
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useTransition } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 export interface FilterOption {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
 export interface FilterConfig {
-  key: string
-  label: string
-  options: FilterOption[]
-  placeholder?: string
+  key: string;
+  label: string;
+  options: FilterOption[];
+  placeholder?: string;
 }
 
 interface FilterBarProps {
-  filters: FilterConfig[]
-  className?: string
+  filters: FilterConfig[];
+  className?: string;
 }
 
 export function FilterBar({ filters, className }: FilterBarProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [isPending, startTransition] = useTransition()
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const updateFilter = (key: string, value: string | null) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (value && value !== 'all') {
-      params.set(key, value)
+    const params = new URLSearchParams(searchParams.toString());
+    if (value && value !== "all") {
+      params.set(key, value);
     } else {
-      params.delete(key)
+      params.delete(key);
     }
-    params.set('page', '0')
+    params.set("page", "0");
 
     startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`)
-    })
-  }
+      router.push(`${pathname}?${params.toString()}`);
+    });
+  };
 
   const clearAllFilters = () => {
     startTransition(() => {
-      router.push(pathname)
-    })
-  }
+      router.push(pathname);
+    });
+  };
 
-  const hasActiveFilters = filters.some(f => searchParams.has(f.key))
+  const hasActiveFilters = filters.some((f) => searchParams.has(f.key));
 
   return (
-    <div className={`flex flex-wrap items-center gap-3 ${className} ${isPending ? 'opacity-70' : ''}`}>
+    <div
+      className={`flex flex-wrap items-center gap-3 ${className} ${isPending ? "opacity-70" : ""}`}
+    >
       {filters.map((filter) => (
         <Select
           key={filter.key}
-          value={searchParams.get(filter.key) || 'all'}
+          value={searchParams.get(filter.key) || "all"}
           onValueChange={(value) => updateFilter(filter.key, value)}
         >
           <SelectTrigger className="w-[180px]">
@@ -93,5 +95,5 @@ export function FilterBar({ filters, className }: FilterBarProps) {
         </Button>
       )}
     </div>
-  )
+  );
 }

@@ -1,8 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, memo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  memo,
+} from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
-import { FileText, Globe, Plus, Loader2, XCircle, MoreVertical, Trash2, Upload, Link, ArrowLeft } from "lucide-react";
+import {
+  FileText,
+  Globe,
+  Plus,
+  Loader2,
+  XCircle,
+  MoreVertical,
+  Trash2,
+  Upload,
+  Link,
+  ArrowLeft,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -82,8 +101,7 @@ export function SourcesPanel({
       const list = query.state.data || sources;
       const shouldPoll = list.some(
         (sourceItem) =>
-          (sourceItem.status === "PROCESSING") &&
-          sourceItem.ragflowDocumentId
+          sourceItem.status === "PROCESSING" && sourceItem.ragflowDocumentId,
       );
       return shouldPoll ? 5000 : 15000;
     },
@@ -168,7 +186,7 @@ const SourceItem = memo(function SourceItem({
   const relativeTime = useRelativeTime(new Date(source.createdAt));
   const ragflowMeta = useMemo(
     () => (source.metadata as Record<string, unknown> | null) || {},
-    [source.metadata]
+    [source.metadata],
   );
   const queryClient = useQueryClient();
 
@@ -181,7 +199,9 @@ const SourceItem = memo(function SourceItem({
       : null;
 
   const isRunning =
-    ragflowRun === "RUNNING" || ragflowRun === "1" || source.status === "PROCESSING";
+    ragflowRun === "RUNNING" ||
+    ragflowRun === "1" ||
+    source.status === "PROCESSING";
   const isFailed =
     ragflowRun === "FAIL" ||
     ragflowRun === "4" ||
@@ -193,7 +213,7 @@ const SourceItem = memo(function SourceItem({
     startTransition(async () => {
       queryClient.setQueryData<Source[] | undefined>(
         ["notebook-sources", source.notebookId],
-        (current) => (current || []).filter((item) => item.id !== source.id)
+        (current) => (current || []).filter((item) => item.id !== source.id),
       );
       await deleteSource(source.id);
       await queryClient.invalidateQueries({
@@ -212,9 +232,10 @@ const SourceItem = memo(function SourceItem({
     (isFailed && <XCircle className="h-3.5 w-3.5 text-destructive" />) ||
     (() => {
       switch (source.status) {
-
         case "PROCESSING":
-          return <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />;
+          return (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />
+          );
         case "FAILED":
           return <XCircle className="h-3.5 w-3.5 text-destructive" />;
         default:
@@ -224,8 +245,9 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:bg-accent ${isPending ? "opacity-50" : ""
-        }`}
+      className={`group flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:bg-accent ${
+        isPending ? "opacity-50" : ""
+      }`}
       onClick={onSelect}
     >
       <div className="mt-0.5">
@@ -263,9 +285,7 @@ const SourceItem = memo(function SourceItem({
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}
       </div>
-      <div
-        className="opacity-0 transition-opacity group-hover:opacity-100"
-      >
+      <div className="opacity-0 transition-opacity group-hover:opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild suppressHydrationWarning>
             <Button
@@ -314,7 +334,10 @@ function SourceContentView({
 }) {
   const [showToc, setShowToc] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pendingNavigationRef = useRef<{ preview: string; suffix: string | null } | null>(null);
+  const pendingNavigationRef = useRef<{
+    preview: string;
+    suffix: string | null;
+  } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
 
@@ -349,13 +372,16 @@ function SourceContentView({
 
   const displayedContent = useMemo(() => {
     // Always show full content if ready or if it's short
-    if (isHeavyContentReady || source.content && source.content.length < 5000) {
+    if (
+      isHeavyContentReady ||
+      (source.content && source.content.length < 5000)
+    ) {
       return source.content || "No content available";
     }
 
     // Otherwise show distinct first chunk for fast render
     const content = source.content || "No content available";
-    const sliceIndex = content.indexOf('\n', 3000);
+    const sliceIndex = content.indexOf("\n", 3000);
     return sliceIndex !== -1 ? content.slice(0, sliceIndex) : content;
   }, [isHeavyContentReady, source.content]);
 
@@ -370,7 +396,7 @@ function SourceContentView({
 
   const computeHeadings = useCallback((content: string) => {
     const extracted: { id: string; text: string; level: number }[] = [];
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     for (const line of lines) {
       const match = line.match(/^(#{1,3})\s+(.+)$/);
       if (match) {
@@ -378,8 +404,8 @@ function SourceContentView({
         const text = match[2].trim();
         const id = text
           .toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-');
+          .replace(/[^\w\s-]/g, "")
+          .replace(/\s+/g, "-");
         extracted.push({ id, text, level });
       }
     }
@@ -391,7 +417,10 @@ function SourceContentView({
     const meta = source.metadata as SourceMetadata | null;
     if (meta?.toc && Array.isArray(meta.toc)) {
       return meta.toc.map((h) => ({
-        id: h.text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
+        id: h.text
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, "")
+          .replace(/\s+/g, "-"),
         text: h.text,
         level: h.level,
       }));
@@ -402,132 +431,156 @@ function SourceContentView({
   // Derive headings: use stored TOC if available, otherwise compute from content
   const headings = useMemo(
     () => storedToc ?? computeHeadings(markdownContent),
-    [storedToc, computeHeadings, markdownContent]
+    [storedToc, computeHeadings, markdownContent],
   );
 
   // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
-  const scrollToChunkByContent = useCallback((contentPreview: string, contentSuffix: string | null) => {
-    const container = scrollRef.current;
-    if (!container) return;
+  const scrollToChunkByContent = useCallback(
+    (contentPreview: string, contentSuffix: string | null) => {
+      const container = scrollRef.current;
+      if (!container) return;
 
-    // Clean up existing highlights
-    container.querySelectorAll(".chunk-highlight").forEach((el) => {
-      const parent = el.parentNode;
-      while (el.firstChild) {
-        parent?.insertBefore(el.firstChild, el);
-      }
-      el.remove();
-    });
-    container.normalize();
-
-    // Find start and end positions in source content
-    const normalizedContent = markdownContent.replace(/\s+/g, " ");
-    const startMarker = contentPreview.replace(/\s+/g, " ").trim().slice(0, 50);
-    const endMarker = contentSuffix?.replace(/\s+/g, " ").trim().slice(-50) || null;
-
-    const startPos = normalizedContent.indexOf(startMarker);
-    if (startPos === -1) {
-      console.warn("Chunk start not found in source");
-      container.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    let endPos: number;
-    if (endMarker) {
-      // Find end marker after start position
-      const searchAfter = normalizedContent.slice(startPos);
-      const endOffset = searchAfter.lastIndexOf(endMarker);
-      endPos = endOffset !== -1 ? startPos + endOffset + endMarker.length : startPos + 2048;
-    } else {
-      // Fallback to fixed chunk size
-      endPos = startPos + 2048;
-    }
-    endPos = Math.min(endPos, normalizedContent.length);
-
-    // Find text nodes and track cumulative position
-    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-    const textNodes: Text[] = [];
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      textNodes.push(node);
-    }
-
-    let cumPos = 0;
-    const highlightSpans: HTMLSpanElement[] = [];
-    let firstSpan: HTMLSpanElement | null = null;
-
-    for (const textNode of textNodes) {
-      const text = textNode.textContent || "";
-      const normalizedText = text.replace(/\s+/g, " ");
-      const nodeStart = cumPos;
-      const nodeEnd = cumPos + normalizedText.length;
-
-      // Check if this node overlaps with highlight range
-      if (nodeEnd > startPos && nodeStart < endPos) {
-        const parent = textNode.parentElement;
-        if (!parent) { cumPos = nodeEnd; continue; }
-
-        const highlightStart = Math.max(0, startPos - nodeStart);
-        const highlightEnd = Math.min(text.length, endPos - nodeStart);
-
-        const span = document.createElement("span");
-        span.className = "chunk-highlight";
-
-        const before = text.slice(0, highlightStart);
-        const highlight = text.slice(highlightStart, highlightEnd);
-        const after = text.slice(highlightEnd);
-
-        if (before) parent.insertBefore(document.createTextNode(before), textNode);
-        span.textContent = highlight;
-        parent.insertBefore(span, textNode);
-        if (after) {
-          textNode.textContent = after;
-        } else {
-          textNode.remove();
+      // Clean up existing highlights
+      container.querySelectorAll(".chunk-highlight").forEach((el) => {
+        const parent = el.parentNode;
+        while (el.firstChild) {
+          parent?.insertBefore(el.firstChild, el);
         }
-
-        highlightSpans.push(span);
-        if (!firstSpan) firstSpan = span;
-      }
-
-      cumPos = nodeEnd;
-      if (nodeStart > endPos) break;
-    }
-
-    // Scroll to first highlighted span
-    if (firstSpan) {
-      const containerRect = container.getBoundingClientRect();
-      const spanRect = firstSpan.getBoundingClientRect();
-      container.scrollTo({
-        top: Math.max(0, spanRect.top - containerRect.top + container.scrollTop - 100),
-        behavior: "smooth",
-      });
-    }
-
-    // Remove highlights after 60 seconds
-    setTimeout(() => {
-      highlightSpans.forEach((span) => {
-        const parent = span.parentNode;
-        while (span.firstChild) parent?.insertBefore(span.firstChild, span);
-        span.remove();
+        el.remove();
       });
       container.normalize();
-    }, 60000);
-  }, [markdownContent]);
 
-  const scheduleScrollToChunk = useCallback((delayMs: number) => {
-    if (!pendingNavigationRef.current) return;
-    if (scrollTimeoutRef.current !== null) {
-      window.clearTimeout(scrollTimeoutRef.current);
-    }
-    scrollTimeoutRef.current = window.setTimeout(() => {
-      const pending = pendingNavigationRef.current;
-      if (!pending) return;
-      scrollToChunkByContent(pending.preview, pending.suffix);
-      pendingNavigationRef.current = null;
-      onChunkNavigated?.();
-    }, delayMs);
-  }, [onChunkNavigated, scrollToChunkByContent]);
+      // Find start and end positions in source content
+      const normalizedContent = markdownContent.replace(/\s+/g, " ");
+      const startMarker = contentPreview
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 50);
+      const endMarker =
+        contentSuffix?.replace(/\s+/g, " ").trim().slice(-50) || null;
+
+      const startPos = normalizedContent.indexOf(startMarker);
+      if (startPos === -1) {
+        console.warn("Chunk start not found in source");
+        container.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      let endPos: number;
+      if (endMarker) {
+        // Find end marker after start position
+        const searchAfter = normalizedContent.slice(startPos);
+        const endOffset = searchAfter.lastIndexOf(endMarker);
+        endPos =
+          endOffset !== -1
+            ? startPos + endOffset + endMarker.length
+            : startPos + 2048;
+      } else {
+        // Fallback to fixed chunk size
+        endPos = startPos + 2048;
+      }
+      endPos = Math.min(endPos, normalizedContent.length);
+
+      // Find text nodes and track cumulative position
+      const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        null,
+      );
+      const textNodes: Text[] = [];
+      let node: Text | null;
+      while ((node = walker.nextNode() as Text | null)) {
+        textNodes.push(node);
+      }
+
+      let cumPos = 0;
+      const highlightSpans: HTMLSpanElement[] = [];
+      let firstSpan: HTMLSpanElement | null = null;
+
+      for (const textNode of textNodes) {
+        const text = textNode.textContent || "";
+        const normalizedText = text.replace(/\s+/g, " ");
+        const nodeStart = cumPos;
+        const nodeEnd = cumPos + normalizedText.length;
+
+        // Check if this node overlaps with highlight range
+        if (nodeEnd > startPos && nodeStart < endPos) {
+          const parent = textNode.parentElement;
+          if (!parent) {
+            cumPos = nodeEnd;
+            continue;
+          }
+
+          const highlightStart = Math.max(0, startPos - nodeStart);
+          const highlightEnd = Math.min(text.length, endPos - nodeStart);
+
+          const span = document.createElement("span");
+          span.className = "chunk-highlight";
+
+          const before = text.slice(0, highlightStart);
+          const highlight = text.slice(highlightStart, highlightEnd);
+          const after = text.slice(highlightEnd);
+
+          if (before)
+            parent.insertBefore(document.createTextNode(before), textNode);
+          span.textContent = highlight;
+          parent.insertBefore(span, textNode);
+          if (after) {
+            textNode.textContent = after;
+          } else {
+            textNode.remove();
+          }
+
+          highlightSpans.push(span);
+          if (!firstSpan) firstSpan = span;
+        }
+
+        cumPos = nodeEnd;
+        if (nodeStart > endPos) break;
+      }
+
+      // Scroll to first highlighted span
+      if (firstSpan) {
+        const containerRect = container.getBoundingClientRect();
+        const spanRect = firstSpan.getBoundingClientRect();
+        container.scrollTo({
+          top: Math.max(
+            0,
+            spanRect.top - containerRect.top + container.scrollTop - 100,
+          ),
+          behavior: "smooth",
+        });
+      }
+
+      // Remove highlights after 60 seconds
+      setTimeout(() => {
+        highlightSpans.forEach((span) => {
+          const parent = span.parentNode;
+          while (span.firstChild) parent?.insertBefore(span.firstChild, span);
+          span.remove();
+        });
+        container.normalize();
+      }, 60000);
+    },
+    [markdownContent],
+  );
+
+  const scheduleScrollToChunk = useCallback(
+    (delayMs: number) => {
+      if (!pendingNavigationRef.current) return;
+      if (scrollTimeoutRef.current !== null) {
+        window.clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        const pending = pendingNavigationRef.current;
+        if (!pending) return;
+        scrollToChunkByContent(pending.preview, pending.suffix);
+        pendingNavigationRef.current = null;
+        onChunkNavigated?.();
+      }, delayMs);
+    },
+    [onChunkNavigated, scrollToChunkByContent],
+  );
 
   // Handle chunk navigation using content preview and suffix from API
   useEffect(() => {
@@ -539,7 +592,14 @@ function SourceContentView({
     if (isAnimationComplete) {
       scheduleScrollToChunk(250);
     }
-  }, [targetChunkId, targetContentPreview, targetContentSuffix, navigationTrigger, scheduleScrollToChunk, isAnimationComplete]);
+  }, [
+    targetChunkId,
+    targetContentPreview,
+    targetContentSuffix,
+    navigationTrigger,
+    scheduleScrollToChunk,
+    isAnimationComplete,
+  ]);
 
   useEffect(() => {
     if (!isAnimationComplete || !pendingNavigationRef.current) return;
@@ -580,7 +640,7 @@ function SourceContentView({
     if (!container) return;
 
     // Find all headings in the container and match by text content
-    const headings = container.querySelectorAll('h1, h2, h3');
+    const headings = container.querySelectorAll("h1, h2, h3");
     let targetElement: Element | null = null;
 
     for (const heading of headings) {
@@ -593,11 +653,12 @@ function SourceContentView({
     if (targetElement) {
       const containerRect = container.getBoundingClientRect();
       const elementRect = targetElement.getBoundingClientRect();
-      const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+      const relativeTop =
+        elementRect.top - containerRect.top + container.scrollTop;
 
       container.scrollTo({
         top: relativeTop - 16,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
       setShowToc(false);
     }
@@ -648,16 +709,21 @@ function SourceContentView({
             {showToc && (
               <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-background shadow-lg">
                 <div className="p-3">
-                  <h3 className="mb-2 text-xs font-semibold">Table of Contents</h3>
+                  <h3 className="mb-2 text-xs font-semibold">
+                    Table of Contents
+                  </h3>
                   <nav className="max-h-96 space-y-1 overflow-y-auto">
                     {headings.map((heading, index) => (
                       <button
                         key={index}
                         onClick={() => scrollToHeading(heading.text)}
-                        className={`block w-full text-left text-xs hover:text-accent-blue transition-colors ${heading.level === 1 ? 'font-medium' : ''
-                          } ${heading.level === 2 ? 'pl-2' : ''
-                          } ${heading.level === 3 ? 'pl-4 text-muted-foreground' : ''
-                          }`}
+                        className={`block w-full text-left text-xs hover:text-accent-blue transition-colors ${
+                          heading.level === 1 ? "font-medium" : ""
+                        } ${heading.level === 2 ? "pl-2" : ""} ${
+                          heading.level === 3
+                            ? "pl-4 text-muted-foreground"
+                            : ""
+                        }`}
                       >
                         {heading.text}
                       </button>
@@ -741,7 +807,7 @@ function AddSourceDialog({
     startTransition(async () => {
       queryClient.setQueryData<Source[] | undefined>(
         ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])]
+        (current) => [optimistic, ...(current || [])],
       );
       onOpenChange(false);
 
@@ -751,11 +817,19 @@ function AddSourceDialog({
           ["notebook-sources", notebookId],
           (current) =>
             (current || []).map((item) =>
-              item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
-            )
+              item.id === tempId
+                ? {
+                    ...created,
+                    createdAt: new Date(created.createdAt),
+                    updatedAt: new Date(created.updatedAt),
+                  }
+                : item,
+            ),
         );
       } finally {
-        await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["notebook-sources", notebookId],
+        });
         setUrl("");
       }
     });
@@ -791,7 +865,7 @@ function AddSourceDialog({
 
       queryClient.setQueryData<Source[] | undefined>(
         ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])]
+        (current) => [optimistic, ...(current || [])],
       );
       onOpenChange(false);
 
@@ -803,11 +877,19 @@ function AddSourceDialog({
           ["notebook-sources", notebookId],
           (current) =>
             (current || []).map((item) =>
-              item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
-            )
+              item.id === tempId
+                ? {
+                    ...created,
+                    createdAt: new Date(created.createdAt),
+                    updatedAt: new Date(created.updatedAt),
+                  }
+                : item,
+            ),
         );
       } finally {
-        await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["notebook-sources", notebookId],
+        });
         setSelectedFile(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
@@ -851,7 +933,7 @@ function AddSourceDialog({
     startTransition(async () => {
       queryClient.setQueryData<Source[] | undefined>(
         ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])]
+        (current) => [optimistic, ...(current || [])],
       );
       onOpenChange(false);
 
@@ -870,13 +952,17 @@ function AddSourceDialog({
           response.headers.get("content-type") ||
           blob.type ||
           "application/octet-stream";
-        const headerFilename = response.headers.get("x-filename") || displayName;
+        const headerFilename =
+          response.headers.get("x-filename") || displayName;
         let filename = headerFilename;
 
         if (!/\.[a-z0-9]+$/i.test(filename)) {
           if (contentType.includes("pdf")) {
             filename = `${filename}.pdf`;
-          } else if (contentType.includes("word") || contentType.includes("docx")) {
+          } else if (
+            contentType.includes("word") ||
+            contentType.includes("docx")
+          ) {
             filename = `${filename}.docx`;
           } else if (contentType.includes("text/markdown")) {
             filename = `${filename}.md`;
@@ -897,8 +983,14 @@ function AddSourceDialog({
           ["notebook-sources", notebookId],
           (current) =>
             (current || []).map((item) =>
-              item.id === tempId ? { ...created, createdAt: new Date(created.createdAt), updatedAt: new Date(created.updatedAt) } : item
-            )
+              item.id === tempId
+                ? {
+                    ...created,
+                    createdAt: new Date(created.createdAt),
+                    updatedAt: new Date(created.updatedAt),
+                  }
+                : item,
+            ),
         );
       } catch (error) {
         console.error("[SourcesPanel] URL upload failed:", error);
@@ -908,12 +1000,21 @@ function AddSourceDialog({
           (current) =>
             (current || []).map((item) =>
               item.id === tempId
-                ? { ...item, status: "FAILED", errorMessage: error instanceof Error ? error.message : "Download failed" }
-                : item
-            )
+                ? {
+                    ...item,
+                    status: "FAILED",
+                    errorMessage:
+                      error instanceof Error
+                        ? error.message
+                        : "Download failed",
+                  }
+                : item,
+            ),
         );
       } finally {
-        await queryClient.invalidateQueries({ queryKey: ["notebook-sources", notebookId] });
+        await queryClient.invalidateQueries({
+          queryKey: ["notebook-sources", notebookId],
+        });
         setDocumentUrl("");
       }
     });
@@ -941,10 +1042,7 @@ function AddSourceDialog({
           <TabsContent value="webpage" className="mt-4">
             <form onSubmit={handleWebpageSubmit} className="space-y-4">
               <div>
-                <label
-                  htmlFor="url"
-                  className="mb-2 block text-sm font-medium"
-                >
+                <label htmlFor="url" className="mb-2 block text-sm font-medium">
                   URL
                 </label>
                 <Input
@@ -991,7 +1089,11 @@ function AddSourceDialog({
                   type="button"
                   variant={uploadMode === "file" ? "default" : "outline"}
                   size="sm"
-                  className={uploadMode === "file" ? "bg-accent-red hover:bg-accent-red-hover" : ""}
+                  className={
+                    uploadMode === "file"
+                      ? "bg-accent-red hover:bg-accent-red-hover"
+                      : ""
+                  }
                   onClick={() => setUploadMode("file")}
                 >
                   <Upload className="mr-2 h-3.5 w-3.5" />
@@ -1001,7 +1103,11 @@ function AddSourceDialog({
                   type="button"
                   variant={uploadMode === "url" ? "default" : "outline"}
                   size="sm"
-                  className={uploadMode === "url" ? "bg-accent-red hover:bg-accent-red-hover" : ""}
+                  className={
+                    uploadMode === "url"
+                      ? "bg-accent-red hover:bg-accent-red-hover"
+                      : ""
+                  }
                   onClick={() => setUploadMode("url")}
                 >
                   <Link className="mr-2 h-3.5 w-3.5" />
@@ -1012,7 +1118,9 @@ function AddSourceDialog({
               {uploadMode === "file" ? (
                 <>
                   <div>
-                    <label className="mb-2 block text-sm font-medium">File</label>
+                    <label className="mb-2 block text-sm font-medium">
+                      File
+                    </label>
                     <div
                       className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-accent-red/50"
                       onClick={() => fileInputRef.current?.click()}

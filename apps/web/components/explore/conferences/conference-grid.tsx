@@ -1,11 +1,11 @@
 // apps/web/components/explore/conferences/conference-grid.tsx
 
-import { ConferenceCard } from './conference-card'
-import { EmptyState } from '@/components/explore/shared'
-import type { ConferenceCard as ConferenceCardType } from '@/lib/explore/types'
+import { ConferenceCard } from "./conference-card";
+import { EmptyState } from "@/components/explore/shared";
+import type { ConferenceCard as ConferenceCardType } from "@/lib/explore/types";
 
 interface ConferenceGridProps {
-  conferences: ConferenceCardType[]
+  conferences: ConferenceCardType[];
 }
 
 export function ConferenceGrid({ conferences }: ConferenceGridProps) {
@@ -15,7 +15,7 @@ export function ConferenceGrid({ conferences }: ConferenceGridProps) {
         title="No conferences found"
         description="Try adjusting your filters or check back later"
       />
-    )
+    );
   }
 
   return (
@@ -24,5 +24,5 @@ export function ConferenceGrid({ conferences }: ConferenceGridProps) {
         <ConferenceCard key={conference.id} conference={conference} />
       ))}
     </div>
-  )
+  );
 }

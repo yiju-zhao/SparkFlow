@@ -1,32 +1,35 @@
 // apps/web/app/explore/sessions/[id]/page.tsx
 
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { getSession } from '@/lib/explore/queries'
-import { Calendar, Clock, MapPin, User, ExternalLink } from 'lucide-react'
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { getSession } from "@/lib/explore/queries";
+import { Calendar, Clock, MapPin, User, ExternalLink } from "lucide-react";
 
 interface PageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 export default async function SessionDetailPage({ params }: PageProps) {
-  const { id } = await params
-  const session = await getSession(id)
+  const { id } = await params;
+  const session = await getSession(id);
 
   if (!session) {
-    notFound()
+    notFound();
   }
 
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
-        ~/research-hub/sessions/{session.instance.venue.name.toLowerCase()}/{session.instance.year}
+        ~/research-hub/sessions/{session.instance.venue.name.toLowerCase()}/
+        {session.instance.year}
       </p>
 
       {/* Title */}
       <div>
-        <h1 className="text-4xl font-bold tracking-tight mb-4">{session.title}</h1>
+        <h1 className="text-4xl font-bold tracking-tight mb-4">
+          {session.title}
+        </h1>
       </div>
 
       {/* Metadata pills */}
@@ -88,7 +91,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
       {session.abstract && (
         <div className="bg-card rounded-lg p-6">
           <h2 className="text-sm font-semibold mb-3">Abstract</h2>
-          <p className="text-muted-foreground whitespace-pre-wrap">{session.abstract}</p>
+          <p className="text-muted-foreground whitespace-pre-wrap">
+            {session.abstract}
+          </p>
         </div>
       )}
 
@@ -96,7 +101,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
       {session.overview && (
         <div className="bg-card rounded-lg p-6">
           <h2 className="text-sm font-semibold mb-3">Overview</h2>
-          <p className="text-muted-foreground whitespace-pre-wrap">{session.overview}</p>
+          <p className="text-muted-foreground whitespace-pre-wrap">
+            {session.overview}
+          </p>
         </div>
       )}
 
@@ -105,7 +112,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
         <div className="bg-card rounded-lg p-6">
           <h2 className="text-sm font-semibold mb-3">Transcript</h2>
           <div className="max-h-96 overflow-y-auto">
-            <p className="text-muted-foreground whitespace-pre-wrap text-sm">{session.transcript}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap text-sm">
+              {session.transcript}
+            </p>
           </div>
         </div>
       )}
@@ -113,7 +122,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
       {/* Related Publications */}
       {session.publications.length > 0 && (
         <div className="bg-card rounded-lg">
-          <h2 className="text-sm font-semibold p-6 pb-0">Related Publications</h2>
+          <h2 className="text-sm font-semibold p-6 pb-0">
+            Related Publications
+          </h2>
           <div className="divide-y divide-border mt-3">
             {session.publications.map((pub) => (
               <Link
@@ -123,7 +134,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
               >
                 <h3 className="font-medium">{pub.title}</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {pub.authors.slice(0, 3).join(', ')}
+                  {pub.authors.slice(0, 3).join(", ")}
                   {pub.authors.length > 3 && ` +${pub.authors.length - 3} more`}
                 </p>
               </Link>
@@ -132,6 +143,5 @@ export default async function SessionDetailPage({ params }: PageProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
-

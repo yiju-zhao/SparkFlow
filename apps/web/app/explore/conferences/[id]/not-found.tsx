@@ -1,8 +1,8 @@
 // apps/web/app/explore/conferences/[id]/not-found.tsx
 
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Building2 } from 'lucide-react'
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Building2 } from "lucide-react";
 
 export default function ConferenceNotFound() {
   return (
@@ -16,5 +16,5 @@ export default function ConferenceNotFound() {
         <Link href="/explore/conferences">Browse all conferences</Link>
       </Button>
     </div>
-  )
+  );
 }

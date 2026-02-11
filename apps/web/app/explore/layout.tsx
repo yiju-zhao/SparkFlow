@@ -1,16 +1,16 @@
-import { auth } from '@/lib/auth'
-import Link from 'next/link'
-import { ExploreShell } from './explore-shell'
+import { auth } from "@/lib/auth";
+import Link from "next/link";
+import { ExploreShell } from "./explore-shell";
 
 // Nav links component for Explore
-import ExploreNavLinks from './nav-links'
+import ExploreNavLinks from "./nav-links";
 
 export default async function ExploreLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const session = await auth()
+  const session = await auth();
 
   return (
     <ExploreShell
@@ -28,5 +28,5 @@ export default async function ExploreLayout({
     >
       {children}
     </ExploreShell>
-  )
+  );
 }

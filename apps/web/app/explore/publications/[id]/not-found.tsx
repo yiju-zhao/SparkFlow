@@ -1,8 +1,8 @@
 // apps/web/app/explore/publications/[id]/not-found.tsx
 
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { FileText } from 'lucide-react'
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 
 export default function PublicationNotFound() {
   return (
@@ -16,5 +16,5 @@ export default function PublicationNotFound() {
         <Link href="/explore/publications">Browse all publications</Link>
       </Button>
     </div>
-  )
+  );
 }

@@ -8,7 +8,7 @@ import type { ProcessingContext, ProcessingResult } from "./types";
  */
 export async function processFallbackDocument(
   file: File,
-  context: ProcessingContext
+  context: ProcessingContext,
 ): Promise<ProcessingResult> {
   const { sourceId, ragflowDatasetId } = context;
   const fileType = file.name.split(".").pop()?.toLowerCase() || "unknown";
@@ -20,7 +20,7 @@ export async function processFallbackDocument(
           ragflowDatasetId,
           file,
           file.name,
-          { autoParse: true }
+          { autoParse: true },
         );
 
         await prisma.source.update({
@@ -91,7 +91,7 @@ export async function processFallbackDocument(
  */
 export async function processDocxDocument(
   file: File,
-  context: ProcessingContext
+  context: ProcessingContext,
 ): Promise<ProcessingResult> {
   console.warn("DOCX parsing not yet implemented, using RagFlow fallback");
   return processFallbackDocument(file, context);

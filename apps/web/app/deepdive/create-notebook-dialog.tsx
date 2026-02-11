@@ -46,10 +46,7 @@ export function CreateNotebookDialog() {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="name"
-              className="mb-2 block text-sm font-medium"
-            >
+            <label htmlFor="name" className="mb-2 block text-sm font-medium">
               Name
             </label>
             <Input

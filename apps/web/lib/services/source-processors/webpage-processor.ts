@@ -11,7 +11,7 @@ import type { ProcessingContext, ProcessingResult } from "./types";
 export async function processWebpage(
   url: string,
   title: string | undefined,
-  context: ProcessingContext
+  context: ProcessingContext,
 ): Promise<ProcessingResult> {
   const { sourceId, ragflowDatasetId } = context;
 
@@ -32,7 +32,7 @@ export async function processWebpage(
           ragflowDatasetId,
           file,
           file.name,
-          { autoParse: true }
+          { autoParse: true },
         );
 
         await prisma.source.update({

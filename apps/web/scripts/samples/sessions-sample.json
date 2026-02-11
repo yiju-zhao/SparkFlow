@@ -24,9 +24,7 @@
       "location": "Room 302B",
       "abstract": "Papers exploring accessibility challenges and solutions for diverse user populations.",
       "sessionUrl": "https://programs.sigchi.org/chi/2024/program/session/accessibility",
-      "publicationTitles": [
-        "AI-Powered Accessibility Tools for Web Navigation"
-      ]
+      "publicationTitles": ["AI-Powered Accessibility Tools for Web Navigation"]
     },
     {
       "title": "Future of Remote Collaboration",

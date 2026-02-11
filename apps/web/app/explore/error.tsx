@@ -1,16 +1,16 @@
 // apps/web/app/explore/error.tsx
 
-'use client'
+"use client";
 
-import { Button } from '@/components/ui/button'
-import { AlertCircle } from 'lucide-react'
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 export default function ExploreError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-12">
@@ -23,5 +23,5 @@ export default function ExploreError({
         Try again
       </Button>
     </div>
-  )
+  );
 }

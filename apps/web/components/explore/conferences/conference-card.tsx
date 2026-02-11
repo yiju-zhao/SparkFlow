@@ -1,13 +1,13 @@
 // apps/web/components/explore/conferences/conference-card.tsx
 
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { FileText, Calendar } from 'lucide-react'
-import type { ConferenceCard as ConferenceCardType } from '@/lib/explore/types'
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Calendar } from "lucide-react";
+import type { ConferenceCard as ConferenceCardType } from "@/lib/explore/types";
 
 interface ConferenceCardProps {
-  conference: ConferenceCardType
+  conference: ConferenceCardType;
 }
 
 export function ConferenceCard({ conference }: ConferenceCardProps) {
@@ -45,5 +45,5 @@ export function ConferenceCard({ conference }: ConferenceCardProps) {
         </CardContent>
       </Card>
     </Link>
-  )
+  );
 }

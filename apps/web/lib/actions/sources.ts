@@ -38,7 +38,7 @@ export async function getSources(notebookId: string) {
 export async function addWebpageSource(
   notebookId: string,
   url: string,
-  title?: string
+  title?: string,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -90,7 +90,7 @@ export async function addWebpageSource(
 
 export async function uploadDocumentSource(
   notebookId: string,
-  formData: FormData
+  formData: FormData,
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -180,7 +180,7 @@ export async function deleteSource(sourceId: string) {
     try {
       await ragflowClient.deleteDocument(
         source.notebook.ragflowDatasetId,
-        source.ragflowDocumentId
+        source.ragflowDocumentId,
       );
     } catch (error) {
       console.error("RagFlow delete error:", error);
@@ -231,7 +231,7 @@ export async function syncSourceStatus(sourceId: string) {
   try {
     const doc = await ragflowClient.getDocumentStatus(
       source.notebook.ragflowDatasetId,
-      source.ragflowDocumentId
+      source.ragflowDocumentId,
     );
 
     if (doc) {

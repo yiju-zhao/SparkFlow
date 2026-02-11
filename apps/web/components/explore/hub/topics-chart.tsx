@@ -1,76 +1,76 @@
 // apps/web/components/explore/hub/topics-chart.tsx
 
-'use client'
+"use client";
 
-import { useMemo } from 'react'
-import { useECharts } from '@/hooks/use-echarts'
-import { Hash } from 'lucide-react'
-import { useTheme } from 'next-themes'
-import type { EChartsOption } from 'echarts'
+import { useMemo } from "react";
+import { useECharts } from "@/hooks/use-echarts";
+import { Hash } from "lucide-react";
+import { useTheme } from "next-themes";
+import type { EChartsOption } from "echarts";
 
 interface TopicsChartProps {
-  data: { topic: string; count: number }[]
+  data: { topic: string; count: number }[];
 }
 
 export function TopicsChart({ data }: TopicsChartProps) {
-  const { theme } = useTheme()
-  const hasData = data && data.length > 0
+  const { theme } = useTheme();
+  const hasData = data && data.length > 0;
 
   const option = useMemo<EChartsOption>(() => {
-    if (!hasData) return {}
+    if (!hasData) return {};
 
     return {
       tooltip: {
-        trigger: 'axis',
+        trigger: "axis",
         axisPointer: {
-          type: 'shadow'
-        }
+          type: "shadow",
+        },
       },
       grid: {
         top: 10,
         right: 20,
         bottom: 20,
         left: 10,
-        containLabel: true
+        containLabel: true,
       },
       xAxis: {
-        type: 'value',
+        type: "value",
         splitLine: {
           lineStyle: {
-            color: theme === 'dark' ? '#27272a' : '#e4e4e7',
-            type: 'dashed'
-          }
+            color: theme === "dark" ? "#27272a" : "#e4e4e7",
+            type: "dashed",
+          },
         },
         axisLabel: {
-          color: theme === 'dark' ? '#a1a1aa' : '#71717a'
-        }
+          color: theme === "dark" ? "#a1a1aa" : "#71717a",
+        },
       },
       yAxis: {
-        type: 'category',
-        data: data.map(d => d.topic),
+        type: "category",
+        data: data.map((d) => d.topic),
         axisTick: { show: false },
         axisLine: { show: false },
         axisLabel: {
-          color: theme === 'dark' ? '#a1a1aa' : '#71717a',
+          color: theme === "dark" ? "#a1a1aa" : "#71717a",
           width: 120,
-          overflow: 'truncate'
-        }
+          overflow: "truncate",
+        },
       },
       series: [
         {
-          data: data.map(d => d.count),
-          type: 'bar',
+          data: data.map((d) => d.count),
+          type: "bar",
           itemStyle: {
             borderRadius: [0, 4, 4, 0],
-            color: theme === 'dark' ? '#fafafa' : '#09090b'
+            color: theme === "dark" ? "#fafafa" : "#09090b",
           },
-          barMaxWidth: 30
-        }
-      ]
-    }
-  }, [data, hasData, theme])
+          barMaxWidth: 30,
+        },
+      ],
+    };
+  }, [data, hasData, theme]);
 
-  const chartRef = useECharts({ option })
+  const chartRef = useECharts({ option });
 
   return (
     <div className="bg-card rounded-lg p-6">
@@ -87,5 +87,5 @@ export function TopicsChart({ data }: TopicsChartProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

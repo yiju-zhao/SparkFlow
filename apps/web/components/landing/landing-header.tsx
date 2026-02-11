@@ -52,7 +52,7 @@ export function LandingHeader({ user }: LandingHeaderProps) {
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         scrolled
           ? "bg-background/80 backdrop-blur-lg border-b border-border shadow-huawei-subtle"
-          : "bg-transparent"
+          : "bg-transparent",
       )}
     >
       <div className="mx-auto grid h-16 max-w-6xl grid-cols-3 items-center px-6">
@@ -93,11 +93,7 @@ export function LandingHeader({ user }: LandingHeaderProps) {
 
         {/* Mobile Menu Button */}
         <div className="flex items-center gap-2 md:hidden">
-          {isLoggedIn ? (
-            <UserNav user={user} />
-          ) : (
-            <ThemeToggle />
-          )}
+          {isLoggedIn ? <UserNav user={user} /> : <ThemeToggle />}
           <Button
             variant="ghost"
             size="icon"

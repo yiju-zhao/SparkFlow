@@ -104,9 +104,7 @@ export function FaqSection() {
                 question={faq.question}
                 answer={faq.answer}
                 isOpen={openIndex === i}
-                onToggle={() =>
-                  setOpenIndex(openIndex === i ? null : i)
-                }
+                onToggle={() => setOpenIndex(openIndex === i ? null : i)}
               />
             ))}
           </div>

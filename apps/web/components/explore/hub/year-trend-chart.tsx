@@ -1,74 +1,74 @@
 // apps/web/components/explore/hub/year-trend-chart.tsx
 
-'use client'
+"use client";
 
-import { useMemo } from 'react'
-import { useECharts } from '@/hooks/use-echarts'
-import { BarChart3 } from 'lucide-react'
-import { useTheme } from 'next-themes'
-import type { EChartsOption } from 'echarts'
+import { useMemo } from "react";
+import { useECharts } from "@/hooks/use-echarts";
+import { BarChart3 } from "lucide-react";
+import { useTheme } from "next-themes";
+import type { EChartsOption } from "echarts";
 
 interface YearTrendChartProps {
-  data: { year: number; publications: number }[]
+  data: { year: number; publications: number }[];
 }
 
 export function YearTrendChart({ data }: YearTrendChartProps) {
-  const { theme } = useTheme()
-  const hasData = data && data.length > 0
+  const { theme } = useTheme();
+  const hasData = data && data.length > 0;
 
   const option = useMemo<EChartsOption>(() => {
-    if (!hasData) return {}
+    if (!hasData) return {};
 
     return {
       tooltip: {
-        trigger: 'axis',
+        trigger: "axis",
         axisPointer: {
-          type: 'shadow'
-        }
+          type: "shadow",
+        },
       },
       grid: {
         top: 20,
         right: 20,
         bottom: 20,
         left: 40,
-        containLabel: true
+        containLabel: true,
       },
       xAxis: {
-        type: 'category',
-        data: data.map(d => d.year),
+        type: "category",
+        data: data.map((d) => d.year),
         axisTick: { show: false },
         axisLine: { show: false },
         axisLabel: {
-          color: theme === 'dark' ? '#a1a1aa' : '#71717a'
-        }
+          color: theme === "dark" ? "#a1a1aa" : "#71717a",
+        },
       },
       yAxis: {
-        type: 'value',
+        type: "value",
         splitLine: {
           lineStyle: {
-            color: theme === 'dark' ? '#27272a' : '#e4e4e7',
-            type: 'dashed'
-          }
+            color: theme === "dark" ? "#27272a" : "#e4e4e7",
+            type: "dashed",
+          },
         },
         axisLabel: {
-          color: theme === 'dark' ? '#a1a1aa' : '#71717a'
-        }
+          color: theme === "dark" ? "#a1a1aa" : "#71717a",
+        },
       },
       series: [
         {
-          data: data.map(d => d.publications),
-          type: 'bar',
+          data: data.map((d) => d.publications),
+          type: "bar",
           itemStyle: {
             borderRadius: [4, 4, 0, 0],
-            color: theme === 'dark' ? '#fafafa' : '#09090b'
+            color: theme === "dark" ? "#fafafa" : "#09090b",
           },
-          barMaxWidth: 40
-        }
-      ]
-    }
-  }, [data, hasData, theme])
+          barMaxWidth: 40,
+        },
+      ],
+    };
+  }, [data, hasData, theme]);
 
-  const chartRef = useECharts({ option })
+  const chartRef = useECharts({ option });
 
   return (
     <div className="bg-card rounded-lg p-6">
@@ -85,5 +85,5 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

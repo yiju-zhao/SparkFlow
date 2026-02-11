@@ -44,18 +44,26 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
           variants={fadeUp}
           className="mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl"
         >
-          Upload your sources, explore conferences, and let Agentic AI help you discover
-          insights — all in one intelligent notebook.
+          Upload your sources, explore conferences, and let Agentic AI help you
+          discover insights — all in one intelligent notebook.
         </motion.p>
 
         {/* CTA Buttons */}
-        <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-4">
+        <motion.div
+          variants={fadeUp}
+          className="flex flex-wrap items-center justify-center gap-4"
+        >
           <Button
             size="lg"
             className="bg-accent-red text-white hover:bg-accent-red-hover"
             asChild
           >
-            <Link href={deepdiveHref} className="font-mono font-black uppercase tracking-widest">DeepDive</Link>
+            <Link
+              href={deepdiveHref}
+              className="font-mono font-black uppercase tracking-widest"
+            >
+              DeepDive
+            </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
             <Link href="#how-it-works">Watch Demo</Link>
@@ -63,10 +71,7 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
         </motion.div>
 
         {/* Product Screenshot Placeholder */}
-        <motion.div
-          variants={fadeUp}
-          className="mt-16 w-full max-w-3xl"
-        >
+        <motion.div variants={fadeUp} className="mt-16 w-full max-w-3xl">
           <div className="aspect-video rounded-xl border border-border bg-secondary shadow-huawei-lg overflow-hidden">
             <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
               <div className="flex gap-2">

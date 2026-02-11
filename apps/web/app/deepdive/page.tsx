@@ -56,19 +56,21 @@ export default async function DashboardPage() {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto bg-secondary">
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold font-mono tracking-tight">research notebooks</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Personalized knowledge bases and AI insights
-            </p>
+        <main className="mx-auto max-w-6xl px-6 py-8">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold font-mono tracking-tight">
+                research notebooks
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Personalized knowledge bases and AI insights
+              </p>
+            </div>
+            <CreateNotebookDialog />
           </div>
-          <CreateNotebookDialog />
-        </div>
 
-        <NotebookList notebooks={notebooks} />
-      </main>
+          <NotebookList notebooks={notebooks} />
+        </main>
       </div>
     </div>
   );

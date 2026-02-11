@@ -7,7 +7,7 @@ import { formatDistanceToNow } from "date-fns";
  * Format date as relative time string.
  */
 function formatRelative(date: Date): string {
-  return formatDistanceToNow(date, { addSuffix: true }).replace(/^about /, '');
+  return formatDistanceToNow(date, { addSuffix: true }).replace(/^about /, "");
 }
 
 /**
@@ -16,7 +16,9 @@ function formatRelative(date: Date): string {
  * minor server/client time differences.
  */
 export function useRelativeTime(date: Date): string {
-  const [timeString, setTimeString] = useState<string>(() => formatRelative(date));
+  const [timeString, setTimeString] = useState<string>(() =>
+    formatRelative(date),
+  );
 
   useEffect(() => {
     // Update immediately in case of minor drift, then every minute

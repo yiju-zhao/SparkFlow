@@ -1,9 +1,9 @@
 // apps/web/components/explore/hub/charts-section.tsx
 
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import { Skeleton } from '@/components/ui/skeleton'
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function ChartSkeleton() {
   return (
@@ -11,23 +11,24 @@ function ChartSkeleton() {
       <Skeleton className="h-6 w-48 mb-4" />
       <Skeleton className="h-[300px] w-full" />
     </div>
-  )
+  );
 }
 
 // Lazy load chart components (follows bundle-dynamic-imports best practice)
 const YearTrendChart = dynamic(
-  () => import('./year-trend-chart').then(m => ({ default: m.YearTrendChart })),
-  { loading: () => <ChartSkeleton />, ssr: false }
-)
+  () =>
+    import("./year-trend-chart").then((m) => ({ default: m.YearTrendChart })),
+  { loading: () => <ChartSkeleton />, ssr: false },
+);
 
 const TopicsChart = dynamic(
-  () => import('./topics-chart').then(m => ({ default: m.TopicsChart })),
-  { loading: () => <ChartSkeleton />, ssr: false }
-)
+  () => import("./topics-chart").then((m) => ({ default: m.TopicsChart })),
+  { loading: () => <ChartSkeleton />, ssr: false },
+);
 
 interface ChartsSectionProps {
-  yearData: { year: number; publications: number }[]
-  topicsData: { topic: string; count: number }[]
+  yearData: { year: number; publications: number }[];
+  topicsData: { topic: string; count: number }[];
 }
 
 export function ChartsSection({ yearData, topicsData }: ChartsSectionProps) {
@@ -36,5 +37,5 @@ export function ChartsSection({ yearData, topicsData }: ChartsSectionProps) {
       <YearTrendChart data={yearData} />
       <TopicsChart data={topicsData} />
     </div>
-  )
+  );
 }

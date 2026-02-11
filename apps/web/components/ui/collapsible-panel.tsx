@@ -1,6 +1,13 @@
 "use client";
 
-import { type ReactNode, createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
 
 // Context to expose animation state to children
@@ -8,7 +15,8 @@ interface CollapsiblePanelContextValue {
   isAnimationComplete: boolean;
 }
 
-const CollapsiblePanelContext = createContext<CollapsiblePanelContextValue | null>(null);
+const CollapsiblePanelContext =
+  createContext<CollapsiblePanelContextValue | null>(null);
 
 export function useCollapsiblePanel() {
   return useContext(CollapsiblePanelContext);

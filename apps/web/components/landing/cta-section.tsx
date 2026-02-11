@@ -24,7 +24,12 @@ export function CtaSection({ isLoggedIn }: { isLoggedIn: boolean }) {
               className="bg-accent-red text-white hover:bg-accent-red-hover"
               asChild
             >
-              <Link href={deepdiveHref} className="font-mono font-black uppercase tracking-widest">DeepDive</Link>
+              <Link
+                href={deepdiveHref}
+                className="font-mono font-black uppercase tracking-widest"
+              >
+                DeepDive
+              </Link>
             </Button>
           </motion.div>
         </div>

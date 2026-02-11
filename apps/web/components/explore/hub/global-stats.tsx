@@ -1,12 +1,12 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { StatsCard } from '@/components/explore/shared'
-import { Building2, FileText, Calendar, TrendingUp } from 'lucide-react'
-import type { GlobalStats } from '@/lib/explore/types'
+import Link from "next/link";
+import { StatsCard } from "@/components/explore/shared";
+import { Building2, FileText, Calendar, TrendingUp } from "lucide-react";
+import type { GlobalStats } from "@/lib/explore/types";
 
 interface GlobalStatsProps {
-  stats: GlobalStats
+  stats: GlobalStats;
 }
 
 export function GlobalStats({ stats }: GlobalStatsProps) {
@@ -35,9 +35,11 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
       </Link>
       <StatsCard
         title="Years Covered"
-        value={stats.yearsRange ? stats.yearsRange.max - stats.yearsRange.min + 1 : 0}
+        value={
+          stats.yearsRange ? stats.yearsRange.max - stats.yearsRange.min + 1 : 0
+        }
         icon={<TrendingUp className="h-5 w-5" />}
       />
     </div>
-  )
+  );
 }
