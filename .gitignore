@@ -58,3 +58,4 @@ coverage/
 .gemini/
 .agents/
 designs/
+.ruff_cache/

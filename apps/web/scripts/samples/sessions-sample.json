@@ -11,6 +11,9 @@
       "location": "Room 301A",
       "abstract": "This session features cutting-edge research on virtual reality interfaces and immersive user experiences.",
       "sessionUrl": "https://programs.sigchi.org/chi/2024/program/session/vr-immersive",
+      "topic": ["Virtual Reality", "Immersive Experiences"],
+      "affiliation": ["Stanford University", "MIT Media Lab"],
+      "technology": ["Unity", "OpenXR"],
       "publicationTitles": [
         "Understanding User Behavior in Virtual Reality Environments"
       ]
@@ -24,6 +27,9 @@
       "location": "Room 302B",
       "abstract": "Papers exploring accessibility challenges and solutions for diverse user populations.",
       "sessionUrl": "https://programs.sigchi.org/chi/2024/program/session/accessibility",
+      "topic": ["Accessibility", "Inclusive Design"],
+      "affiliation": ["University of Washington", "Google Research"],
+      "technology": ["Screen Readers", "ARIA"],
       "publicationTitles": ["AI-Powered Accessibility Tools for Web Navigation"]
     },
     {
@@ -33,10 +39,14 @@
       "startTime": "14:00",
       "endTime": "15:30",
       "location": "Main Hall",
-      "speaker": "Dr. Jane Doe",
+      "speaker": ["Dr. Jane Doe"],
       "abstract": "A panel discussion on emerging trends in remote collaboration tools and practices.",
       "overview": "Industry experts discuss the evolution of collaboration tools post-pandemic.",
+      "transcript": "Dr. Jane Doe: Welcome everyone to this panel on the future of remote collaboration...",
       "sessionUrl": "https://programs.sigchi.org/chi/2024/program/session/remote-collab-panel",
+      "topic": ["Remote Collaboration", "CSCW"],
+      "affiliation": ["Microsoft Research", "Carnegie Mellon University"],
+      "technology": ["WebRTC", "Spatial Audio"],
       "publicationTitles": [
         "Collaborative Design in Distributed Teams",
         "Paper That Does Not Exist"

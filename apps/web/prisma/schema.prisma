@@ -306,16 +306,16 @@ model ConferenceSession {
   startTime   String?
   endTime     String?
   location    String?
-  speaker     String?
+  speaker     String[]               @default([])
 
   abstract    String?                @db.Text
   overview    String?                @db.Text
   transcript  String?                @db.Text
   sessionUrl  String?
 
-  topic       String?
-  affiliation String?
-  technology  String?
+  topic       String[]               @default([])
+  affiliation String[]               @default([])
+  technology  String[]               @default([])
 
   publications SessionPublication[]
 

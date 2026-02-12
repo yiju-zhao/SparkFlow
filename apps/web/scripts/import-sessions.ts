@@ -148,7 +148,11 @@ async function main() {
           speaker: session.speaker,
           abstract: session.abstract,
           overview: session.overview,
+          transcript: session.transcript,
           sessionUrl: session.sessionUrl,
+          topic: session.topic,
+          affiliation: session.affiliation,
+          technology: session.technology,
           publications: {
             create: publicationLinks,
           },
