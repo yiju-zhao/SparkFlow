@@ -150,7 +150,7 @@ export interface SessionDetail {
   startTime: string | null;
   endTime: string | null;
   location: string | null;
-  speaker: string | null;
+  speaker: string[];
   abstract: string | null;
   overview: string | null;
   transcript: string | null;

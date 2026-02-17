@@ -1,6 +1,9 @@
 import { memo, useMemo } from "react";
-import MarkdownToJsx from "markdown-to-jsx";
-import TeX from "@matejmazur/react-katex";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import { cn } from "@/lib/utils";
 import { useCitationSafe } from "@/lib/context/citation-context";
 import "katex/dist/katex.min.css";
@@ -10,47 +13,11 @@ interface MarkdownProps {
   className?: string;
 }
 
-// Custom component for rendering math blocks (uses span to avoid div-in-p hydration errors)
-function MathBlock({ math }: { math: string }) {
-  return (
-    <span className="block my-4 overflow-x-auto">
-      <TeX block>{math}</TeX>
-    </span>
-  );
-}
-
-// Custom component for rendering inline math
-function MathInline({ math }: { math: string }) {
-  return <TeX>{math}</TeX>;
-}
-
 // Hoisted regexes for better performance
-const BLOCK_MATH_REGEX = /\$\$([\s\S]*?)\$\$/g;
-const INLINE_MATH_REGEX = /(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)/g;
 const HTML_TABLE_REGEX = /<table[\s\S]*?<\/table>/gi;
 const CITATION_REGEX = /\[ref:([a-zA-Z0-9_-]+)\]/g;
 
-// Preprocess markdown to convert LaTeX delimiters to custom components
-function preprocessMath(content: string): string {
-  // Replace block math $$...$$ with a custom marker
-  let processed = content.replace(
-    BLOCK_MATH_REGEX,
-    (_, math) =>
-      `<math-block math="${encodeURIComponent(math.trim())}"></math-block>`,
-  );
-
-  // Replace inline math $...$ (but not $$)
-  // Use negative lookbehind/lookahead to avoid matching $$
-  processed = processed.replace(
-    INLINE_MATH_REGEX,
-    (_, math) =>
-      `<math-inline math="${encodeURIComponent(math.trim())}"></math-inline>`,
-  );
-
-  return processed;
-}
-
-// Extract HTML tables and replace with placeholders to avoid markdown-to-jsx parsing issues
+// Extract HTML tables and replace with placeholders
 function extractHtmlTables(content: string): {
   processed: string;
   tables: string[];
@@ -123,272 +90,146 @@ export const Markdown = memo(function Markdown({
   children,
   className,
 }: MarkdownProps) {
-  // Extract HTML tables first, then process citations, then math
+  // Extract HTML tables first, then process citations
   const { processed: contentWithoutTables, tables } = useMemo(
     () => extractHtmlTables(children),
     [children],
   );
-  const contentWithCitations = useMemo(
+  const processedContent = useMemo(
     () => preprocessCitations(contentWithoutTables),
     [contentWithoutTables],
   );
-  const processedContent = useMemo(
-    () => preprocessMath(contentWithCitations),
-    [contentWithCitations],
-  );
+
+  // Build components with custom elements using type assertion
+  const components = {
+    // Custom citation component
+    "citation-ref": ({
+      "data-chunk": chunkId,
+      "data-index": index,
+    }: {
+      "data-chunk": string;
+      "data-index": string;
+    }) => <CitationLink data-chunk={chunkId} data-index={index} />,
+    // HTML table placeholder
+    "html-table-placeholder": ({
+      "data-index": dataIndex,
+    }: {
+      "data-index": string;
+    }) => {
+      const index = parseInt(dataIndex, 10);
+      const html = tables[index];
+      return html ? <HtmlTable html={html} /> : null;
+    },
+    a: ({ href, children: linkChildren }) => (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 dark:text-blue-400 font-medium hover:underline hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+      >
+        {linkChildren}
+      </a>
+    ),
+    code: ({ className: codeClassName, children: codeChildren }) => {
+      const isBlock = codeClassName?.includes("lang-");
+      return isBlock ? (
+        <div className="relative my-4 rounded-lg bg-zinc-950 p-4 overflow-x-auto max-w-full">
+          <code
+            className={cn(
+              "text-xs font-mono text-zinc-50 block whitespace-pre-wrap break-all",
+              codeClassName,
+            )}
+          >
+            {codeChildren}
+          </code>
+        </div>
+      ) : (
+        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+          {codeChildren}
+        </code>
+      );
+    },
+    pre: ({ children: preChildren }) => (
+      <div className="max-w-full overflow-x-auto">{preChildren}</div>
+    ),
+    ul: ({ children: ulChildren }) => (
+      <ul className="list-disc pl-4 my-2 space-y-1">{ulChildren}</ul>
+    ),
+    ol: ({ children: olChildren }) => (
+      <ol className="list-decimal pl-4 my-2 space-y-1">{olChildren}</ol>
+    ),
+    li: ({ children: liChildren }) => (
+      <li className="my-0.5">{liChildren}</li>
+    ),
+    p: ({ children: pChildren }) => (
+      <p className="mb-2 last:mb-0 leading-relaxed">{pChildren}</p>
+    ),
+    h1: ({ children: h1Children }) => (
+      <h1 className="text-lg font-bold mt-4 mb-2">{h1Children}</h1>
+    ),
+    h2: ({ children: h2Children }) => (
+      <h2 className="text-base font-bold mt-3 mb-2">{h2Children}</h2>
+    ),
+    h3: ({ children: h3Children }) => (
+      <h3 className="text-sm font-bold mt-2 mb-1">{h3Children}</h3>
+    ),
+    blockquote: ({ children: bqChildren }) => (
+      <blockquote className="border-l-2 border-border pl-4 italic text-muted-foreground my-2">
+        {bqChildren}
+      </blockquote>
+    ),
+    table: ({ children: tableChildren }) => (
+      <div className="my-4 w-full overflow-x-auto">
+        <table className="w-full text-sm border-collapse border border-border">
+          {tableChildren}
+        </table>
+      </div>
+    ),
+    thead: ({ children: theadChildren }) => (
+      <thead className="bg-muted">{theadChildren}</thead>
+    ),
+    tbody: ({ children: tbodyChildren }) => (
+      <tbody className="divide-y divide-border">{tbodyChildren}</tbody>
+    ),
+    tr: ({ children: trChildren }) => (
+      <tr className="hover:bg-muted/50 transition-colors">{trChildren}</tr>
+    ),
+    th: ({ children: thChildren }) => (
+      <th className="border border-border bg-muted px-3 py-2 text-left font-semibold text-xs">
+        {thChildren}
+      </th>
+    ),
+    td: ({ children: tdChildren }) => (
+      <td className="border border-border px-3 py-2 text-left text-xs">
+        {tdChildren}
+      </td>
+    ),
+    img: ({ src, alt }) => (
+      <span className="block max-w-full overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt || ""}
+          loading="lazy"
+          style={{
+            maxWidth: "100%",
+            height: "auto",
+            display: "block",
+          }}
+        />
+      </span>
+    ),
+  } as Components;
 
   return (
     <div className={cn("wrap-break-word", className)}>
-      <MarkdownToJsx
-        options={{
-          overrides: {
-            // Custom math components
-            "math-block": {
-              component: ({ math }: { math: string }) => (
-                <MathBlock math={decodeURIComponent(math)} />
-              ),
-            },
-            "math-inline": {
-              component: ({ math }: { math: string }) => (
-                <MathInline math={decodeURIComponent(math)} />
-              ),
-            },
-            "html-table-placeholder": {
-              component: ({
-                "data-index": dataIndex,
-              }: {
-                "data-index": string;
-              }) => {
-                const index = parseInt(dataIndex, 10);
-                const html = tables[index];
-                return html ? <HtmlTable html={html} /> : null;
-              },
-            },
-            "citation-ref": {
-              component: CitationLink,
-            },
-            a: {
-              props: {
-                target: "_blank",
-                rel: "noopener noreferrer",
-                className:
-                  "text-blue-600 dark:text-blue-400 font-medium hover:underline hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer",
-              },
-            },
-            code: {
-              component: ({
-                className: codeClassName,
-                children: codeChildren,
-                ...props
-              }: {
-                className?: string;
-                children: React.ReactNode;
-              }) => {
-                const isBlock = codeClassName?.includes("lang-");
-                return isBlock ? (
-                  <div className="relative my-4 rounded-lg bg-zinc-950 p-4 overflow-x-auto max-w-full">
-                    <code
-                      className={cn(
-                        "text-xs font-mono text-zinc-50 block whitespace-pre-wrap break-all",
-                        codeClassName,
-                      )}
-                      {...props}
-                    >
-                      {codeChildren}
-                    </code>
-                  </div>
-                ) : (
-                  <code
-                    className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono"
-                    {...props}
-                  >
-                    {codeChildren}
-                  </code>
-                );
-              },
-            },
-            pre: {
-              component: ({ children: preChildren }) => (
-                <div className="max-w-full overflow-x-auto">{preChildren}</div>
-              ),
-            },
-            ul: {
-              props: {
-                className: "list-disc pl-4 my-2 space-y-1",
-              },
-            },
-            ol: {
-              props: {
-                className: "list-decimal pl-4 my-2 space-y-1",
-              },
-            },
-            li: {
-              props: {
-                className: "my-0.5",
-              },
-            },
-            p: {
-              component: ({
-                children: pChildren,
-                ...props
-              }: {
-                children: React.ReactNode;
-              }) => {
-                // Helper to check if a single child is a block-level element
-                const isBlockElement = (child: unknown): boolean => {
-                  if (!child || typeof child !== "object") return false;
-                  const c = child as {
-                    type?: { name?: string } | string;
-                    props?: { math?: string; "data-index"?: string };
-                  };
-                  const typeName =
-                    typeof c.type === "object" ? c.type?.name : c.type;
-                  // Check for MathBlock (renders div via TeX block)
-                  if (
-                    typeName === "MathBlock" ||
-                    c.props?.math !== undefined ||
-                    typeName === "math-block"
-                  ) {
-                    return true;
-                  }
-                  // Check for HtmlTable placeholder (renders div)
-                  if (
-                    c.props?.["data-index"] !== undefined ||
-                    typeName === "html-table-placeholder"
-                  ) {
-                    return true;
-                  }
-                  return false;
-                };
-
-                // Check if children contain block-level elements
-                // If so, render as div to avoid invalid HTML nesting
-                const hasBlockChild = Array.isArray(pChildren)
-                  ? pChildren.some(isBlockElement)
-                  : isBlockElement(pChildren);
-
-                const Tag = hasBlockChild ? "div" : "p";
-                return (
-                  <Tag className="mb-2 last:mb-0 leading-relaxed" {...props}>
-                    {pChildren}
-                  </Tag>
-                );
-              },
-            },
-            h1: {
-              props: {
-                className: "text-lg font-bold mt-4 mb-2",
-              },
-            },
-            h2: {
-              props: {
-                className: "text-base font-bold mt-3 mb-2",
-              },
-            },
-            h3: {
-              props: {
-                className: "text-sm font-bold mt-2 mb-1",
-              },
-            },
-            blockquote: {
-              props: {
-                className:
-                  "border-l-2 border-border pl-4 italic text-muted-foreground my-2",
-              },
-            },
-            table: {
-              component: ({ children: tableChildren, ...props }) => (
-                <div className="my-4 w-full overflow-x-auto">
-                  <table
-                    className="w-full text-sm border-collapse border border-border"
-                    {...props}
-                  >
-                    {tableChildren}
-                  </table>
-                </div>
-              ),
-            },
-            thead: {
-              component: ({ children: theadChildren, ...props }) => (
-                <thead className="bg-muted" {...props}>
-                  {theadChildren}
-                </thead>
-              ),
-            },
-            tbody: {
-              component: ({ children: tbodyChildren, ...props }) => (
-                <tbody className="divide-y divide-border" {...props}>
-                  {tbodyChildren}
-                </tbody>
-              ),
-            },
-            tr: {
-              component: ({ children: trChildren, ...props }) => (
-                <tr className="hover:bg-muted/50 transition-colors" {...props}>
-                  {trChildren}
-                </tr>
-              ),
-            },
-            th: {
-              component: ({ children: thChildren, ...props }) => (
-                <th
-                  className="border border-border bg-muted px-3 py-2 text-left font-semibold text-xs"
-                  {...props}
-                >
-                  {thChildren}
-                </th>
-              ),
-            },
-            td: {
-              component: ({ children: tdChildren, ...props }) => (
-                <td
-                  className="border border-border px-3 py-2 text-left text-xs"
-                  {...props}
-                >
-                  {tdChildren}
-                </td>
-              ),
-            },
-            img: {
-              component: ({
-                src,
-                alt,
-                width,
-                height,
-              }: {
-                src: string;
-                alt?: string;
-                width?: string | number;
-                height?: string | number;
-              }) => (
-                <span className="block max-w-full overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt={alt || ""}
-                    width={width}
-                    height={height}
-                    loading="lazy"
-                    style={{
-                      maxWidth: "100%",
-                      height: "auto",
-                      display: "block",
-                    }}
-                  />
-                </span>
-              ),
-            },
-            div: {
-              props: {
-                className: "max-w-full overflow-hidden",
-              },
-            },
-          },
-          forceBlock: true,
-        }}
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex, rehypeRaw]}
+        components={components}
       >
         {processedContent}
-      </MarkdownToJsx>
+      </ReactMarkdown>
     </div>
   );
 });
