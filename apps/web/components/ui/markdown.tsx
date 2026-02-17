@@ -161,9 +161,52 @@ export const Markdown = memo(function Markdown({
     li: ({ children: liChildren }) => (
       <li className="my-0.5">{liChildren}</li>
     ),
-    p: ({ children: pChildren }) => (
-      <p className="mb-2 last:mb-0 leading-relaxed">{pChildren}</p>
-    ),
+    p: ({ children: pChildren }) => {
+      // Helper to check if a child is a block-level element
+      const isBlockElement = (child: unknown): boolean => {
+        if (!child || typeof child !== "object") return false;
+        const c = child as {
+          type?: { name?: string } | string;
+          props?: {
+            "data-index"?: string;
+            className?: string;
+            children?: unknown;
+          };
+        };
+
+        // Check for HtmlTable placeholder (renders div)
+        if (c.props?.["data-index"] !== undefined) {
+          return true;
+        }
+
+        // Check for KaTeX block math (has katex-display class in children)
+        const typeName = typeof c.type === "object" ? c.type?.name : c.type;
+        if (typeName === "span" && c.props?.className?.includes("katex-display")) {
+          return true;
+        }
+
+        // Recursively check children for block elements
+        if (c.props?.children) {
+          if (Array.isArray(c.props.children)) {
+            return c.props.children.some(isBlockElement);
+          }
+          return isBlockElement(c.props.children);
+        }
+
+        return false;
+      };
+
+      // Check if children contain block-level elements
+      const hasBlockChild = Array.isArray(pChildren)
+        ? pChildren.some(isBlockElement)
+        : isBlockElement(pChildren);
+
+      // Use div instead of p if there are block children to avoid hydration errors
+      const Tag = hasBlockChild ? "div" : "p";
+      return (
+        <Tag className="mb-2 last:mb-0 leading-relaxed">{pChildren}</Tag>
+      );
+    },
     h1: ({ children: h1Children }) => (
       <h1 className="text-lg font-bold mt-4 mb-2">{h1Children}</h1>
     ),
