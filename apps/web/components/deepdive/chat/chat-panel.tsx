@@ -397,12 +397,9 @@ export function ChatPanel({
       stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
-          config: {
-            configurable: {
-              dataset_ids: datasetId ? [datasetId] : [],
-              notebook_id: notebookId,
-              sources_context: sourcesContext,
-            },
+          context: {
+            dataset_ids: datasetId ? [datasetId] : [],
+            sources_context: sourcesContext,
           },
         },
       );

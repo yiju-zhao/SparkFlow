@@ -16,6 +16,8 @@ from typing import Literal
 from langchain.tools import tool, ToolRuntime
 from ragflow_sdk import RAGFlow
 
+from config.rag_agent import AgentContext
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,7 +124,7 @@ def _get_chunks_around(
 # =============================================================================
 
 @tool
-def explore(runtime: ToolRuntime = None) -> str:
+def explore(runtime: ToolRuntime[AgentContext] = None) -> str:
     """Explore the knowledge base to see available documents.
 
     Use this to understand what sources are available before searching.
@@ -131,8 +133,7 @@ def explore(runtime: ToolRuntime = None) -> str:
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    config = runtime.config if runtime else None
-    dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
+    dataset_ids = runtime.context.dataset_ids if runtime and runtime.context else []
     if not dataset_ids:
         return "No datasets configured."
     
@@ -159,7 +160,7 @@ def explore(runtime: ToolRuntime = None) -> str:
 
 
 @tool
-def search(query: str, runtime: ToolRuntime) -> str:
+def search(query: str, runtime: ToolRuntime[AgentContext]) -> str:
     """Search the knowledge base for relevant information.
 
     Returns chunks with chunk IDs that can be used with probe() to validate relevance.
@@ -171,8 +172,7 @@ def search(query: str, runtime: ToolRuntime) -> str:
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    config = runtime.config if runtime else None
-    dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
+    dataset_ids = runtime.context.dataset_ids if runtime and runtime.context else []
     if not dataset_ids:
         return "No datasets configured. Use explore() to see available datasets."
     
@@ -208,7 +208,7 @@ def probe(
     chunk_id: str,
     direction: str = "both",
     count: int = 2,
-    runtime: ToolRuntime = None
+    runtime: ToolRuntime[AgentContext] = None
 ) -> str:
     """Probe surrounding context to validate chunk relevance.
 
@@ -224,8 +224,7 @@ def probe(
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    config = runtime.config if runtime else None
-    dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
+    dataset_ids = runtime.context.dataset_ids if runtime and runtime.context else []
     if not dataset_ids:
         return "No datasets configured."
     

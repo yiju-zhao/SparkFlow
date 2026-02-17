@@ -7,7 +7,7 @@ checkpointer as the server manages this.
 
 from langchain.agents import create_agent
 
-from config.rag_agent import RAG_AGENT_CONFIG
+from config.rag_agent import RAG_AGENT_CONFIG, AgentContext
 from prompts.rag_agent import RAG_AGENT_SYSTEM_PROMPT
 from tools.ragflow import explore, search, probe
 from middleware.query_optimizer import optimize_query
@@ -24,4 +24,5 @@ agent = create_agent(
     tools=[explore, search, probe],
     system_prompt=RAG_AGENT_SYSTEM_PROMPT,
     middleware=[inject_sources_context, optimize_query],
+    context_schema=AgentContext,
 )
