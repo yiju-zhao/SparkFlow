@@ -129,17 +129,22 @@ export function SourcesPanel({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <h2 className="text-sm font-medium">Sources</h2>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 gap-1 text-xs"
-          onClick={() => setIsDialogOpen(true)}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add
-        </Button>
+      <div className="px-5 pt-6 pb-4">
+        <div className="h-[2px] w-6 bg-accent-red mb-3" />
+        <div className="flex items-center justify-between">
+          <h2 className="text-[10px] font-bold tracking-[0.2em] text-foreground uppercase">
+            SOURCES
+          </h2>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 rounded-full hover:bg-accent/80 transition-colors"
+            onClick={() => setIsDialogOpen(true)}
+            title="Add Source"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Sources List */}
@@ -245,9 +250,8 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:bg-accent ${
-        isPending ? "opacity-50" : ""
-      }`}
+      className={`group relative flex cursor-pointer items-start gap-3 rounded-xl px-4 py-3.5 transition-all duration-200 border border-transparent hover:border-border/50 hover:bg-accent/40 ${isPending ? "opacity-50" : ""
+        }`}
       onClick={onSelect}
     >
       <div className="mt-0.5">
@@ -285,25 +289,25 @@ const SourceItem = memo(function SourceItem({
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}
       </div>
-      <div className="opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute top-2 right-2 opacity-0 transition-all duration-200 group-hover:opacity-100 transform translate-x-1 group-hover:translate-x-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild suppressHydrationWarning>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-7 w-7 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm"
               disabled={isPending}
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreVertical className="h-3.5 w-3.5" />
+              <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-32">
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
               onClick={handleDelete}
             >
-              <Trash2 className="mr-2 h-3.5 w-3.5" />
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -717,13 +721,11 @@ function SourceContentView({
                       <button
                         key={index}
                         onClick={() => scrollToHeading(heading.text)}
-                        className={`block w-full text-left text-xs hover:text-accent-blue transition-colors ${
-                          heading.level === 1 ? "font-medium" : ""
-                        } ${heading.level === 2 ? "pl-2" : ""} ${
-                          heading.level === 3
+                        className={`block w-full text-left text-xs hover:text-accent-blue transition-colors ${heading.level === 1 ? "font-medium" : ""
+                          } ${heading.level === 2 ? "pl-2" : ""} ${heading.level === 3
                             ? "pl-4 text-muted-foreground"
                             : ""
-                        }`}
+                          }`}
                       >
                         {heading.text}
                       </button>
@@ -819,10 +821,10 @@ function AddSourceDialog({
             (current || []).map((item) =>
               item.id === tempId
                 ? {
-                    ...created,
-                    createdAt: new Date(created.createdAt),
-                    updatedAt: new Date(created.updatedAt),
-                  }
+                  ...created,
+                  createdAt: new Date(created.createdAt),
+                  updatedAt: new Date(created.updatedAt),
+                }
                 : item,
             ),
         );
@@ -879,10 +881,10 @@ function AddSourceDialog({
             (current || []).map((item) =>
               item.id === tempId
                 ? {
-                    ...created,
-                    createdAt: new Date(created.createdAt),
-                    updatedAt: new Date(created.updatedAt),
-                  }
+                  ...created,
+                  createdAt: new Date(created.createdAt),
+                  updatedAt: new Date(created.updatedAt),
+                }
                 : item,
             ),
         );
@@ -985,10 +987,10 @@ function AddSourceDialog({
             (current || []).map((item) =>
               item.id === tempId
                 ? {
-                    ...created,
-                    createdAt: new Date(created.createdAt),
-                    updatedAt: new Date(created.updatedAt),
-                  }
+                  ...created,
+                  createdAt: new Date(created.createdAt),
+                  updatedAt: new Date(created.updatedAt),
+                }
                 : item,
             ),
         );
@@ -1001,13 +1003,13 @@ function AddSourceDialog({
             (current || []).map((item) =>
               item.id === tempId
                 ? {
-                    ...item,
-                    status: "FAILED",
-                    errorMessage:
-                      error instanceof Error
-                        ? error.message
-                        : "Download failed",
-                  }
+                  ...item,
+                  status: "FAILED",
+                  errorMessage:
+                    error instanceof Error
+                      ? error.message
+                      : "Download failed",
+                }
                 : item,
             ),
         );

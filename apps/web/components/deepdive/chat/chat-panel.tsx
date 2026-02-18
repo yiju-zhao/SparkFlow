@@ -180,11 +180,11 @@ export function ChatPanel({
               prev.map((s) =>
                 s.id === streamSessionId
                   ? {
-                      ...s,
-                      _count: {
-                        messages: s._count.messages + messagesToSave.length,
-                      },
-                    }
+                    ...s,
+                    _count: {
+                      messages: s._count.messages + messagesToSave.length,
+                    },
+                  }
                   : s,
               ),
             );
@@ -442,8 +442,8 @@ export function ChatPanel({
 
   const displayMessages =
     streamSessionId &&
-    streamSessionId === activeSessionId &&
-    stream.messages.length > 0
+      streamSessionId === activeSessionId &&
+      stream.messages.length > 0
       ? stream.messages
       : sessionMessages;
 
@@ -480,30 +480,31 @@ export function ChatPanel({
   return (
     <div className="flex h-full min-w-0 flex-col relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <h2 className="text-sm font-medium">Chat</h2>
-        <div className="flex gap-1">
+      <div className="px-5 pt-6 pb-4 flex items-center justify-between">
+        <div>
+          <div className="h-[2px] w-6 bg-accent-red mb-3" />
+          <h2 className="text-[10px] font-bold tracking-[0.2em] text-foreground uppercase">
+            DIALOGUE
+          </h2>
+        </div>
+        <div className="flex gap-2">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7"
-            onClick={handleNewChat}
-            title="New Chat"
+            className="h-7 px-3 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5 rounded-full hover:bg-accent/80 transition-colors"
+            onClick={() => setShowHistory(!showHistory)}
           >
-            <Plus className="h-4 w-4" />
+            {showHistory ? "CLOSE" : "HISTORY"}
+            <span className="text-accent-red">&gt;</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7"
-            onClick={() => setShowHistory(!showHistory)}
-            title="Chat History"
+            className="h-7 w-7 rounded-full hover:bg-accent/80 transition-colors"
+            onClick={handleNewChat}
+            title="New Chat"
           >
-            {showHistory ? (
-              <X className="h-4 w-4" />
-            ) : (
-              <History className="h-4 w-4" />
-            )}
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -585,61 +586,68 @@ export function ChatPanel({
             return (
               <div
                 key={messageKey}
-                className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                className={`group flex ${isUser ? "justify-start" : "justify-start"} px-2`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                  className={`relative w-full rounded-lg transition-all duration-200 ${isUser
+                      ? "bg-blue-600 dark:bg-accent-red text-white p-5 shadow-lg shadow-blue-600/10 dark:shadow-accent-red/10"
+                      : "bg-muted/30 dark:bg-muted/20 border-l-[3px] border-accent-red p-6"
+                    }`}
                 >
                   {isUser ? (
-                    <p className="text-sm whitespace-pre-wrap">{content}</p>
+                    <p className="text-[15px] font-medium leading-relaxed tracking-tight whitespace-pre-wrap">
+                      {content}
+                    </p>
                   ) : hasInProgressToolCalls ? (
                     // Tool call indicator (only for in-progress calls)
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>
-                        Using{" "}
+                    <div className="flex items-center gap-2 text-[11px] font-medium tracking-tight text-muted-foreground/80">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span className="uppercase tracking-wider">
+                        CONSULTING{" "}
                         {inProgressToolCalls.map((tc) => tc.name).join(", ")}...
                       </span>
                     </div>
                   ) : (
                     // Final AI response
                     <>
-                      <Markdown className="text-sm">{content}</Markdown>
+                      <div className="overflow-x-auto">
+                        <Markdown className="text-[14.5px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
+                          {content}
+                        </Markdown>
+                      </div>
                       {!stream.isLoading && content && (
-                        <div className="mt-2 flex justify-end border-t border-border/50 pt-2">
+                        <div className="mt-6 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-3 border-t border-border/10">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            className="h-8 gap-1.5 px-3 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full"
                             onClick={() =>
                               handleSaveToNotes(messageKey, content)
                             }
                             disabled={savingNoteId === messageKey}
-                            title="Save to Notes"
                           >
                             {savingNoteId === messageKey ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
-                              <StickyNote className="h-3 w-3" />
+                              <StickyNote className="h-3.5 w-3.5" />
                             )}
-                            <span>Save to Notes</span>
+                            <span>SAVE TO STUDIO</span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            className="h-8 gap-1.5 px-3 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full"
                             onClick={() => handleCopy(messageKey, content)}
-                            title="Copy Markdown"
                           >
                             {copiedMessageId === messageKey ? (
-                              <Check className="h-3 w-3" />
+                              <Check className="h-3.5 w-3.5" />
                             ) : (
-                              <Copy className="h-3 w-3" />
+                              <Copy className="h-3.5 w-3.5" />
                             )}
                             <span>
                               {copiedMessageId === messageKey
-                                ? "Copied"
-                                : "Copy"}
+                                ? "COPIED"
+                                : "COPY"}
                             </span>
                           </Button>
                         </div>

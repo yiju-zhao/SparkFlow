@@ -150,24 +150,24 @@ function NotebookLayoutInner({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Inline Header */}
-      <div className="shrink-0 h-12 border-b border-border/60 bg-background flex items-center justify-between px-4">
+      <div className="shrink-0 h-14 border-b border-border/40 bg-background flex items-center justify-between px-6">
         {/* Left: Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-3 text-sm tracking-tight">
           <Link
             href="/"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
           >
             sparkflow
           </Link>
-          <span className="text-[#CE0E2D] font-bold">&gt;</span>
+          <span className="text-accent-red font-bold text-[10px]">&gt;</span>
           <Link
             href="/deepdive"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors font-medium"
           >
             deepdive
           </Link>
-          <span className="text-[#CE0E2D] font-bold">&gt;</span>
-          <span className="text-foreground truncate max-w-[300px]">
+          <span className="text-accent-red font-bold text-[10px]">&gt;</span>
+          <span className="text-foreground font-semibold truncate max-w-[400px]">
             {notebook.name}
           </span>
         </div>

@@ -83,16 +83,21 @@ export function StudioPanel({
       ) : (
         <>
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-2">
-            <h2 className="text-sm font-medium">Studio</h2>
+          <div className="px-5 pt-6 pb-4 flex items-center justify-between">
+            <div>
+              <div className="h-[2px] w-6 bg-accent-red mb-3" />
+              <h2 className="text-[10px] font-bold tracking-[0.2em] text-foreground uppercase">
+                STUDIO
+              </h2>
+            </div>
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 gap-1 text-xs"
+              className="h-7 w-7 p-0 rounded-full hover:bg-accent/80 transition-colors"
               onClick={() => setIsCreateDialogOpen(true)}
+              title="New Note"
             >
-              <Plus className="h-3.5 w-3.5" />
-              New
+              <Plus className="h-4 w-4" />
             </Button>
           </div>
 
@@ -158,9 +163,8 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group cursor-pointer rounded-lg border p-3 transition-all ${
-        isPending ? "opacity-50" : ""
-      } border-border hover:border-accent-red/50 hover:bg-accent`}
+      className={`group relative cursor-pointer rounded-xl border border-transparent p-4 transition-all duration-200 ${isPending ? "opacity-50" : ""
+        } hover:border-border/50 hover:bg-accent/40`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -176,28 +180,28 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
             </Markdown>
           </div>
         </div>
-        <div className="opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute top-3 right-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <DropdownMenu>
             <DropdownMenuTrigger asChild suppressHydrationWarning>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-7 w-7 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreVertical className="h-3.5 w-3.5" />
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleTogglePin}>
-                <Pin className="mr-2 h-3.5 w-3.5" />
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem onClick={handleTogglePin} className="cursor-pointer">
+                <Pin className="mr-2 h-4 w-4" />
                 {note.isPinned ? "Unpin" : "Pin"}
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
+                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 onClick={handleDelete}
               >
-                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
