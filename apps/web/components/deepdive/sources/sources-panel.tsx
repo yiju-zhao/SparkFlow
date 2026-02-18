@@ -137,7 +137,7 @@ export function SourcesPanel({
           </h2>
         </div>
         <button
-          className="h-7 px-2.5 flex items-center gap-1.5 text-[10px] font-bold uppercase rounded-[4px] dark:bg-[#1A1A1A] dark:border dark:border-[#3A3A3A] bg-muted/50 border border-border/60 hover:opacity-80 transition-opacity"
+          className="h-7 px-2.5 flex items-center gap-1.5 text-[10px] font-bold uppercase rounded-[4px] bg-surface-elevated border border-outline hover:opacity-80 transition-opacity"
           onClick={() => setIsDialogOpen(true)}
           title="Add Source"
         >
@@ -254,7 +254,7 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative flex cursor-pointer items-start gap-4 rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-[#1A1A1A] hover:bg-accent/40 dark:hover:bg-[#252525] ${selected ? "border-l-4 border-l-[#FF3B30]" : "border-l-4 border-l-transparent"} ${isPending ? "opacity-50" : ""
+      className={`group relative flex cursor-pointer items-start gap-4 rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-surface-elevated hover:bg-surface-hover ${selected ? "border-l-4 border-l-accent-red" : "border-l-4 border-l-transparent"} ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >

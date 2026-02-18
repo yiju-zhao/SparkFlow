@@ -490,7 +490,7 @@ export function ChatPanel({
         <div className="flex items-center gap-3">
           <div className="h-1 flex-1" />
           <button
-            className="h-7 px-3 text-[11px] font-semibold tracking-[0.2em] uppercase font-mono text-muted-foreground rounded-[4px] dark:bg-[#1A1A1A] dark:border dark:border-[#333333] bg-muted/50 border border-border/60 hover:opacity-80 transition-opacity"
+            className="h-7 px-3 text-[11px] font-semibold tracking-[0.2em] uppercase font-mono text-muted-foreground rounded-[4px] bg-surface-elevated border border-outline hover:opacity-80 transition-opacity"
             onClick={() => setShowHistory(!showHistory)}
           >
             {showHistory ? "CLOSE" : "HISTORY"}
@@ -588,8 +588,8 @@ export function ChatPanel({
               >
                 <div
                   className={`relative w-full rounded-[4px] transition-all duration-200 ${isUser
-                    ? "bg-[#0A84FF] dark:bg-[#FF3B30] text-white px-4 py-3 shadow-lg shadow-blue-600/10 dark:shadow-red-600/10 border-none"
-                    : "bg-muted/30 dark:bg-[#1A1A1A] dark:border dark:border-[#2A2A2A] border-l-4 border-l-accent-red p-5"
+                    ? "bg-accent-primary text-white px-4 py-3 shadow-lg shadow-blue-600/10 dark:shadow-red-600/10 border-none"
+                    : "bg-muted/30 dark:bg-surface-elevated dark:border dark:border-divider border-l-4 border-l-accent-red p-5"
                     }`}
                 >
                   {isUser ? (
@@ -679,7 +679,7 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t dark:border-[#2A2A2A] border-border h-20 flex items-center px-6 gap-3">
+      <div className="border-t border-divider h-20 flex items-center px-6 gap-3">
         <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-3">
           <Textarea
             value={input}
@@ -692,7 +692,7 @@ export function ChatPanel({
           <button
             type="submit"
             disabled={!input.trim() || stream.isLoading}
-            className="h-8 w-8 flex items-center justify-center rounded-[4px] dark:bg-[#1A1A1A] dark:border dark:border-[#3A3A3A] bg-primary text-primary-foreground disabled:opacity-50 transition-opacity shrink-0"
+            className="h-8 w-8 flex items-center justify-center rounded-[4px] dark:bg-surface-elevated dark:border dark:border-outline bg-primary text-primary-foreground disabled:opacity-50 transition-opacity shrink-0"
           >
             {stream.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
