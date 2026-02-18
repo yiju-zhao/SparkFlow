@@ -247,7 +247,7 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-surface-elevated bg-surface-elevated hover:bg-surface-hover border dark:border-divider border-foreground/15 ${selected ? "border-l-4 border-l-accent-red dark:border-l-accent-red" : "border-l-4 border-l-foreground/15 dark:border-l-divider"} ${isPending ? "opacity-50" : ""
+      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-surface-elevated bg-surface-elevated hover:bg-surface-hover border dark:border-divider border-foreground/15 ${selected ? "border-l-4 border-l-divider dark:border-l-accent-red" : "border-l-4 border-l-foreground/15 dark:border-l-divider"} ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >

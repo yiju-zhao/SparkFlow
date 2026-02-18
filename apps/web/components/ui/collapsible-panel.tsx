@@ -67,7 +67,7 @@ export function CollapsiblePanel({
   return (
     <CollapsiblePanelContext.Provider value={{ isAnimationComplete }}>
       <motion.div
-        className={`h-full shrink-0 overflow-hidden ${borderClass} border-border ${className}`}
+        className={`h-full shrink-0 overflow-hidden ${borderClass}-2 dark:${borderClass} border-divider ${className}`}
         initial={false}
         animate={{
           width: animatedWidth,

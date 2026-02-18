@@ -165,8 +165,8 @@ function NoteCard({ note, onSelect, selected }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group relative cursor-pointer rounded-[4px] dark:bg-surface-elevated p-3 transition-all duration-200 ${isPending ? "opacity-50" : ""
-        } hover:bg-surface-hover ${selected ? "border-l-4 border-l-accent-red" : "border-l-4 border-l-divider"}`}
+      className={`group relative cursor-pointer rounded-[4px] dark:bg-surface-elevated bg-surface-elevated p-3 transition-all duration-200 ${isPending ? "opacity-50" : ""
+        } hover:bg-surface-hover ${selected ? "border-l-4 border-l-divider dark:border-l-accent-red" : "border-l-4 border-l-divider"}`}
     >
 
       <div className="flex items-start justify-between gap-2">

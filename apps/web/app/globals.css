@@ -94,8 +94,8 @@
   /* 8px - default */
 
   /* Notebook Design Tokens */
-  --accent-primary: oklch(0.44 0.19 16);
-  /* Same as accent-red (Huawei Red) */
+  --accent-primary: oklch(0.52 0.19 255);
+  /* Blue accent for light mode (#0066FF) */
   --surface-elevated: #FFFFFF;
   /* Card/raised surface */
   --surface-hover: #F0F0F0;
