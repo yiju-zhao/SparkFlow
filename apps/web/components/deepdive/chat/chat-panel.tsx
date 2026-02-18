@@ -588,66 +588,72 @@ export function ChatPanel({
               >
                 <div
                   className={`relative w-full rounded-[4px] transition-all duration-200 ${isUser
-                    ? "bg-accent-primary text-white px-4 py-3 shadow-lg shadow-blue-600/10 dark:shadow-red-600/10 border-none"
-                    : "bg-muted/30 dark:bg-surface-elevated dark:border dark:border-divider border-l-4 border-l-accent-red p-5"
+                    ? "bg-accent-primary text-white px-4 py-3 shadow-lg border-none"
+                    : "bg-surface-elevated border border-divider p-5"
                     }`}
                 >
                   {isUser ? (
-                    <p className="text-[15px] font-medium leading-relaxed tracking-tight whitespace-pre-wrap">
+                    <p className="text-[13px] font-normal leading-relaxed whitespace-pre-wrap">
                       {content}
                     </p>
                   ) : hasInProgressToolCalls ? (
                     // Tool call indicator (only for in-progress calls)
-                    <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground/60 uppercase">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>CONSULTING {inProgressToolCalls.map((tc) => tc.name).join(", ")}...</span>
+                    <div className="flex items-center gap-4">
+                      <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
+                      <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground/60 uppercase">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>CONSULTING {inProgressToolCalls.map((tc) => tc.name).join(", ")}...</span>
+                      </div>
                     </div>
                   ) : (
-                    // Final AI response
-                    <>
-                      <div className="overflow-x-auto">
-                        <Markdown className="text-[14.5px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
-                          {content}
-                        </Markdown>
-                      </div>
-                      {!stream.isLoading && content && (
-                        <div className="mt-6 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-3 border-t border-border/10">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
-                            onClick={() =>
-                              handleSaveToNotes(messageKey, content)
-                            }
-                            disabled={savingNoteId === messageKey}
-                          >
-                            {savingNoteId === messageKey ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <StickyNote className="h-3.5 w-3.5" />
-                            )}
-                            <span>SAVE TO STUDIO</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
-                            onClick={() => handleCopy(messageKey, content)}
-                          >
-                            {copiedMessageId === messageKey ? (
-                              <Check className="h-3.5 w-3.5" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5" />
-                            )}
-                            <span>
-                              {copiedMessageId === messageKey
-                                ? "COPIED"
-                                : "COPY"}
-                            </span>
-                          </Button>
+                    // Final AI response - accent bar + text column
+                    <div className="flex gap-4">
+                      <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="overflow-x-auto">
+                          <Markdown className="text-[13px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
+                            {content}
+                          </Markdown>
                         </div>
-                      )}
-                    </>
+                        {!stream.isLoading && content && (
+                          <div className="mt-6 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-3 border-t border-border/10">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
+                              onClick={() =>
+                                handleSaveToNotes(messageKey, content)
+                              }
+                              disabled={savingNoteId === messageKey}
+                            >
+                              {savingNoteId === messageKey ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <StickyNote className="h-3.5 w-3.5" />
+                              )}
+                              <span>SAVE TO STUDIO</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
+                              onClick={() => handleCopy(messageKey, content)}
+                            >
+                              {copiedMessageId === messageKey ? (
+                                <Check className="h-3.5 w-3.5" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5" />
+                              )}
+                              <span>
+                                {copiedMessageId === messageKey
+                                  ? "COPIED"
+                                  : "COPY"}
+                              </span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

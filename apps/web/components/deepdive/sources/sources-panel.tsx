@@ -12,15 +12,13 @@ import {
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import {
   FileText,
-  Globe,
   Plus,
   Loader2,
   XCircle,
-  MoreVertical,
-  Trash2,
   Upload,
   Link,
   ArrowLeft,
+  X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,12 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { Badge } from "@/components/ui/badge";
 import {
   addWebpageSource,
@@ -254,27 +247,24 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative flex cursor-pointer items-start gap-4 rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-surface-elevated hover:bg-surface-hover ${selected ? "border-l-4 border-l-accent-red" : "border-l-4 border-l-transparent"} ${isPending ? "opacity-50" : ""
+      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-surface-elevated bg-surface-elevated hover:bg-surface-hover border dark:border-divider border-foreground/15 ${selected ? "border-l-4 border-l-accent-red dark:border-l-accent-red" : "border-l-4 border-l-foreground/15 dark:border-l-divider"} ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >
-      {/* Selected Accent Bar - handled by border-l above */}
+      {/* Delete Badge - hover visible */}
+      <button
+        className="absolute -top-2 -right-2 h-[18px] w-[18px] rounded-full bg-accent-red flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
+        title="Delete"
+      >
+        <X className="h-3 w-3 text-white" />
+      </button>
 
-      <div className="mt-0.5 shrink-0">
-        {source.sourceType === "DOCUMENT" ? (
-          <FileText className="h-4 w-4 text-muted-foreground/80" />
-        ) : (
-          <Globe className="h-4 w-4 text-muted-foreground/80" />
-        )}
-      </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-[13.5px] font-medium leading-tight">{source.title}</span>
-          {statusIcon}
-        </div>
-        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground/70 tracking-tight">
-          <span className="uppercase font-semibold tracking-wider">{source.sourceType === "DOCUMENT" ? "PDF" : "WEB"}</span>
-          <span>·</span>
+        <span className="truncate block text-[13px] font-semibold leading-tight">{source.title}</span>
+        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span>{source.sourceType === "DOCUMENT" ? "PDF" : "Web"}</span>
+          <span>•</span>
           {relativeTime && <span suppressHydrationWarning>{relativeTime}</span>}
         </div>
         {isRunning && (
@@ -293,30 +283,6 @@ const SourceItem = memo(function SourceItem({
         {source.status === "FAILED" && source.errorMessage && (
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}
-      </div>
-      <div className="absolute top-1/2 -translate-y-1/2 right-2 opacity-0 transition-all duration-200 group-hover:opacity-100">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild suppressHydrationWarning>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 rounded-full bg-background/90 border border-border/40 shadow-sm"
-              disabled={isPending}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-              onClick={handleDelete}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </div>
   );

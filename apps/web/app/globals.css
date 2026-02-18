@@ -94,8 +94,8 @@
   /* 8px - default */
 
   /* Notebook Design Tokens */
-  --accent-primary: #0A84FF;
-  /* User bubble in light mode */
+  --accent-primary: #0066FF;
+  /* User bubble / AI accent bar in light mode */
   --surface-elevated: #FFFFFF;
   /* Card/raised surface */
   --surface-hover: #F0F0F0;
@@ -169,6 +169,7 @@
 }
 
 @layer base {
+
   html,
   body {
     overflow: hidden;
@@ -312,6 +313,7 @@
 /* Chunk highlight animation for citation navigation */
 /* Stay solid for 95% of duration (57s), then fade over last 5% (3s) */
 @keyframes highlight-fade {
+
   0%,
   95% {
     background-color: var(--highlight-bg);
