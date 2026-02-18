@@ -16,8 +16,6 @@ from typing import Literal
 from langchain.tools import tool, ToolRuntime
 from ragflow_sdk import RAGFlow
 
-from config.rag_agent import AgentContext
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +24,16 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 _ragflow_client = None
+
+
+def _get_dataset_ids(runtime: ToolRuntime) -> list[str]:
+    """Get dataset_ids from runtime context, handling both dict and object contexts."""
+    if not runtime or not runtime.context:
+        return []
+    context = runtime.context
+    if isinstance(context, dict):
+        return context.get("dataset_ids", [])
+    return getattr(context, "dataset_ids", [])
 
 
 def _get_client() -> RAGFlow | None:
@@ -124,7 +132,7 @@ def _get_chunks_around(
 # =============================================================================
 
 @tool
-def explore(runtime: ToolRuntime[AgentContext] = None) -> str:
+def explore(runtime: ToolRuntime = None) -> str:
     """Explore the knowledge base to see available documents.
 
     Use this to understand what sources are available before searching.
@@ -133,7 +141,7 @@ def explore(runtime: ToolRuntime[AgentContext] = None) -> str:
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    dataset_ids = runtime.context.dataset_ids if runtime and runtime.context else []
+    dataset_ids = _get_dataset_ids(runtime)
     if not dataset_ids:
         return "No datasets configured."
     
@@ -160,7 +168,7 @@ def explore(runtime: ToolRuntime[AgentContext] = None) -> str:
 
 
 @tool
-def search(query: str, runtime: ToolRuntime[AgentContext]) -> str:
+def search(query: str, runtime: ToolRuntime) -> str:
     """Search the knowledge base for relevant information.
 
     Returns chunks with chunk IDs that can be used with probe() to validate relevance.
@@ -172,7 +180,7 @@ def search(query: str, runtime: ToolRuntime[AgentContext]) -> str:
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    dataset_ids = runtime.context.dataset_ids if runtime and runtime.context else []
+    dataset_ids = _get_dataset_ids(runtime)
     if not dataset_ids:
         return "No datasets configured. Use explore() to see available datasets."
     
@@ -208,7 +216,7 @@ def probe(
     chunk_id: str,
     direction: str = "both",
     count: int = 2,
-    runtime: ToolRuntime[AgentContext] = None
+    runtime: ToolRuntime = None
 ) -> str:
     """Probe surrounding context to validate chunk relevance.
 
@@ -224,7 +232,7 @@ def probe(
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    dataset_ids = runtime.context.dataset_ids if runtime and runtime.context else []
+    dataset_ids = _get_dataset_ids(runtime)
     if not dataset_ids:
         return "No datasets configured."
     
@@ -260,7 +268,7 @@ def probe(
 
 
 @tool
-def get_first_chunk(document_name: str, runtime: ToolRuntime[AgentContext]) -> str:
+def get_first_chunk(document_name: str, runtime: ToolRuntime) -> str:
     """Get the first chunk of a document to start summarization.
 
     Use this to begin a document sweep for summarization.
@@ -275,7 +283,7 @@ def get_first_chunk(document_name: str, runtime: ToolRuntime[AgentContext]) -> s
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    dataset_ids = runtime.context.dataset_ids if runtime and runtime.context else []
+    dataset_ids = _get_dataset_ids(runtime)
     if not dataset_ids:
         return "No datasets configured."
 
