@@ -9,8 +9,6 @@ from langchain.agents.middleware import before_agent, AgentState
 from langgraph.runtime import Runtime
 from openai import OpenAI
 
-from config.rag_agent import AgentContext
-
 # Environment variable to enable/disable prompt optimization
 ENABLE_PROMPT_OPTIMIZER = os.getenv("ENABLE_PROMPT_OPTIMIZER", "true").lower() == "true"
 
@@ -41,7 +39,7 @@ Optimized prompt:"""
 
 
 @before_agent
-def optimize_query(state: AgentState, runtime: Runtime[AgentContext]) -> dict | None:
+def optimize_query(state: AgentState, runtime: Runtime) -> dict | None:
     """Optimize the user's query before agent processing."""
     if not ENABLE_PROMPT_OPTIMIZER:
         return None

@@ -8,8 +8,6 @@ from langchain.agents.middleware import before_agent, AgentState
 from langchain.messages import SystemMessage
 from langgraph.runtime import Runtime
 
-from config.rag_agent import AgentContext
-
 
 def format_sources_context(sources_context: list) -> str:
     """Format sources context as a Knowledge Base Overview section."""
@@ -37,12 +35,13 @@ def format_sources_context(sources_context: list) -> str:
 
 
 @before_agent
-def inject_sources_context(state: AgentState, runtime: Runtime[AgentContext]) -> dict | None:
+def inject_sources_context(state: AgentState, runtime: Runtime) -> dict | None:
     """Inject sources context into the conversation as a system message."""
     if not runtime or not runtime.context:
         return None
 
-    sources_context = runtime.context.sources_context
+    # runtime.context is a dict, access with .get()
+    sources_context = runtime.context.get("sources_context") if isinstance(runtime.context, dict) else getattr(runtime.context, "sources_context", None)
     if not sources_context:
         return None
 
