@@ -482,7 +482,7 @@ export function ChatPanel({
       {/* Header */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-[2px] w-6 bg-accent-red" />
+          <div className="h-[2px] w-6 bg-foreground dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
             DIALOGUE
           </h2>
@@ -685,7 +685,7 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t border-divider h-20 flex items-center px-6 gap-3">
+      <div className="border-t-2 dark:border-t border-divider h-20 flex items-center px-6 gap-3">
         <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-3">
           <Textarea
             value={input}
@@ -698,7 +698,7 @@ export function ChatPanel({
           <button
             type="submit"
             disabled={!input.trim() || stream.isLoading}
-            className="h-8 w-8 flex items-center justify-center rounded-[4px] dark:bg-surface-elevated dark:border dark:border-outline bg-primary text-primary-foreground disabled:opacity-50 transition-opacity shrink-0"
+            className="h-8 w-8 flex items-center justify-center rounded-[4px] bg-accent-primary dark:bg-surface-elevated dark:border dark:border-outline text-white disabled:opacity-50 transition-opacity shrink-0"
           >
             {stream.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

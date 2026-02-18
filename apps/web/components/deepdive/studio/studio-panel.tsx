@@ -85,7 +85,7 @@ export function StudioPanel({
           {/* Header */}
           <div className="px-6 pt-3 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-[2px] w-6 bg-accent-red" />
+              <div className="h-[2px] w-6 bg-foreground dark:bg-accent-red" />
               <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
                 STUDIO
               </h2>

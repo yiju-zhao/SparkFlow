@@ -94,16 +94,16 @@
   /* 8px - default */
 
   /* Notebook Design Tokens */
-  --accent-primary: #0066FF;
-  /* User bubble / AI accent bar in light mode */
+  --accent-primary: oklch(0.44 0.19 16);
+  /* Same as accent-red (Huawei Red) */
   --surface-elevated: #FFFFFF;
   /* Card/raised surface */
   --surface-hover: #F0F0F0;
   /* Card hover */
-  --divider: #E5E5E5;
-  /* Panel borders */
-  --outline: #D4D4D4;
-  /* Button borders */
+  --divider: #0A0A0A;
+  /* Swiss-style bold black borders */
+  --outline: #0A0A0A;
+  /* Swiss-style bold black button borders */
 
   /* Chunk Highlight Colors */
   --highlight-bg: oklch(0.92 0.12 95 / 0.6);
