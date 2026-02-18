@@ -480,27 +480,25 @@ export function ChatPanel({
   return (
     <div className="flex h-full min-w-0 flex-col relative overflow-hidden">
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 flex items-center justify-between">
-        <div>
-          <div className="h-[2px] w-6 bg-accent-red mb-3" />
-          <h2 className="text-[10px] font-bold tracking-[0.2em] text-foreground uppercase">
+      <div className="px-6 pt-3 pb-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-[2px] w-6 bg-accent-red" />
+          <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
             DIALOGUE
           </h2>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-3 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5 rounded-full hover:bg-accent/80 transition-colors"
+        <div className="flex items-center gap-3">
+          <div className="h-1 flex-1" />
+          <button
+            className="h-7 px-3 text-[11px] font-semibold tracking-[0.2em] uppercase font-mono text-muted-foreground rounded-[4px] dark:bg-[#1A1A1A] dark:border dark:border-[#333333] bg-muted/50 border border-border/60 hover:opacity-80 transition-opacity"
             onClick={() => setShowHistory(!showHistory)}
           >
             {showHistory ? "CLOSE" : "HISTORY"}
-            <span className="text-accent-red">&gt;</span>
-          </Button>
+          </button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 rounded-full hover:bg-accent/80 transition-colors"
+            className="h-7 w-7 rounded-[4px] hover:bg-accent/80 transition-colors"
             onClick={handleNewChat}
             title="New Chat"
           >
@@ -589,9 +587,9 @@ export function ChatPanel({
                 className={`group flex ${isUser ? "justify-start" : "justify-start"} px-2`}
               >
                 <div
-                  className={`relative w-full rounded-lg transition-all duration-200 ${isUser
-                      ? "bg-[#0A84FF] dark:bg-[#CE0E2D] text-white p-5 shadow-lg shadow-blue-600/10 dark:shadow-accent-red/10 border-none"
-                      : "bg-muted/30 dark:bg-muted/20 border-l-[3px] border-accent-red p-6"
+                  className={`relative w-full rounded-[4px] transition-all duration-200 ${isUser
+                    ? "bg-[#0A84FF] dark:bg-[#FF3B30] text-white px-4 py-3 shadow-lg shadow-blue-600/10 dark:shadow-red-600/10 border-none"
+                    : "bg-muted/30 dark:bg-[#1A1A1A] dark:border dark:border-[#2A2A2A] border-l-4 border-l-accent-red p-5"
                     }`}
                 >
                   {isUser ? (
@@ -681,27 +679,27 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t border-border p-4">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      <div className="border-t dark:border-[#2A2A2A] border-border h-20 flex items-center px-6 gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-3">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask a question..."
-            className="min-h-[40px] max-h-[120px] resize-none"
+            placeholder="Ask a question about your sources..."
+            className="min-h-[40px] max-h-[120px] resize-none flex-1"
             disabled={stream.isLoading}
           />
-          <Button
+          <button
             type="submit"
-            size="icon"
             disabled={!input.trim() || stream.isLoading}
+            className="h-8 w-8 flex items-center justify-center rounded-[4px] dark:bg-[#1A1A1A] dark:border dark:border-[#3A3A3A] bg-primary text-primary-foreground disabled:opacity-50 transition-opacity shrink-0"
           >
             {stream.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Send className="h-4 w-4" />
             )}
-          </Button>
+          </button>
         </form>
       </div>
     </div>

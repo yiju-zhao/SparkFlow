@@ -129,22 +129,21 @@ export function SourcesPanel({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="px-5 pt-6 pb-4">
-        <div className="h-[2px] w-6 bg-accent-red mb-3" />
-        <div className="flex items-center justify-between">
-          <h2 className="text-[10px] font-bold tracking-[0.2em] text-foreground uppercase">
+      <div className="px-6 pt-3 pb-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-[2px] w-6 bg-accent-red" />
+          <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
             SOURCES
           </h2>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 w-7 p-0 rounded-full hover:bg-accent/80 transition-colors"
-            onClick={() => setIsDialogOpen(true)}
-            title="Add Source"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
         </div>
+        <button
+          className="h-7 px-2.5 flex items-center gap-1.5 text-[10px] font-bold uppercase rounded-[4px] dark:bg-[#1A1A1A] dark:border dark:border-[#3A3A3A] bg-muted/50 border border-border/60 hover:opacity-80 transition-opacity"
+          onClick={() => setIsDialogOpen(true)}
+          title="Add Source"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span>ADD SOURCE</span>
+        </button>
       </div>
 
       {/* Sources List */}
@@ -255,12 +254,11 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative flex cursor-pointer items-start gap-4 rounded-md px-4 py-3 transition-all duration-200 border border-transparent hover:bg-accent/40 ${isPending ? "opacity-50" : ""
+      className={`group relative flex cursor-pointer items-start gap-4 rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-[#1A1A1A] hover:bg-accent/40 dark:hover:bg-[#252525] ${selected ? "border-l-4 border-l-[#FF3B30]" : "border-l-4 border-l-transparent"} ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >
-      {/* Selected Accent Bar */}
-      <div className={`absolute left-0 top-3 bottom-3 w-[3px] bg-accent-red rounded-r-full transition-opacity duration-200 ${selected ? "opacity-100" : "opacity-0"}`} />
+      {/* Selected Accent Bar - handled by border-l above */}
 
       <div className="mt-0.5 shrink-0">
         {source.sourceType === "DOCUMENT" ? (

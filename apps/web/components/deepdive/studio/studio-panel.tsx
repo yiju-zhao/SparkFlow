@@ -83,17 +83,17 @@ export function StudioPanel({
       ) : (
         <>
           {/* Header */}
-          <div className="px-5 pt-6 pb-4 flex items-center justify-between">
-            <div>
-              <div className="h-[2px] w-6 bg-accent-red mb-3" />
-              <h2 className="text-[10px] font-bold tracking-[0.2em] text-foreground uppercase">
+          <div className="px-6 pt-3 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-[2px] w-6 bg-accent-red" />
+              <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
                 STUDIO
               </h2>
             </div>
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0 rounded-full hover:bg-accent/80 transition-colors"
+              className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
               onClick={() => setIsCreateDialogOpen(true)}
               title="New Note"
             >
@@ -165,11 +165,9 @@ function NoteCard({ note, onSelect, selected }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group relative cursor-pointer rounded-md border border-transparent p-4 transition-all duration-200 ${isPending ? "opacity-50" : ""
-        } hover:bg-accent/40`}
+      className={`group relative cursor-pointer rounded-[4px] dark:bg-[#1A1A1A] p-3 transition-all duration-200 ${isPending ? "opacity-50" : ""
+        } hover:bg-accent/40 dark:hover:bg-[#252525] ${selected ? "border-l-4 border-l-accent-red" : "border-l-4 dark:border-l-[#2A2A2A] border-l-transparent"}`}
     >
-      {/* Selected Accent Bar */}
-      <div className={`absolute left-0 top-3 bottom-3 w-[3px] bg-accent-red rounded-r-full transition-opacity duration-200 ${selected ? "opacity-100" : "opacity-0"}`} />
 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
