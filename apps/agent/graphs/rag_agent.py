@@ -1,28 +1,32 @@
-"""RAG Agent using LangChain create_agent.
+"""RAG Agent using Deep Agents with official skill system.
+
+Skills are loaded from SKILL.md files using FilesystemBackend for progressive disclosure.
 
 Note: When running under LangGraph server (langgraph dev/up), persistence is
 handled automatically by the server infrastructure. Do not specify a custom
 checkpointer as the server manages this.
 """
 
-from langchain.agents import create_agent
+from deepagents import create_deep_agent
+from deepagents.backends.filesystem import FilesystemBackend
 
-from config.rag_agent import RAG_AGENT_CONFIG, AgentContext
+from config.rag_agent import RAG_AGENT_CONFIG
 from prompts.rag_agent import RAG_AGENT_SYSTEM_PROMPT
-from tools.ragflow import explore, search, probe
-from middleware.query_optimizer import optimize_query
+from tools.ragflow import explore, search, probe, get_first_chunk
 from middleware.sources_context import inject_sources_context
+from middleware.query_optimizer import optimize_query
 
 
 model = f"{RAG_AGENT_CONFIG.model_provider}:{RAG_AGENT_CONFIG.model_name}"
 
-# Create the RAG agent with query optimization and sources context middleware
-# Persistence is managed by LangGraph server (langgraph dev uses in-memory,
-# langgraph up uses PostgreSQL automatically)
-agent = create_agent(
+# Create the RAG agent with official Deep Agents skill system
+# Skills are loaded from ./skills/ directory (SKILL.md files)
+# Progressive disclosure: skill descriptions in prompt, full content loaded on demand
+agent = create_deep_agent(
     model=model,
-    tools=[explore, search, probe],
+    backend=FilesystemBackend(root_dir="."),
+    skills=["./skills/"],
+    tools=[explore, search, probe, get_first_chunk],
     system_prompt=RAG_AGENT_SYSTEM_PROMPT,
     middleware=[inject_sources_context, optimize_query],
-    context_schema=AgentContext,
 )
