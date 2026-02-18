@@ -164,6 +164,7 @@ export function SourcesPanel({
                 key={source.id}
                 source={source}
                 onSelect={() => onSelectSource(source)}
+                selected={false}
               />
             ))}
           </div>
@@ -183,9 +184,11 @@ export function SourcesPanel({
 const SourceItem = memo(function SourceItem({
   source,
   onSelect,
+  selected,
 }: {
   source: Source;
   onSelect: () => void;
+  selected: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const relativeTime = useRelativeTime(new Date(source.createdAt));
@@ -248,28 +251,32 @@ const SourceItem = memo(function SourceItem({
       }
     })();
 
+
+
   return (
     <div
-      className={`group relative flex cursor-pointer items-start gap-3 rounded-xl px-4 py-3.5 transition-all duration-200 border border-transparent hover:border-border/50 hover:bg-accent/40 ${isPending ? "opacity-50" : ""
+      className={`group relative flex cursor-pointer items-start gap-4 rounded-md px-4 py-3 transition-all duration-200 border border-transparent hover:bg-accent/40 ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >
-      <div className="mt-0.5">
+      {/* Selected Accent Bar */}
+      <div className={`absolute left-0 top-3 bottom-3 w-[3px] bg-accent-red rounded-r-full transition-opacity duration-200 ${selected ? "opacity-100" : "opacity-0"}`} />
+
+      <div className="mt-0.5 shrink-0">
         {source.sourceType === "DOCUMENT" ? (
-          <FileText className="h-4 w-4 text-muted-foreground" />
+          <FileText className="h-4 w-4 text-muted-foreground/80" />
         ) : (
-          <Globe className="h-4 w-4 text-muted-foreground" />
+          <Globe className="h-4 w-4 text-muted-foreground/80" />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">{source.title}</span>
+          <span className="truncate text-[13.5px] font-medium leading-tight">{source.title}</span>
           {statusIcon}
         </div>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary" className="h-4 px-1 text-[10px]">
-            {source.sourceType}
-          </Badge>
+        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground/70 tracking-tight">
+          <span className="uppercase font-semibold tracking-wider">{source.sourceType === "DOCUMENT" ? "PDF" : "WEB"}</span>
+          <span>·</span>
           {relativeTime && <span suppressHydrationWarning>{relativeTime}</span>}
         </div>
         {isRunning && (
@@ -289,13 +296,13 @@ const SourceItem = memo(function SourceItem({
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}
       </div>
-      <div className="absolute top-2 right-2 opacity-0 transition-all duration-200 group-hover:opacity-100 transform translate-x-1 group-hover:translate-x-0">
+      <div className="absolute top-1/2 -translate-y-1/2 right-2 opacity-0 transition-all duration-200 group-hover:opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild suppressHydrationWarning>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm"
+              className="h-7 w-7 rounded-full bg-background/90 border border-border/40 shadow-sm"
               disabled={isPending}
               onClick={(e) => e.stopPropagation()}
             >

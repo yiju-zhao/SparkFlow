@@ -120,6 +120,7 @@ export function StudioPanel({
                     key={note.id}
                     note={note}
                     onSelect={() => onSelectNote(note)}
+                    selected={false}
                   />
                 ))}
               </div>
@@ -141,9 +142,10 @@ export function StudioPanel({
 interface NoteCardProps {
   note: Note;
   onSelect: () => void;
+  selected: boolean;
 }
 
-function NoteCard({ note, onSelect }: NoteCardProps) {
+function NoteCard({ note, onSelect, selected }: NoteCardProps) {
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -163,30 +165,33 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group relative cursor-pointer rounded-xl border border-transparent p-4 transition-all duration-200 ${isPending ? "opacity-50" : ""
-        } hover:border-border/50 hover:bg-accent/40`}
+      className={`group relative cursor-pointer rounded-md border border-transparent p-4 transition-all duration-200 ${isPending ? "opacity-50" : ""
+        } hover:bg-accent/40`}
     >
+      {/* Selected Accent Bar */}
+      <div className={`absolute left-0 top-3 bottom-3 w-[3px] bg-accent-red rounded-r-full transition-opacity duration-200 ${selected ? "opacity-100" : "opacity-0"}`} />
+
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {note.isPinned && (
               <Pin className="h-3 w-3 shrink-0 text-accent-red" />
             )}
-            <h3 className="line-clamp-1 text-sm font-medium">{note.title}</h3>
+            <h3 className="line-clamp-1 text-[13.5px] font-medium leading-tight">{note.title}</h3>
           </div>
-          <div className="mt-1 h-[28px] overflow-hidden text-[10px] text-muted-foreground">
+          <div className="mt-1 h-[28px] overflow-hidden text-[10px] text-muted-foreground/70">
             <Markdown className="text-[10px] [&_p]:mb-0 [&_p]:leading-tight">
               {note.content}
             </Markdown>
           </div>
         </div>
-        <div className="absolute top-3 right-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <div className="absolute top-1/2 -translate-y-1/2 right-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <DropdownMenu>
             <DropdownMenuTrigger asChild suppressHydrationWarning>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm"
+                className="h-7 w-7 rounded-full bg-background/90 border border-border/40 shadow-sm"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />

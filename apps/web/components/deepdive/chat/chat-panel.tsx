@@ -590,7 +590,7 @@ export function ChatPanel({
               >
                 <div
                   className={`relative w-full rounded-lg transition-all duration-200 ${isUser
-                      ? "bg-blue-600 dark:bg-accent-red text-white p-5 shadow-lg shadow-blue-600/10 dark:shadow-accent-red/10"
+                      ? "bg-[#0A84FF] dark:bg-[#CE0E2D] text-white p-5 shadow-lg shadow-blue-600/10 dark:shadow-accent-red/10 border-none"
                       : "bg-muted/30 dark:bg-muted/20 border-l-[3px] border-accent-red p-6"
                     }`}
                 >
@@ -600,12 +600,9 @@ export function ChatPanel({
                     </p>
                   ) : hasInProgressToolCalls ? (
                     // Tool call indicator (only for in-progress calls)
-                    <div className="flex items-center gap-2 text-[11px] font-medium tracking-tight text-muted-foreground/80">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span className="uppercase tracking-wider">
-                        CONSULTING{" "}
-                        {inProgressToolCalls.map((tc) => tc.name).join(", ")}...
-                      </span>
+                    <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground/60 uppercase">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>CONSULTING {inProgressToolCalls.map((tc) => tc.name).join(", ")}...</span>
                     </div>
                   ) : (
                     // Final AI response
@@ -620,7 +617,7 @@ export function ChatPanel({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 gap-1.5 px-3 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full"
+                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
                             onClick={() =>
                               handleSaveToNotes(messageKey, content)
                             }
@@ -636,7 +633,7 @@ export function ChatPanel({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 gap-1.5 px-3 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full"
+                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
                             onClick={() => handleCopy(messageKey, content)}
                           >
                             {copiedMessageId === messageKey ? (
