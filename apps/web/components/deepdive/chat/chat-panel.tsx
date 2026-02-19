@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
+import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { createNote } from "@/lib/actions/notes";
 import type { TocHeading } from "@/lib/utils/toc-extractor";
 import type { Source } from "@prisma/client";
@@ -100,11 +101,28 @@ export function ChatPanel({
 
   // Input state
   const [input, setInput] = useState("");
+  const [inputHeight, setInputHeight] = useState(80);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+
+  const INPUT_MIN_HEIGHT = 60;
+  const INPUT_MAX_HEIGHT = 200;
+  const INPUT_DEFAULT_HEIGHT = 80;
+
+  const handleInputDrag = useCallback((delta: number) => {
+    setInputHeight((prev) => {
+      const newHeight = prev + delta;
+      return Math.max(INPUT_MIN_HEIGHT, Math.min(INPUT_MAX_HEIGHT, newHeight));
+    });
+  }, []);
+
+  const handleInputDoubleClick = useCallback(() => {
+    setInputHeight(INPUT_DEFAULT_HEIGHT);
+  }, []);
+
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const prevIsLoadingRef = useRef<boolean>(false);
+const messagesContainerRef = useRef<HTMLDivElement>(null);
+const textareaRef = useRef<HTMLTextAreaElement>(null);
+const prevIsLoadingRef = useRef<boolean>(false);
 
   // LangGraph stream hook - follows docs pattern
   const stream = useStream<AgentState>({
@@ -683,8 +701,17 @@ export function ChatPanel({
         ) : null}
       </div>
 
+      <ResizableDivider
+        direction="horizontal"
+        onDrag={handleInputDrag}
+        onDoubleClick={handleInputDoubleClick}
+      />
+
       {/* Input */}
-      <div className="border-t-2 dark:border-t border-divider flex items-end px-6 py-3 gap-3">
+      <div
+        className="flex items-end px-6 py-3 gap-3"
+        style={{ minHeight: inputHeight }}
+      >
         <form onSubmit={handleSubmit} className="flex flex-1 items-end gap-3">
           <Textarea
             ref={textareaRef}

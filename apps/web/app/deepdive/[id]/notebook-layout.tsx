@@ -4,18 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { UserNav } from "@/components/user-nav";
+  UserNav
+} from "@/components/user-nav";
 import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
 import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
-import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
+import { ResizableDivider } from "@/components/ui/resizable-divider";
+import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
 
 import type { Source, Note, Notebook } from "@prisma/client";
 
@@ -51,11 +47,12 @@ interface NotebookLayoutProps {
 const EMPTY_SESSIONS: TransformedChatSession[] = [];
 const EMPTY_MESSAGES: TransformedMessage[] = [];
 
-// Panel widths
-const SOURCES_LIST_WIDTH = 280;
-const SOURCES_EXPANDED_WIDTH = 480;
-const STUDIO_LIST_WIDTH = 320;
-const STUDIO_EXPANDED_WIDTH = 480;
+// Panel width constants
+const SOURCES_DEFAULT_WIDTH = 280;
+const STUDIO_DEFAULT_WIDTH = 320;
+const MIN_PANEL_WIDTH = 150;
+const MAX_PANEL_WIDTH = 800;
+const COLLAPSE_THRESHOLD = 100;
 
 export function NotebookLayout(props: NotebookLayoutProps) {
   return (
@@ -73,8 +70,8 @@ function NotebookLayoutInner({
   initialMessages = EMPTY_MESSAGES,
   user,
 }: NotebookLayoutProps) {
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
+  const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [targetChunkId, setTargetChunkId] = useState<string | null>(null);
@@ -89,6 +86,39 @@ function NotebookLayoutInner({
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
 
+  // Clamp width to valid range or collapse
+  const clampWidth = useCallback((width: number): number => {
+    if (width < COLLAPSE_THRESHOLD) return 0;
+    return Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, width));
+  }, []);
+
+  // Drag handlers for sources panel
+  const handleSourcesDrag = useCallback((delta: number) => {
+    setSourcesWidth((prev) => clampWidth(prev + delta));
+  }, [clampWidth]);
+
+  const handleSourcesDoubleClick = useCallback(() => {
+    setSourcesWidth(SOURCES_DEFAULT_WIDTH);
+  }, []);
+
+  // Drag handlers for studio panel
+  const handleStudioDrag = useCallback((delta: number) => {
+    setStudioWidth((prev) => clampWidth(prev + delta));
+  }, [clampWidth]);
+
+  const handleStudioDoubleClick = useCallback(() => {
+    setStudioWidth(STUDIO_DEFAULT_WIDTH);
+  }, []);
+
+  // Expand handlers for collapsed panels
+  const handleSourcesExpand = useCallback((width: number) => {
+    setSourcesWidth(Math.max(SOURCES_DEFAULT_WIDTH, width));
+  }, []);
+
+  const handleStudioExpand = useCallback((width: number) => {
+    setStudioWidth(Math.max(STUDIO_DEFAULT_WIDTH, width));
+  }, []);
+
   // Handle citation click - look up chunk via API to find source
   const handleCitationNavigate = useCallback(async (chunkId: string) => {
     try {
@@ -101,7 +131,10 @@ function NotebookLayoutInner({
       const { contentPreview, contentSuffix, source } = data;
 
       if (source) {
-        setLeftPanelOpen(true);
+        // Expand sources panel if collapsed
+        if (sourcesWidth === 0) {
+          setSourcesWidth(SOURCES_DEFAULT_WIDTH);
+        }
         // Use the source from API response (guaranteed to have fresh content)
         setSelectedSource(source as Source);
         setTargetChunkId(chunkId);
@@ -112,7 +145,7 @@ function NotebookLayoutInner({
     } catch (error) {
       console.error("Failed to navigate to chunk:", error);
     }
-  }, []);
+  }, [sourcesWidth]);
 
   // Register navigation handler with citation context
   useEffect(() => {
@@ -120,32 +153,16 @@ function NotebookLayoutInner({
     return () => setOnNavigate(null);
   }, [setOnNavigate, handleCitationNavigate]);
 
-  // Base widths (what they would be if open)
-  const baseSourcesWidth = selectedSource
-    ? SOURCES_EXPANDED_WIDTH
-    : SOURCES_LIST_WIDTH;
-  const baseStudioWidth = selectedNote
-    ? STUDIO_EXPANDED_WIDTH
-    : STUDIO_LIST_WIDTH;
-
-  // Distribute space: if one panel is closed, the other gets half its space
-  // The center panel (flex-1) inherently gets the other half
-  const sourcesPanelWidth =
-    !rightPanelOpen && leftPanelOpen
-      ? baseSourcesWidth + baseStudioWidth / 2
-      : baseSourcesWidth;
-
-  const studioPanelWidth =
-    !leftPanelOpen && rightPanelOpen
-      ? baseStudioWidth + baseSourcesWidth / 2
-      : baseStudioWidth;
-
   // Memoized callback for chunk navigation cleanup
   const handleChunkNavigated = useCallback(() => {
     setTargetChunkId(null);
     setTargetContentPreview(null);
     setTargetContentSuffix(null);
   }, []);
+
+  // Determine if panels are collapsed
+  const sourcesCollapsed = sourcesWidth === 0;
+  const studioCollapsed = studioWidth === 0;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -172,60 +189,8 @@ function NotebookLayoutInner({
           </span>
         </div>
 
-        {/* Right: Panel toggles + User */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={() => setLeftPanelOpen(!leftPanelOpen)}
-            aria-label={
-              leftPanelOpen ? "Collapse sources panel" : "Expand sources panel"
-            }
-          >
-            <motion.div
-              initial={false}
-              animate={{ scale: 1 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{
-                type: "spring" as const,
-                stiffness: 500,
-                damping: 30,
-              }}
-            >
-              {leftPanelOpen ? (
-                <PanelLeftClose className="h-4 w-4" />
-              ) : (
-                <PanelLeftOpen className="h-4 w-4" />
-              )}
-            </motion.div>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={() => setRightPanelOpen(!rightPanelOpen)}
-            aria-label={
-              rightPanelOpen ? "Collapse studio panel" : "Expand studio panel"
-            }
-          >
-            <motion.div
-              initial={false}
-              animate={{ scale: 1 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{
-                type: "spring" as const,
-                stiffness: 500,
-                damping: 30,
-              }}
-            >
-              {rightPanelOpen ? (
-                <PanelRightClose className="h-4 w-4" />
-              ) : (
-                <PanelRightOpen className="h-4 w-4" />
-              )}
-            </motion.div>
-          </Button>
+        {/* Right: User */}
+        <div className="flex items-center">
           {user && (
             <div className="ml-2 pl-2 border-l border-border/60">
               <UserNav user={user} />
@@ -236,25 +201,38 @@ function NotebookLayoutInner({
 
       {/* Main Content - 3 Panel Grid */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sources Panel (Left) */}
-        <CollapsiblePanel
-          isOpen={leftPanelOpen}
-          width={sourcesPanelWidth}
-          side="left"
-        >
-          <SourcesPanel
-            notebookId={notebook.id}
-            datasetId={notebook.ragflowDatasetId}
-            sources={sources}
-            selectedSource={selectedSource}
-            onSelectSource={setSelectedSource}
-            targetChunkId={targetChunkId}
-            targetContentPreview={targetContentPreview}
-            targetContentSuffix={targetContentSuffix}
-            navigationTrigger={navigationTrigger}
-            onChunkNavigated={handleChunkNavigated}
-          />
-        </CollapsiblePanel>
+        {/* Sources Panel (Left) - Collapsible */}
+        {sourcesCollapsed ? (
+          <CollapsedGripStrip side="left" onExpand={handleSourcesExpand} />
+        ) : (
+          <>
+            <motion.div
+              className="h-full overflow-hidden"
+              style={{ width: sourcesWidth }}
+              initial={false}
+              animate={{ width: sourcesWidth }}
+              transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            >
+              <SourcesPanel
+                notebookId={notebook.id}
+                datasetId={notebook.ragflowDatasetId}
+                sources={sources}
+                selectedSource={selectedSource}
+                onSelectSource={setSelectedSource}
+                targetChunkId={targetChunkId}
+                targetContentPreview={targetContentPreview}
+                targetContentSuffix={targetContentSuffix}
+                navigationTrigger={navigationTrigger}
+                onChunkNavigated={handleChunkNavigated}
+              />
+            </motion.div>
+            <ResizableDivider
+              direction="vertical"
+              onDrag={handleSourcesDrag}
+              onDoubleClick={handleSourcesDoubleClick}
+            />
+          </>
+        )}
 
         {/* Chat Panel (Center) */}
         <motion.div
@@ -278,19 +256,32 @@ function NotebookLayoutInner({
           />
         </motion.div>
 
-        {/* Studio Panel (Right) */}
-        <CollapsiblePanel
-          isOpen={rightPanelOpen}
-          width={studioPanelWidth}
-          side="right"
-        >
-          <StudioPanel
-            notebookId={notebook.id}
-            notes={notes}
-            selectedNote={selectedNote}
-            onSelectNote={setSelectedNote}
-          />
-        </CollapsiblePanel>
+        {/* Studio Panel (Right) - Collapsible */}
+        {studioCollapsed ? (
+          <CollapsedGripStrip side="right" onExpand={handleStudioExpand} />
+        ) : (
+          <>
+            <ResizableDivider
+              direction="vertical"
+              onDrag={handleStudioDrag}
+              onDoubleClick={handleStudioDoubleClick}
+            />
+            <motion.div
+              className="h-full overflow-hidden"
+              style={{ width: studioWidth }}
+              initial={false}
+              animate={{ width: studioWidth }}
+              transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            >
+              <StudioPanel
+                notebookId={notebook.id}
+                notes={notes}
+                selectedNote={selectedNote}
+                onSelectNote={setSelectedNote}
+              />
+            </motion.div>
+          </>
+        )}
       </div>
     </div>
   );
