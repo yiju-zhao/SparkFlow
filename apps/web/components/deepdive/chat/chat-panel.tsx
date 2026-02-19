@@ -151,10 +151,7 @@ export function ChatPanel({
         { sender: string; content: string }[]
       >((acc, m) => {
         if (m.type === "human" || m.type === "ai") {
-          const content =
-            typeof m.content === "string"
-              ? m.content
-              : JSON.stringify(m.content);
+          const content = getMessageContent(m);
           if (content.trim().length > 0) {
             acc.push({
               sender: m.type === "human" ? "USER" : "ASSISTANT",
