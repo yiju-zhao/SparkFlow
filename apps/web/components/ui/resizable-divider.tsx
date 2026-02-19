@@ -74,8 +74,7 @@ export function ResizableDivider({
         ${isVertical ? "w-2" : "h-2"}
         ${isVertical ? "cursor-col-resize" : "cursor-row-resize"}
         shrink-0
-        transition-colors
-        duration-150
+        self-stretch
         ${className}
       `}
       onMouseDown={handleMouseDown}
@@ -92,9 +91,8 @@ export function ResizableDivider({
       <div
         className={`
           absolute
-          ${isVertical ? "left-1/2 -translate-x-1/2 w-[2px] inset-y-0" : "top-1/2 -translate-y-1/2 h-[2px] inset-x-0"}
-          bg-[#0A0A0A] dark:bg-[#333333]
-          ${isHovered || isDragging ? "bg-[#0A0A0A] dark:bg-[#555555]" : ""}
+          ${isVertical ? "left-1/2 -translate-x-1/2 w-[2px] dark:w-[1px] top-0 bottom-0" : "top-1/2 -translate-y-1/2 h-[2px] dark:h-[1px] left-0 right-0"}
+          bg-divider
         `}
       />
     </motion.div>

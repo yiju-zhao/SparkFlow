@@ -199,7 +199,7 @@ function NotebookLayoutInner({
       </div>
 
       {/* Main Content - 3 Panel Grid */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 -mt-[2px] dark:-mt-[1px] pt-[2px] dark:pt-[1px] overflow-hidden">
         {/* Sources Panel (Left) - Collapsible */}
         {sourcesCollapsed ? (
           <CollapsedGripStrip side="left" onExpand={handleSourcesExpand} />
