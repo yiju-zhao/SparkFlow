@@ -107,6 +107,7 @@ export function SourcesPanel({
   if (selectedSource) {
     return (
       <SourceContentView
+        key={selectedSource.id}
         source={selectedSource}
         datasetId={datasetId}
         targetChunkId={targetChunkId}
@@ -325,7 +326,7 @@ function SourceContentView({
   const [isPending, startTransition] = useTransition();
 
   // Progressive rendering state
-  const [isHeavyContentReady, setIsHeavyContentReady] = useState(false);
+  const [isHeavyContentReady, setIsHeavyContentReady] = useState(!!targetChunkId);
 
   useEffect(() => {
     // If we have a target chunk, we need full content immediately to scroll to it
@@ -424,11 +425,15 @@ function SourceContentView({
       }
 
       highlightSpansRef.current.forEach((span) => {
-        if (span.parentNode) {
-          while (span.firstChild) {
-            span.parentNode.insertBefore(span.firstChild, span);
+        try {
+          if (span.parentNode) {
+            while (span.firstChild) {
+              span.parentNode.insertBefore(span.firstChild, span);
+            }
+            span.remove();
           }
-          span.remove();
+        } catch {
+          // Span already detached from DOM
         }
       });
       highlightSpansRef.current = [];
@@ -541,11 +546,15 @@ function SourceContentView({
       // Remove highlights after 60 seconds
       highlightTimeoutRef.current = window.setTimeout(() => {
         highlightSpansRef.current.forEach((span) => {
-          if (span.parentNode) {
-            while (span.firstChild) {
-              span.parentNode.insertBefore(span.firstChild, span);
+          try {
+            if (span.parentNode) {
+              while (span.firstChild) {
+                span.parentNode.insertBefore(span.firstChild, span);
+              }
+              span.remove();
             }
-            span.remove();
+          } catch {
+            // Span already detached from DOM
           }
         });
         highlightSpansRef.current = [];
