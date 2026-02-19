@@ -552,7 +552,7 @@ export function ChatPanel({
       {/* Messages - using stream.messages directly */}
       <div
         ref={messagesContainerRef}
-        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 space-y-4"
+        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 pt-6 space-y-4"
         style={{
           contentVisibility: "auto",
           containIntrinsicSize: "auto 500px",
@@ -618,7 +618,7 @@ export function ChatPanel({
                           </Markdown>
                         </div>
                         {!stream.isLoading && content && (
-                          <div className="mt-6 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-3 border-t border-border/10">
+                          <div className="mt-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-2 border-t border-border/10">
                             <Button
                               variant="ghost"
                               size="sm"

@@ -141,7 +141,7 @@ export function SourcesPanel({
       </div>
 
       {/* Sources List */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
         {liveSources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/50" />
