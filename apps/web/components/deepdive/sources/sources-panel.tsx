@@ -320,41 +320,22 @@ function SourceContentView({
   const highlightTimeoutRef = useRef<number | null>(null);
   const highlightSpansRef = useRef<HTMLSpanElement[]>([]);
 
-  // Get animation state from CollapsiblePanel context
   const panelContext = useCollapsiblePanel();
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
-  const [isPending, startTransition] = useTransition();
 
-  // Progressive rendering state
-  const [isHeavyContentReady, setIsHeavyContentReady] = useState(!!targetChunkId);
-
-  useEffect(() => {
-    // If we have a target chunk, we need full content immediately to scroll to it
-    if (targetChunkId) {
-      setIsHeavyContentReady(true);
-      return;
-    }
-
-    if (isAnimationComplete) {
-      // Prioritize the first paint of the top content
-      // Then render the rest in a subsequent frame
-      const timer = setTimeout(() => {
-        startTransition(() => {
-          setIsHeavyContentReady(true);
-        });
-      }, 50);
-      return () => clearTimeout(timer);
-    } else {
-      setIsHeavyContentReady(false);
-    }
-  }, [isAnimationComplete, targetChunkId, source.id]);
-
+  const [isContentReady, setIsContentReady] = useState(false);
   const markdownContent = source.content || "No content available";
 
-  // Show content when ready: skip skeleton for short content or citation navigation
-  const showContent =
-    isHeavyContentReady ||
-    (isAnimationComplete && markdownContent.length < 5000);
+  useEffect(() => {
+    setIsContentReady(false);
+    
+    if (isAnimationComplete) {
+      const rafId = requestAnimationFrame(() => {
+        setIsContentReady(true);
+      });
+      return () => cancelAnimationFrame(rafId);
+    }
+  }, [isAnimationComplete, source.id]);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -739,38 +720,40 @@ function SourceContentView({
       {/* Markdown content */}
       <div
         ref={scrollRef}
-        className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
+        className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 relative"
       >
-        {showContent ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-          >
-            <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-              {markdownContent}
-            </Markdown>
-          </motion.div>
-        ) : (
-          <div className="space-y-4 animate-pulse">
-            <div className="h-5 w-2/3 rounded bg-muted" />
-            <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-4/5 rounded bg-muted" />
-            </div>
-            <div className="h-32 w-full rounded bg-muted" />
-            <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-3/4 rounded bg-muted" />
-            </div>
-            <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-5/6 rounded bg-muted" />
-            </div>
+        <div
+          className="space-y-4 transition-opacity duration-150"
+          style={{ opacity: isContentReady ? 0 : 1 }}
+        >
+          <div className="h-5 w-2/3 rounded bg-muted" />
+          <div className="space-y-2.5">
+            <div className="h-3.5 w-full rounded bg-muted" />
+            <div className="h-3.5 w-full rounded bg-muted" />
+            <div className="h-3.5 w-4/5 rounded bg-muted" />
           </div>
-        )}
+          <div className="h-32 w-full rounded bg-muted" />
+          <div className="space-y-2.5">
+            <div className="h-3.5 w-full rounded bg-muted" />
+            <div className="h-3.5 w-full rounded bg-muted" />
+            <div className="h-3.5 w-3/4 rounded bg-muted" />
+          </div>
+          <div className="space-y-2.5">
+            <div className="h-3.5 w-full rounded bg-muted" />
+            <div className="h-3.5 w-5/6 rounded bg-muted" />
+          </div>
+        </div>
+        <motion.div
+          className="absolute inset-0 p-4 overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isContentReady ? 1 : 0 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          style={{ pointerEvents: isContentReady ? "auto" : "none" }}
+        >
+          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+            {markdownContent}
+          </Markdown>
+        </motion.div>
       </div>
     </div>
   );
