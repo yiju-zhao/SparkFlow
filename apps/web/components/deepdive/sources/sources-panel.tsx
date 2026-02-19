@@ -323,22 +323,18 @@ function SourceContentView({
   const panelContext = useCollapsiblePanel();
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
 
-  const [isContentReady, setIsContentReady] = useState(false);
   const markdownContent = source.content || "No content available";
-  const isLongContent = markdownContent.length > 8000;
-
-  useEffect(() => {
-    setIsContentReady(false);
-    
-    if (isAnimationComplete) {
-      const rafId = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsContentReady(true);
-        });
-      });
-      return () => cancelAnimationFrame(rafId);
+  
+  const PREVIEW_THRESHOLD = 4000;
+  const isLongContent = markdownContent.length > PREVIEW_THRESHOLD;
+  
+  const visibleContent = useMemo(() => {
+    if (!isLongContent || isAnimationComplete) {
+      return markdownContent;
     }
-  }, [isAnimationComplete, source.id]);
+    const cutPoint = markdownContent.lastIndexOf("\n", PREVIEW_THRESHOLD);
+    return markdownContent.slice(0, cutPoint > 0 ? cutPoint : PREVIEW_THRESHOLD);
+  }, [markdownContent, isLongContent, isAnimationComplete]);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -723,42 +719,26 @@ function SourceContentView({
       {/* Markdown content */}
       <div
         ref={scrollRef}
-        className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 relative"
+        className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
         style={{ contain: "content" }}
       >
-        {!isContentReady && (
-          <div className="space-y-4">
-            <div className="h-5 w-2/3 rounded bg-muted" />
-            <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-4/5 rounded bg-muted" />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          style={{ contentVisibility: isLongContent && !isAnimationComplete ? "auto" : undefined }}
+        >
+          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+            {visibleContent}
+          </Markdown>
+          {isLongContent && !isAnimationComplete && (
+            <div className="space-y-4 pt-4">
+              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-4/5 rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
             </div>
-            <div className="h-32 w-full rounded bg-muted" />
-            <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-3/4 rounded bg-muted" />
-            </div>
-            <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted" />
-              <div className="h-3.5 w-5/6 rounded bg-muted" />
-            </div>
-          </div>
-        )}
-        {isContentReady && (
-          <motion.div
-            className="absolute inset-0 p-4 overflow-y-auto"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            style={{ contentVisibility: isLongContent ? "auto" : undefined }}
-          >
-            <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-              {markdownContent}
-            </Markdown>
-          </motion.div>
-        )}
+          )}
+        </motion.div>
       </div>
     </div>
   );
