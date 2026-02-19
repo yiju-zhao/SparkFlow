@@ -49,7 +49,9 @@ const EMPTY_MESSAGES: TransformedMessage[] = [];
 
 // Panel width constants
 const SOURCES_DEFAULT_WIDTH = 280;
+const SOURCES_CONTENT_WIDTH = 480;
 const STUDIO_DEFAULT_WIDTH = 320;
+const STUDIO_CONTENT_WIDTH = 480;
 const MIN_PANEL_WIDTH = 150;
 const MAX_PANEL_WIDTH = 800;
 const COLLAPSE_THRESHOLD = 100;
@@ -118,6 +120,26 @@ function NotebookLayoutInner({
     setStudioWidth(Math.max(STUDIO_DEFAULT_WIDTH, width));
   }, []);
 
+  // Wrap setSelectedSource with width-snapping logic
+  const handleSelectSource = useCallback((source: Source | null) => {
+    setSelectedSource(source);
+    if (source) {
+      setSourcesWidth(SOURCES_CONTENT_WIDTH);
+    } else {
+      setSourcesWidth(SOURCES_DEFAULT_WIDTH);
+    }
+  }, []);
+
+  // Wrap setSelectedNote with width-snapping logic
+  const handleSelectNote = useCallback((note: Note | null) => {
+    setSelectedNote(note);
+    if (note) {
+      setStudioWidth(STUDIO_CONTENT_WIDTH);
+    } else {
+      setStudioWidth(STUDIO_DEFAULT_WIDTH);
+    }
+  }, []);
+
   // Handle citation click - look up chunk via API to find source
   const handleCitationNavigate = useCallback(async (chunkId: string) => {
     try {
@@ -130,9 +152,9 @@ function NotebookLayoutInner({
       const { contentPreview, contentSuffix, source } = data;
 
       if (source) {
-        // Expand sources panel if collapsed
+        // Expand sources panel if collapsed, snap to content width
         if (sourcesWidth === 0) {
-          setSourcesWidth(SOURCES_DEFAULT_WIDTH);
+          setSourcesWidth(SOURCES_CONTENT_WIDTH);
         }
         // Use the source from API response (guaranteed to have fresh content)
         setSelectedSource(source as Source);
@@ -217,7 +239,7 @@ function NotebookLayoutInner({
                 datasetId={notebook.ragflowDatasetId}
                 sources={sources}
                 selectedSource={selectedSource}
-                onSelectSource={setSelectedSource}
+                onSelectSource={handleSelectSource}
                 targetChunkId={targetChunkId}
                 targetContentPreview={targetContentPreview}
                 targetContentSuffix={targetContentSuffix}
@@ -276,7 +298,7 @@ function NotebookLayoutInner({
                 notebookId={notebook.id}
                 notes={notes}
                 selectedNote={selectedNote}
-                onSelectNote={setSelectedNote}
+                onSelectNote={handleSelectNote}
               />
             </motion.div>
           </>
