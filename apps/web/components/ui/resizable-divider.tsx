@@ -91,7 +91,7 @@ export function ResizableDivider({
       <div
         className={`
           absolute
-          ${isVertical ? "left-1/2 -translate-x-1/2 w-[2px] dark:w-[1px] top-0 bottom-0" : "top-1/2 -translate-y-1/2 h-[2px] dark:h-[1px] left-0 right-0"}
+          ${isVertical ? "left-1/2 -translate-x-1/2 w-px top-0 bottom-0" : "top-1/2 -translate-y-1/2 h-px left-0 right-0"}
           bg-divider
         `}
       />
