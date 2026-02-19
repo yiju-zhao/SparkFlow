@@ -150,7 +150,7 @@ function NotebookLayoutInner({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Inline Header */}
-      <div className="shrink-0 h-14 border-b-2 border-divider bg-[#FAFAFA] dark:bg-[#0C0C0C] flex items-center justify-between px-6">
+      <div className="shrink-0 h-14 border-b-2 dark:border-b border-divider bg-[#FAFAFA] dark:bg-[#0C0C0C] flex items-center justify-between px-6">
         {/* Left: Breadcrumb */}
         <div className="flex items-center gap-2.5 text-sm tracking-tight">
           <Link

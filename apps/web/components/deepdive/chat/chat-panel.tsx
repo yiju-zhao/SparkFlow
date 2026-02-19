@@ -483,14 +483,14 @@ export function ChatPanel({
       <div className="px-6 pt-3 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-[2px] w-6 bg-foreground dark:bg-accent-red" />
-          <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
+          <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             DIALOGUE
           </h2>
         </div>
         <div className="flex items-center gap-3">
           <div className="h-1 flex-1" />
           <button
-            className="h-7 px-3 text-[11px] font-semibold tracking-[0.2em] uppercase font-mono text-muted-foreground rounded-[4px] bg-surface-elevated border border-outline hover:opacity-80 transition-opacity"
+            className="h-7 px-3 text-[11px] font-semibold tracking-[3px] uppercase font-mono text-muted-foreground rounded-[4px] bg-surface-elevated border-2 dark:border border-outline dark:border-[#333333] hover:opacity-80 transition-opacity"
             onClick={() => setShowHistory(!showHistory)}
           >
             {showHistory ? "CLOSE" : "HISTORY"}
@@ -588,7 +588,7 @@ export function ChatPanel({
               >
                 <div
                   className={`relative w-full rounded-[4px] transition-all duration-200 ${isUser
-                    ? "bg-accent-primary text-white px-4 py-3 shadow-lg border-none"
+                    ? "bg-accent-primary text-white px-4 py-3 border-none"
                     : "bg-surface-elevated border border-divider p-5"
                     }`}
                 >
@@ -685,7 +685,7 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t-2 border-divider h-20 flex items-center px-6 gap-3">
+      <div className="border-t-2 dark:border-t border-divider h-20 flex items-center px-6 gap-3">
         <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-3">
           <Textarea
             value={input}

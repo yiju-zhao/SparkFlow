@@ -125,7 +125,7 @@ export function SourcesPanel({
       <div className="px-6 pt-3 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-[2px] w-6 bg-foreground dark:bg-accent-red" />
-          <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
+          <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             SOURCES
           </h2>
         </div>
@@ -247,7 +247,7 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border border-divider ${selected ? "border-l-4 border-l-accent-red" : "border-l-4 border-l-divider"} ${isPending ? "opacity-50" : ""
+      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >
@@ -261,7 +261,7 @@ const SourceItem = memo(function SourceItem({
       </button>
 
       <div className="min-w-0 flex-1">
-        <span className="truncate block text-[13px] font-semibold leading-tight">{source.title}</span>
+        <span className="truncate block text-[13px] font-semibold dark:font-medium leading-tight">{source.title}</span>
         <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span>{source.sourceType === "DOCUMENT" ? "PDF" : "Web"}</span>
           <span>•</span>

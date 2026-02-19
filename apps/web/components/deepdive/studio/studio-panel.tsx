@@ -86,7 +86,7 @@ export function StudioPanel({
           <div className="px-6 pt-3 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-[2px] w-6 bg-foreground dark:bg-accent-red" />
-              <h2 className="text-[11px] font-semibold tracking-[0.2em] text-foreground uppercase font-mono">
+              <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
                 STUDIO
               </h2>
             </div>
@@ -165,8 +165,8 @@ function NoteCard({ note, onSelect, selected }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border border-divider ${isPending ? "opacity-50" : ""
-        } hover:bg-surface-hover ${selected ? "border-l-4 border-l-accent-red" : "border-l-4 border-l-divider"}`}
+      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-divider ${isPending ? "opacity-50" : ""
+        } hover:bg-surface-hover`}
     >
 
       <div className="flex items-start justify-between gap-2">
@@ -175,10 +175,10 @@ function NoteCard({ note, onSelect, selected }: NoteCardProps) {
             {note.isPinned && (
               <Pin className="h-3 w-3 shrink-0 text-accent-red" />
             )}
-            <h3 className="line-clamp-1 text-[13.5px] font-medium leading-tight">{note.title}</h3>
+            <h3 className="line-clamp-1 text-[13px] font-medium leading-tight">{note.title}</h3>
           </div>
-          <div className="mt-1 h-[28px] overflow-hidden text-[10px] text-muted-foreground/70">
-            <Markdown className="text-[10px] [&_p]:mb-0 [&_p]:leading-tight">
+          <div className="mt-1 h-[28px] overflow-hidden text-[12px] text-muted-foreground/70">
+            <Markdown className="text-[12px] [&_p]:mb-0 [&_p]:leading-tight">
               {note.content}
             </Markdown>
           </div>
