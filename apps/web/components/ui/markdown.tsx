@@ -254,6 +254,7 @@ export const Markdown = memo(function Markdown({
           src={src}
           alt={alt || ""}
           loading="lazy"
+          decoding="async"
           style={{
             maxWidth: "100%",
             height: "auto",

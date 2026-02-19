@@ -349,20 +349,12 @@ function SourceContentView({
     }
   }, [isAnimationComplete, targetChunkId, source.id]);
 
-  const displayedContent = useMemo(() => {
-    // Always show full content if ready or if it's short
-    if (
-      isHeavyContentReady ||
-      (source.content && source.content.length < 5000)
-    ) {
-      return source.content || "No content available";
-    }
+  const markdownContent = source.content || "No content available";
 
-    // Otherwise show distinct first chunk for fast render
-    const content = source.content || "No content available";
-    const sliceIndex = content.indexOf("\n", 3000);
-    return sliceIndex !== -1 ? content.slice(0, sliceIndex) : content;
-  }, [isHeavyContentReady, source.content]);
+  // Show content when ready: skip skeleton for short content or citation navigation
+  const showContent =
+    isHeavyContentReady ||
+    (isAnimationComplete && markdownContent.length < 5000);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -370,8 +362,6 @@ function SourceContentView({
       scrollRef.current.scrollTop = 0;
     }
   }, [source.id]);
-
-  const markdownContent = source.content || "No content available";
 
   const computeHeadings = useCallback((content: string) => {
     const extracted: { id: string; text: string; level: number }[] = [];
@@ -751,22 +741,34 @@ function SourceContentView({
         ref={scrollRef}
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
       >
-        {isAnimationComplete ? (
+        {showContent ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
           >
             <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-              {displayedContent}
+              {markdownContent}
             </Markdown>
           </motion.div>
         ) : (
-          <div className="space-y-3 animate-pulse">
-            <div className="h-4 w-3/4 rounded bg-muted" />
-            <div className="h-4 w-full rounded bg-muted" />
-            <div className="h-4 w-5/6 rounded bg-muted" />
-            <div className="h-4 w-2/3 rounded bg-muted" />
+          <div className="space-y-4 animate-pulse">
+            <div className="h-5 w-2/3 rounded bg-muted" />
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-4/5 rounded bg-muted" />
+            </div>
+            <div className="h-32 w-full rounded bg-muted" />
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-3/4 rounded bg-muted" />
+            </div>
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-5/6 rounded bg-muted" />
+            </div>
           </div>
         )}
       </div>
