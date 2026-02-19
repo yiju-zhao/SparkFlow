@@ -482,7 +482,7 @@ export function ChatPanel({
       {/* Header */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-[2px] w-6 bg-foreground dark:bg-accent-red" />
+          <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             DIALOGUE
           </h2>
@@ -692,7 +692,7 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about your sources..."
-            className="min-h-[40px] max-h-[120px] resize-none flex-1"
+            className="min-h-[40px] max-h-[120px] resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0"
             disabled={stream.isLoading}
           />
           <button

@@ -58,8 +58,10 @@ export function CollapsiblePanel({
     }
   }, [width, isOpen]);
 
-  // Determine border based on side
-  const borderClass = side === "left" ? "border-r" : "border-l";
+  // Determine border based on side (static classes for Tailwind content detection)
+  const borderClasses = side === "left"
+    ? "border-r-2 dark:border-r border-divider"
+    : "border-l-2 dark:border-l border-divider";
 
   // Calculate current animated width
   const animatedWidth = isOpen ? width : 0;
@@ -67,7 +69,7 @@ export function CollapsiblePanel({
   return (
     <CollapsiblePanelContext.Provider value={{ isAnimationComplete }}>
       <motion.div
-        className={`h-full shrink-0 overflow-hidden ${borderClass}-2 dark:${borderClass} border-divider ${className}`}
+        className={`h-full shrink-0 overflow-hidden ${borderClasses} ${className}`}
         initial={false}
         animate={{
           width: animatedWidth,

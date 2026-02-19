@@ -124,13 +124,13 @@ export function SourcesPanel({
       {/* Header */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-[2px] w-6 bg-foreground dark:bg-accent-red" />
+          <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             SOURCES
           </h2>
         </div>
         <button
-          className="h-7 px-2.5 flex items-center gap-1.5 text-[10px] font-bold uppercase rounded-[4px] bg-surface-elevated border border-outline hover:opacity-80 transition-opacity"
+          className="h-7 px-2.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-[3px] uppercase font-mono rounded-[4px] bg-surface-elevated border border-outline hover:opacity-80 transition-opacity"
           onClick={() => setIsDialogOpen(true)}
           title="Add Source"
         >
@@ -247,7 +247,7 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${isPending ? "opacity-50" : ""
+      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border border-divider border-l-2 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >
