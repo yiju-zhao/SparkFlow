@@ -685,7 +685,7 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t-2 dark:border-t border-divider dark:border-divider h-20 flex items-center px-6 gap-3">
+      <div className="border-t-2 border-divider h-20 flex items-center px-6 gap-3">
         <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-3">
           <Textarea
             value={input}

@@ -247,7 +247,7 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 dark:bg-surface-elevated bg-surface-elevated hover:bg-surface-hover border dark:border-divider border-foreground/15 ${selected ? "border-l-4 border-l-divider dark:border-l-accent-red" : "border-l-4 border-l-foreground/15 dark:border-l-divider"} ${isPending ? "opacity-50" : ""
+      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border border-divider ${selected ? "border-l-4 border-l-accent-red" : "border-l-4 border-l-divider"} ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >
@@ -642,7 +642,7 @@ function SourceContentView({
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Header with back button and TOC button */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+      <div className="flex items-center gap-2 border-b border-divider px-4 py-2">
         <Button
           size="sm"
           variant="ghost"
