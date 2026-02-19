@@ -67,33 +67,15 @@ export function ResizableDivider({
 
   const isVertical = direction === "vertical";
 
-  const baseStyles = `
-    ${isVertical ? "w-[2px]" : "h-[2px]"}
-    ${isVertical ? "cursor-col-resize" : "cursor-row-resize"}
-    shrink-0
-    bg-divider
-    dark:bg-divider
-    transition-colors
-    duration-150
-  `;
-
-  const hoverStyles = isHovered && !collapsed
-    ? "bg-divider dark:bg-divider"
-    : "";
-
-  const dragStyles = isDragging
-    ? "bg-divider dark:bg-divider"
-    : "";
-
-  const borderStyles = "";
-
   return (
     <motion.div
       className={`
-        ${baseStyles}
-        ${hoverStyles}
-        ${dragStyles}
-        ${borderStyles}
+        relative
+        ${isVertical ? "w-2" : "h-2"}
+        ${isVertical ? "cursor-col-resize" : "cursor-row-resize"}
+        shrink-0
+        transition-colors
+        duration-150
         ${className}
       `}
       onMouseDown={handleMouseDown}
@@ -101,17 +83,20 @@ export function ResizableDivider({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       initial={false}
-      animate={{
-        backgroundColor: isDragging
-          ? "rgba(var(--divider-rgb), 0.8)"
-          : "rgba(var(--divider-rgb), 1)",
-      }}
       transition={isDragging ? { duration: 0.1 } : springTransition}
       style={{
         flexShrink: 0,
-        willChange: "background-color",
       }}
       data-dragging={isDragging}
-    />
+    >
+      <div
+        className={`
+          absolute
+          ${isVertical ? "left-1/2 -translate-x-1/2 w-[2px] inset-y-0" : "top-1/2 -translate-y-1/2 h-[2px] inset-x-0"}
+          bg-[#0A0A0A] dark:bg-[#333333]
+          ${isHovered || isDragging ? "bg-[#0A0A0A] dark:bg-[#555555]" : ""}
+        `}
+      />
+    </motion.div>
   );
 }
