@@ -103,6 +103,7 @@ export function ChatPanel({
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevIsLoadingRef = useRef<boolean>(false);
 
   // LangGraph stream hook - follows docs pattern
@@ -383,6 +384,7 @@ export function ChatPanel({
 
     const message = input.trim();
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     try {
       // Create session if needed
@@ -685,15 +687,23 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t-2 dark:border-t border-divider h-20 flex items-center px-6 gap-3">
-        <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-3">
+      <div className="border-t-2 dark:border-t border-divider flex items-end px-6 py-3 gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-1 items-end gap-3">
           <Textarea
+            ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              // Auto-resize to fit content
+              const el = e.target;
+              el.style.height = "auto";
+              el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about your sources..."
-            className="min-h-[40px] max-h-[120px] resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0"
+            className="min-h-[40px] max-h-[120px] resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0 overflow-hidden"
             disabled={stream.isLoading}
+            rows={1}
           />
           <button
             type="submit"
