@@ -110,7 +110,7 @@ export function ChatPanel({
 
   const handleInputDrag = useCallback((delta: number) => {
     setInputHeight((prev) => {
-      const newHeight = prev + delta;
+      const newHeight = prev - delta;
       return Math.max(INPUT_MIN_HEIGHT, Math.min(INPUT_MAX_HEIGHT, newHeight));
     });
   }, []);
@@ -709,10 +709,10 @@ const prevIsLoadingRef = useRef<boolean>(false);
 
       {/* Input */}
       <div
-        className="flex items-end px-6 py-3 gap-3"
+        className="flex items-start px-6 py-3 gap-3"
         style={{ minHeight: inputHeight }}
       >
-        <form onSubmit={handleSubmit} className="flex flex-1 items-end gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-1 items-start gap-3">
           <Textarea
             ref={textareaRef}
             value={input}

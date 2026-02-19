@@ -101,9 +101,8 @@ function NotebookLayoutInner({
     setSourcesWidth(SOURCES_DEFAULT_WIDTH);
   }, []);
 
-  // Drag handlers for studio panel
   const handleStudioDrag = useCallback((delta: number) => {
-    setStudioWidth((prev) => clampWidth(prev + delta));
+    setStudioWidth((prev) => clampWidth(prev - delta));
   }, [clampWidth]);
 
   const handleStudioDoubleClick = useCallback(() => {

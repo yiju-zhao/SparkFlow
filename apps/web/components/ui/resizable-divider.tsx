@@ -68,11 +68,11 @@ export function ResizableDivider({
   const isVertical = direction === "vertical";
 
   const baseStyles = `
-    ${isVertical ? "w-1" : "h-1"}
+    ${isVertical ? "w-[2px]" : "h-[2px]"}
     ${isVertical ? "cursor-col-resize" : "cursor-row-resize"}
     shrink-0
-    bg-border
-    dark:bg-border
+    bg-divider
+    dark:bg-divider
     transition-colors
     duration-150
   `;
@@ -82,12 +82,10 @@ export function ResizableDivider({
     : "";
 
   const dragStyles = isDragging
-    ? "bg-divider/80 dark:bg-divider/80"
+    ? "bg-divider dark:bg-divider"
     : "";
 
-  const borderStyles = isVertical
-    ? "border-x border-divider dark:border-divider"
-    : "border-y border-divider dark:border-divider";
+  const borderStyles = "";
 
   return (
     <motion.div
