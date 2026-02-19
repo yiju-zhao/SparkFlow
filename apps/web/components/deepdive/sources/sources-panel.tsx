@@ -316,6 +316,8 @@ function SourceContentView({
   } | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
+  const highlightSpansRef = useRef<HTMLSpanElement[]>([]);
 
   // Get animation state from CollapsiblePanel context
   const panelContext = useCollapsiblePanel();
@@ -416,14 +418,20 @@ function SourceContentView({
       const container = scrollRef.current;
       if (!container) return;
 
-      // Clean up existing highlights
-      container.querySelectorAll(".chunk-highlight").forEach((el) => {
-        const parent = el.parentNode;
-        while (el.firstChild) {
-          parent?.insertBefore(el.firstChild, el);
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+
+      highlightSpansRef.current.forEach((span) => {
+        if (span.parentNode) {
+          while (span.firstChild) {
+            span.parentNode.insertBefore(span.firstChild, span);
+          }
+          span.remove();
         }
-        el.remove();
       });
+      highlightSpansRef.current = [];
       container.normalize();
 
       // Find start and end positions in source content
@@ -515,6 +523,8 @@ function SourceContentView({
         if (nodeStart > endPos) break;
       }
 
+      highlightSpansRef.current = highlightSpans;
+
       // Scroll to first highlighted span
       if (firstSpan) {
         const containerRect = container.getBoundingClientRect();
@@ -529,13 +539,20 @@ function SourceContentView({
       }
 
       // Remove highlights after 60 seconds
-      setTimeout(() => {
-        highlightSpans.forEach((span) => {
-          const parent = span.parentNode;
-          while (span.firstChild) parent?.insertBefore(span.firstChild, span);
-          span.remove();
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        highlightSpansRef.current.forEach((span) => {
+          if (span.parentNode) {
+            while (span.firstChild) {
+              span.parentNode.insertBefore(span.firstChild, span);
+            }
+            span.remove();
+          }
         });
-        container.normalize();
+        highlightSpansRef.current = [];
+        if (scrollRef.current) {
+          scrollRef.current.normalize();
+        }
+        highlightTimeoutRef.current = null;
       }, 60000);
     },
     [markdownContent],
@@ -610,6 +627,16 @@ function SourceContentView({
       }
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+      highlightSpansRef.current = [];
+    };
+  }, [source.id]);
 
   const scrollToHeading = (headingText: string) => {
     const container = scrollRef.current;
