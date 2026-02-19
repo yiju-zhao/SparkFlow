@@ -589,7 +589,7 @@ export function ChatPanel({
                 <div
                   className={`relative w-full rounded-[4px] transition-all duration-200 ${isUser
                     ? "bg-accent-primary text-white px-4 py-3 border-none"
-                    : "bg-surface-elevated border border-divider p-5"
+                    : "p-5"
                     }`}
                 >
                   {isUser ? (

@@ -129,14 +129,15 @@ export function SourcesPanel({
             SOURCES
           </h2>
         </div>
-        <button
-          className="h-7 px-2.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-[3px] uppercase font-mono rounded-[4px] bg-surface-elevated border border-outline hover:opacity-80 transition-opacity"
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
           onClick={() => setIsDialogOpen(true)}
           title="Add Source"
         >
-          <Plus className="h-3.5 w-3.5" />
-          <span>ADD SOURCE</span>
-        </button>
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Sources List */}
@@ -692,7 +693,7 @@ function SourceContentView({
                       <button
                         key={index}
                         onClick={() => scrollToHeading(heading.text)}
-                        className={`block w-full text-left text-xs hover:text-accent-blue transition-colors ${heading.level === 1 ? "font-medium" : ""
+                        className={`block w-full text-left text-xs hover:text-accent-red transition-colors ${heading.level === 1 ? "font-medium" : ""
                           } ${heading.level === 2 ? "pl-2" : ""} ${heading.level === 3
                             ? "pl-4 text-muted-foreground"
                             : ""
