@@ -32,7 +32,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { Badge } from "@/components/ui/badge";
 import {
   addWebpageSource,
   uploadDocumentSource,
@@ -158,7 +157,6 @@ export function SourcesPanel({
                 key={source.id}
                 source={source}
                 onSelect={() => onSelectSource(source)}
-                selected={false}
               />
             ))}
           </div>
@@ -178,11 +176,9 @@ export function SourcesPanel({
 const SourceItem = memo(function SourceItem({
   source,
   onSelect,
-  selected,
 }: {
   source: Source;
   onSelect: () => void;
-  selected: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const relativeTime = useRelativeTime(new Date(source.createdAt));
@@ -223,29 +219,6 @@ const SourceItem = memo(function SourceItem({
       });
     });
   };
-
-  const statusIcon =
-    (isRunning && (
-      <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
-      </span>
-    )) ||
-    (isFailed && <XCircle className="h-3.5 w-3.5 text-destructive" />) ||
-    (() => {
-      switch (source.status) {
-        case "PROCESSING":
-          return (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />
-          );
-        case "FAILED":
-          return <XCircle className="h-3.5 w-3.5 text-destructive" />;
-        default:
-          return null; // READY shows no icon
-      }
-    })();
-
-
 
   return (
     <div
@@ -763,7 +736,7 @@ function AddSourceDialog({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
 
-  const handleWebpageSubmit = (e: React.FormEvent) => {
+  const handleWebpageSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!url.trim()) return;
 
