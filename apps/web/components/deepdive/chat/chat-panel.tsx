@@ -633,7 +633,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                           </Markdown>
                         </div>
                         {!stream.isLoading && content && (
-                          <div className="mt-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-2 border-t border-border/10">
+                          <div className="mt-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             <Button
                               variant="ghost"
                               size="sm"
