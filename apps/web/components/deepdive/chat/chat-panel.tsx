@@ -586,12 +586,12 @@ export function ChatPanel({
             return (
               <div
                 key={messageKey}
-                className={`group flex ${isUser ? "justify-start" : "justify-start"} px-2`}
+                className={`group flex ${isUser ? "justify-end" : "justify-start"} px-2`}
               >
                 <div
-                  className={`relative w-full rounded-[4px] transition-all duration-200 ${isUser
-                    ? "bg-accent-primary text-white px-4 py-3 border-none"
-                    : "p-5"
+                  className={`relative rounded-[4px] transition-all duration-200 ${isUser
+                    ? "bg-accent-primary text-white px-4 py-3 border-none w-fit max-w-[85%]"
+                    : "w-full p-5"
                     }`}
                 >
                   {isUser ? (
