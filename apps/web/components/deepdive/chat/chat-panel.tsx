@@ -481,8 +481,8 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full min-w-0 flex-col relative overflow-hidden bg-secondary/50 dark:bg-transparent">
-      {/* Header */}
-      <div className="px-6 pt-3 pb-3 flex items-center justify-between">
+      {/* Header - frosted glass, content scrolls behind */}
+      <div className="px-6 pt-3 pb-3 flex items-center justify-between absolute top-0 left-0 right-0 z-10 bg-secondary/60 dark:bg-background/60 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
@@ -552,7 +552,7 @@ export function ChatPanel({
       {/* Messages - using stream.messages directly */}
       <div
         ref={messagesContainerRef}
-        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 pt-6 space-y-4"
+        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 pt-14 space-y-4"
         style={{
           contentVisibility: "auto",
           containIntrinsicSize: "auto 500px",
