@@ -14,7 +14,6 @@ import {
   FileText,
   Plus,
   Loader2,
-  XCircle,
   Upload,
   Link,
   ArrowLeft,
@@ -200,12 +199,6 @@ const SourceItem = memo(function SourceItem({
     ragflowRun === "RUNNING" ||
     ragflowRun === "1" ||
     source.status === "PROCESSING";
-  const isFailed =
-    ragflowRun === "FAIL" ||
-    ragflowRun === "4" ||
-    ragflowRun === "-1" ||
-    source.status === "FAILED";
-
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     startTransition(async () => {
@@ -297,17 +290,18 @@ function SourceContentView({
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
 
   const markdownContent = source.content || "No content available";
-  
-  const PREVIEW_THRESHOLD = 4000;
-  const isLongContent = markdownContent.length > PREVIEW_THRESHOLD;
-  
-  const visibleContent = useMemo(() => {
-    if (!isLongContent || isAnimationComplete) {
-      return markdownContent;
+  const [deferredContent, setDeferredContent] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (isAnimationComplete) {
+      startTransition(() => {
+        setDeferredContent(markdownContent);
+      });
+    } else {
+      setDeferredContent(null);
     }
-    const cutPoint = markdownContent.lastIndexOf("\n", PREVIEW_THRESHOLD);
-    return markdownContent.slice(0, cutPoint > 0 ? cutPoint : PREVIEW_THRESHOLD);
-  }, [markdownContent, isLongContent, isAnimationComplete]);
+  }, [isAnimationComplete, markdownContent]);
 
   // Reset scroll when source changes
   useEffect(() => {
@@ -695,23 +689,36 @@ function SourceContentView({
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
         style={{ contain: "content" }}
       >
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          style={{ contentVisibility: isLongContent && !isAnimationComplete ? "auto" : undefined }}
-        >
-          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-            {visibleContent}
-          </Markdown>
-          {isLongContent && !isAnimationComplete && (
-            <div className="space-y-4 pt-4">
+        {deferredContent ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+          >
+            <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+              {deferredContent}
+            </Markdown>
+          </motion.div>
+        ) : (
+          <div className="space-y-4">
+            <div className="h-5 w-2/3 rounded bg-muted animate-pulse" />
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
               <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
               <div className="h-3.5 w-4/5 rounded bg-muted animate-pulse" />
-              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
             </div>
-          )}
-        </motion.div>
+            <div className="h-32 w-full rounded bg-muted animate-pulse" />
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-3/4 rounded bg-muted animate-pulse" />
+            </div>
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-5/6 rounded bg-muted animate-pulse" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
