@@ -141,7 +141,7 @@ export function SourcesPanel({
       </div>
 
       {/* Sources List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto px-6 pb-6">
         {liveSources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/50" />
@@ -151,7 +151,7 @@ export function SourcesPanel({
             </p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {liveSources.map((source) => (
               <SourceItem
                 key={source.id}
@@ -248,7 +248,7 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border border-divider border-l-2 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${isPending ? "opacity-50" : ""
+      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${isPending ? "opacity-50" : ""
         }`}
       onClick={onSelect}
     >

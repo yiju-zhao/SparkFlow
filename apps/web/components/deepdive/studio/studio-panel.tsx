@@ -102,7 +102,7 @@ export function StudioPanel({
           </div>
 
           {/* Notes List */}
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
             {notes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <StickyNote className="h-8 w-8 text-muted-foreground/50" />
@@ -165,7 +165,7 @@ function NoteCard({ note, onSelect, selected }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border border-divider border-l-2 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-divider ${isPending ? "opacity-50" : ""
+      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-divider ${isPending ? "opacity-50" : ""
         } hover:bg-surface-hover`}
     >
 
