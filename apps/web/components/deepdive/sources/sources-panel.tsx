@@ -726,41 +726,39 @@ function SourceContentView({
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 relative"
         style={{ contain: "content" }}
       >
-        <div
-          className="space-y-4 transition-opacity duration-200"
-          style={{ opacity: isContentReady ? 0 : 1 }}
-        >
-          <div className="h-5 w-2/3 rounded bg-muted" />
-          <div className="space-y-2.5">
-            <div className="h-3.5 w-full rounded bg-muted" />
-            <div className="h-3.5 w-full rounded bg-muted" />
-            <div className="h-3.5 w-4/5 rounded bg-muted" />
+        {!isContentReady && (
+          <div className="space-y-4">
+            <div className="h-5 w-2/3 rounded bg-muted" />
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-4/5 rounded bg-muted" />
+            </div>
+            <div className="h-32 w-full rounded bg-muted" />
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-3/4 rounded bg-muted" />
+            </div>
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-5/6 rounded bg-muted" />
+            </div>
           </div>
-          <div className="h-32 w-full rounded bg-muted" />
-          <div className="space-y-2.5">
-            <div className="h-3.5 w-full rounded bg-muted" />
-            <div className="h-3.5 w-full rounded bg-muted" />
-            <div className="h-3.5 w-3/4 rounded bg-muted" />
-          </div>
-          <div className="space-y-2.5">
-            <div className="h-3.5 w-full rounded bg-muted" />
-            <div className="h-3.5 w-5/6 rounded bg-muted" />
-          </div>
-        </div>
-        <motion.div
-          className="absolute inset-0 p-4 overflow-y-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isContentReady ? 1 : 0 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          style={{ 
-            pointerEvents: isContentReady ? "auto" : "none",
-            contentVisibility: isLongContent ? "auto" : undefined,
-          }}
-        >
-          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-            {markdownContent}
-          </Markdown>
-        </motion.div>
+        )}
+        {isContentReady && (
+          <motion.div
+            className="absolute inset-0 p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            style={{ contentVisibility: isLongContent ? "auto" : undefined }}
+          >
+            <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+              {markdownContent}
+            </Markdown>
+          </motion.div>
+        )}
       </div>
     </div>
   );
