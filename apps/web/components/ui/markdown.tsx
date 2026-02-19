@@ -78,10 +78,10 @@ function CitationLink({
   return (
     <button
       onClick={handleClick}
-      className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-indigo-500/20 text-amber-700 dark:text-indigo-300 border border-amber-200 dark:border-indigo-500/30 rounded hover:bg-amber-200 dark:hover:bg-indigo-500/30 transition-colors cursor-pointer"
+      className="inline-flex items-center justify-center h-5 w-5 text-[10px] font-semibold bg-amber-100 dark:bg-indigo-500/20 text-amber-700 dark:text-indigo-300 border border-amber-200 dark:border-indigo-500/30 rounded-full hover:bg-amber-200 dark:hover:bg-indigo-500/30 transition-colors cursor-pointer align-super"
       title="Navigate to source"
     >
-      [{index}]
+      {index}
     </button>
   );
 }

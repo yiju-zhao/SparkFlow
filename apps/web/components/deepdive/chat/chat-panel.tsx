@@ -480,7 +480,7 @@ export function ChatPanel({
   }, [displayMessages]);
 
   return (
-    <div className="flex h-full min-w-0 flex-col relative overflow-hidden">
+    <div className="flex h-full min-w-0 flex-col relative overflow-hidden bg-secondary/50 dark:bg-transparent">
       {/* Header */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -591,7 +591,7 @@ export function ChatPanel({
                 <div
                   className={`relative rounded-[4px] transition-all duration-200 ${isUser
                     ? "bg-accent-primary text-white px-4 py-3 border-none w-fit max-w-[85%]"
-                    : "w-full p-5"
+                    : "w-full p-5 bg-white dark:bg-transparent"
                     }`}
                 >
                   {isUser ? (
