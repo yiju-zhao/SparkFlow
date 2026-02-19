@@ -480,10 +480,10 @@ export function ChatPanel({
   }, [displayMessages]);
 
   return (
-    <div className="flex h-full min-w-0 flex-col relative overflow-hidden bg-secondary/50 dark:bg-transparent">
+    <div className="flex h-full min-w-0 flex-col relative overflow-hidden bg-background dark:bg-transparent">
       {/* Header - transparent, content scrolls behind */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between absolute top-0 left-0 right-0 z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 bg-white dark:bg-background rounded-[4px] px-3 py-1.5 shadow-sm">
           <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             DIALOGUE
@@ -492,7 +492,7 @@ export function ChatPanel({
         <div className="flex items-center gap-3">
           <div className="h-1 flex-1" />
           <button
-            className="h-7 px-3 text-[11px] font-semibold tracking-[3px] uppercase font-mono text-muted-foreground rounded-[4px] bg-surface-elevated border-2 dark:border border-outline dark:border-[#333333] hover:opacity-80 transition-opacity"
+            className="h-7 px-3 text-[11px] font-semibold tracking-[3px] uppercase font-mono text-muted-foreground rounded-[4px] bg-white dark:bg-surface-elevated border-2 dark:border border-outline dark:border-[#333333] hover:opacity-80 transition-opacity shadow-sm"
             onClick={() => setShowHistory(!showHistory)}
           >
             {showHistory ? "CLOSE" : "HISTORY"}
@@ -500,7 +500,7 @@ export function ChatPanel({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 rounded-[4px] hover:bg-accent/80 transition-colors"
+            className="h-7 w-7 rounded-[4px] bg-white dark:bg-surface-elevated border-2 dark:border border-outline dark:border-[#333333] hover:opacity-80 transition-opacity shadow-sm"
             onClick={handleNewChat}
             title="New Chat"
           >
