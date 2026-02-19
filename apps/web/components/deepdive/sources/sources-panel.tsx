@@ -325,13 +325,16 @@ function SourceContentView({
 
   const [isContentReady, setIsContentReady] = useState(false);
   const markdownContent = source.content || "No content available";
+  const isLongContent = markdownContent.length > 8000;
 
   useEffect(() => {
     setIsContentReady(false);
     
     if (isAnimationComplete) {
       const rafId = requestAnimationFrame(() => {
-        setIsContentReady(true);
+        requestAnimationFrame(() => {
+          setIsContentReady(true);
+        });
       });
       return () => cancelAnimationFrame(rafId);
     }
@@ -721,9 +724,10 @@ function SourceContentView({
       <div
         ref={scrollRef}
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 relative"
+        style={{ contain: "content" }}
       >
         <div
-          className="space-y-4 transition-opacity duration-150"
+          className="space-y-4 transition-opacity duration-200"
           style={{ opacity: isContentReady ? 0 : 1 }}
         >
           <div className="h-5 w-2/3 rounded bg-muted" />
@@ -747,8 +751,11 @@ function SourceContentView({
           className="absolute inset-0 p-4 overflow-y-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: isContentReady ? 1 : 0 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          style={{ pointerEvents: isContentReady ? "auto" : "none" }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          style={{ 
+            pointerEvents: isContentReady ? "auto" : "none",
+            contentVisibility: isLongContent ? "auto" : undefined,
+          }}
         >
           <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
             {markdownContent}

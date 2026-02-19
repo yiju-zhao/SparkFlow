@@ -248,17 +248,22 @@ export const Markdown = memo(function Markdown({
       </td>
     ),
     img: ({ src, alt }) => (
-      <span className="block max-w-full overflow-hidden">
+      <span className="block max-w-full overflow-hidden my-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt || ""}
           loading="lazy"
           decoding="async"
+          fetchPriority="low"
           style={{
             maxWidth: "100%",
             height: "auto",
             display: "block",
+            backgroundColor: "hsl(var(--muted))",
+          }}
+          onLoad={(e) => {
+            (e.currentTarget as HTMLImageElement).style.backgroundColor = "transparent";
           }}
         />
       </span>
