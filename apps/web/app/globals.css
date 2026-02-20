@@ -177,13 +177,14 @@
     width: 100%;
   }
 
-  /* Global Custom Scrollbar - hidden by default, visible while scrolling */
+  /* Overlay Scrollbar - always present but transparent, visible while scrolling */
+  /* This prevents layout shift when scrollbar appears/disappears */
   * {
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
   }
 
   .is-scrolling {
-    scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
   }
 
