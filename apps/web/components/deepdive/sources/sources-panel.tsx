@@ -19,7 +19,6 @@ import {
   ArrowLeft,
   X,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -690,32 +689,26 @@ function SourceContentView({
         style={{ contain: "content" }}
       >
         {deferredContent ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-          >
-            <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-              {deferredContent}
-            </Markdown>
-          </motion.div>
+          <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
+            {deferredContent}
+          </Markdown>
         ) : (
-          <div className="space-y-4">
-            <div className="h-5 w-2/3 rounded bg-muted animate-pulse" />
+          <div className="space-y-4" aria-hidden>
+            <div className="h-5 w-2/3 rounded bg-muted" />
             <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
-              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
-              <div className="h-3.5 w-4/5 rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-4/5 rounded bg-muted" />
             </div>
-            <div className="h-32 w-full rounded bg-muted animate-pulse" />
+            <div className="h-32 w-full rounded bg-muted" />
             <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
-              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
-              <div className="h-3.5 w-3/4 rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-3/4 rounded bg-muted" />
             </div>
             <div className="space-y-2.5">
-              <div className="h-3.5 w-full rounded bg-muted animate-pulse" />
-              <div className="h-3.5 w-5/6 rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-full rounded bg-muted" />
+              <div className="h-3.5 w-5/6 rounded bg-muted" />
             </div>
           </div>
         )}

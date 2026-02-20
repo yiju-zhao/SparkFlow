@@ -13,11 +13,9 @@ interface MarkdownProps {
   className?: string;
 }
 
-// Hoisted regexes for better performance
 const HTML_TABLE_REGEX = /<table[\s\S]*?<\/table>/gi;
 const CITATION_REGEX = /\[ref:([a-zA-Z0-9_-]+)\]/g;
 
-// Extract HTML tables and replace with placeholders
 function extractHtmlTables(content: string): {
   processed: string;
   tables: string[];
@@ -31,8 +29,7 @@ function extractHtmlTables(content: string): {
   return { processed, tables };
 }
 
-// Component to render raw HTML table
-function HtmlTable({ html }: { html: string }) {
+const HtmlTable = memo(function HtmlTable({ html }: { html: string }) {
   return (
     <div className="my-4 w-full overflow-x-auto">
       <div
@@ -41,10 +38,8 @@ function HtmlTable({ html }: { html: string }) {
       />
     </div>
   );
-}
+});
 
-// Preprocess citations: [ref:chunkId] -> clickable element with index
-// Same chunkId gets the same index number
 function preprocessCitations(content: string): string {
   const chunkIndexMap = new Map<string, number>();
   let nextIndex = 1;
@@ -59,8 +54,7 @@ function preprocessCitations(content: string): string {
   });
 }
 
-// Citation link component - renders as clickable numbered badge
-function CitationLink({
+const CitationLink = memo(function CitationLink({
   "data-chunk": chunkId,
   "data-index": index,
 }: {
@@ -84,13 +78,113 @@ function CitationLink({
       {index}
     </button>
   );
-}
+});
+
+const STATIC_COMPONENTS: Partial<Components> = {
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-accent-red font-medium hover:underline hover:opacity-80 transition-colors cursor-pointer"
+    >
+      {children}
+    </a>
+  ),
+  code: ({ className: codeClassName, children }) => {
+    const isBlock = codeClassName?.includes("lang-");
+    return isBlock ? (
+      <div className="relative my-4 rounded-lg bg-zinc-950 p-4 overflow-x-auto max-w-full">
+        <code
+          className={cn(
+            "text-xs font-mono text-zinc-50 block whitespace-pre-wrap break-all",
+            codeClassName,
+          )}
+        >
+          {children}
+        </code>
+      </div>
+    ) : (
+      <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => (
+    <div className="max-w-full overflow-x-auto">{children}</div>
+  ),
+  ul: ({ children }) => (
+    <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>
+  ),
+  li: ({ children }) => <li className="my-0.5">{children}</li>,
+  h1: ({ children }) => (
+    <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-base font-bold mt-3 mb-2">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-border pl-4 italic text-muted-foreground my-2">
+      {children}
+    </blockquote>
+  ),
+  table: ({ children }) => (
+    <div className="my-4 w-full overflow-x-auto">
+      <table className="w-full text-sm border-collapse border border-border">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
+  tbody: ({ children }) => (
+    <tbody className="divide-y divide-border">{children}</tbody>
+  ),
+  tr: ({ children }) => (
+    <tr className="hover:bg-muted/50 transition-colors">{children}</tr>
+  ),
+  th: ({ children }) => (
+    <th className="border border-border bg-muted px-3 py-2 text-left font-semibold text-xs">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-border px-3 py-2 text-left text-xs">
+      {children}
+    </td>
+  ),
+  img: ({ src, alt }) => (
+    <span className="block max-w-full overflow-hidden my-2">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt || ""}
+        loading="lazy"
+        decoding="async"
+        fetchPriority="low"
+        style={{
+          maxWidth: "100%",
+          height: "auto",
+          display: "block",
+          backgroundColor: "hsl(var(--muted))",
+        }}
+        onLoad={(e) => {
+          (e.currentTarget as HTMLImageElement).style.backgroundColor = "transparent";
+        }}
+      />
+    </span>
+  ),
+};
 
 export const Markdown = memo(function Markdown({
   children,
   className,
 }: MarkdownProps) {
-  // Extract HTML tables first, then process citations
   const { processed: contentWithoutTables, tables } = useMemo(
     () => extractHtmlTables(children),
     [children],
@@ -100,9 +194,10 @@ export const Markdown = memo(function Markdown({
     [contentWithoutTables],
   );
 
-  // Build components with custom elements using type assertion
-  const components = {
-    // Custom citation component
+  const tableRef = useMemo(() => tables, [tables]);
+
+  const components = useMemo<Components>(() => ({
+    ...STATIC_COMPONENTS,
     "citation-ref": ({
       "data-chunk": chunkId,
       "data-index": index,
@@ -110,168 +205,29 @@ export const Markdown = memo(function Markdown({
       "data-chunk": string;
       "data-index": string;
     }) => <CitationLink data-chunk={chunkId} data-index={index} />,
-    // HTML table placeholder
     "html-table-placeholder": ({
       "data-index": dataIndex,
     }: {
       "data-index": string;
     }) => {
-      const index = parseInt(dataIndex, 10);
-      const html = tables[index];
+      const idx = parseInt(dataIndex, 10);
+      const html = tableRef[idx];
       return html ? <HtmlTable html={html} /> : null;
     },
-    a: ({ href, children: linkChildren }) => (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-accent-red font-medium hover:underline hover:opacity-80 transition-colors cursor-pointer"
-      >
-        {linkChildren}
-      </a>
-    ),
-    code: ({ className: codeClassName, children: codeChildren }) => {
-      const isBlock = codeClassName?.includes("lang-");
-      return isBlock ? (
-        <div className="relative my-4 rounded-lg bg-zinc-950 p-4 overflow-x-auto max-w-full">
-          <code
-            className={cn(
-              "text-xs font-mono text-zinc-50 block whitespace-pre-wrap break-all",
-              codeClassName,
-            )}
-          >
-            {codeChildren}
-          </code>
-        </div>
-      ) : (
-        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
-          {codeChildren}
-        </code>
-      );
-    },
-    pre: ({ children: preChildren }) => (
-      <div className="max-w-full overflow-x-auto">{preChildren}</div>
-    ),
-    ul: ({ children: ulChildren }) => (
-      <ul className="list-disc pl-4 my-2 space-y-1">{ulChildren}</ul>
-    ),
-    ol: ({ children: olChildren }) => (
-      <ol className="list-decimal pl-4 my-2 space-y-1">{olChildren}</ol>
-    ),
-    li: ({ children: liChildren }) => (
-      <li className="my-0.5">{liChildren}</li>
-    ),
     p: ({ children: pChildren }) => {
-      // Helper to check if a child is a block-level element
-      const isBlockElement = (child: unknown): boolean => {
-        if (!child || typeof child !== "object") return false;
-        const c = child as {
-          type?: { name?: string } | string;
-          props?: {
-            "data-index"?: string;
-            className?: string;
-            children?: unknown;
-          };
-        };
-
-        // Check for HtmlTable placeholder (renders div)
-        if (c.props?.["data-index"] !== undefined) {
-          return true;
-        }
-
-        // Check for KaTeX block math (has katex-display class in children)
-        const typeName = typeof c.type === "object" ? c.type?.name : c.type;
-        if (typeName === "span" && c.props?.className?.includes("katex-display")) {
-          return true;
-        }
-
-        // Recursively check children for block elements
-        if (c.props?.children) {
-          if (Array.isArray(c.props.children)) {
-            return c.props.children.some(isBlockElement);
-          }
-          return isBlockElement(c.props.children);
-        }
-
-        return false;
-      };
-
-      // Check if children contain block-level elements
-      const hasBlockChild = Array.isArray(pChildren)
-        ? pChildren.some(isBlockElement)
-        : isBlockElement(pChildren);
-
-      // Use div instead of p if there are block children to avoid hydration errors
+      const hasBlockChild = hasNestedBlockElement(pChildren);
       const Tag = hasBlockChild ? "div" : "p";
       return (
         <Tag className="mb-2 last:mb-0 leading-relaxed">{pChildren}</Tag>
       );
     },
-    h1: ({ children: h1Children }) => (
-      <h1 className="text-lg font-bold mt-4 mb-2">{h1Children}</h1>
-    ),
-    h2: ({ children: h2Children }) => (
-      <h2 className="text-base font-bold mt-3 mb-2">{h2Children}</h2>
-    ),
-    h3: ({ children: h3Children }) => (
-      <h3 className="text-sm font-bold mt-2 mb-1">{h3Children}</h3>
-    ),
-    blockquote: ({ children: bqChildren }) => (
-      <blockquote className="border-l-2 border-border pl-4 italic text-muted-foreground my-2">
-        {bqChildren}
-      </blockquote>
-    ),
-    table: ({ children: tableChildren }) => (
-      <div className="my-4 w-full overflow-x-auto">
-        <table className="w-full text-sm border-collapse border border-border">
-          {tableChildren}
-        </table>
-      </div>
-    ),
-    thead: ({ children: theadChildren }) => (
-      <thead className="bg-muted">{theadChildren}</thead>
-    ),
-    tbody: ({ children: tbodyChildren }) => (
-      <tbody className="divide-y divide-border">{tbodyChildren}</tbody>
-    ),
-    tr: ({ children: trChildren }) => (
-      <tr className="hover:bg-muted/50 transition-colors">{trChildren}</tr>
-    ),
-    th: ({ children: thChildren }) => (
-      <th className="border border-border bg-muted px-3 py-2 text-left font-semibold text-xs">
-        {thChildren}
-      </th>
-    ),
-    td: ({ children: tdChildren }) => (
-      <td className="border border-border px-3 py-2 text-left text-xs">
-        {tdChildren}
-      </td>
-    ),
-    img: ({ src, alt }) => (
-      <span className="block max-w-full overflow-hidden my-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={alt || ""}
-          loading="lazy"
-          decoding="async"
-          fetchPriority="low"
-          style={{
-            maxWidth: "100%",
-            height: "auto",
-            display: "block",
-            backgroundColor: "hsl(var(--muted))",
-          }}
-          onLoad={(e) => {
-            (e.currentTarget as HTMLImageElement).style.backgroundColor = "transparent";
-          }}
-        />
-      </span>
-    ),
-  } as Components;
+  }), [tableRef]);
 
   return (
-    <div className={cn("wrap-break-word", className)}>
+    <div
+      className={cn("wrap-break-word", className)}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "0 500px" }}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -282,3 +238,27 @@ export const Markdown = memo(function Markdown({
     </div>
   );
 });
+
+function hasNestedBlockElement(child: unknown): boolean {
+  if (!child || typeof child !== "object") return false;
+  const c = child as {
+    type?: { name?: string } | string;
+    props?: {
+      "data-index"?: string;
+      className?: string;
+      children?: unknown;
+    };
+  };
+
+  if (c.props?.["data-index"] !== undefined) return true;
+
+  const typeName = typeof c.type === "object" ? c.type?.name : c.type;
+  if (typeName === "span" && c.props?.className?.includes("katex-display")) {
+    return true;
+  }
+
+  const nested = c.props?.children;
+  if (!nested) return false;
+  if (Array.isArray(nested)) return nested.some(hasNestedBlockElement);
+  return hasNestedBlockElement(nested);
+}
