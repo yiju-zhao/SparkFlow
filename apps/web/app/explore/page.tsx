@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { FileSearch } from "lucide-react";
 import {
   getGlobalStats,
   getYearTrendData,
@@ -52,6 +53,29 @@ export default function ExplorePage() {
         <Suspense fallback={<StatsSkeleton />}>
           <StatsSection />
         </Suspense>
+      </section>
+
+      {/* Quick Tools */}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold font-mono tracking-tight">
+          tools
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Link
+            href="/explore/matcher"
+            className="flex items-start gap-4 p-4 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
+          >
+            <div className="p-2 rounded-md bg-primary/10">
+              <FileSearch className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium text-sm">Query Matcher</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Match queries against conference sessions or publications using semantic search
+              </p>
+            </div>
+          </Link>
+        </div>
       </section>
 
       {/* Analytics */}
