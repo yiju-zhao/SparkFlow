@@ -79,6 +79,13 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 
 *None (project not started)*
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | create toolbox section and move query matcher to toolbox | 2026-03-04 | dd3e8cc | [1-create-toolbox-section-and-move-query-ma](./quick/1-create-toolbox-section-and-move-query-ma/) |
+| 2 | make a new header next to sessions called toolbox and design the toolbox page and move the query matcher to the toolbox page | 2026-03-04 | 0b33439 | [2-make-a-new-header-next-to-sessions-calle](./quick/2-make-a-new-header-next-to-sessions-calle/) |
+
 ### Notes
 
 - Coarse granularity (3-5 phases) for v1 delivery
@@ -109,6 +116,8 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 
 **Next steps:**
 - Plan Phase 1 (Foundation & Data) with `/gsd:plan-phase 1`
+
+Last activity: 2026-03-04 - Completed quick task 2: make a new header next to sessions called toolbox and design the toolbox page and move the query matcher to the toolbox page
 
 ---
 
