@@ -102,7 +102,7 @@ export function MatcherWizard() {
 
     try {
       await cancelJob(state.jobId);
-      router.push("/explore");
+      router.push("/explore/toolbox");
     } catch (error) {
       console.error("Failed to cancel job:", error);
     }
