@@ -19,6 +19,12 @@ export default function RootLayout({
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
+        {/* Auto-hide scrollbar: show only while scrolling, hide after 800ms idle */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=new WeakMap();document.addEventListener("scroll",function(e){var el=e.target;if(el===document)el=document.documentElement;if(!el||!el.classList)return;el.classList.add("is-scrolling");var id=t.get(el);if(id)clearTimeout(id);t.set(el,setTimeout(function(){el.classList.remove("is-scrolling")},800))},true)})()`,
+          }}
+        />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

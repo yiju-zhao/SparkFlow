@@ -47,7 +47,7 @@ class S3StorageClient {
   async uploadImage(
     key: string,
     data: Buffer | Uint8Array,
-    contentType = "image/png"
+    contentType = "image/png",
   ): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
@@ -64,7 +64,7 @@ class S3StorageClient {
    * Get an image from S3/MinIO as a stream
    */
   async getImageStream(
-    key: string
+    key: string,
   ): Promise<{ stream: Readable; contentType: string | undefined }> {
     const command = new GetObjectCommand({
       Bucket: this.bucketName,
@@ -137,7 +137,7 @@ class S3StorageClient {
    */
   async uploadSourceImages(
     sourceId: string,
-    images: Record<string, string>
+    images: Record<string, string>,
   ): Promise<
     Array<{ originalName: string; storageKey: string; contentType: string }>
   > {
@@ -207,11 +207,15 @@ export { S3StorageClient };
 
 // Legacy function exports for backward compatibility
 export const uploadImage = s3StorageClient.uploadImage.bind(s3StorageClient);
-export const getImageStream = s3StorageClient.getImageStream.bind(s3StorageClient);
+export const getImageStream =
+  s3StorageClient.getImageStream.bind(s3StorageClient);
 export const deleteImage = s3StorageClient.deleteImage.bind(s3StorageClient);
-export const deleteSourceImages = s3StorageClient.deleteSourceImages.bind(s3StorageClient);
-export const generateImageKey = s3StorageClient.generateImageKey.bind(s3StorageClient);
-export const uploadSourceImages = s3StorageClient.uploadSourceImages.bind(s3StorageClient);
+export const deleteSourceImages =
+  s3StorageClient.deleteSourceImages.bind(s3StorageClient);
+export const generateImageKey =
+  s3StorageClient.generateImageKey.bind(s3StorageClient);
+export const uploadSourceImages =
+  s3StorageClient.uploadSourceImages.bind(s3StorageClient);
 
 // Legacy exports
 export const s3Client = s3StorageClient.getClient();

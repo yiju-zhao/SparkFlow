@@ -31,9 +31,13 @@ async function main() {
   }
 
   if (args.length === 0) {
-    console.error("Usage: npx tsx scripts/import-sessions.ts [--reset] <json-file>");
+    console.error(
+      "Usage: npx tsx scripts/import-sessions.ts [--reset] <json-file>",
+    );
     console.error("\nOptions:");
-    console.error("  --reset  Delete all existing sessions for this instance before importing");
+    console.error(
+      "  --reset  Delete all existing sessions for this instance before importing",
+    );
     process.exit(1);
   }
 
@@ -75,9 +79,11 @@ async function main() {
   const instanceInfo = await findInstance(data.venue, data.year);
   if (!instanceInfo) {
     console.error(
-      `Error: Instance not found for venue "${data.venue}" year ${data.year}`
+      `Error: Instance not found for venue "${data.venue}" year ${data.year}`,
     );
-    console.error("Run import-publications first to create the venue and instance.");
+    console.error(
+      "Run import-publications first to create the venue and instance.",
+    );
     process.exit(1);
   }
 
@@ -102,17 +108,26 @@ async function main() {
   for (const session of data.sessions) {
     try {
       // Check for duplicate
-      const existingId = await findSessionByTitle(instanceInfo.instanceId, session.title);
+      const existingId = await findSessionByTitle(
+        instanceInfo.instanceId,
+        session.title,
+      );
       if (existingId) {
         skipped++;
         continue;
       }
 
       // Find publication IDs to link
-      const publicationLinks: { publicationId: string; presentationOrder: number }[] = [];
+      const publicationLinks: {
+        publicationId: string;
+        presentationOrder: number;
+      }[] = [];
       for (let i = 0; i < session.publicationTitles.length; i++) {
         const pubTitle = session.publicationTitles[i];
-        const pubId = await findPublicationByTitle(instanceInfo.instanceId, pubTitle);
+        const pubId = await findPublicationByTitle(
+          instanceInfo.instanceId,
+          pubTitle,
+        );
         if (pubId) {
           publicationLinks.push({ publicationId: pubId, presentationOrder: i });
         } else {
@@ -133,7 +148,11 @@ async function main() {
           speaker: session.speaker,
           abstract: session.abstract,
           overview: session.overview,
+          transcript: session.transcript,
           sessionUrl: session.sessionUrl,
+          topic: session.topic,
+          affiliation: session.affiliation,
+          technology: session.technology,
           publications: {
             create: publicationLinks,
           },
@@ -162,7 +181,9 @@ async function main() {
   if (warnings.length > 0) {
     console.log("\nWarnings:");
     for (const { session, publication } of warnings) {
-      console.log(`  \u26a0 Session "${session}" - publication not found: "${publication}"`);
+      console.log(
+        `  \u26a0 Session "${session}" - publication not found: "${publication}"`,
+      );
     }
   }
 

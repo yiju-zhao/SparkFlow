@@ -9,7 +9,7 @@ import { useTransition } from "react";
  */
 export function useOptimisticDelete<T extends { id: string }>(
   queryKey: string[],
-  deleteAction: (id: string) => Promise<void>
+  deleteAction: (id: string) => Promise<void>,
 ) {
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
@@ -18,7 +18,7 @@ export function useOptimisticDelete<T extends { id: string }>(
     startTransition(async () => {
       // Optimistically remove from cache
       queryClient.setQueryData(queryKey, (old: T[] | undefined) =>
-        old?.filter((item) => item.id !== id)
+        old?.filter((item) => item.id !== id),
       );
 
       // Perform the actual delete

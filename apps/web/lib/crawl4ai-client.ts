@@ -147,7 +147,7 @@ class Crawl4AIClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
@@ -169,7 +169,7 @@ class Crawl4AIClient {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `Crawl4AI API error: ${response.status} ${response.statusText} - ${errorText}`
+        `Crawl4AI API error: ${response.status} ${response.statusText} - ${errorText}`,
       );
     }
 
@@ -189,7 +189,7 @@ class Crawl4AIClient {
     url: string,
     filter: MdFilterType = "fit",
     query?: string,
-    useCache: boolean = true
+    useCache: boolean = true,
   ): Promise<MarkdownResponse> {
     const body: MarkdownRequest = {
       url,
@@ -217,7 +217,7 @@ class Crawl4AIClient {
   async crawl(
     urls: string[],
     crawlerConfig?: CrawlerRunConfig,
-    browserConfig?: BrowserConfig
+    browserConfig?: BrowserConfig,
   ): Promise<CrawlResponse> {
     const body: CrawlRequest = {
       urls,
@@ -247,7 +247,7 @@ class Crawl4AIClient {
   async crawlWithPruning(
     url: string,
     threshold: number = 0.48,
-    useCache: boolean = true
+    useCache: boolean = true,
   ): Promise<CrawlResult> {
     const crawlerConfig: CrawlerRunConfig = {
       cache_mode: useCache ? "enabled" : "disabled",
@@ -293,7 +293,7 @@ class Crawl4AIClient {
     url: string,
     query: string,
     threshold: number = 1.0,
-    useCache: boolean = true
+    useCache: boolean = true,
   ): Promise<CrawlResult> {
     const crawlerConfig: CrawlerRunConfig = {
       cache_mode: useCache ? "enabled" : "disabled",
@@ -345,7 +345,7 @@ class Crawl4AIClient {
    */
   async getMarkdownAsFile(
     url: string,
-    options: GetMarkdownOptions = {}
+    options: GetMarkdownOptions = {},
   ): Promise<{
     file: File;
     title: string;
@@ -374,7 +374,7 @@ class Crawl4AIClient {
         url,
         mdFilter,
         bm25Query,
-        useCache
+        useCache,
       );
 
       if (!response.success || !response.markdown) {
@@ -391,7 +391,7 @@ class Crawl4AIClient {
           url,
           bm25Query,
           bm25Threshold,
-          useCache
+          useCache,
         );
       } else if (filterType === "pruning") {
         result = await this.crawlWithPruning(url, pruningThreshold, useCache);
@@ -412,8 +412,7 @@ class Crawl4AIClient {
       }
 
       // Use fit_markdown if available (filtered), otherwise raw_markdown
-      markdown =
-        result.markdown.fit_markdown || result.markdown.raw_markdown;
+      markdown = result.markdown.fit_markdown || result.markdown.raw_markdown;
       rawMarkdown = result.markdown.raw_markdown;
       pageTitle = result.metadata?.title;
     }
@@ -463,7 +462,7 @@ class Crawl4AIClient {
     url: string,
     options: {
       timeout?: number; // Wait time in seconds for download to complete
-    } = {}
+    } = {},
   ): Promise<{
     downloadedFiles: string[];
     success: boolean;
@@ -532,11 +531,11 @@ class Crawl4AIClient {
       return {
         downloadedFiles: [],
         success: false,
-        errorMessage: error instanceof Error ? error.message : "Download failed",
+        errorMessage:
+          error instanceof Error ? error.message : "Download failed",
       };
     }
   }
-
 }
 
 // Export singleton instance

@@ -31,7 +31,7 @@ export async function requireAuth(): Promise<AuthResult> {
  * Returns the notebook if the user owns it, otherwise a 401 or 404 response.
  */
 export async function requireNotebookOwner(
-  notebookId: string
+  notebookId: string,
 ): Promise<NotebookAuthResult> {
   const authResult = await requireAuth();
   if (!authResult.ok) return authResult;
@@ -45,7 +45,7 @@ export async function requireNotebookOwner(
       ok: false,
       response: NextResponse.json(
         { error: "Notebook not found" },
-        { status: 404 }
+        { status: 404 },
       ),
     };
   }

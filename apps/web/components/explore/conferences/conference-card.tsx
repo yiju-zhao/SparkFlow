@@ -1,25 +1,23 @@
 // apps/web/components/explore/conferences/conference-card.tsx
 
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { FileText, Calendar } from 'lucide-react'
-import type { ConferenceCard as ConferenceCardType } from '@/lib/explore/types'
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Calendar } from "lucide-react";
+import type { ConferenceCard as ConferenceCardType } from "@/lib/explore/types";
 
 interface ConferenceCardProps {
-  conference: ConferenceCardType
+  conference: ConferenceCardType;
 }
 
 export function ConferenceCard({ conference }: ConferenceCardProps) {
   return (
     <Link href={`/explore/conferences/${conference.id}`}>
       <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-lg">{conference.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">{conference.venue.name}</p>
-            </div>
+        <CardHeader className="pb-2">
+          {/* Venue + Year */}
+          <div className="flex items-center justify-between text-sm">
+            <CardTitle className="text-lg">{conference.venue.name}</CardTitle>
             <Badge variant="secondary">{conference.year}</Badge>
           </div>
         </CardHeader>
@@ -47,5 +45,5 @@ export function ConferenceCard({ conference }: ConferenceCardProps) {
         </CardContent>
       </Card>
     </Link>
-  )
+  );
 }

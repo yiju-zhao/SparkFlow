@@ -22,7 +22,10 @@ import { Textarea } from "@/components/ui/textarea";
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
   return (
-    <div className="mt-2 text-[10px] text-muted-foreground" suppressHydrationWarning>
+    <div
+      className="mt-2 text-[10px] text-muted-foreground"
+      suppressHydrationWarning
+    >
       {timeString}
     </div>
   );
@@ -80,21 +83,26 @@ export function StudioPanel({
       ) : (
         <>
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-2">
-            <h2 className="text-sm font-medium">Studio</h2>
+          <div className="px-6 pt-3 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
+              <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
+                STUDIO
+              </h2>
+            </div>
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 gap-1 text-xs"
+              className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
               onClick={() => setIsCreateDialogOpen(true)}
+              title="New Note"
             >
-              <Plus className="h-3.5 w-3.5" />
-              New
+              <Plus className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Notes List */}
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
             {notes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <StickyNote className="h-8 w-8 text-muted-foreground/50" />
@@ -112,6 +120,7 @@ export function StudioPanel({
                     key={note.id}
                     note={note}
                     onSelect={() => onSelectNote(note)}
+                    selected={false}
                   />
                 ))}
               </div>
@@ -133,9 +142,10 @@ export function StudioPanel({
 interface NoteCardProps {
   note: Note;
   onSelect: () => void;
+  selected: boolean;
 }
 
-function NoteCard({ note, onSelect }: NoteCardProps) {
+function NoteCard({ note, onSelect, selected }: NoteCardProps) {
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -155,45 +165,46 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group cursor-pointer rounded-lg border p-3 transition-all ${isPending ? "opacity-50" : ""
-        } border-border hover:border-accent-red/50 hover:bg-accent`}
+      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-divider ${isPending ? "opacity-50" : ""
+        } hover:bg-surface-hover`}
     >
+
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {note.isPinned && (
               <Pin className="h-3 w-3 shrink-0 text-accent-red" />
             )}
-            <h3 className="line-clamp-1 text-sm font-medium">{note.title}</h3>
+            <h3 className="line-clamp-1 text-[13px] font-medium leading-tight">{note.title}</h3>
           </div>
-          <div className="mt-1 h-[28px] overflow-hidden text-[10px] text-muted-foreground">
-            <Markdown className="text-[10px] [&_p]:mb-0 [&_p]:leading-tight">
+          <div className="mt-1 h-[28px] overflow-hidden text-[12px] text-muted-foreground/70">
+            <Markdown className="text-[12px] [&_p]:mb-0 [&_p]:leading-tight">
               {note.content}
             </Markdown>
           </div>
         </div>
-        <div className="opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute top-1/2 -translate-y-1/2 right-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <DropdownMenu>
             <DropdownMenuTrigger asChild suppressHydrationWarning>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-7 w-7 rounded-full bg-background/90 border border-border/40 shadow-sm"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreVertical className="h-3.5 w-3.5" />
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleTogglePin}>
-                <Pin className="mr-2 h-3.5 w-3.5" />
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem onClick={handleTogglePin} className="cursor-pointer">
+                <Pin className="mr-2 h-4 w-4" />
                 {note.isPinned ? "Unpin" : "Pin"}
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
+                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 onClick={handleDelete}
               >
-                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -258,7 +269,7 @@ function NoteViewer({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+      <div className="flex items-center justify-between border-b border-divider px-4 py-2">
         <Button
           variant="ghost"
           size="icon"
@@ -388,10 +399,7 @@ function CreateNoteDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="title"
-              className="mb-2 block text-sm font-medium"
-            >
+            <label htmlFor="title" className="mb-2 block text-sm font-medium">
               Title
             </label>
             <Input
@@ -403,10 +411,7 @@ function CreateNoteDialog({
             />
           </div>
           <div>
-            <label
-              htmlFor="content"
-              className="mb-2 block text-sm font-medium"
-            >
+            <label htmlFor="content" className="mb-2 block text-sm font-medium">
               Content
             </label>
             <Textarea

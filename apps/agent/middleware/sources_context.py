@@ -37,11 +37,11 @@ def format_sources_context(sources_context: list) -> str:
 @before_agent
 def inject_sources_context(state: AgentState, runtime: Runtime) -> dict | None:
     """Inject sources context into the conversation as a system message."""
-    config = runtime.config if runtime else None
-    if not config:
+    if not runtime or not runtime.context:
         return None
 
-    sources_context = config.get("configurable", {}).get("sources_context", [])
+    # runtime.context is a dict, access with .get()
+    sources_context = runtime.context.get("sources_context") if isinstance(runtime.context, dict) else getattr(runtime.context, "sources_context", None)
     if not sources_context:
         return None
 

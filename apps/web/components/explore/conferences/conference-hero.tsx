@@ -1,81 +1,75 @@
 // apps/web/components/explore/conferences/conference-hero.tsx
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Calendar, MapPin, Globe, FileText } from 'lucide-react'
-import type { ConferenceDetail } from '@/lib/explore/types'
+import { Calendar, MapPin, Globe, ArrowUpRight } from "lucide-react";
+import type { ConferenceDetail } from "@/lib/explore/types";
 
 interface ConferenceHeroProps {
-  conference: ConferenceDetail
-  stats: {
-    publicationCount: number
-    sessionCount: number
-  }
+  conference: ConferenceDetail;
 }
 
-export function ConferenceHero({ conference, stats }: ConferenceHeroProps) {
+export function ConferenceHero({ conference }: ConferenceHeroProps) {
   const formatDate = (date: Date | null) => {
-    if (!date) return null
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(new Date(date))
-  }
+    if (!date) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(date));
+  };
 
-  const dateRange = conference.startDate && conference.endDate
-    ? `${formatDate(conference.startDate)} - ${formatDate(conference.endDate)}`
-    : conference.startDate
-      ? formatDate(conference.startDate)
-      : null
+  const dateRange =
+    conference.startDate && conference.endDate
+      ? `${formatDate(conference.startDate)} – ${formatDate(conference.endDate)}`
+      : conference.startDate
+        ? formatDate(conference.startDate)
+        : null;
 
   return (
-    <div className="border-b pb-6 mb-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="secondary">{conference.year}</Badge>
-            <Badge variant="outline">{conference.venue.name}</Badge>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">{conference.name}</h1>
-        </div>
+    <div className="flex flex-col gap-6">
+      {/* Breadcrumb */}
+      <p className="text-sm text-muted-foreground">
+        ~/research-hub/conferences/{conference.venue.name.toLowerCase()}/
+        {conference.year}
+      </p>
 
-        {conference.website && (
-          <Button variant="outline" asChild>
-            <a href={conference.website} target="_blank" rel="noopener noreferrer">
-              <Globe className="h-4 w-4 mr-2" />
-              Website
-            </a>
-          </Button>
+      <div>
+        <h1 className="text-4xl font-bold tracking-tight mb-4">
+          {conference.name}
+        </h1>
+        {conference.summary && (
+          <p className="text-muted-foreground leading-relaxed max-w-3xl">
+            {conference.summary}
+          </p>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
+      {/* Metadata pills */}
+      <div className="flex flex-wrap items-center gap-3">
         {dateRange && (
-          <span className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
             {dateRange}
-          </span>
+          </div>
         )}
         {conference.location && (
-          <span className="flex items-center gap-1">
-            <MapPin className="h-4 w-4" />
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
             {conference.location}
-          </span>
+          </div>
         )}
-        <span className="flex items-center gap-1">
-          <FileText className="h-4 w-4" />
-          {stats.publicationCount} publications
-        </span>
-        <span className="flex items-center gap-1">
-          <Calendar className="h-4 w-4" />
-          {stats.sessionCount} sessions
-        </span>
+        {conference.website && (
+          <a
+            href={conference.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors group"
+          >
+            <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+            Official Website
+            <ArrowUpRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </a>
+        )}
       </div>
-
-      {conference.summary && (
-        <p className="mt-4 text-muted-foreground">{conference.summary}</p>
-      )}
     </div>
-  )
+  );
 }

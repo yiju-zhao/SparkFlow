@@ -1,6 +1,13 @@
 "use client";
 
-import { type ReactNode, createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { motion, AnimatePresence, type Transition } from "framer-motion";
 
 // Context to expose animation state to children
@@ -8,7 +15,8 @@ interface CollapsiblePanelContextValue {
   isAnimationComplete: boolean;
 }
 
-const CollapsiblePanelContext = createContext<CollapsiblePanelContextValue | null>(null);
+const CollapsiblePanelContext =
+  createContext<CollapsiblePanelContextValue | null>(null);
 
 export function useCollapsiblePanel() {
   return useContext(CollapsiblePanelContext);
@@ -50,8 +58,10 @@ export function CollapsiblePanel({
     }
   }, [width, isOpen]);
 
-  // Determine border based on side
-  const borderClass = side === "left" ? "border-r" : "border-l";
+  // Determine border based on side (static classes for Tailwind content detection)
+  const borderClasses = side === "left"
+    ? "border-r-2 dark:border-r border-divider"
+    : "border-l-2 dark:border-l border-divider";
 
   // Calculate current animated width
   const animatedWidth = isOpen ? width : 0;
@@ -59,7 +69,7 @@ export function CollapsiblePanel({
   return (
     <CollapsiblePanelContext.Provider value={{ isAnimationComplete }}>
       <motion.div
-        className={`h-full shrink-0 overflow-hidden ${borderClass} border-border ${className}`}
+        className={`h-full shrink-0 overflow-hidden ${borderClasses} ${className}`}
         initial={false}
         animate={{
           width: animatedWidth,

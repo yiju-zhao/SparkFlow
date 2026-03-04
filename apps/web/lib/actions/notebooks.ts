@@ -49,7 +49,7 @@ export async function createNotebook(name: string, description?: string) {
     throw new Error(
       error instanceof Error
         ? `Failed to create RagFlow dataset: ${error.message}`
-        : "Failed to create RagFlow dataset"
+        : "Failed to create RagFlow dataset",
     );
   }
 }
@@ -76,15 +76,20 @@ export async function deleteNotebook(id: string) {
     Promise.all(
       notebook.sources.map((source) =>
         deleteSourceImages(source.id).catch((error) =>
-          console.error(`Failed to delete images for source ${source.id}:`, error)
-        )
-      )
+          console.error(
+            `Failed to delete images for source ${source.id}:`,
+            error,
+          ),
+        ),
+      ),
     ),
     // Delete RagFlow dataset
     notebook.ragflowDatasetId
-      ? ragflowClient.deleteDataset(notebook.ragflowDatasetId).catch((error) =>
-          console.error("RagFlow dataset deletion failed:", error)
-        )
+      ? ragflowClient
+          .deleteDataset(notebook.ragflowDatasetId)
+          .catch((error) =>
+            console.error("RagFlow dataset deletion failed:", error),
+          )
       : Promise.resolve(),
   ]);
 
@@ -94,7 +99,7 @@ export async function deleteNotebook(id: string) {
 
 export async function updateNotebook(
   id: string,
-  data: { name?: string; description?: string }
+  data: { name?: string; description?: string },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -146,7 +151,7 @@ export async function ensureRagFlowDataset(notebookId: string) {
   try {
     const dataset = await ragflowClient.createDataset(
       `sparkflow_${notebook.id}`,
-      `SparkFlow notebook: ${notebook.name}`
+      `SparkFlow notebook: ${notebook.name}`,
     );
 
     return prisma.notebook.update({

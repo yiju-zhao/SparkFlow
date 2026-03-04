@@ -1,6 +1,6 @@
 // apps/web/app/explore/loading.tsx
 
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ExploreLoading() {
   return (
@@ -31,5 +31,5 @@ export default function ExploreLoading() {
         </div>
       </div>
     </div>
-  )
+  );
 }

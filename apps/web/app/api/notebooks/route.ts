@@ -33,10 +33,7 @@ export async function POST(req: NextRequest) {
     const { name, description } = await req.json();
 
     if (!name?.trim()) {
-      return NextResponse.json(
-        { error: "Name is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     const notebook = await prisma.notebook.create({
@@ -52,7 +49,7 @@ export async function POST(req: NextRequest) {
     console.error("Create notebook error:", error);
     return NextResponse.json(
       { error: "Failed to create notebook" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

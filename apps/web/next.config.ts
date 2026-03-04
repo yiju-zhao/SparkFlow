@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   experimental: {
     turbopackUseSystemTlsCerts: true,
     serverActions: {
-      bodySizeLimit: "20mb",
+      bodySizeLimit: "50mb",
     },
     // Optimize barrel file imports for faster cold starts
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],

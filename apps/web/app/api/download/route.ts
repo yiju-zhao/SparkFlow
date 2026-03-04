@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
   const fileUrl = searchParams.get("url");
 
   if (!fileUrl) {
-    return NextResponse.json({ error: "Missing URL parameter" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing URL parameter" },
+      { status: 400 },
+    );
   }
 
   let parsedUrl: URL;
@@ -25,7 +28,7 @@ export async function GET(request: NextRequest) {
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
       return NextResponse.json(
         { error: "Only http and https URLs are allowed" },
-        { status: 400 }
+        { status: 400 },
       );
     }
   } catch {
@@ -56,8 +59,9 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(fileUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "*/*",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "*/*",
       },
       redirect: "follow",
       signal: controller.signal,
@@ -68,8 +72,10 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: `Failed to download: HTTP ${response.status} ${response.statusText}` },
-        { status: response.status }
+        {
+          error: `Failed to download: HTTP ${response.status} ${response.statusText}`,
+        },
+        { status: response.status },
       );
     }
 
@@ -81,7 +87,7 @@ export async function GET(request: NextRequest) {
     let filename = "";
     if (contentDisposition) {
       const match = contentDisposition.match(
-        /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+        /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
       );
       if (match) {
         filename = match[1].replace(/['"]/g, "").trim();
@@ -120,7 +126,7 @@ export async function GET(request: NextRequest) {
         error: "Download failed",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

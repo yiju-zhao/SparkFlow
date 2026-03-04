@@ -9,7 +9,7 @@ import type { ProcessingContext, ProcessingResult } from "./types";
  */
 export async function processTextDocument(
   file: File,
-  context: ProcessingContext
+  context: ProcessingContext,
 ): Promise<ProcessingResult> {
   const { sourceId, ragflowDatasetId } = context;
 
@@ -30,7 +30,7 @@ export async function processTextDocument(
           ragflowDatasetId,
           file,
           file.name,
-          { autoParse: true }
+          { autoParse: true },
         );
 
         await prisma.source.update({
@@ -82,7 +82,11 @@ export async function processTextDocument(
         return {
           success: true,
           content,
-          metadata: { fileType, contentLength: content.length, ragflowFailed: true },
+          metadata: {
+            fileType,
+            contentLength: content.length,
+            ragflowFailed: true,
+          },
         };
       }
     } else {

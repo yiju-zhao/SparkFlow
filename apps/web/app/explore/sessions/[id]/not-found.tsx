@@ -1,8 +1,8 @@
 // apps/web/app/explore/sessions/[id]/not-found.tsx
 
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Calendar } from 'lucide-react'
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "lucide-react";
 
 export default function SessionNotFound() {
   return (
@@ -16,5 +16,5 @@ export default function SessionNotFound() {
         <Link href="/explore/sessions">Browse all sessions</Link>
       </Button>
     </div>
-  )
+  );
 }

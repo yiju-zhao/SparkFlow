@@ -85,6 +85,7 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
       notes={notes}
       initialChatSessions={transformedSessions}
       initialMessages={transformedMessages}
+      user={session.user}
     />
   );
 }

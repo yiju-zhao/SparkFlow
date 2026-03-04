@@ -26,6 +26,16 @@ logger = logging.getLogger(__name__)
 _ragflow_client = None
 
 
+def _get_dataset_ids(runtime: ToolRuntime) -> list[str]:
+    """Get dataset_ids from runtime context, handling both dict and object contexts."""
+    if not runtime or not runtime.context:
+        return []
+    context = runtime.context
+    if isinstance(context, dict):
+        return context.get("dataset_ids", [])
+    return getattr(context, "dataset_ids", [])
+
+
 def _get_client() -> RAGFlow | None:
     """Get or create RAGFlow client."""
     global _ragflow_client
@@ -131,8 +141,7 @@ def explore(runtime: ToolRuntime = None) -> str:
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    config = runtime.config if runtime else None
-    dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
+    dataset_ids = _get_dataset_ids(runtime)
     if not dataset_ids:
         return "No datasets configured."
     
@@ -171,8 +180,7 @@ def search(query: str, runtime: ToolRuntime) -> str:
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    config = runtime.config if runtime else None
-    dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
+    dataset_ids = _get_dataset_ids(runtime)
     if not dataset_ids:
         return "No datasets configured. Use explore() to see available datasets."
     
@@ -224,8 +232,7 @@ def probe(
     if not client:
         return "RAGFlow not configured. Set RAGFLOW_API_KEY."
 
-    config = runtime.config if runtime else None
-    dataset_ids = config.get("configurable", {}).get("dataset_ids", []) if config else []
+    dataset_ids = _get_dataset_ids(runtime)
     if not dataset_ids:
         return "No datasets configured."
     
@@ -257,4 +264,58 @@ def probe(
         
     except Exception as e:
         logger.error(f"Extend error: {e}")
+        return f"Error: {e}"
+
+
+@tool
+def get_first_chunk(document_name: str, runtime: ToolRuntime) -> str:
+    """Get the first chunk of a document to start summarization.
+
+    Use this to begin a document sweep for summarization.
+
+    Args:
+        document_name: Name (or partial name) of the document to get the first chunk from
+
+    Returns:
+        First chunk content with chunk_id for subsequent probing
+    """
+    client = _get_client()
+    if not client:
+        return "RAGFlow not configured. Set RAGFLOW_API_KEY."
+
+    dataset_ids = _get_dataset_ids(runtime)
+    if not dataset_ids:
+        return "No datasets configured."
+
+    try:
+        # Find document by name (case-insensitive partial match)
+        for ds_id in dataset_ids:
+            datasets = client.list_datasets(id=ds_id)
+            if not datasets:
+                continue
+
+            docs = datasets[0].list_documents(page=1, page_size=100)
+            for doc in docs:
+                if document_name.lower() in doc.name.lower():
+                    # Get all chunks and sort by position
+                    all_chunks = doc.list_chunks(page=1, page_size=200)
+                    if not all_chunks:
+                        return f"Document '{doc.name}' has no chunks."
+
+                    # Sort by position to get the first one
+                    sorted_chunks = sorted(
+                        all_chunks,
+                        key=lambda c: (getattr(c, 'position', [0]) or [0])
+                    )
+                    first_chunk = sorted_chunks[0]
+
+                    chunk_id = getattr(first_chunk, 'id', '')
+                    content = getattr(first_chunk, 'content', str(first_chunk))
+
+                    return f"[{doc.name}] #{chunk_id}\n{content}"
+
+        return f"Document '{document_name}' not found in configured datasets."
+
+    except Exception as e:
+        logger.error(f"Get first chunk error: {e}")
         return f"Error: {e}"

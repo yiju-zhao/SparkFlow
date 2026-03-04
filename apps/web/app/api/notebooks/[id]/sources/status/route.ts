@@ -5,7 +5,7 @@ import { ragflowClient } from "@/lib/ragflow-client";
 
 export async function GET(
   _request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
   const session = await auth();
@@ -50,7 +50,7 @@ export async function GET(
       try {
         const doc = await ragflowClient.getDocumentStatus(
           ragflowDatasetId,
-          source.ragflowDocumentId
+          source.ragflowDocumentId,
         );
 
         if (!doc) {
@@ -80,11 +80,13 @@ export async function GET(
               const { chunks } = await ragflowClient.listChunks(
                 ragflowDatasetId,
                 source.ragflowDocumentId,
-                { pageSize: 1024 }
+                { pageSize: 1024 },
               );
               if (chunks.length > 0) {
                 // Delete existing chunks and insert new ones
-                await prisma.chunk.deleteMany({ where: { sourceId: source.id } });
+                await prisma.chunk.deleteMany({
+                  where: { sourceId: source.id },
+                });
                 await prisma.chunk.createMany({
                   data: chunks
                     .filter((chunk) => chunk.content)
@@ -92,9 +94,10 @@ export async function GET(
                       id: chunk.id,
                       sourceId: source.id,
                       contentPreview: chunk.content.slice(0, 100),
-                      contentSuffix: chunk.content.length > 100
-                        ? chunk.content.slice(-100)
-                        : null,
+                      contentSuffix:
+                        chunk.content.length > 100
+                          ? chunk.content.slice(-100)
+                          : null,
                       position: index,
                     })),
                 });
@@ -127,8 +130,8 @@ export async function GET(
               ragflowProgress:
                 typeof doc.progress === "number"
                   ? doc.progress
-                  : (source.metadata as Record<string, unknown> | null)?.ragflowProgress ??
-                  null,
+                  : ((source.metadata as Record<string, unknown> | null)
+                      ?.ragflowProgress ?? null),
               ragflowUpdatedAt: new Date().toISOString(),
             },
           },
@@ -137,7 +140,7 @@ export async function GET(
         console.error("RagFlow status sync error:", error);
         return source;
       }
-    })
+    }),
   );
 
   return NextResponse.json({ sources: updatedSources });

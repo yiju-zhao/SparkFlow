@@ -58,7 +58,7 @@ export function ItemCard({
         "hover:bg-accent",
         isSelected && "bg-accent",
         isPending && "opacity-50",
-        className
+        className,
       )}
       onClick={onClick}
     >

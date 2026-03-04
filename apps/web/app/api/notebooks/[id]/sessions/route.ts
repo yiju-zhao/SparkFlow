@@ -73,8 +73,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error("Create session error:", error);
     return NextResponse.json(
       { error: "Failed to create session" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

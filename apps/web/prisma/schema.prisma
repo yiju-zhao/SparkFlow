@@ -254,6 +254,7 @@ model Instance {
 
   publications Publication[]
   sessions     ConferenceSession[]
+  matchJobs    MatchJob[]
 
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
@@ -306,12 +307,16 @@ model ConferenceSession {
   startTime   String?
   endTime     String?
   location    String?
-  speaker     String?
+  speaker     String[]               @default([])
 
   abstract    String?                @db.Text
   overview    String?                @db.Text
   transcript  String?                @db.Text
   sessionUrl  String?
+
+  topic       String[]               @default([])
+  affiliation String[]               @default([])
+  technology  String[]               @default([])
 
   publications SessionPublication[]
 
@@ -333,4 +338,49 @@ model SessionPublication {
 
   @@id([sessionId, publicationId])
   @@map("session_publications")
+}
+
+// ============================================
+// Query Matching (Research Hub Feature)
+// ============================================
+
+enum MatchJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum MatchTargetType {
+  SESSION
+  PUBLICATION
+}
+
+model MatchJob {
+  id              String           @id @default(cuid())
+  userId          String
+  instanceId      String           // Conference instance to match against
+  targetType      MatchTargetType  // SESSION or PUBLICATION
+  topK            Int              @default(50)
+  searchK         Int              @default(350)
+  includeReasons  Boolean          @default(true)
+  queryFileKey    String           // S3 key for uploaded Excel
+  queryData       Json?            // Parsed queries (cached)
+  resultFileKey   String?          // S3 key for result Excel
+  status          MatchJobStatus   @default(PENDING)
+  progress        Int              @default(0)
+  errorMessage    String?
+  queryCount      Int              @default(0)
+  matchCount      Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  instance        Instance         @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("match_jobs")
 }

@@ -1,6 +1,6 @@
 // apps/web/app/explore/sessions/[id]/loading.tsx
 
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SessionDetailLoading() {
   return (
@@ -22,5 +22,5 @@ export default function SessionDetailLoading() {
       <Skeleton className="h-48 w-full" />
       <Skeleton className="h-32 w-full" />
     </div>
-  )
+  );
 }

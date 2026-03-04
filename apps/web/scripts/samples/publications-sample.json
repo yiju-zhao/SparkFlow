@@ -29,7 +29,12 @@
       "abstract": "We introduce a novel AI-powered browser extension that enhances web accessibility for users with visual impairments through intelligent content summarization and navigation assistance.",
       "affiliations": ["University of Washington", "Google Research"],
       "countries": ["USA"],
-      "keywords": ["accessibility", "AI", "web navigation", "assistive technology"],
+      "keywords": [
+        "accessibility",
+        "AI",
+        "web navigation",
+        "assistive technology"
+      ],
       "researchTopic": "Accessibility",
       "status": "Best Paper",
       "rating": 4.8

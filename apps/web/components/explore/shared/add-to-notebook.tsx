@@ -1,82 +1,82 @@
 // apps/web/components/explore/shared/add-to-notebook.tsx
 
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { BookPlus, Loader2 } from 'lucide-react'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { BookPlus, Loader2 } from "lucide-react";
 
 interface Notebook {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface AddToNotebookProps {
   publication: {
-    id: string
-    title: string
-    pdfUrl?: string | null
-  }
+    id: string;
+    title: string;
+    pdfUrl?: string | null;
+  };
 }
 
 export function AddToNotebook({ publication }: AddToNotebookProps) {
-  const [open, setOpen] = useState(false)
-  const [notebooks, setNotebooks] = useState<Notebook[]>([])
-  const [loading, setLoading] = useState(false)
-  const [fetchingNotebooks, setFetchingNotebooks] = useState(false)
-  const router = useRouter()
+  const [open, setOpen] = useState(false);
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchingNotebooks, setFetchingNotebooks] = useState(false);
+  const router = useRouter();
 
-  const hasPdf = Boolean(publication.pdfUrl)
+  const hasPdf = Boolean(publication.pdfUrl);
 
   const handleOpen = async (isOpen: boolean) => {
-    setOpen(isOpen)
+    setOpen(isOpen);
     if (isOpen && notebooks.length === 0) {
-      setFetchingNotebooks(true)
+      setFetchingNotebooks(true);
       try {
-        const res = await fetch('/api/notebooks')
+        const res = await fetch("/api/notebooks");
         if (res.ok) {
-          const data = await res.json()
-          setNotebooks(data)
+          const data = await res.json();
+          setNotebooks(data);
         }
       } catch (error) {
-        console.error('Failed to fetch notebooks:', error)
+        console.error("Failed to fetch notebooks:", error);
       } finally {
-        setFetchingNotebooks(false)
+        setFetchingNotebooks(false);
       }
     }
-  }
+  };
 
   const handleAdd = async (notebookId: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
       const res = await fetch(`/api/notebooks/${notebookId}/sources`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: publication.title,
-          sourceType: 'DOCUMENT',
-          url: publication.pdfUrl
-        })
-      })
+          sourceType: "DOCUMENT",
+          url: publication.pdfUrl,
+        }),
+      });
 
       if (res.ok) {
-        setOpen(false)
-        router.push(`/deepdive/${notebookId}`)
+        setOpen(false);
+        router.push(`/deepdive/${notebookId}`);
       }
     } catch (error) {
-      console.error('Failed to add to notebook:', error)
+      console.error("Failed to add to notebook:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
@@ -84,7 +84,11 @@ export function AddToNotebook({ publication }: AddToNotebookProps) {
         <Button
           variant="outline"
           disabled={!hasPdf}
-          title={!hasPdf ? 'No PDF available for this publication' : 'Add to notebook for research'}
+          title={
+            !hasPdf
+              ? "No PDF available for this publication"
+              : "Add to notebook for research"
+          }
         >
           <BookPlus className="h-4 w-4 mr-2" />
           Add to Notebook
@@ -126,11 +130,11 @@ export function AddToNotebook({ publication }: AddToNotebookProps) {
         <Button
           variant="secondary"
           className="w-full mt-4"
-          onClick={() => router.push('/deepdive')}
+          onClick={() => router.push("/deepdive")}
         >
           + Create New Notebook
         </Button>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

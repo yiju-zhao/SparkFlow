@@ -10,7 +10,10 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { PublicationsFileSchema, type PublicationInput } from "./lib/import-schemas";
+import {
+  PublicationsFileSchema,
+  type PublicationInput,
+} from "./lib/import-schemas";
 import {
   prisma,
   findOrCreateVenue,
@@ -30,9 +33,13 @@ async function main() {
   }
 
   if (args.length === 0) {
-    console.error("Usage: npx tsx scripts/import-publications.ts [--reset] <json-file>");
+    console.error(
+      "Usage: npx tsx scripts/import-publications.ts [--reset] <json-file>",
+    );
     console.error("\nOptions:");
-    console.error("  --reset  Delete all existing publications for this instance before importing");
+    console.error(
+      "  --reset  Delete all existing publications for this instance before importing",
+    );
     process.exit(1);
   }
 
@@ -82,9 +89,10 @@ async function main() {
   const instanceResult = await findOrCreateInstance(
     venueResult.id,
     data.year,
-    data.instanceMetadata
+    data.instanceMetadata,
   );
-  const instanceName = data.instanceMetadata?.name ?? `${data.venue} ${data.year}`;
+  const instanceName =
+    data.instanceMetadata?.name ?? `${data.venue} ${data.year}`;
   if (instanceResult.created) {
     console.log(`\u2713 Instance "${instanceName}" created`);
   } else {
@@ -98,7 +106,9 @@ async function main() {
       where: { instanceId: instanceResult.id },
     });
     deleted = deleteResult.count;
-    console.log(`\u2713 Deleted ${deleted} existing publications (--reset mode)`);
+    console.log(
+      `\u2713 Deleted ${deleted} existing publications (--reset mode)`,
+    );
   }
 
   // Import publications
@@ -109,7 +119,10 @@ async function main() {
   for (const pub of data.publications) {
     try {
       // Check for duplicate
-      const existingId = await findPublicationByTitle(instanceResult.id, pub.title);
+      const existingId = await findPublicationByTitle(
+        instanceResult.id,
+        pub.title,
+      );
       if (existingId) {
         skipped++;
         continue;

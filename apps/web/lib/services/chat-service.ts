@@ -15,7 +15,7 @@ class ChatService {
    */
   async getOrCreateSession(
     notebookId: string,
-    options?: GetOrCreateSessionOptions
+    options?: GetOrCreateSessionOptions,
   ): Promise<ChatSession> {
     const { sessionId, newSession, title } = options || {};
 
@@ -84,7 +84,7 @@ class ChatService {
   async saveUserMessage(
     sessionId: string,
     notebookId: string,
-    content: string
+    content: string,
   ): Promise<ChatMessage> {
     const messageOrder = await getNextMessageOrder(sessionId);
     return prisma.chatMessage.create({
@@ -105,7 +105,7 @@ class ChatService {
     sessionId: string,
     notebookId: string,
     content: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<ChatMessage> {
     const messageOrder = await getNextMessageOrder(sessionId);
     return prisma.chatMessage.create({

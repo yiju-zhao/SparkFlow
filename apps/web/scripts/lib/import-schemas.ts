@@ -47,10 +47,14 @@ export const SessionInputSchema = z.object({
   startTime: z.string().optional(), // HH:mm
   endTime: z.string().optional(),
   location: z.string().optional(),
-  speaker: z.string().optional(),
+  speaker: z.array(z.string()).default([]),
   abstract: z.string().optional(),
   overview: z.string().optional(),
+  transcript: z.string().optional(),
   sessionUrl: z.string().url().or(z.literal("")).optional(),
+  topic: z.array(z.string()).default([]),
+  affiliation: z.array(z.string()).default([]),
+  technology: z.array(z.string()).default([]),
   publicationTitles: z.array(z.string()).default([]),
 });
 
