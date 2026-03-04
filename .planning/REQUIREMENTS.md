@@ -90,13 +90,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RHUB-01 | Phase 1 | Pending |
-| RHUB-02 | Phase 1 | Pending |
-| RHUB-03 | Phase 1 | Pending |
-| RHUB-04 | Phase 1 | Pending |
-| RHUB-05 | Phase 1 | Pending |
-| RHUB-06 | Phase 1 | Pending |
-| RHUB-07 | Phase 1 | Pending |
+| RHUB-01 | Phase 2 | Pending |
+| RHUB-02 | Phase 2 | Pending |
+| RHUB-03 | Phase 2 | Pending |
+| RHUB-04 | Phase 2 | Pending |
+| RHUB-05 | Phase 2 | Pending |
+| RHUB-06 | Phase 2 | Pending |
+| RHUB-07 | Phase 2 | Pending |
 | GENUI-01 | Phase 2 | Pending |
 | GENUI-02 | Phase 2 | Pending |
 | GENUI-03 | Phase 2 | Pending |
@@ -107,11 +107,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NOTE-02 | Phase 3 | Pending |
 | NOTE-03 | Phase 3 | Pending |
 | NOTE-04 | Phase 3 | Pending |
-| INFRA-01 | Phase 2 | Pending |
-| INFRA-02 | Phase 2 | Pending |
-| INFRA-03 | Phase 2 | Pending |
-| INFRA-04 | Phase 2 | Pending |
-| INFRA-05 | Phase 2 | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
 | DATA-01 | Phase 1 | Pending |
 | DATA-02 | Phase 1 | Pending |
 | DATA-03 | Phase 1 | Pending |
@@ -126,4 +126,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-04 after initial definition*
+*Last updated: 2026-03-04 after roadmap creation*
