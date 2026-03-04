@@ -7,6 +7,7 @@ const navLinks = [
   { href: "/explore/conferences", label: "conferences" },
   { href: "/explore/publications", label: "publications" },
   { href: "/explore/sessions", label: "sessions" },
+  { href: "/explore/toolbox", label: "toolbox" },
 ] as const;
 
 export default function ExploreNavLinks() {
