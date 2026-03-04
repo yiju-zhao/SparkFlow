@@ -61,3 +61,6 @@ designs/
 .ruff_cache/
 
 .sisyphus/
+
+### gsd
+# .planning/ - uncommented to track planning docs in git
