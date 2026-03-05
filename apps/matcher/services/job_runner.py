@@ -93,8 +93,12 @@ class JobRunner:
 
             for i, query in enumerate(queries):
                 query_name = query.get("key", f"Query {i + 1}")
-                area = query.get("area", "").strip()
-                query_text = query.get("query", "")
+                area_raw = query.get("area", "").strip()
+                query_raw = query.get("query", "")
+
+                # Translate area and query to English before matching
+                area = self.excel_processor._translate_to_english(area_raw)
+                query_text = self.excel_processor._translate_to_english(query_raw)
 
                 # Combine area and query for the matching pipeline
                 if area:

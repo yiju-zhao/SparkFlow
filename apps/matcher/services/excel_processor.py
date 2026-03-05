@@ -90,22 +90,18 @@ class ExcelProcessor:
                     continue
 
                 key = self._safe_str(row.iloc[0])
-                area_raw = self._safe_str(row.iloc[1] if len(row) > 1 else "")
-                query_raw = self._safe_str(row.iloc[2] if len(row) > 2 else "")
+                area = self._safe_str(row.iloc[1] if len(row) > 1 else "")
+                query_text = self._safe_str(row.iloc[2] if len(row) > 2 else "")
 
                 # Skip rows with no query text
-                if not query_raw.strip():
+                if not query_text.strip():
                     continue
-
-                # Translate area and query to English (key is never translated)
-                area_translated = self._translate_to_english(area_raw)
-                query_translated = self._translate_to_english(query_raw)
 
                 query = {
                     "id": str(uuid.uuid4()),
                     "key": key,
-                    "area": area_translated,
-                    "query": query_translated,
+                    "area": area,
+                    "query": query_text,
                     "row_index": idx,
                 }
                 queries.append(query)
