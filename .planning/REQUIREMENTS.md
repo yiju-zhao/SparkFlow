@@ -38,7 +38,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INFRA-01**: CopilotKit provider wraps the application
 - [ ] **INFRA-02**: AG-UI protocol streams state updates between agent and UI
 - [ ] **INFRA-03**: MCP Apps middleware renders dynamic components
-- [ ] **INFRA-04**: Research agent connects to conference/session data
+- [x] **INFRA-04**: Research agent connects to conference/session data
 - [ ] **INFRA-05**: Agent state persists across conversations (PostgresSaver)
 
 ### Data Model
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-01 | Phase 1 | Pending |
 | INFRA-02 | Phase 1 | Pending |
 | INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Complete |
 | INFRA-05 | Phase 1 | Pending |
 | DATA-01 | Phase 1 | Pending |
 | DATA-02 | Phase 1 | Pending |

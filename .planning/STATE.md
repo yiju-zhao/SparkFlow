@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_plan: Plan 05
+status: executing
+last_updated: "2026-03-05T15:38:22.181Z"
+last_activity: "2026-03-05 - Completed Phase 1 Plan 04: Hub Agent Config, Prompt, Query Tools"
+progress:
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 5
+  completed_plans: 4
+---
+
 # Project State: DeepSense Insight Platform
 
 **Project:** DeepSense Insight Platform (Research Hub + Generative AI)
@@ -18,14 +33,14 @@ Overall Progress: [█░░░░░░░░░] 5%
 ## Current Position
 
 **Active Phase:** Phase 1 - Foundation & Data
-**Current Plan:** Plan 03
+**Current Plan:** Plan 05
 **Status:** In progress
 
 ### Phase 1: Foundation & Data
 
 **Goal:** Establish data model and AI infrastructure for generative UI capabilities
 
-**Plans Complete:** 2/N
+**Plans Complete:** 4/5
 **Status:** In progress
 
 ---
@@ -60,6 +75,7 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 |-------|------|----------|-------|-------|------|
 | 01-foundation-data | 01 | 5min | 2 | 0 | 2026-03-05 |
 | 01-foundation-data | 02 | 4min | 5 | 9 | 2026-03-05 |
+| 01-foundation-data | 04 | 2min | 3 | 3 | 2026-03-05 |
 
 ---
 
@@ -77,6 +93,8 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 | Conference abstraction: Venue=permanent, Instance=yearly | 2026-03-05 | Clean separation of conference identity from occurrence data |
 | Native HTML select for admin dropdowns | 2026-03-05 | Simpler than Shadcn Select for internal admin tooling |
 | Comma-separated inputs for string[] fields | 2026-03-05 | Straightforward UX for admin; no tag/chip UI needed at v1 |
+| psycopg3 for hub query tools | 2026-03-05 | requirements.txt specifies psycopg[binary] which is psycopg3 |
+| Hub agent config uses dataclass | 2026-03-05 | Consistent with RAGAgentConfig pattern — simpler than pydantic_settings |
 
 ### Todos
 
@@ -111,20 +129,16 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 ### Current Session Context
 
 **Session Date:** 2026-03-05
-**Session Goal:** Execute Phase 1 Plan 02 - Admin Curation UI
+**Session Goal:** Execute Phase 1 Plans 03-04
 
 **What was done:**
-- Created server actions for Venue, Instance, ConferenceSession CRUD (admin.ts)
-- Created admin layout with nav links and dashboard with live entity counts
-- Created Venue management UI (list table + create/edit dialog)
-- Created Instance management UI (list table + create/edit dialog with venue select)
-- Created Session management UI (list table + create/edit dialog with all ConferenceSession fields)
-- All TypeScript compiles without errors
+- Plan 03: CopilotKit integration (AppProviders wrapper, CopilotKitProvider, root layout update)
+- Plan 04: Hub agent config (HubAgentConfig), system prompt (HUB_AGENT_SYSTEM_PROMPT), query tools (list_venues, list_instances, list_sessions, search_sessions)
 
 **Next steps:**
-- Execute Phase 1 Plan 03
+- Execute Phase 1 Plan 05: Hub agent assembly and registration
 
-Last activity: 2026-03-05 - Completed Phase 1 Plan 02: Admin Curation UI
+Last activity: 2026-03-05 - Completed Phase 1 Plan 04: Hub Agent Config, Prompt, Query Tools
 
 ---
 
