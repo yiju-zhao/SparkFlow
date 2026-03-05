@@ -92,8 +92,15 @@ class JobRunner:
             total_matches = 0
 
             for i, query in enumerate(queries):
-                query_name = query.get("name", f"Query {i + 1}")
-                query_content = query.get("content", "")
+                query_name = query.get("key", f"Query {i + 1}")
+                area = query.get("area", "").strip()
+                query_text = query.get("query", "")
+
+                # Combine area and query for the matching pipeline
+                if area:
+                    query_content = f"Area: {area}\n\nQuery: {query_text}"
+                else:
+                    query_content = query_text
 
                 if not query_content.strip():
                     logger.warning(f"Skipping empty query: {query_name}")

@@ -15,6 +15,8 @@ from api.types import (
     MatchJobResponse,
     MatchJobStatus,
     MatchTargetType,
+    ParsedQueriesResponse,
+    ParseFileRequest,
 )
 from services.excel_processor import ExcelProcessor
 from services.job_runner import JobRunner
@@ -31,6 +33,23 @@ def get_data_loader(request: Request) -> DataLoader:
 
 def get_excel_processor() -> ExcelProcessor:
     return ExcelProcessor()
+
+
+@router.post("/parse", response_model=ParsedQueriesResponse)
+async def parse_file(
+    req: ParseFileRequest,
+    excel_processor: ExcelProcessor = Depends(get_excel_processor),
+):
+    """Parse queries from an uploaded Excel file for preview."""
+    try:
+        queries = excel_processor.parse_queries(req.file_key)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
+
+    return ParsedQueriesResponse(
+        queries=queries,
+        total_count=len(queries),
+    )
 
 
 @router.post("", response_model=MatchJobResponse)

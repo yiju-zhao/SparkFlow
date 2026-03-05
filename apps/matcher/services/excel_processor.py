@@ -13,6 +13,7 @@ from typing import Iterator
 import boto3
 import pandas as pd
 from botocore.exceptions import ClientError
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -33,27 +34,54 @@ class ExcelProcessor:
             aws_secret_access_key=os.getenv("S3_SECRET_KEY", "minioadmin"),
         )
 
+    def _translate_to_english(self, text: str) -> str:
+        """
+        Translate text to English using the Xinference LLM.
+
+        Returns the original text if it's empty or translation fails.
+        """
+        if not text or not text.strip():
+            return text
+        try:
+            client = OpenAI(
+                api_key=os.getenv("XINFERENCE_API_KEY", "not-needed"),
+                base_url=os.getenv("XINFERENCE_BASE_URL", "http://localhost:9997/v1"),
+            )
+            model = os.getenv("XINFERENCE_MODEL", "Qwen3-Instruct")
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Translate the following text to English. Return only the translated text, nothing else. If the text is already in English, return it unchanged.",
+                    },
+                    {"role": "user", "content": text},
+                ],
+                max_tokens=512,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"Translation failed for text '{text[:50]}...': {e}. Using original.")
+            return text
+
     def parse_queries(self, file_key: str) -> list[dict]:
         """
         Parse queries from an uploaded Excel file.
 
-        Expected format:
-        - Column A: Query ID (optional)
-        - Column B: Query Name
-        - Column C: Query Content (the actual query text)
+        Expected format (positional columns):
+        - Column 1 (index 0): key — who wants the matching (not translated)
+        - Column 2 (index 1): area — optional domain/area (translated to English)
+        - Column 3 (index 2): query — the actual query text (translated to English)
 
-        Returns list of dicts with id, name, content, row_index
+        Returns list of dicts with id, key, area, query, row_index
         """
         try:
             # Download from S3
             response = self.s3_client.get_object(Bucket=self.bucket, Key=file_key)
             excel_data = response["Body"].read()
 
-            # Read Excel
-            df = pd.read_excel(io.BytesIO(excel_data), engine="openpyxl")
-
-            # Detect columns - look for common patterns
-            col_mapping = self._detect_columns(df)
+            # Read Excel without using first row as header
+            df = pd.read_excel(io.BytesIO(excel_data), engine="openpyxl", header=None)
 
             queries = []
             for idx, row in df.iterrows():
@@ -61,16 +89,26 @@ class ExcelProcessor:
                 if row.isna().all():
                     continue
 
+                key = self._safe_str(row.iloc[0])
+                area_raw = self._safe_str(row.iloc[1] if len(row) > 1 else "")
+                query_raw = self._safe_str(row.iloc[2] if len(row) > 2 else "")
+
+                # Skip rows with no query text
+                if not query_raw.strip():
+                    continue
+
+                # Translate area and query to English (key is never translated)
+                area_translated = self._translate_to_english(area_raw)
+                query_translated = self._translate_to_english(query_raw)
+
                 query = {
                     "id": str(uuid.uuid4()),
-                    "name": self._safe_str(row.get(col_mapping.get("name", df.columns[0]))),
-                    "content": self._safe_str(row.get(col_mapping.get("content", df.columns[1]))),
+                    "key": key,
+                    "area": area_translated,
+                    "query": query_translated,
                     "row_index": idx,
                 }
-
-                # Only include if we have content
-                if query["content"].strip():
-                    queries.append(query)
+                queries.append(query)
 
             logger.info(f"Parsed {len(queries)} queries from {file_key}")
             return queries
@@ -81,36 +119,6 @@ class ExcelProcessor:
         except Exception as e:
             logger.error(f"Error parsing queries from {file_key}: {e}")
             raise
-
-    def _detect_columns(self, df: pd.DataFrame) -> dict:
-        """
-        Auto-detect column mapping based on header names.
-
-        Looks for:
-        - name: 'name', 'query name', 'title', 'topic'
-        - content: 'content', 'query', 'description', 'text', 'challenge'
-        """
-        col_mapping = {"name": None, "content": None}
-
-        name_patterns = ["name", "title", "topic", "query name", "category"]
-        content_patterns = ["content", "query", "description", "text", "challenge", "question"]
-
-        for col in df.columns:
-            col_lower = str(col).lower().strip()
-            if col_mapping["name"] is None:
-                if any(p in col_lower for p in name_patterns):
-                    col_mapping["name"] = col
-            if col_mapping["content"] is None:
-                if any(p in col_lower for p in content_patterns):
-                    col_mapping["content"] = col
-
-        # Fallback to first two columns
-        if col_mapping["name"] is None:
-            col_mapping["name"] = df.columns[0]
-        if col_mapping["content"] is None:
-            col_mapping["content"] = df.columns[1] if len(df.columns) > 1 else df.columns[0]
-
-        return col_mapping
 
     def create_result_excel(
         self,

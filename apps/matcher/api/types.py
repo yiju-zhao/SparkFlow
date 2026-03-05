@@ -73,9 +73,16 @@ class ParsedQuery(BaseModel):
     """A parsed query from the uploaded Excel file."""
 
     id: str
-    name: str
-    content: str
+    key: str
+    area: str
+    query: str
     row_index: int
+
+
+class ParseFileRequest(BaseModel):
+    """Request to parse an uploaded Excel file for preview."""
+
+    file_key: str
 
 
 class ParsedQueriesResponse(BaseModel):
