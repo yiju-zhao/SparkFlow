@@ -47,8 +47,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **DATA-02**: Session model (title, description, speakers, tags, conference reference)
 - [ ] **DATA-03**: Speaker model (name, bio, affiliation)
 - [ ] **DATA-04**: Tag model (name, category)
-- [ ] **DATA-05**: Admin can create/edit conferences via UI
-- [ ] **DATA-06**: Admin can create/edit sessions via UI
+- [x] **DATA-05**: Admin can create/edit conferences via UI
+- [x] **DATA-06**: Admin can create/edit sessions via UI
 
 ## v2 Requirements
 
@@ -116,8 +116,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-02 | Phase 1 | Pending |
 | DATA-03 | Phase 1 | Pending |
 | DATA-04 | Phase 1 | Pending |
-| DATA-05 | Phase 1 | Pending |
-| DATA-06 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Complete |
+| DATA-06 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total

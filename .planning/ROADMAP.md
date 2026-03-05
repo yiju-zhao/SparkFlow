@@ -15,7 +15,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data | 1/5 | In progress | - |
+| 1. Foundation & Data | 2/5 | In Progress|  |
 | 2. Research Hub | 0/0 | Not started | - |
 | 3. Notebook Integration | 0/0 | Not started | - |
 | 4. Polish & Enhancement | 0/0 | Not started | - |
