@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { read, utils } from "xlsx";
+import { v4 as uuidv4 } from "uuid";
 import { FileDropzone } from "../file-dropzone";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -32,7 +33,7 @@ function parseExcelFile(file: File): Promise<ParsedQuery[]> {
           // Skip header row if first cell looks like a header, and skip empty queries
           if (!query || query.toLowerCase() === "query") continue;
           if (!key) continue;
-          queries.push({ id: `${i}-${Date.now()}-${Math.random().toString(36).slice(2)}`, key, area, query, rowIndex: i });
+          queries.push({ id: uuidv4(), key, area, query, rowIndex: i });
         }
         resolve(queries);
       } catch (err) {
