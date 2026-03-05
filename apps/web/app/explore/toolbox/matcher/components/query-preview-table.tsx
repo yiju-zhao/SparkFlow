@@ -22,11 +22,11 @@ export function QueryPreviewTable({
   className,
 }: QueryPreviewTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState({ name: "", content: "" });
+  const [editValues, setEditValues] = useState({ key: "", area: "", query: "" });
 
-  const handleEditStart = (query: ParsedQuery) => {
-    setEditingId(query.id);
-    setEditValues({ name: query.name, content: query.content });
+  const handleEditStart = (q: ParsedQuery) => {
+    setEditingId(q.id);
+    setEditValues({ key: q.key, area: q.area, query: q.query });
   };
 
   const handleEditSave = () => {
@@ -34,7 +34,7 @@ export function QueryPreviewTable({
 
     const updated = queries.map((q) =>
       q.id === editingId
-        ? { ...q, name: editValues.name, content: editValues.content }
+        ? { ...q, key: editValues.key, area: editValues.area, query: editValues.query }
         : q,
     );
     onQueriesChange(updated);
@@ -59,8 +59,9 @@ export function QueryPreviewTable({
         <thead>
           <tr className="border-b bg-muted/50">
             <th className="px-4 py-3 text-left font-medium w-12">#</th>
-            <th className="px-4 py-3 text-left font-medium w-48">Name</th>
-            <th className="px-4 py-3 text-left font-medium">Content</th>
+            <th className="px-4 py-3 text-left font-medium w-40">Key</th>
+            <th className="px-4 py-3 text-left font-medium w-40">Area</th>
+            <th className="px-4 py-3 text-left font-medium">Query</th>
             {!readOnly && <th className="px-4 py-3 w-20"></th>}
           </tr>
         </thead>
@@ -79,29 +80,42 @@ export function QueryPreviewTable({
               <td className="px-4 py-3">
                 {editingId === query.id ? (
                   <Input
-                    value={editValues.name}
+                    value={editValues.key}
                     onChange={(e) =>
-                      setEditValues({ ...editValues, name: e.target.value })
+                      setEditValues({ ...editValues, key: e.target.value })
                     }
                     className="h-8"
                   />
                 ) : (
-                  <span className="font-medium">{query.name || "Unnamed"}</span>
+                  <span className="font-medium">{query.key || "Unnamed"}</span>
+                )}
+              </td>
+              <td className="px-4 py-3">
+                {editingId === query.id ? (
+                  <Input
+                    value={editValues.area}
+                    onChange={(e) =>
+                      setEditValues({ ...editValues, area: e.target.value })
+                    }
+                    className="h-8"
+                  />
+                ) : (
+                  <span className="text-muted-foreground">{query.area || "-"}</span>
                 )}
               </td>
               <td className="px-4 py-3">
                 {editingId === query.id ? (
                   <Textarea
-                    value={editValues.content}
+                    value={editValues.query}
                     onChange={(e) =>
-                      setEditValues({ ...editValues, content: e.target.value })
+                      setEditValues({ ...editValues, query: e.target.value })
                     }
                     className="min-h-[60px] resize-none"
                     rows={2}
                   />
                 ) : (
                   <p className="text-muted-foreground line-clamp-2">
-                    {query.content || "No content"}
+                    {query.query || "No query"}
                   </p>
                 )}
               </td>

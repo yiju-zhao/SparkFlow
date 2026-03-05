@@ -32,14 +32,22 @@ export function PreviewStep({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real implementation, we'd fetch the parsed queries from the server
-    // For now, we'll simulate it
     async function loadQueries() {
       setIsLoading(true);
       try {
-        // TODO: Fetch parsed queries from matcher service
-        // For now, just show placeholder
-        setQueries([]);
+        const response = await fetch("/api/matcher/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileKey }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to parse queries");
+        }
+
+        const data = await response.json();
+        setQueries(data.queries || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load queries");
       } finally {

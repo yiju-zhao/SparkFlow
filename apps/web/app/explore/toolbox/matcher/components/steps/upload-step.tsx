@@ -54,8 +54,10 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
       <div>
         <h3 className="text-lg font-medium">Upload Query File</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Upload an Excel file containing your queries. Each row should have a
-          name and content column.
+          Upload an Excel file containing your queries. The file should have
+          three columns: Key (who wants the matching), Area (optional
+          domain/area), and Query (the search query). Area and Query will be
+          automatically translated to English.
         </p>
       </div>
 

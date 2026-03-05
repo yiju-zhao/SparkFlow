@@ -13,8 +13,9 @@ export type MatchTargetType = "SESSION" | "PUBLICATION";
 
 export interface ParsedQuery {
   id: string;
-  name: string;
-  content: string;
+  key: string;
+  area: string;
+  query: string;
   rowIndex: number;
 }
 
