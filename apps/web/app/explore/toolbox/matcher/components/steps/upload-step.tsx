@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { read, utils } from "xlsx";
+import { Workbook } from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 import { FileDropzone } from "../file-dropzone";
 import { Button } from "@/components/ui/button";
@@ -14,35 +14,23 @@ interface UploadStepProps {
   onCancel: () => void;
 }
 
-function parseExcelFile(file: File): Promise<ParsedQuery[]> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows: string[][] = utils.sheet_to_json(sheet, { header: 1, defval: "" });
+async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = new Workbook();
+  await workbook.xlsx.load(buffer);
+  const worksheet = workbook.worksheets[0];
 
-        const queries: ParsedQuery[] = [];
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          const key = String(row[0] ?? "").trim();
-          const area = String(row[1] ?? "").trim();
-          const query = String(row[2] ?? "").trim();
-          // Skip header row if first cell looks like a header, and skip empty queries
-          if (!query || query.toLowerCase() === "query") continue;
-          if (!key) continue;
-          queries.push({ id: uuidv4(), key, area, query, rowIndex: i });
-        }
-        resolve(queries);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsArrayBuffer(file);
+  const queries: ParsedQuery[] = [];
+  worksheet.eachRow((row, rowNumber) => {
+    const key = String(row.getCell(1).value ?? "").trim();
+    const area = String(row.getCell(2).value ?? "").trim();
+    const query = String(row.getCell(3).value ?? "").trim();
+    if (!query || query.toLowerCase() === "query") return;
+    if (!key) return;
+    queries.push({ id: uuidv4(), key, area, query, rowIndex: rowNumber });
   });
+
+  return queries;
 }
 
 export function UploadStep({ onNext, onCancel }: UploadStepProps) {
