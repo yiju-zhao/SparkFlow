@@ -54,8 +54,8 @@ export function MatcherWizard() {
   });
 
   // Step 0: Upload
-  const handleUploadComplete = useCallback((fileKey: string) => {
-    setState((prev) => ({ ...prev, step: 1, fileKey }));
+  const handleUploadComplete = useCallback((fileKey: string, queries: ParsedQuery[]) => {
+    setState((prev) => ({ ...prev, step: 1, fileKey, queries }));
   }, []);
 
   // Step 1: Config
@@ -156,7 +156,7 @@ export function MatcherWizard() {
       case 2:
         return (
           <PreviewStep
-            fileKey={state.fileKey!}
+            queries={state.queries ?? []}
             config={state.config!}
             onStart={handleStartMatching}
             onBack={handleBack}

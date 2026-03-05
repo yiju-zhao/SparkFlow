@@ -1,14 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import { read, utils } from "xlsx";
 import { FileDropzone } from "../file-dropzone";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface UploadStepProps {
-  onNext: (fileKey: string) => void;
+  onNext: (fileKey: string, queries: ParsedQuery[]) => void;
   onCancel: () => void;
+}
+
+function parseExcelFile(file: File): Promise<ParsedQuery[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: string[][] = utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+        const queries: ParsedQuery[] = [];
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const key = String(row[0] ?? "").trim();
+          const area = String(row[1] ?? "").trim();
+          const query = String(row[2] ?? "").trim();
+          // Skip header row if first cell looks like a header, and skip empty queries
+          if (!query || query.toLowerCase() === "query") continue;
+          if (!key) continue;
+          queries.push({ id: crypto.randomUUID(), key, area, query, rowIndex: i });
+        }
+        resolve(queries);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 export function UploadStep({ onNext, onCancel }: UploadStepProps) {
@@ -28,6 +61,13 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
     setError(null);
 
     try {
+      // Parse Excel client-side first
+      const queries = await parseExcelFile(selectedFile);
+      if (queries.length === 0) {
+        throw new Error("No valid rows found. Make sure columns A (key) and C (query) are filled.");
+      }
+
+      // Upload file to S3 for the matching job
       const formData = new FormData();
       formData.append("file", selectedFile);
 
@@ -42,7 +82,7 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
       }
 
       const { fileKey } = await response.json();
-      onNext(fileKey);
+      onNext(fileKey, queries);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
