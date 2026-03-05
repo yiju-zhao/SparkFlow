@@ -51,7 +51,7 @@ export interface JobProgress {
 }
 
 export interface CreateMatchJobInput {
-  userId: string;
+  userId?: string; // Optional - injected by Next.js API route from session
   instanceId: string;
   targetType: MatchTargetType;
   queryFileKey: string;

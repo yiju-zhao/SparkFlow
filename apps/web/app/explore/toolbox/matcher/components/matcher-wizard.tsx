@@ -73,7 +73,6 @@ export function MatcherWizard() {
 
       try {
         const job = await createJob({
-          userId: "", // Will be set by API from session
           instanceId: state.config.instanceId,
           targetType: state.config.targetType,
           queryFileKey: state.fileKey,

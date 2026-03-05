@@ -23,9 +23,10 @@ class MatcherClient {
 
   /**
    * Create a new match job
+   * Routes through Next.js API to get userId from session
    */
   async createJob(input: CreateMatchJobInput): Promise<MatchJob> {
-    const response = await fetch(`${this.baseUrl}/api/jobs`, {
+    const response = await fetch("/api/matcher/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
