@@ -1,200 +1,99 @@
 """
-Data Loader Tool
-
-Loads conference sessions and publications from PostgreSQL.
+Data Loader for
+ - instead of direct database access, we'll use the API client
+ to fetch instance and sessions and publications from the Next.js API routes.
 """
 
 import logging
 import os
-from datetime import datetime
-from typing import Any, Optional
-
 import pandas as pd
+import requests
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
+# Configuration
+MATCHER_API_URL = os.getenv("MATCHER_API_URL", "http://localhost:2025")
+WEB_app_api_url = os.getenv("WEB_APP_API_URL", "http://localhost:3001/api/matcher")
+
 
 class DataLoader:
-    """Load data from PostgreSQL database."""
+    """Load data from PostgreSQL database via Next.js API routes."""
 
     def __init__(self):
-        self.database_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/sparkflow")
-        self.engine = create_engine(self.database_url)
-        self.Session = sessionmaker(bind=self.engine)
-
+        self.web_app_api_url = os.getenv("WEB_APP_API_URL", "http://localhost:3001/api/matcher")
+        self.web_app_api_url = self.web_app_api_url.rstrip("/api/matcher/data/")
+        self.client = DataLoaderClient(self.web_app_api_url)
+        
     def get_instance(self, instance_id: str) -> Optional[dict]:
         """Get conference instance by ID."""
-        with self.engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT * FROM instances WHERE id = :id"),
-                {"id": instance_id},
-            )
-            row = result.fetchone()
-            if row:
-                return dict(row._mapping)
-            return None
+        response = requests.get(f"{self.web_app_api_url}/instances/{instance_id}")
+        response.raise_for_status(response.status_code):
+            raise Exception(f"Failed to get instance: {response.text}")
 
-    def load_sessions(self, instance_id: str) -> Optional[pd.DataFrame]:
-        """Load all sessions for an instance."""
-        query = """
-            SELECT
-                id,
-                title,
-                type,
-                date,
-                start_time,
-                end_time,
-                location,
-                speaker,
-                abstract,
-                overview,
-                transcript,
-                session_url,
-                topic,
-                affiliation,
-                technology
-            FROM conference_sessions
-            WHERE instance_id = :instance_id
-        """
+        instance = response.json()
+        return {
+            "id": instance["id"],
+            "name": instance["name"],
+            "venueId": instance["venueId"],
+            "venue": instance.venue,
+        }
 
-        with self.engine.connect() as conn:
-            df = pd.read_sql_query(
-                text(query),
-                conn,
-                params={"instance_id": instance_id},
-            )
+    def get_sessions(self, instance_id: str) -> Optional[pd.DataFrame]:
+        """Get sessions for an instance."""
+        response = requests.get(f"{self.web_app_api_url}/sessions/{instance_id}")
+        response.raise_for status(response.status_code):
+            raise Exception(f"Failed to get sessions: {response.text}")
 
-        logger.info(f"Loaded {len(df)} sessions for instance {instance_id}")
+        data = []
+        for item in response.json():
+            session_data = {
+                "id": item["id"],
+                "title": item["title"],
+                "date": item["date"],
+                "start_time": item["start_time"],
+                "end_time": item["end_time"],
+                "location": item["location"],
+                "speaker": item["speaker"],
+            }
+        df = pd.DataFrame(session_data)
         return df
 
-    def load_publications(self, instance_id: str) -> Optional[pd.DataFrame]:
-        """Load all publications for an instance."""
-        query = """
-            SELECT
-                id,
-                title,
-                authors,
-                abstract,
-                summary,
-                affiliations,
-                countries,
-                keywords,
-                "researchTopic" as research_topic,
-                rating,
-                doi,
-                "pdfUrl" as pdf_url,
-                "githubUrl" as github_url,
-                "websiteUrl" as website_url,
-                status
-            FROM publications
-            WHERE instance_id = :instance_id
-        """
+    def get_publications(self, instance_id: str) -> Optional[pd.DataFrame]:
+        """Get publications for an instance."""
+        response = requests.get(f"{self.web_app_api_url}/publications/{instance_id}")
+        response.raise_for status(response.status_code):
+            raise Exception(f"Failed to get publications: {response.text}")
 
-        with self.engine.connect() as conn:
-            df = pd.read_sql_query(
-                text(query),
-                conn,
-                params={"instance_id": instance_id},
-            )
+        data = []
+        for item in response.json():
+            pub_data = {
+                "id": item["id"],
+                "title": item["title"],
+                "abstract": item.get("abstract"),
+                "doi": item.get("doi"),
+                "authors": item.get("authors"),
+                "year": item.get("year"),
+                "venue": item.get("venue"),
+                "keywords": item.get("keywords"),
+                "pdfUrl": item.get("pdfUrl"),
+                "instanceId": item["instanceId"],
+                "externalId": item.get("externalId"),
+                "link": item.get("link"),
+                "matchId": item.get("matchId"),
+                "citations": item.get("citations", " "`
 
-        logger.info(f"Loaded {len(df)} publications for instance {instance_id}")
-        return df
+For row in citations:
+                citations_text = " ".join(citations)
+                return df
 
-    def create_match_job(
+    def get_matching_data(
         self,
-        user_id: str,
         instance_id: str,
         target_type: str,
         top_k: int,
         search_k: int,
         include_reasons: bool,
-        query_file_key: str,
         query_data: list[dict],
-        query_count: int,
-    ) -> str:
-        """Create a new match job record."""
-        import json
-
-        query = """
-            INSERT INTO match_jobs (
-                user_id, instance_id, target_type, top_k, search_k,
-                include_reasons, query_file_key, query_data, query_count,
-                status, progress, created_at, updated_at
-            ) VALUES (
-                :user_id, :instance_id, :target_type, :top_k, :search_k,
-                :include_reasons, :query_file_key, :query_data, :query_count,
-                'PENDING', 0, NOW(), NOW()
-            ) RETURNING id
-        """
-
-        with self.engine.connect() as conn:
-            result = conn.execute(
-                text(query),
-                {
-                    "user_id": user_id,
-                    "instance_id": instance_id,
-                    "target_type": target_type,
-                    "top_k": top_k,
-                    "search_k": search_k,
-                    "include_reasons": include_reasons,
-                    "query_file_key": query_file_key,
-                    "query_data": json.dumps(query_data),
-                    "query_count": query_count,
-                },
-            )
-            conn.commit()
-            row = result.fetchone()
-            return row[0] if row else None
-
-    def get_match_job(self, job_id: str) -> Optional[dict]:
-        """Get match job by ID."""
-        with self.engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT * FROM match_jobs WHERE id = :id"),
-                {"id": job_id},
-            )
-            row = result.fetchone()
-            if row:
-                return dict(row._mapping)
-            return None
-
-    def update_match_job(self, job_id: str, **kwargs) -> bool:
-        """Update match job fields."""
-        if not kwargs:
-            return False
-
-        # Build SET clause
-        set_parts = []
-        params = {"id": job_id}
-
-        for key, value in kwargs.items():
-            # Convert Python naming to SQL naming
-            sql_key = self._to_sql_key(key)
-            set_parts.append(f"{sql_key} = :{key}")
-
-            # Handle JSON serialization
-            if isinstance(value, (dict, list)):
-                import json
-                value = json.dumps(value)
-            elif isinstance(value, datetime):
-                value = value.isoformat()
-
-            params[key] = value
-
-        # Always update updated_at
-        set_parts.append("updated_at = NOW()")
-
-        query = f"UPDATE match_jobs SET {', '.join(set_parts)} WHERE id = :id"
-
-        with self.engine.connect() as conn:
-            conn.execute(text(query), params)
-            conn.commit()
-
-        return True
-
-    def _to_sql_key(self, key: str) -> str:
-        """Convert camelCase to snake_case."""
-        import re
-        return re.sub(r'([A-Z])', r'_\1', key).lower()
+    ) -> pd.DataFrame(data=queries)
+        return data
