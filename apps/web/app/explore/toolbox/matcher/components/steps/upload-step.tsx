@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileDropzone } from "../file-dropzone";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface UploadStepProps {
   onNext: (fileKey: string) => void;
@@ -58,6 +59,43 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
           three columns: Key (who wants the matching), Area (optional
           domain/area), and Query (the search query). Area and Query will be
           automatically translated to English.
+        </p>
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Required Format</p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8 text-xs">Col</TableHead>
+              <TableHead className="text-xs">Column Name</TableHead>
+              <TableHead className="text-xs">Description</TableHead>
+              <TableHead className="text-xs">Required</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="text-xs text-muted-foreground">A</TableCell>
+              <TableCell className="text-xs font-mono font-medium">key</TableCell>
+              <TableCell className="text-xs text-muted-foreground">Who wants the matching (person or entity name)</TableCell>
+              <TableCell className="text-xs">Yes</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="text-xs text-muted-foreground">B</TableCell>
+              <TableCell className="text-xs font-mono font-medium">area</TableCell>
+              <TableCell className="text-xs text-muted-foreground">Domain or topic area to narrow the search</TableCell>
+              <TableCell className="text-xs text-muted-foreground">Optional</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="text-xs text-muted-foreground">C</TableCell>
+              <TableCell className="text-xs font-mono font-medium">query</TableCell>
+              <TableCell className="text-xs text-muted-foreground">The search query to match against sessions or publications</TableCell>
+              <TableCell className="text-xs">Yes</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+        <p className="text-xs text-muted-foreground">
+          Columns are read by position — header names do not need to match exactly. Area and Query will be automatically translated to English before matching.
         </p>
       </div>
 
