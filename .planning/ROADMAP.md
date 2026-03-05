@@ -15,7 +15,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data | 0/5 | Not started | - |
+| 1. Foundation & Data | 1/5 | In progress | - |
 | 2. Research Hub | 0/0 | Not started | - |
 | 3. Notebook Integration | 0/0 | Not started | - |
 | 4. Polish & Enhancement | 0/0 | Not started | - |
@@ -40,7 +40,7 @@
 **Plans**: 5 plans in 4 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Verify and extend Prisma models for conference domain
+- [x] 01-01-PLAN.md — Verify and extend Prisma models for conference domain
 - [ ] 01-02-PLAN.md — Create admin curation UI for Venue, Instance, Session
 - [ ] 01-03-PLAN.md — Integrate CopilotKit provider with AG-UI protocol
 - [ ] 01-04-PLAN.md — Create Hub agent config, prompt, and query tools
@@ -129,10 +129,10 @@ Plans:
 | INFRA-03 | Phase 1 | Pending |
 | INFRA-04 | Phase 1 | Pending |
 | INFRA-05 | Phase 1 | Pending |
-| DATA-01 | Phase 1 | Pending |
-| DATA-02 | Phase 1 | Pending |
-| DATA-03 | Phase 1 | Pending |
-| DATA-04 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Complete |
+| DATA-02 | Phase 1 | Complete |
+| DATA-03 | Phase 1 | Complete |
+| DATA-04 | Phase 1 | Complete |
 | DATA-05 | Phase 1 | Pending |
 | DATA-06 | Phase 1 | Pending |
 
