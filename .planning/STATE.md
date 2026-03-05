@@ -110,6 +110,7 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 |---|-------------|------|--------|-----------|
 | 1 | create toolbox section and move query matcher to toolbox | 2026-03-04 | dd3e8cc | [1-create-toolbox-section-and-move-query-ma](./quick/1-create-toolbox-section-and-move-query-ma/) |
 | 2 | make a new header next to sessions called toolbox and design the toolbox page and move the query matcher to the toolbox page | 2026-03-04 | 0b33439 | [2-make-a-new-header-next-to-sessions-calle](./quick/2-make-a-new-header-next-to-sessions-calle/) |
+| 4 | fix query matcher excel input format and add translation before matching | 2026-03-05 | 9d56606 | [4-fix-query-matcher-excel-file-input-forma](./quick/4-fix-query-matcher-excel-file-input-forma/) |
 
 ### Notes
 
