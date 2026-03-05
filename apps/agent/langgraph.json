@@ -3,7 +3,8 @@
         "."
     ],
     "graphs": {
-        "agent": "./graphs/rag_agent.py:agent"
+        "agent": "./graphs/rag_agent.py:agent",
+        "hub": "./graphs/hub_agent.py:hub_agent"
     },
     "env": ".env",
     "image_distro": "wolfi"
