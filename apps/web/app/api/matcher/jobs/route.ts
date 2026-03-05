@@ -10,6 +10,19 @@ import { auth } from "@/lib/auth";
 const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
 
+// Convert camelCase to snake_case for matcher service
+function toSnakeCase(str: string): string {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+function transformToSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    result[toSnakeCase(key)] = value;
+  }
+  return result;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -19,9 +32,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Ensure userId matches session
+    // Transform camelCase to snake_case and add user_id from session
     const payload = {
-      ...body,
+      ...transformToSnakeCase(body),
       user_id: session.user.id,
     };
 
@@ -34,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: "Unknown error" }));
       return NextResponse.json(
-        { error: error.detail || "Failed to create job" },
+        { error: error.detail || error.error || "Failed to create job" },
         { status: response.status },
       );
     }
