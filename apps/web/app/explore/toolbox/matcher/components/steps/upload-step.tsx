@@ -32,7 +32,7 @@ function parseExcelFile(file: File): Promise<ParsedQuery[]> {
           // Skip header row if first cell looks like a header, and skip empty queries
           if (!query || query.toLowerCase() === "query") continue;
           if (!key) continue;
-          queries.push({ id: crypto.randomUUID(), key, area, query, rowIndex: i });
+          queries.push({ id: `${i}-${Date.now()}-${Math.random().toString(36).slice(2)}`, key, area, query, rowIndex: i });
         }
         resolve(queries);
       } catch (err) {
