@@ -2,8 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Stepper } from "@/components/ui/stepper";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { UploadStep } from "./steps/upload-step";
 import { ConfigStep } from "./steps/config-step";
 import { PreviewStep } from "./steps/preview-step";
@@ -13,11 +13,11 @@ import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
 import type { ParsedQuery, MatchJob, MatchTargetType } from "@/lib/matcher/types";
 
 const STEPS = [
-  { id: "upload", label: "Upload", description: "Upload query file" },
-  { id: "config", label: "Configure", description: "Select options" },
-  { id: "preview", label: "Preview", description: "Review queries" },
-  { id: "running", label: "Match", description: "Processing" },
-  { id: "results", label: "Results", description: "Download" },
+  { id: "upload", label: "upload_query_file" },
+  { id: "config", label: "configure_job" },
+  { id: "preview", label: "preview_results" },
+  { id: "running", label: "match" },
+  { id: "results", label: "results" },
 ];
 
 type WizardState = {
@@ -184,15 +184,42 @@ export function MatcherWizard() {
   };
 
   return (
-    <div className="space-y-6">
-      <Stepper steps={STEPS} currentStep={state.step} />
+    <Card className="overflow-hidden">
+      {/* Monospace step indicator */}
+      <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
+        {STEPS.map((step, index) => (
+          <div key={step.id} className="flex items-center gap-1">
+            {index > 0 && (
+              <span className="text-muted-foreground/40 mx-2">/</span>
+            )}
+            <span
+              className={cn(
+                "tabular-nums",
+                index === state.step
+                  ? "text-primary font-bold"
+                  : index < state.step
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+              )}
+            >
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span
+              className={cn(
+                index === state.step
+                  ? "text-foreground font-bold"
+                  : index < state.step
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+              )}
+            >
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{STEPS[state.step].label}</CardTitle>
-        </CardHeader>
-        <CardContent>{renderStep()}</CardContent>
-      </Card>
-    </div>
+      <CardContent className="p-6">{renderStep()}</CardContent>
+    </Card>
   );
 }

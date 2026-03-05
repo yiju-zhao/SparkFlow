@@ -8,12 +8,17 @@ export const metadata: Metadata = {
 
 export default function MatcherPage() {
   return (
-    <div className="container max-w-3xl py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Query Matcher</h1>
-        <p className="text-muted-foreground mt-1">
-          Upload queries and match them against conference sessions or publications
-          using semantic search.
+    <div className="flex flex-col gap-10">
+      <div>
+        <p className="text-sm text-muted-foreground mb-2 font-mono">
+          ~/research-hub/toolbox/query-matcher
+        </p>
+        <h1 className="text-4xl font-bold tracking-tight mb-2">
+          Query Matcher
+        </h1>
+        <p className="text-muted-foreground">
+          Upload queries and match them against conference sessions or
+          publications using semantic search.
         </p>
       </div>
 

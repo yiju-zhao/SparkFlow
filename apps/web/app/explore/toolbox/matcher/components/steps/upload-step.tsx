@@ -5,8 +5,20 @@ import { Workbook } from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 import { FileDropzone } from "../file-dropzone";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, HelpCircle } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface UploadStepProps {
@@ -81,51 +93,67 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Upload Query File</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Upload an Excel file containing your queries. The file should have
-          three columns: Key (who wants the matching), Area (optional
-          domain/area), and Query (the search query). Area and Query will be
-          automatically translated to English.
-        </p>
-      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-medium">Upload Query File</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Upload an Excel file containing your queries. Area and Query will be
+            automatically translated to English.
+          </p>
+        </div>
 
-      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Required Format</p>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8 text-xs">Col</TableHead>
-              <TableHead className="text-xs">Column Name</TableHead>
-              <TableHead className="text-xs">Description</TableHead>
-              <TableHead className="text-xs">Required</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell className="text-xs text-muted-foreground">A</TableCell>
-              <TableCell className="text-xs font-mono font-medium">key</TableCell>
-              <TableCell className="text-xs text-muted-foreground">Who wants the matching (person or entity name)</TableCell>
-              <TableCell className="text-xs">Yes</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="text-xs text-muted-foreground">B</TableCell>
-              <TableCell className="text-xs font-mono font-medium">area</TableCell>
-              <TableCell className="text-xs text-muted-foreground">Domain or topic area to narrow the search</TableCell>
-              <TableCell className="text-xs text-muted-foreground">Optional</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="text-xs text-muted-foreground">C</TableCell>
-              <TableCell className="text-xs font-mono font-medium">query</TableCell>
-              <TableCell className="text-xs text-muted-foreground">The search query to match against sessions or publications</TableCell>
-              <TableCell className="text-xs">Yes</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-        <p className="text-xs text-muted-foreground">
-          Columns are read by position — header names do not need to match exactly. Area and Query will be automatically translated to English before matching.
-        </p>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-muted/50 border border-border hover:bg-muted transition-colors shrink-0"
+            >
+              <span className="font-mono">Format Guide</span>
+              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[420px] p-4">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide font-mono">
+                Required Format
+              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 text-xs">Col</TableHead>
+                    <TableHead className="text-xs">Name</TableHead>
+                    <TableHead className="text-xs">Description</TableHead>
+                    <TableHead className="text-xs">Required</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="text-xs text-muted-foreground">A</TableCell>
+                    <TableCell className="text-xs font-mono font-medium">key</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">Who wants the matching (person or entity name)</TableCell>
+                    <TableCell className="text-xs">Yes</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-xs text-muted-foreground">B</TableCell>
+                    <TableCell className="text-xs font-mono font-medium">area</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">Domain or topic area to narrow the search</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">Optional</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-xs text-muted-foreground">C</TableCell>
+                    <TableCell className="text-xs font-mono font-medium">query</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">The search query to match against sessions or publications</TableCell>
+                    <TableCell className="text-xs">Yes</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+              <p className="text-xs text-muted-foreground">
+                Columns are read by position — header names do not need to match exactly.
+                Area and Query will be automatically translated to English before matching.
+              </p>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <FileDropzone
