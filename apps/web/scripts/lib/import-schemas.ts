@@ -55,6 +55,9 @@ export const SessionInputSchema = z.object({
   topic: z.array(z.string()).default([]),
   affiliation: z.array(z.string()).default([]),
   technology: z.array(z.string()).default([]),
+  sessionFormat: z.enum(["IN_PERSON", "VIRTUAL", "BOTH"]).optional(),
+  hasRecording: z.boolean().default(false),
+  intendedAudience: z.string().optional(),
   publicationTitles: z.array(z.string()).default([]),
 });
 

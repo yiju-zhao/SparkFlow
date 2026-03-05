@@ -151,6 +151,12 @@ enum SessionStatus {
   ARCHIVED
 }
 
+enum SessionFormat {
+  IN_PERSON
+  VIRTUAL
+  BOTH
+}
+
 model ChatSession {
   id         String        @id @default(uuid())
   notebookId String
@@ -317,6 +323,10 @@ model ConferenceSession {
   topic       String[]               @default([])
   affiliation String[]               @default([])
   technology  String[]               @default([])
+
+  sessionFormat    SessionFormat?
+  hasRecording     Boolean           @default(false)
+  intendedAudience String?
 
   publications SessionPublication[]
 
