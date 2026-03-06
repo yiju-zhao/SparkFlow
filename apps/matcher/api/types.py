@@ -34,15 +34,14 @@ class ParsedQueryInput(BaseModel):
 class CreateMatchJobRequest(BaseModel):
     """Request to create a new match job.
 
-    Either queries or query_file_key must be provided.
-    If queries is provided, it will be used directly (no file parsing needed).
+    All data is passed directly from Next.js - no callbacks needed.
     """
 
     user_id: str
     instance_id: str
     target_type: MatchTargetType
-    queries: Optional[list[ParsedQueryInput]] = None
-    query_file_key: Optional[str] = None
+    queries: list[ParsedQueryInput]
+    target_data: list[dict[str, Any]]  # Sessions or publications fetched by Next.js
     top_k: int = 50
     search_k: int = 350
     include_reasons: bool = True
@@ -81,25 +80,3 @@ class JobProgressResponse(BaseModel):
     error_message: Optional[str] = None
     query_count: int
     match_count: int
-
-
-class ParsedQuery(BaseModel):
-    """A parsed query from the uploaded Excel file."""
-
-    id: str
-    bu: str
-    query: str
-    row_index: int
-
-
-class ParseFileRequest(BaseModel):
-    """Request to parse an uploaded Excel file for preview."""
-
-    file_key: str
-
-
-class ParsedQueriesResponse(BaseModel):
-    """Response for parsed queries preview."""
-
-    queries: list[ParsedQuery]
-    total_count: int

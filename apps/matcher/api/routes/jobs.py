@@ -2,7 +2,6 @@
 Job management routes for the matcher service.
 """
 
-import asyncio
 import logging
 from typing import Optional
 
@@ -15,41 +14,22 @@ from api.types import (
     MatchJobResponse,
     MatchJobStatus,
     MatchTargetType,
-    ParsedQueriesResponse,
-    ParseFileRequest,
 )
 from services.excel_processor import ExcelProcessor
 from services.job_runner import JobRunner
-from tools.data_loader import DataLoader
+from tools.job_store import JobStore
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def get_data_loader(request: Request) -> DataLoader:
-    return request.app.state.data_loader
-
-
 def get_excel_processor() -> ExcelProcessor:
     return ExcelProcessor()
 
 
-@router.post("/parse", response_model=ParsedQueriesResponse)
-async def parse_file(
-    req: ParseFileRequest,
-    excel_processor: ExcelProcessor = Depends(get_excel_processor),
-):
-    """Parse queries from an uploaded Excel file for preview."""
-    try:
-        queries = excel_processor.parse_queries(req.file_key)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
-
-    return ParsedQueriesResponse(
-        queries=queries,
-        total_count=len(queries),
-    )
+def get_job_store() -> JobStore:
+    return JobStore()
 
 
 @router.post("", response_model=MatchJobResponse)
@@ -57,70 +37,59 @@ async def create_job(
     req: CreateMatchJobRequest,
     background_tasks: BackgroundTasks,
     request: Request,
-    data_loader: DataLoader = Depends(get_data_loader),
     excel_processor: ExcelProcessor = Depends(get_excel_processor),
+    job_store: JobStore = Depends(get_job_store),
 ):
     """
     Create a new match job.
 
-    Accepts either:
-    - queries: Pre-parsed queries from frontend (preferred)
-    - query_file_key: S3 key to parse queries from file
-
-    The job runs in the background.
+    All data (queries and target_data) is passed directly from Next.js.
+    No callbacks needed - matcher processes everything in one request.
     """
-    # Verify instance exists
-    instance = data_loader.get_instance(req.instance_id)
-    if not instance:
-        raise HTTPException(status_code=404, detail="Instance not found")
+    queries = req.queries
+    target_data = req.target_data
 
-    # Get queries - either from request or by parsing file
-    if req.queries:
-        queries = req.queries
-        logger.info(f"Using {len(queries)} queries from request")
-    elif req.query_file_key:
-        try:
-            queries = excel_processor.parse_queries(req.query_file_key)
-            logger.info(f"Parsed {len(queries)} queries from file {req.query_file_key}")
-        except Exception as e:
-            logger.error(f"Failed to parse queries: {e}")
-            raise HTTPException(status_code=400, detail=f"Failed to parse query file: {e}")
-    else:
-        raise HTTPException(status_code=400, detail="Either queries or query_file_key must be provided")
+    if not queries:
+        raise HTTPException(status_code=400, detail="No queries provided")
 
-    # Create job record in database
-    job_id = data_loader.create_match_job(
+    if not target_data:
+        raise HTTPException(status_code=400, detail="No target data provided")
+
+    logger.info(f"Creating job with {len(queries)} queries and {len(target_data)} target items")
+
+    # Create job record
+    job_id = job_store.create_job(
         user_id=req.user_id,
         instance_id=req.instance_id,
         target_type=req.target_type.value,
         top_k=req.top_k,
         search_k=req.search_k,
         include_reasons=req.include_reasons,
-        query_file_key=req.query_file_key or "",
         query_data=[q.model_dump() for q in queries],
         query_count=len(queries),
+        target_data=target_data,
     )
 
     # Start background processing
     job_runner = JobRunner(
         matcher=request.app.state.matcher,
-        data_loader=data_loader,
         excel_processor=excel_processor,
+        job_store=job_store,
     )
-    background_tasks.add_task(job_runner.run_job, job_id)
+    background_tasks.add_task(job_runner.run_job, job_id, target_data)
 
     # Return the created job
-    job = data_loader.get_match_job(job_id)
+    job = job_store.get_job(job_id)
     return _job_to_response(job)
 
 
 @router.get("/{job_id}", response_model=MatchJobResponse)
 async def get_job(
     job_id: str,
-    data_loader: DataLoader = Depends(get_data_loader),
+    job_store: JobStore = Depends(get_job_store),
 ):
     """Get full job details including parsed queries."""
-    job = data_loader.get_match_job(job_id)
+    job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return _job_to_response(job)
@@ -129,10 +98,10 @@ async def get_job(
 @router.get("/{job_id}/progress", response_model=JobProgressResponse)
 async def get_job_progress(
     job_id: str,
-    data_loader: DataLoader = Depends(get_data_loader),
+    job_store: JobStore = Depends(get_job_store),
 ):
     """Get job progress for polling (lightweight response)."""
-    job = data_loader.get_match_job(job_id)
+    job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -149,28 +118,28 @@ async def get_job_progress(
 @router.delete("/{job_id}")
 async def cancel_job(
     job_id: str,
-    data_loader: DataLoader = Depends(get_data_loader),
+    job_store: JobStore = Depends(get_job_store),
 ):
     """Cancel a running job."""
-    job = data_loader.get_match_job(job_id)
+    job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
     if job["status"] not in [MatchJobStatus.PENDING.value, MatchJobStatus.PROCESSING.value]:
         raise HTTPException(status_code=400, detail="Job cannot be cancelled")
 
-    data_loader.update_match_job(job_id, status=MatchJobStatus.CANCELLED.value)
+    job_store.update_job(job_id, status=MatchJobStatus.CANCELLED.value)
     return {"message": "Job cancelled"}
 
 
 @router.get("/{job_id}/download")
 async def download_results(
     job_id: str,
-    data_loader: DataLoader = Depends(get_data_loader),
+    job_store: JobStore = Depends(get_job_store),
     excel_processor: ExcelProcessor = Depends(get_excel_processor),
 ):
     """Download the result Excel file."""
-    job = data_loader.get_match_job(job_id)
+    job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -192,7 +161,7 @@ async def download_results(
 
 
 def _job_to_response(job: dict) -> MatchJobResponse:
-    """Convert database row to response model."""
+    """Convert job dict to response model."""
     return MatchJobResponse(
         id=job["id"],
         user_id=job["user_id"],

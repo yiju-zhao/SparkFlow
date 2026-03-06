@@ -1,11 +1,12 @@
 /**
  * Matcher Jobs API Route
  *
- * Proxies job creation and listing to the matcher service.
+ * Fetches target data from database and sends everything to matcher service.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
@@ -19,7 +20,6 @@ function transformToSnakeCase(obj: Record<string, unknown>): Record<string, unkn
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     const snakeKey = toSnakeCase(key);
-    // Handle nested objects and arrays
     if (Array.isArray(value)) {
       result[snakeKey] = value.map(item =>
         typeof item === "object" && item !== null
@@ -43,14 +43,57 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    const { instanceId, targetType, queries, topK, searchK, includeReasons } = body;
 
-    // Transform camelCase to snake_case and add user_id from session
+    // Fetch target data from database
+    let targetData: Record<string, unknown>[] = [];
+    
+    if (targetType === "SESSION") {
+      const sessions = await prisma.conferenceSession.findMany({
+        where: { instanceId },
+        select: {
+          id: true,
+          title: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          location: true,
+          speaker: true,
+          abstract: true,
+          overview: true,
+          type: true,
+        },
+      });
+      targetData = sessions;
+    } else {
+      const publications = await prisma.publication.findMany({
+        where: { instanceId },
+        select: {
+          id: true,
+          title: true,
+          abstract: true,
+          authors: true,
+          keywords: true,
+        },
+      });
+      targetData = publications;
+    }
+
+    // Build payload with all data
     const payload = {
-      ...transformToSnakeCase(body),
+      ...transformToSnakeCase({
+        instanceId,
+        targetType,
+        queries,
+        topK,
+        searchK,
+        includeReasons,
+        targetData,
+      }),
       user_id: session.user.id,
     };
 
-    console.log("[Matcher Jobs] Creating job with payload:", JSON.stringify(payload, null, 2));
+    console.log("[Matcher Jobs] Creating job with", queries?.length, "queries and", targetData.length, "target items");
 
     const response = await fetch(`${MATCHER_API_URL}/api/jobs`, {
       method: "POST",
@@ -85,12 +128,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get jobs for the current user
     const { searchParams } = new URL(request.url);
     const instanceId = searchParams.get("instanceId");
 
-    // For now, we'll just proxy to the matcher service
-    // In a full implementation, we'd filter by userId
     const response = await fetch(
       `${MATCHER_API_URL}/api/jobs?userId=${session.user.id}${instanceId ? `&instanceId=${instanceId}` : ""}`,
     );

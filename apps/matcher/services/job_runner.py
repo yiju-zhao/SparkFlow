@@ -5,16 +5,14 @@ Handles background execution of match jobs.
 """
 
 import logging
-import os
 import tempfile
 from datetime import datetime
-from typing import Any
 
 import pandas as pd
 
 from services.excel_processor import ExcelProcessor
 from services.lotus_matcher import LotusMatcher
-from tools.data_loader import DataLoader
+from tools.job_store import JobStore
 
 logger = logging.getLogger(__name__)
 
@@ -25,40 +23,35 @@ class JobRunner:
     def __init__(
         self,
         matcher: LotusMatcher,
-        data_loader: DataLoader,
         excel_processor: ExcelProcessor,
+        job_store: JobStore,
     ):
         self.matcher = matcher
-        self.data_loader = data_loader
         self.excel_processor = excel_processor
+        self.job_store = job_store
 
-    def run_job(self, job_id: str):
+    def run_job(self, job_id: str, target_data: list[dict]):
         """
         Run a match job to completion.
 
-        Pipeline:
-        1. Load target data (sessions/publications) from database
-        2. Build text column for semantic indexing
-        3. For each query, run LOTUS pipeline
-        4. Aggregate results and create Excel output
+        All data is passed directly - no database callbacks needed.
         """
         logger.info(f"Starting job {job_id}")
 
         try:
             # Update job status
-            self.data_loader.update_match_job(
+            self.job_store.update_job(
                 job_id,
                 status="PROCESSING",
                 started_at=datetime.utcnow(),
             )
 
             # Get job details
-            job = self.data_loader.get_match_job(job_id)
+            job = self.job_store.get_job(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
 
             queries = job.get("query_data", [])
-            instance_id = job["instance_id"]
             target_type = job["target_type"]
             top_k = job["top_k"]
             search_k = job["search_k"]
@@ -67,18 +60,12 @@ class JobRunner:
             if not queries:
                 raise ValueError("No queries to process")
 
-            # Load target data
-            self.data_loader.update_match_job(job_id, progress=5)
-
-            if target_type == "SESSION":
-                target_df = self.data_loader.load_sessions(instance_id)
-            else:
-                target_df = self.data_loader.load_publications(instance_id)
-
-            if target_df is None or len(target_df) == 0:
-                raise ValueError(f"No {target_type} data found for instance {instance_id}")
-
+            # Convert target_data to DataFrame
+            target_df = pd.DataFrame(target_data)
             logger.info(f"Loaded {len(target_df)} {target_type} items")
+
+            if len(target_df) == 0:
+                raise ValueError(f"No {target_type} data provided")
 
             # Build text column for semantic matching
             target_df = self.matcher.build_text_column(target_df, target_type)
@@ -92,40 +79,32 @@ class JobRunner:
             total_matches = 0
 
             for i, query in enumerate(queries):
-                query_name = query.get("key", f"Query {i + 1}")
-                area_raw = query.get("area", "").strip()
+                # Use bu field
+                query_name = query.get("bu", f"Query {i + 1}")
                 query_raw = query.get("query", "")
 
-                # Translate area and query to English before matching
-                area = self.excel_processor._translate_to_english(area_raw)
+                # Translate query to English before matching
                 query_text = self.excel_processor._translate_to_english(query_raw)
 
-                # Combine area and query for the matching pipeline
-                if area:
-                    query_content = f"Area: {area}\n\nQuery: {query_text}"
-                else:
-                    query_content = query_text
-
-                if not query_content.strip():
+                if not query_text.strip():
                     logger.warning(f"Skipping empty query: {query_name}")
                     continue
 
                 # Update progress
                 progress = 10 + int((i / total_queries) * 70)
-                self.data_loader.update_match_job(
+                self.job_store.update_job(
                     job_id,
                     progress=progress,
                     error_message=f"Processing: {query_name}",
                 )
 
                 def progress_callback(pct, msg):
-                    # Nested progress updates not needed at job level
                     pass
 
                 # Run LOTUS pipeline
                 matches_df = self.matcher.run_pipeline(
                     df=target_df,
-                    query_text=query_content,
+                    query_text=query_text,
                     query_name=query_name,
                     top_k=top_k,
                     search_k=search_k,
@@ -155,14 +134,14 @@ class JobRunner:
             master_df = pd.concat(all_matches, ignore_index=True) if all_matches else None
 
             # Create result Excel
-            self.data_loader.update_match_job(job_id, progress=85, error_message="Creating result file...")
+            self.job_store.update_job(job_id, progress=85, error_message="Creating result file...")
             result_file_key = self.excel_processor.create_result_excel(
                 results_by_query=results_by_query,
                 master_df=master_df,
             )
 
             # Update job as completed
-            self.data_loader.update_match_job(
+            self.job_store.update_job(
                 job_id,
                 status="COMPLETED",
                 progress=100,
@@ -183,7 +162,7 @@ class JobRunner:
 
         except Exception as e:
             logger.exception(f"Job {job_id} failed: {e}")
-            self.data_loader.update_match_job(
+            self.job_store.update_job(
                 job_id,
                 status="FAILED",
                 error_message=str(e),
