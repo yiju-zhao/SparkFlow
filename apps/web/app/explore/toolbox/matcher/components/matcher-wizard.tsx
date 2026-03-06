@@ -97,6 +97,7 @@ export function MatcherWizard() {
       if (!state.config || !state.queries) return;
 
       try {
+        console.log("[Wizard] Creating job with config:", state.config);
         const job = await createJob({
           instanceId: state.config.instanceId,
           targetType: state.config.targetType,
@@ -106,7 +107,7 @@ export function MatcherWizard() {
           includeReasons: state.config.includeReasons,
         });
 
-        console.log("[Wizard] Job created, moving to running step:", job.id);
+        console.log("[Wizard] Job created:", job.id);
 
         setState((prev) => ({
           ...prev,

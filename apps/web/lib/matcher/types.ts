@@ -47,6 +47,7 @@ export interface JobProgress {
   errorMessage: string | null;
   queryCount: number;
   matchCount: number;
+  topK?: number;
 }
 
 export interface CreateMatchJobInput {

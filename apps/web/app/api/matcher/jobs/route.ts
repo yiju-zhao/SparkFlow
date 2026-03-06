@@ -43,9 +43,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { instanceId, targetType, queries, topK, searchK, includeReasons } = body;
+    const { instanceId, targetType, queries, topK = 50, searchK = 350, includeReasons = true } = body;
 
-    console.log("[Matcher Jobs] Request:", { instanceId, targetType, queryCount: queries?.length });
+    console.log("[Matcher Jobs] Config:", { 
+      instanceId, 
+      targetType, 
+      queryCount: queries?.length,
+      topK,
+      searchK,
+      includeReasons 
+    });
 
     // Fetch target data from database
     let targetData: Record<string, unknown>[] = [];
@@ -67,7 +74,7 @@ export async function POST(request: NextRequest) {
         },
       });
       targetData = sessions as Record<string, unknown>[];
-      console.log("[Matcher Jobs] Found", sessions.length, "sessions for instance", instanceId);
+      console.log("[Matcher Jobs] Found", sessions.length, "sessions");
     } else {
       const publications = await prisma.publication.findMany({
         where: { instanceId },
@@ -80,18 +87,18 @@ export async function POST(request: NextRequest) {
         },
       });
       targetData = publications as Record<string, unknown>[];
-      console.log("[Matcher Jobs] Found", publications.length, "publications for instance", instanceId);
+      console.log("[Matcher Jobs] Found", publications.length, "publications");
     }
 
     if (targetData.length === 0) {
       return NextResponse.json(
-        { error: `No ${targetType === "SESSION" ? "sessions" : "publications"} found for this instance` },
+        { error: `No ${targetType === "SESSION" ? "sessions" : "publications"} found` },
         { status: 400 },
       );
     }
 
     // Build payload with all data
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...transformToSnakeCase({
         instanceId,
         targetType,
@@ -104,7 +111,7 @@ export async function POST(request: NextRequest) {
       user_id: session.user.id,
     };
 
-    console.log("[Matcher Jobs] Sending to matcher:", queries?.length, "queries,", targetData.length, "target items");
+    console.log("[Matcher Jobs] Sending to matcher - top_k:", payload.top_k, "search_k:", payload.search_k);
 
     const response = await fetch(`${MATCHER_API_URL}/api/jobs`, {
       method: "POST",
@@ -122,6 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     const job = await response.json();
+    console.log("[Matcher Jobs] Job created:", job.id, "topK:", job.top_k);
     return NextResponse.json(job);
   } catch (error) {
     console.error("Create job error:", error);
