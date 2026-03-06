@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { instanceId, targetType, queries, topK, searchK, includeReasons } = body;
 
+    console.log("[Matcher Jobs] Request:", { instanceId, targetType, queryCount: queries?.length });
+
     // Fetch target data from database
     let targetData: Record<string, unknown>[] = [];
     
@@ -64,7 +66,8 @@ export async function POST(request: NextRequest) {
           type: true,
         },
       });
-      targetData = sessions;
+      targetData = sessions as Record<string, unknown>[];
+      console.log("[Matcher Jobs] Found", sessions.length, "sessions for instance", instanceId);
     } else {
       const publications = await prisma.publication.findMany({
         where: { instanceId },
@@ -76,7 +79,15 @@ export async function POST(request: NextRequest) {
           keywords: true,
         },
       });
-      targetData = publications;
+      targetData = publications as Record<string, unknown>[];
+      console.log("[Matcher Jobs] Found", publications.length, "publications for instance", instanceId);
+    }
+
+    if (targetData.length === 0) {
+      return NextResponse.json(
+        { error: `No ${targetType === "SESSION" ? "sessions" : "publications"} found for this instance` },
+        { status: 400 },
+      );
     }
 
     // Build payload with all data
@@ -93,7 +104,7 @@ export async function POST(request: NextRequest) {
       user_id: session.user.id,
     };
 
-    console.log("[Matcher Jobs] Creating job with", queries?.length, "queries and", targetData.length, "target items");
+    console.log("[Matcher Jobs] Sending to matcher:", queries?.length, "queries,", targetData.length, "target items");
 
     const response = await fetch(`${MATCHER_API_URL}/api/jobs`, {
       method: "POST",
