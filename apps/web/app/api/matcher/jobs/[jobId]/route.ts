@@ -103,23 +103,49 @@ export async function DELETE(
 
     const { jobId } = await params;
 
-    const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}`, {
-      method: "DELETE",
+    // Verify ownership and get file keys
+    const job = await prisma.matchJob.findFirst({
+      where: { id: jobId, userId: session.user.id },
+      select: { queryFileKey: true, resultFileKey: true },
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      return NextResponse.json(
-        { error: error.detail || "Failed to cancel job" },
-        { status: response.status },
-      );
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Job cancelled" });
+    // Delete S3 files (matcher uses "sparkflow" bucket, not the images bucket)
+    const { S3Client, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+    const matcherS3 = new S3Client({
+      endpoint: process.env.S3_ENDPOINT || "http://localhost:9002",
+      region: process.env.S3_REGION || "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY || "minioadmin",
+        secretAccessKey: process.env.S3_SECRET_KEY || "minioadmin",
+      },
+      forcePathStyle: true,
+    });
+    const matcherBucket = process.env.S3_BUCKET || "sparkflow";
+
+    const keysToDelete = [job.queryFileKey, job.resultFileKey].filter(Boolean);
+    for (const key of keysToDelete) {
+      try {
+        await matcherS3.send(
+          new DeleteObjectCommand({ Bucket: matcherBucket, Key: key! }),
+        );
+      } catch (s3Err) {
+        console.error(`[Matcher] Failed to delete S3 key ${key}:`, s3Err);
+        // Continue deleting other files and DB record
+      }
+    }
+
+    // Delete DB record
+    await prisma.matchJob.delete({ where: { id: jobId } });
+
+    return NextResponse.json({ message: "Job deleted" });
   } catch (error) {
-    console.error("Cancel job error:", error);
+    console.error("Delete job error:", error);
     return NextResponse.json(
-      { error: "Failed to cancel job" },
+      { error: "Failed to delete job" },
       { status: 500 },
     );
   }

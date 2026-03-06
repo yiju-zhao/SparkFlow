@@ -153,12 +153,27 @@ class JobRunner:
                 total_matches += len(matches_df)
                 logger.info(f"BU '{bu}': {len(matches_df)} matches")
 
-            # Create aggregated master view
-            all_matches = []
-            for bu, df in results_by_query.items():
-                all_matches.append(df)
+            # Create aggregated master view: all target items with BU rank columns
+            master_df = target_df.drop(columns=["match_text"], errors="ignore").copy()
 
-            master_df = pd.concat(all_matches, ignore_index=True) if all_matches else None
+            # Add a rank column for each BU
+            bu_names = list(results_by_query.keys())
+            for bu in bu_names:
+                bu_df = results_by_query[bu]
+                # Build a mapping from target item identifier to rank
+                # Use the original index or a unique identifier column
+                id_col = "id" if "id" in bu_df.columns else None
+                if id_col:
+                    rank_map = dict(zip(bu_df[id_col], bu_df["rank"]))
+                    master_df[bu] = master_df["id"].map(rank_map) if "id" in master_df.columns else ""
+                else:
+                    # Fallback: use title for matching
+                    title_col = "title" if "title" in bu_df.columns else None
+                    if title_col:
+                        rank_map = dict(zip(bu_df[title_col], bu_df["rank"]))
+                        master_df[bu] = master_df["title"].map(rank_map) if "title" in master_df.columns else ""
+                    else:
+                        master_df[bu] = ""
 
             # Create result Excel
             self.job_store.update_job(job_id, progress=85, error_message="Creating result file...")

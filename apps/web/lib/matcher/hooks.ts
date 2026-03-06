@@ -70,6 +70,7 @@ export function useJobProgress(
           console.log("[Matcher] Job completed");
           jobCompleted = true;
           setIsLoading(false);
+          eventSource.close();
           sseConnections.delete(jobId);
 
           if (onCompleteRef.current) {
@@ -80,6 +81,7 @@ export function useJobProgress(
         } else if (data.status === "FAILED") {
           jobCompleted = true; // Mark as completed to prevent onerror from also firing
           setIsLoading(false);
+          eventSource.close();
           sseConnections.delete(jobId);
           if (onErrorRef.current) {
             onErrorRef.current(new Error(data.errorMessage || "Job failed"));
@@ -95,6 +97,7 @@ export function useJobProgress(
         console.error("[Matcher] SSE error:", error);
         setIsConnected(false);
         setIsLoading(false);
+        eventSource.close();
         sseConnections.delete(jobId);
 
         if (onErrorRef.current) {

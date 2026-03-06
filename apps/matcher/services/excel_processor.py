@@ -152,7 +152,7 @@ class ExcelProcessor:
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             # Tab 1: Master aggregated view (if provided)
             if master_df is not None:
-                master_df.to_excel(writer, sheet_name="All_Matches", index=False)
+                master_df.to_excel(writer, sheet_name="Master_Aggregated", index=False)
 
             # Tabs for each query's results
             for query_name, df in results_by_query.items():
