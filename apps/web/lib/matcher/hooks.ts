@@ -59,20 +59,29 @@ export function useJobProgress(
     currentJobIdRef.current = jobId;
     setIsLoading(true);
 
+    console.log("[Matcher] Connecting to SSE for job:", jobId);
+
     const eventSource = matcherClient.subscribeToJobProgress(
       jobId,
       (data: JobProgress) => {
+        console.log("[Matcher] SSE progress update:", data);
         setProgress(data);
         setIsConnected(true);
         
         // Handle completion
         if (data.status === "COMPLETED") {
+          console.log("[Matcher] Job completed, fetching full job details...");
           setIsLoading(false);
           if (onComplete) {
             // Fetch full job details
             matcherClient.getJob(jobId)
-              .then(onComplete)
-              .catch(console.error);
+              .then((fullJob) => {
+                console.log("[Matcher] Full job details:", fullJob);
+                onComplete(fullJob);
+              })
+              .catch((err) => {
+                console.error("[Matcher] Failed to fetch full job:", err);
+              });
           }
         } else if (data.status === "FAILED") {
           setIsLoading(false);
@@ -84,6 +93,7 @@ export function useJobProgress(
         }
       },
       (error) => {
+        console.error("[Matcher] SSE error:", error);
         setIsConnected(false);
         setIsLoading(false);
         if (onError) {
@@ -120,11 +130,14 @@ export function useMatchJob() {
     setError(null);
 
     try {
+      console.log("[Matcher] Creating job with input:", input);
       const newJob = await matcherClient.createJob(input);
+      console.log("[Matcher] Job created:", newJob);
       setJob(newJob);
       return newJob;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create job";
+      console.error("[Matcher] Failed to create job:", message);
       setError(message);
       throw err;
     } finally {
