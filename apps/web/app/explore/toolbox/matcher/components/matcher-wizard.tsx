@@ -93,15 +93,15 @@ export function MatcherWizard() {
 
   // Step 2: Preview - Start matching
   const handleStartMatching = useCallback(
-    async (_queries: ParsedQuery[]) => {
-      if (!state.config || !state.queries) return;
+    async (queries: ParsedQuery[]) => {
+      if (!state.config) return;
 
       try {
         console.log("[Wizard] Creating job with config:", state.config);
         const job = await createJob({
           instanceId: state.config.instanceId,
           targetType: state.config.targetType,
-          queries: state.queries,
+          queries,
           topK: state.config.topK,
           searchK: state.config.searchK,
           includeReasons: state.config.includeReasons,
@@ -118,7 +118,7 @@ export function MatcherWizard() {
         console.error("[Wizard] Failed to start job:", error);
       }
     },
-    [state.config, state.queries, createJob],
+    [state.config, createJob],
   );
 
   // Step 3: Running - Cancel
