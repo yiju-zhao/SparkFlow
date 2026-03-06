@@ -78,8 +78,10 @@ class MatcherClient {
       }
     };
 
-    eventSource.onerror = (e) => {
-      console.error("[MatcherClient] SSE error:", e);
+    eventSource.onerror = (_e) => {
+      // Note: onerror fires when connection closes, which is normal after job completion
+      // The onError callback will be ignored by hooks.ts if job already completed
+      console.log("[MatcherClient] SSE connection closed");
       if (onError) {
         onError(new Error("SSE connection error"));
       }
