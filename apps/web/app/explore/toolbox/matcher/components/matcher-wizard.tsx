@@ -10,7 +10,7 @@ import { PreviewStep } from "./steps/preview-step";
 import { RunningStep } from "./steps/running-step";
 import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
-import type { ParsedQuery, MatchJob, MatchTargetType } from "@/lib/matcher/types";
+import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
 
 const STEPS = [
   { id: "upload", label: "upload_query_file" },
@@ -32,7 +32,15 @@ type WizardState = {
   } | null;
   queries: ParsedQuery[] | null;
   jobId: string | null;
-  job: MatchJob | null;
+  completedJob: {
+    id: string;
+    status: string;
+    queryCount: number;
+    matchCount: number;
+    topK: number;
+    resultFileKey: string | null;
+    errorMessage: string | null;
+  } | null;
 };
 
 export function MatcherWizard() {
@@ -43,13 +51,30 @@ export function MatcherWizard() {
     config: null,
     queries: null,
     jobId: null,
-    job: null,
+    completedJob: null,
   });
 
-  const { createJob, cancelJob } = useMatchJob();
+  const { createJob } = useMatchJob();
+  
   const { progress } = useJobProgress(state.jobId, {
     onComplete: (job) => {
-      setState((prev) => ({ ...prev, step: 4, job }));
+      console.log("[Wizard] Job completed:", job);
+      setState((prev) => ({
+        ...prev,
+        step: 4,
+        completedJob: {
+          id: job.id,
+          status: job.status,
+          queryCount: job.queryCount,
+          matchCount: job.matchCount,
+          topK: job.topK,
+          resultFileKey: job.resultFileKey,
+          errorMessage: job.errorMessage,
+        },
+      }));
+    },
+    onError: (error) => {
+      console.error("[Wizard] Job error:", error);
     },
   });
 
@@ -66,51 +91,44 @@ export function MatcherWizard() {
     [],
   );
 
-  // Step 2: Preview
+  // Step 2: Preview - Start matching
   const handleStartMatching = useCallback(
-    async (queries: ParsedQuery[]) => {
+    async (_queries: ParsedQuery[]) => {
       if (!state.config || !state.queries) return;
 
       try {
         const job = await createJob({
           instanceId: state.config.instanceId,
           targetType: state.config.targetType,
-          queries: state.queries, // Send parsed queries directly
+          queries: state.queries,
           topK: state.config.topK,
           searchK: state.config.searchK,
           includeReasons: state.config.includeReasons,
         });
 
+        console.log("[Wizard] Job created, moving to running step:", job.id);
+
         setState((prev) => ({
           ...prev,
           step: 3,
-          queries,
           jobId: job.id,
-          job,
         }));
       } catch (error) {
-        console.error("Failed to start job:", error);
+        console.error("[Wizard] Failed to start job:", error);
       }
     },
     [state.config, state.queries, createJob],
   );
 
-  // Step 3: Running
+  // Step 3: Running - Cancel
   const handleCancelJob = useCallback(async () => {
     if (!state.jobId) return;
+    router.push("/explore/toolbox");
+  }, [state.jobId, router]);
 
-    try {
-      await cancelJob(state.jobId);
-      router.push("/explore/toolbox");
-    } catch (error) {
-      console.error("Failed to cancel job:", error);
-    }
-  }, [state.jobId, cancelJob, router]);
-
-  // Step 4: Results
+  // Step 4: Results - Download
   const handleDownload = useCallback(() => {
     if (!state.jobId) return;
-
     const downloadUrl = `/api/matcher/jobs/${state.jobId}/download`;
     window.open(downloadUrl, "_blank");
   }, [state.jobId]);
@@ -122,7 +140,7 @@ export function MatcherWizard() {
       config: null,
       queries: null,
       jobId: null,
-      job: null,
+      completedJob: null,
     });
   }, []);
 
@@ -173,7 +191,7 @@ export function MatcherWizard() {
       case 4:
         return (
           <ResultsStep
-            job={state.job!}
+            job={state.completedJob}
             onDownload={handleDownload}
             onReset={handleReset}
           />
@@ -185,7 +203,6 @@ export function MatcherWizard() {
 
   return (
     <Card className="overflow-hidden">
-      {/* Monospace step indicator */}
       <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
         {STEPS.map((step, index) => (
           <div key={step.id} className="flex items-center gap-1">

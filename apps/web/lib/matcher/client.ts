@@ -61,29 +61,28 @@ class MatcherClient {
     onProgress: (progress: JobProgress) => void,
     onError?: (error: Error) => void,
   ): EventSource {
-    // Use Next.js proxy route instead of direct matcher connection
-    const eventSource = new EventSource(`/api/matcher/jobs/${jobId}/stream`);
+    // Use Next.js proxy route
+    const url = `/api/matcher/jobs/${jobId}/stream`;
+    const eventSource = new EventSource(url);
+
+    eventSource.onopen = () => {
+      console.log("[MatcherClient] SSE connection opened");
+    };
 
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         onProgress(data);
-        
-        // Close connection when job is complete
-        if (["COMPLETED", "FAILED", "CANCELLED"].includes(data.status)) {
-          eventSource.close();
-        }
       } catch (e) {
-        console.error("Failed to parse SSE data:", e);
+        console.error("[MatcherClient] Failed to parse SSE data:", e);
       }
     };
 
     eventSource.onerror = (e) => {
-      console.error("SSE error:", e);
+      console.error("[MatcherClient] SSE error:", e);
       if (onError) {
         onError(new Error("SSE connection error"));
       }
-      eventSource.close();
     };
 
     return eventSource;

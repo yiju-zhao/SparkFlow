@@ -2,10 +2,19 @@
 
 import { Button } from "@/components/ui/button";
 import { Download, RotateCcw, CheckCircle, AlertCircle, FileSpreadsheet } from "lucide-react";
-import type { MatchJob } from "@/lib/matcher/types";
+
+interface CompletedJob {
+  id: string;
+  status: string;
+  queryCount: number;
+  matchCount: number;
+  topK: number;
+  resultFileKey: string | null;
+  errorMessage: string | null;
+}
 
 interface ResultsStepProps {
-  job: MatchJob | null;
+  job: CompletedJob | null;
   onDownload: () => void;
   onReset: () => void;
 }
@@ -23,7 +32,7 @@ export function ResultsStep({ job, onDownload, onReset }: ResultsStepProps) {
             <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
             <h3 className="text-lg font-medium">Matching Complete!</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {job?.matchCount ?? 0} matches found from {job?.queryCount ?? 0} queries
+              Your results are ready to download.
             </p>
           </>
         ) : isFailed ? (
@@ -44,15 +53,15 @@ export function ResultsStep({ job, onDownload, onReset }: ResultsStepProps) {
       {job && (
         <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
           <div className="text-center">
-            <p className="text-2xl font-bold">{job.queryCount ?? 0}</p>
+            <p className="text-2xl font-bold">{job.queryCount}</p>
             <p className="text-xs text-muted-foreground">Queries</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">{job.matchCount ?? 0}</p>
+            <p className="text-2xl font-bold text-green-600">{job.matchCount}</p>
             <p className="text-xs text-muted-foreground">Matches</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold">{job.topK ?? 50}</p>
+            <p className="text-2xl font-bold">{job.topK}</p>
             <p className="text-xs text-muted-foreground">Top K</p>
           </div>
         </div>

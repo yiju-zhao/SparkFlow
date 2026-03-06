@@ -10,6 +10,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { matcherClient } from "./client";
 import type { JobProgress, MatchJob, MatchJobStatus } from "./types";
 
+// Global registry to prevent duplicate SSE connections
+const activeConnections = new Map<string, EventSource>();
+
 /**
  * Hook for streaming job progress via SSE
  */
@@ -26,58 +29,69 @@ export function useJobProgress(
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   
-  // Use refs to track connection state
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const currentJobIdRef = useRef<string | null>(null);
+  // Track if this hook instance initiated the connection
+  const initiatedRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    setIsConnected(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
     if (!jobId) {
-      disconnect();
       setProgress(null);
       setIsLoading(false);
-      currentJobIdRef.current = null;
+      setIsConnected(false);
+      initiatedRef.current = false;
       return;
     }
 
-    // Don't reconnect if already connected to same job
-    if (currentJobIdRef.current === jobId && eventSourceRef.current) {
+    // Check if there's already an active connection for this job
+    const existingConnection = activeConnections.get(jobId);
+    if (existingConnection) {
+      console.log("[Matcher] Reusing existing SSE connection for job:", jobId);
+      setIsConnected(true);
+      setIsLoading(true);
+      initiatedRef.current = false;
       return;
     }
 
-    // Disconnect any existing connection
-    disconnect();
-    
-    // Connect to new job
-    currentJobIdRef.current = jobId;
+    // Prevent double connection in StrictMode
+    if (initiatedRef.current) {
+      return;
+    }
+    initiatedRef.current = true;
+
+    console.log("[Matcher] Creating new SSE connection for job:", jobId);
     setIsLoading(true);
-
-    console.log("[Matcher] Connecting to SSE for job:", jobId);
 
     const eventSource = matcherClient.subscribeToJobProgress(
       jobId,
       (data: JobProgress) => {
-        console.log("[Matcher] SSE progress update:", data);
+        if (!mountedRef.current) return;
+        
+        console.log("[Matcher] SSE progress:", data.status, data.progress + "%");
         setProgress(data);
         setIsConnected(true);
         
         // Handle completion
         if (data.status === "COMPLETED") {
-          console.log("[Matcher] Job completed, fetching full job details...");
+          console.log("[Matcher] Job completed");
           setIsLoading(false);
-          if (onComplete) {
-            // Fetch full job details
+          
+          // Clean up connection
+          activeConnections.delete(jobId);
+          
+          if (onComplete && mountedRef.current) {
             matcherClient.getJob(jobId)
               .then((fullJob) => {
-                console.log("[Matcher] Full job details:", fullJob);
-                onComplete(fullJob);
+                if (mountedRef.current) {
+                  console.log("[Matcher] Got full job:", fullJob.status, fullJob.matchCount, "matches");
+                  onComplete(fullJob);
+                }
               })
               .catch((err) => {
                 console.error("[Matcher] Failed to fetch full job:", err);
@@ -85,35 +99,47 @@ export function useJobProgress(
           }
         } else if (data.status === "FAILED") {
           setIsLoading(false);
-          if (onError) {
+          activeConnections.delete(jobId);
+          if (onError && mountedRef.current) {
             onError(new Error(data.errorMessage || "Job failed"));
           }
         } else if (data.status === "CANCELLED") {
           setIsLoading(false);
+          activeConnections.delete(jobId);
         }
       },
       (error) => {
         console.error("[Matcher] SSE error:", error);
+        if (!mountedRef.current) return;
+        
         setIsConnected(false);
         setIsLoading(false);
+        activeConnections.delete(jobId);
+        
         if (onError) {
           onError(error);
         }
       },
     );
 
-    eventSourceRef.current = eventSource;
+    // Register the connection
+    activeConnections.set(jobId, eventSource);
 
     return () => {
-      disconnect();
+      // Only close if this hook initiated the connection
+      if (initiatedRef.current && activeConnections.get(jobId) === eventSource) {
+        console.log("[Matcher] Closing SSE connection for job:", jobId);
+        eventSource.close();
+        activeConnections.delete(jobId);
+      }
+      initiatedRef.current = false;
     };
-  }, [jobId, disconnect, onComplete, onError]);
+  }, [jobId, onComplete, onError]);
 
   return {
     progress,
     isLoading,
     isConnected,
-    disconnect,
   };
 }
 
@@ -130,9 +156,9 @@ export function useMatchJob() {
     setError(null);
 
     try {
-      console.log("[Matcher] Creating job with input:", input);
+      console.log("[Matcher] Creating job...");
       const newJob = await matcherClient.createJob(input);
-      console.log("[Matcher] Job created:", newJob);
+      console.log("[Matcher] Job created:", newJob.id);
       setJob(newJob);
       return newJob;
     } catch (err) {
