@@ -24,6 +24,7 @@ class ExcelProcessor:
     def __init__(self):
         self.s3_client = self._create_s3_client()
         self.bucket = os.getenv("S3_BUCKET", "sparkflow")
+        self._ensure_bucket_exists()
 
     def _create_s3_client(self):
         """Create S3 client for MinIO/S3."""
@@ -33,6 +34,24 @@ class ExcelProcessor:
             aws_access_key_id=os.getenv("S3_ACCESS_KEY", "minioadmin"),
             aws_secret_access_key=os.getenv("S3_SECRET_KEY", "minioadmin"),
         )
+
+    def _ensure_bucket_exists(self):
+        """Create the bucket if it doesn't exist."""
+        try:
+            self.s3_client.head_bucket(Bucket=self.bucket)
+            logger.info(f"Bucket '{self.bucket}' exists")
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code == "404":
+                try:
+                    self.s3_client.create_bucket(Bucket=self.bucket)
+                    logger.info(f"Created bucket '{self.bucket}'")
+                except ClientError as create_error:
+                    logger.error(f"Failed to create bucket '{self.bucket}': {create_error}")
+                    raise
+            else:
+                logger.error(f"Error checking bucket '{self.bucket}': {e}")
+                raise
 
     def _translate_to_english(self, text: str) -> str:
         """
