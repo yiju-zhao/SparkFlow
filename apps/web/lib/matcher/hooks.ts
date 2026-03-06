@@ -11,65 +11,86 @@ import { matcherClient } from "./client";
 import type { JobProgress, MatchJob, MatchJobStatus } from "./types";
 
 /**
- * Hook for polling job progress
+ * Hook for polling job progress with adaptive intervals
  */
 export function useJobProgress(
   jobId: string | null,
   options: {
-    pollingInterval?: number;
+    initialInterval?: number;
+    maxInterval?: number;
     onComplete?: (job: MatchJob) => void;
     onError?: (error: Error) => void;
   } = {},
 ) {
-  const { pollingInterval = 2000, onComplete, onError } = options;
+  const { 
+    initialInterval = 3000,  // Start at 3 seconds
+    maxInterval = 10000,     // Max 10 seconds
+    onComplete, 
+    onError 
+  } = options;
+  
   const [progress, setProgress] = useState<JobProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentIntervalRef = useRef(initialInterval);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
-      clearInterval(intervalRef.current);
+      clearTimeout(intervalRef.current);
       intervalRef.current = null;
     }
   }, []);
+
+  const poll = useCallback(async () => {
+    if (!jobId) return;
+
+    try {
+      const data = await matcherClient.getJobProgress(jobId);
+      setProgress(data);
+
+      // Stop polling if job is complete
+      if (isTerminalStatus(data.status)) {
+        stopPolling();
+        setIsLoading(false);
+
+        if (data.status === "COMPLETED" && onComplete) {
+          const fullJob = await matcherClient.getJob(jobId);
+          onComplete(fullJob);
+        } else if (data.status === "FAILED" && onError) {
+          onError(new Error(data.errorMessage || "Job failed"));
+        }
+        return;
+      }
+
+      // Adaptive interval: increase as job progresses
+      // More frequent at start (0-30%), less frequent as it progresses
+      const progressRatio = (data.progress || 0) / 100;
+      const adaptiveInterval = initialInterval + (maxInterval - initialInterval) * progressRatio;
+      currentIntervalRef.current = Math.min(adaptiveInterval, maxInterval);
+
+      // Schedule next poll
+      intervalRef.current = setTimeout(poll, currentIntervalRef.current);
+      
+    } catch (error) {
+      console.error("Polling error:", error);
+      if (onError) {
+        onError(error instanceof Error ? error : new Error("Polling failed"));
+      }
+      // Retry after longer interval on error
+      intervalRef.current = setTimeout(poll, maxInterval);
+    }
+  }, [jobId, initialInterval, maxInterval, stopPolling, onComplete, onError]);
 
   const startPolling = useCallback(() => {
     if (!jobId) return;
 
     stopPolling();
     setIsLoading(true);
-
-    const poll = async () => {
-      try {
-        const data = await matcherClient.getJobProgress(jobId);
-        setProgress(data);
-
-        // Stop polling if job is complete
-        if (isTerminalStatus(data.status)) {
-          stopPolling();
-          setIsLoading(false);
-
-          if (data.status === "COMPLETED" && onComplete) {
-            const fullJob = await matcherClient.getJob(jobId);
-            onComplete(fullJob);
-          } else if (data.status === "FAILED" && onError) {
-            onError(new Error(data.errorMessage || "Job failed"));
-          }
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-        if (onError) {
-          onError(error instanceof Error ? error : new Error("Polling failed"));
-        }
-      }
-    };
-
-    // Initial poll
+    currentIntervalRef.current = initialInterval;
+    
+    // Initial poll immediately
     poll();
-
-    // Start interval
-    intervalRef.current = setInterval(poll, pollingInterval);
-  }, [jobId, pollingInterval, stopPolling, onComplete, onError]);
+  }, [jobId, initialInterval, stopPolling, poll]);
 
   useEffect(() => {
     if (jobId) {
