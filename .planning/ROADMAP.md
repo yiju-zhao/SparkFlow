@@ -15,8 +15,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data | 2/5 | In Progress|  |
-| 2. Research Hub | 0/0 | Not started | - |
+| 1. Foundation & Data | 5/5 | Complete | 2026-03-05 |
+| 2. Research Hub | 0/3 | Ready | - |
 | 3. Notebook Integration | 0/0 | Not started | - |
 | 4. Polish & Enhancement | 0/0 | Not started | - |
 
@@ -41,10 +41,10 @@
 
 Plans:
 - [x] 01-01-PLAN.md — Verify and extend Prisma models for conference domain
-- [ ] 01-02-PLAN.md — Create admin curation UI for Venue, Instance, Session
-- [ ] 01-03-PLAN.md — Integrate CopilotKit provider with AG-UI protocol
-- [ ] 01-04-PLAN.md — Create Hub agent config, prompt, and query tools
-- [ ] 01-05-PLAN.md — Assemble Hub agent with PostgresSaver and register
+- [x] 01-02-PLAN.md — Create admin curation UI for Venue, Instance, Session
+- [x] 01-03-PLAN.md — Integrate CopilotKit provider with AG-UI protocol
+- [x] 01-04-PLAN.md — Create Hub agent config, prompt, and query tools
+- [x] 01-05-PLAN.md — Assemble Hub agent with PostgresSaver and register
 
 ---
 
@@ -63,7 +63,12 @@ Plans:
 4. AI assistant generates dynamic charts (bar, line, pie) that visualize session data
 5. User can interact with generated components (click rows, sort columns, select filters)
 
-**Plans**: TBD
+**Plans**: 3 plans in 2 waves
+
+Plans:
+- [ ] 02-01-PLAN.md — Create generative UI components (table, chart) with CopilotKit useComponent
+- [ ] 02-02-PLAN.md — Integrate CopilotKit hooks into Research Assistant Panel
+- [ ] 02-03-PLAN.md — Wire page context to AI assistant and enable navigation
 
 ---
 
@@ -124,17 +129,17 @@ Plans:
 | NOTE-02 | Phase 3 | Pending |
 | NOTE-03 | Phase 3 | Pending |
 | NOTE-04 | Phase 3 | Pending |
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
+| INFRA-05 | Phase 1 | Complete |
 | DATA-01 | Phase 1 | Complete |
 | DATA-02 | Phase 1 | Complete |
 | DATA-03 | Phase 1 | Complete |
 | DATA-04 | Phase 1 | Complete |
-| DATA-05 | Phase 1 | Pending |
-| DATA-06 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Complete |
+| DATA-06 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total
@@ -143,3 +148,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-03-04*
+*Last updated: 2026-03-06*
