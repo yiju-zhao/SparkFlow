@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,9 +127,8 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
             const hasQueries = queries && queries.length > 0;
 
             return (
-              <>
+              <Fragment key={job.id}>
                 <TableRow
-                  key={job.id}
                   className={hasQueries ? "cursor-pointer" : ""}
                   onClick={() => hasQueries && toggleExpand(job.id)}
                 >
@@ -226,7 +225,7 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             );
           })}
         </TableBody>
