@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -44,6 +44,12 @@ export function QueryPreviewTable({
     setEditingId(null);
   };
 
+  const handleDelete = (id: string) => {
+    if (!onQueriesChange) return;
+    const updated = queries.filter((q) => q.id !== id);
+    onQueriesChange(updated);
+  };
+
   if (queries.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -60,7 +66,7 @@ export function QueryPreviewTable({
             <th className="px-4 py-3 text-left font-medium w-12">#</th>
             <th className="px-4 py-3 text-left font-medium w-32">BU</th>
             <th className="px-4 py-3 text-left font-medium">Query</th>
-            {!readOnly && <th className="px-4 py-3 w-20"></th>}
+            {!readOnly && <th className="px-4 py-3 w-24"></th>}
           </tr>
         </thead>
         <tbody>
@@ -126,14 +132,24 @@ export function QueryPreviewTable({
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleEditStart(query)}
-                      className="h-8 w-8"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEditStart(query)}
+                        className="h-8 w-8"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDelete(query.id)}
+                        className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </td>
               )}
