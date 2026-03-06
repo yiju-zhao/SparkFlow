@@ -43,14 +43,15 @@ export async function GET(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // If job is PROCESSING, sync progress from matcher service
-    if (job.status === "PROCESSING") {
+    // If job is not in a terminal state, sync progress from matcher service
+    if (job.status === "PENDING" || job.status === "PROCESSING") {
       try {
         const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/progress`);
         if (response.ok) {
           const progressData = await response.json();
 
           // Update database with latest progress
+          const isStarting = job.status === "PENDING" && progressData.status && progressData.status !== "PENDING";
           const updatedJob = await prisma.matchJob.update({
             where: { id: jobId },
             data: {
@@ -58,6 +59,8 @@ export async function GET(
               status: progressData.status ?? job.status,
               matchCount: progressData.match_count ?? job.matchCount,
               errorMessage: progressData.error_message ?? job.errorMessage,
+              resultFileKey: progressData.result_file_key ?? job.resultFileKey,
+              startedAt: isStarting ? new Date() : job.startedAt,
               completedAt: progressData.status === "COMPLETED" ? new Date() : job.completedAt,
             },
             include: {
