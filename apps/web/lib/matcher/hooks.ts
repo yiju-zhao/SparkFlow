@@ -56,24 +56,29 @@ export function useJobProgress(
     console.log("[Matcher] Creating SSE connection for job:", jobId);
     setIsLoading(true);
 
+    // Track if job completed successfully - used to ignore onerror after completion
+    let jobCompleted = false;
+
     const eventSource = matcherClient.subscribeToJobProgress(
       jobId,
       (data: JobProgress) => {
         console.log("[Matcher] SSE progress:", data.status, data.progress + "%");
         setProgress(data);
         setIsConnected(true);
-        
+
         if (data.status === "COMPLETED") {
           console.log("[Matcher] Job completed");
+          jobCompleted = true;
           setIsLoading(false);
           sseConnections.delete(jobId);
-          
+
           if (onCompleteRef.current) {
             matcherClient.getJob(jobId)
               .then(onCompleteRef.current)
               .catch(console.error);
           }
         } else if (data.status === "FAILED") {
+          jobCompleted = true; // Mark as completed to prevent onerror from also firing
           setIsLoading(false);
           sseConnections.delete(jobId);
           if (onErrorRef.current) {
@@ -82,11 +87,16 @@ export function useJobProgress(
         }
       },
       (error) => {
+        // Ignore error if job already completed - connection close after completion is normal
+        if (jobCompleted) {
+          console.log("[Matcher] SSE connection closed after completion (expected)");
+          return;
+        }
         console.error("[Matcher] SSE error:", error);
         setIsConnected(false);
         setIsLoading(false);
         sseConnections.delete(jobId);
-        
+
         if (onErrorRef.current) {
           onErrorRef.current(error);
         }
