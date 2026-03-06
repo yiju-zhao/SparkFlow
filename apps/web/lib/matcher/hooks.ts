@@ -10,39 +10,49 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { matcherClient } from "./client";
 import type { JobProgress, MatchJob, MatchJobStatus } from "./types";
 
+// Minimum time between polls to prevent hammering the server
+const MIN_POLL_INTERVAL = 5000;  // 5 seconds minimum
+const MAX_POLL_INTERVAL = 15000; // 15 seconds maximum
+
 /**
- * Hook for polling job progress with adaptive intervals
+ * Hook for polling job progress with throttled intervals
  */
 export function useJobProgress(
   jobId: string | null,
   options: {
-    initialInterval?: number;
-    maxInterval?: number;
     onComplete?: (job: MatchJob) => void;
     onError?: (error: Error) => void;
   } = {},
 ) {
-  const { 
-    initialInterval = 3000,  // Start at 3 seconds
-    maxInterval = 10000,     // Max 10 seconds
-    onComplete, 
-    onError 
-  } = options;
+  const { onComplete, onError } = options;
   
   const [progress, setProgress] = useState<JobProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const currentIntervalRef = useRef(initialInterval);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isPollingRef = useRef(false);
+  const lastPollTimeRef = useRef(0);
 
   const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
-      intervalRef.current = null;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
+    isPollingRef.current = false;
   }, []);
 
   const poll = useCallback(async () => {
-    if (!jobId) return;
+    if (!jobId || !isPollingRef.current) return;
+
+    // Throttle: ensure minimum time between requests
+    const now = Date.now();
+    const timeSinceLastPoll = now - lastPollTimeRef.current;
+    if (timeSinceLastPoll < MIN_POLL_INTERVAL) {
+      const waitTime = MIN_POLL_INTERVAL - timeSinceLastPoll;
+      timeoutRef.current = setTimeout(poll, waitTime);
+      return;
+    }
+
+    lastPollTimeRef.current = now;
 
     try {
       const data = await matcherClient.getJobProgress(jobId);
@@ -62,35 +72,34 @@ export function useJobProgress(
         return;
       }
 
-      // Adaptive interval: increase as job progresses
-      // More frequent at start (0-30%), less frequent as it progresses
+      // Calculate next interval: increase as job progresses
       const progressRatio = (data.progress || 0) / 100;
-      const adaptiveInterval = initialInterval + (maxInterval - initialInterval) * progressRatio;
-      currentIntervalRef.current = Math.min(adaptiveInterval, maxInterval);
+      const nextInterval = MIN_POLL_INTERVAL + (MAX_POLL_INTERVAL - MIN_POLL_INTERVAL) * progressRatio;
 
       // Schedule next poll
-      intervalRef.current = setTimeout(poll, currentIntervalRef.current);
+      timeoutRef.current = setTimeout(poll, nextInterval);
       
     } catch (error) {
       console.error("Polling error:", error);
       if (onError) {
         onError(error instanceof Error ? error : new Error("Polling failed"));
       }
-      // Retry after longer interval on error
-      intervalRef.current = setTimeout(poll, maxInterval);
+      // Retry after max interval on error
+      timeoutRef.current = setTimeout(poll, MAX_POLL_INTERVAL);
     }
-  }, [jobId, initialInterval, maxInterval, stopPolling, onComplete, onError]);
+  }, [jobId, onComplete, onError, stopPolling]);
 
   const startPolling = useCallback(() => {
     if (!jobId) return;
 
     stopPolling();
     setIsLoading(true);
-    currentIntervalRef.current = initialInterval;
+    isPollingRef.current = true;
+    lastPollTimeRef.current = 0;
     
-    // Initial poll immediately
+    // Start polling
     poll();
-  }, [jobId, initialInterval, stopPolling, poll]);
+  }, [jobId, stopPolling, poll]);
 
   useEffect(() => {
     if (jobId) {
@@ -98,6 +107,7 @@ export function useJobProgress(
     } else {
       stopPolling();
       setProgress(null);
+      setIsLoading(false);
     }
 
     return () => stopPolling();
