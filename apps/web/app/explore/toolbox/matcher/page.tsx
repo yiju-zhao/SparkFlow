@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { MatcherWizard } from "./components/matcher-wizard";
 
 export const metadata: Metadata = {
@@ -13,13 +15,20 @@ export default function MatcherPage() {
         <p className="text-sm text-muted-foreground mb-2 font-mono">
           ~/research-hub/toolbox/query-matcher
         </p>
-        <h1 className="text-4xl font-bold tracking-tight mb-2">
-          Query Matcher
-        </h1>
-        <p className="text-muted-foreground">
-          Upload queries and match them against conference sessions or
-          publications using semantic search.
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight mb-2">
+              Query Matcher
+            </h1>
+            <p className="text-muted-foreground">
+              Upload queries and match them against conference sessions or
+              publications using semantic search.
+            </p>
+          </div>
+          <Link href="/explore/toolbox/matcher/history">
+            <Button variant="outline">History</Button>
+          </Link>
+        </div>
       </div>
 
       <MatcherWizard />
