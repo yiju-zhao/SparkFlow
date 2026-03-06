@@ -1,11 +1,12 @@
 /**
  * Single Job API Route
  *
- * Proxies job operations to the matcher service.
+ * Reads job from database, syncs progress from matcher service if processing.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
@@ -22,24 +23,61 @@ export async function GET(
 
     const { jobId } = await params;
 
-    // Get progress (lightweight) or full job details
-    const { searchParams } = new URL(request.url);
-    const progressOnly = searchParams.get("progress") === "true";
+    // First fetch from database to verify ownership
+    const job = await prisma.matchJob.findFirst({
+      where: {
+        id: jobId,
+        userId: session.user.id,
+      },
+      include: {
+        instance: {
+          select: {
+            name: true,
+            venue: { select: { name: true } },
+          },
+        },
+      },
+    });
 
-    const endpoint = progressOnly
-      ? `${MATCHER_API_URL}/api/jobs/${jobId}/progress`
-      : `${MATCHER_API_URL}/api/jobs/${jobId}`;
-
-    const response = await fetch(endpoint);
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Job not found" },
-        { status: response.status },
-      );
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    const job = await response.json();
+    // If job is PROCESSING, sync progress from matcher service
+    if (job.status === "PROCESSING") {
+      try {
+        const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/progress`);
+        if (response.ok) {
+          const progressData = await response.json();
+
+          // Update database with latest progress
+          const updatedJob = await prisma.matchJob.update({
+            where: { id: jobId },
+            data: {
+              progress: progressData.progress ?? job.progress,
+              status: progressData.status ?? job.status,
+              matchCount: progressData.match_count ?? job.matchCount,
+              errorMessage: progressData.error_message ?? job.errorMessage,
+              completedAt: progressData.status === "COMPLETED" ? new Date() : job.completedAt,
+            },
+            include: {
+              instance: {
+                select: {
+                  name: true,
+                  venue: { select: { name: true } },
+                },
+              },
+            },
+          });
+
+          return NextResponse.json(updatedJob);
+        }
+      } catch (syncError) {
+        console.error("[Matcher Jobs] Failed to sync progress:", syncError);
+        // Return database record if sync fails
+      }
+    }
+
     return NextResponse.json(job);
   } catch (error) {
     console.error("Get job error:", error);

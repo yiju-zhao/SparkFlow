@@ -2,6 +2,7 @@
  * Matcher Jobs API Route
  *
  * Fetches target data from database and sends everything to matcher service.
+ * Persists jobs to database for history tracking.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -130,7 +131,30 @@ export async function POST(request: NextRequest) {
 
     const job = await response.json();
     console.log("[Matcher Jobs] Job created:", job.id, "topK:", job.top_k);
-    return NextResponse.json(job);
+
+    // Persist job to database
+    const matchJob = await prisma.matchJob.create({
+      data: {
+        id: job.id, // Use the ID from matcher service
+        userId: session.user.id,
+        instanceId,
+        targetType,
+        topK,
+        searchK,
+        includeReasons,
+        queryFileKey: job.query_file_key || "",
+        queryData: queries ?? undefined,
+        status: "PENDING",
+        queryCount: queries?.length || 0,
+      },
+      include: {
+        instance: {
+          select: { name: true, venue: { select: { name: true } } },
+        },
+      },
+    });
+
+    return NextResponse.json(matchJob);
   } catch (error) {
     console.error("Create job error:", error);
     return NextResponse.json(
@@ -150,18 +174,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const instanceId = searchParams.get("instanceId");
 
-    const response = await fetch(
-      `${MATCHER_API_URL}/api/jobs?userId=${session.user.id}${instanceId ? `&instanceId=${instanceId}` : ""}`,
-    );
+    // Query jobs from database
+    const jobs = await prisma.matchJob.findMany({
+      where: {
+        userId: session.user.id,
+        ...(instanceId ? { instanceId } : {}),
+      },
+      include: {
+        instance: {
+          select: {
+            name: true,
+            venue: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch jobs" },
-        { status: response.status },
-      );
-    }
-
-    const jobs = await response.json();
     return NextResponse.json(jobs);
   } catch (error) {
     console.error("Get jobs error:", error);
