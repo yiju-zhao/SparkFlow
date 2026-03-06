@@ -39,7 +39,7 @@ class JobStore:
         include_reasons: bool,
         query_data: list[dict],
         query_count: int,
-        target_data: list[dict],
+        target_data: list[dict] = None,
     ) -> str:
         """Create a new job and return its ID."""
         job_id = str(uuid.uuid4())
@@ -56,7 +56,7 @@ class JobStore:
                 "include_reasons": include_reasons,
                 "query_data": query_data,
                 "query_count": query_count,
-                "target_data": target_data,
+                "target_data": target_data or [],
                 "status": "PENDING",
                 "progress": 0,
                 "match_count": 0,

@@ -2,6 +2,8 @@
 Job management routes for the matcher service.
 """
 
+import asyncio
+import json
 import logging
 from typing import Optional
 
@@ -100,7 +102,7 @@ async def get_job_progress(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
 ):
-    """Get job progress for polling (lightweight response)."""
+    """Get job progress (single request - use /stream for real-time updates)."""
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -112,6 +114,55 @@ async def get_job_progress(
         error_message=job.get("error_message"),
         query_count=job["query_count"],
         match_count=job["match_count"],
+    )
+
+
+@router.get("/{job_id}/stream")
+async def stream_job_progress(
+    job_id: str,
+    job_store: JobStore = Depends(get_job_store),
+):
+    """Stream job progress updates via Server-Sent Events (SSE)."""
+    
+    async def event_generator():
+        last_progress = None
+        
+        while True:
+            job = job_store.get_job(job_id)
+            if not job:
+                yield f"event: error\ndata: {json.dumps({'error': 'Job not found'})}\n\n"
+                break
+            
+            # Build progress data
+            progress_data = {
+                "id": job["id"],
+                "status": job["status"],
+                "progress": job["progress"],
+                "error_message": job.get("error_message"),
+                "query_count": job["query_count"],
+                "match_count": job["match_count"],
+            }
+            
+            # Only send if progress changed
+            if progress_data != last_progress:
+                yield f"data: {json.dumps(progress_data)}\n\n"
+                last_progress = progress_data
+            
+            # Stop if job is complete
+            if job["status"] in ["COMPLETED", "FAILED", "CANCELLED"]:
+                break
+            
+            # Wait before next check
+            await asyncio.sleep(1)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

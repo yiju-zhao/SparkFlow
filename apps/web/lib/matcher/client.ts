@@ -8,7 +8,6 @@ import type {
   CreateMatchJobInput,
   JobProgress,
   MatchJob,
-  UploadResult,
 } from "./types";
 
 const MATCHER_API_URL =
@@ -54,7 +53,7 @@ class MatcherClient {
   }
 
   /**
-   * Get job progress (lightweight polling)
+   * Get job progress (single request)
    */
   async getJobProgress(jobId: string): Promise<JobProgress> {
     const response = await fetch(`${this.baseUrl}/api/jobs/${jobId}/progress`);
@@ -64,6 +63,42 @@ class MatcherClient {
     }
 
     return response.json();
+  }
+
+  /**
+   * Subscribe to job progress updates via SSE
+   * Returns an EventSource and a promise that resolves when connection is established
+   */
+  subscribeToJobProgress(
+    jobId: string,
+    onProgress: (progress: JobProgress) => void,
+    onError?: (error: Error) => void,
+  ): EventSource {
+    const eventSource = new EventSource(`${this.baseUrl}/api/jobs/${jobId}/stream`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        onProgress(data);
+        
+        // Close connection when job is complete
+        if (["COMPLETED", "FAILED", "CANCELLED"].includes(data.status)) {
+          eventSource.close();
+        }
+      } catch (e) {
+        console.error("Failed to parse SSE data:", e);
+      }
+    };
+
+    eventSource.onerror = (e) => {
+      console.error("SSE error:", e);
+      if (onError) {
+        onError(new Error("SSE connection error"));
+      }
+      eventSource.close();
+    };
+
+    return eventSource;
   }
 
   /**

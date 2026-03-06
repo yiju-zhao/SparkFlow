@@ -10,12 +10,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { matcherClient } from "./client";
 import type { JobProgress, MatchJob, MatchJobStatus } from "./types";
 
-// Polling configuration
-const MIN_POLL_INTERVAL = 5000;  // 5 seconds minimum
-const MAX_POLL_INTERVAL = 15000; // 15 seconds maximum
-
 /**
- * Hook for polling job progress with throttled intervals
+ * Hook for streaming job progress via SSE
  */
 export function useJobProgress(
   jobId: string | null,
@@ -28,126 +24,86 @@ export function useJobProgress(
   
   const [progress, setProgress] = useState<JobProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   
-  // Use refs to prevent multiple polling instances (handles React StrictMode)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isPollingRef = useRef(false);
-  const lastPollTimeRef = useRef(0);
+  // Use refs to track connection state
+  const eventSourceRef = useRef<EventSource | null>(null);
   const currentJobIdRef = useRef<string | null>(null);
-  const mountedRef = useRef(true);
 
-  const stopPolling = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  const disconnect = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
-    isPollingRef.current = false;
+    setIsConnected(false);
   }, []);
 
-  const poll = useCallback(async (targetJobId: string) => {
-    // Guard: check if we should still be polling
-    if (!mountedRef.current || !isPollingRef.current || currentJobIdRef.current !== targetJobId) {
-      return;
-    }
-
-    // Throttle: ensure minimum time between requests
-    const now = Date.now();
-    const timeSinceLastPoll = now - lastPollTimeRef.current;
-    if (timeSinceLastPoll < MIN_POLL_INTERVAL) {
-      const waitTime = MIN_POLL_INTERVAL - timeSinceLastPoll;
-      timeoutRef.current = setTimeout(() => poll(targetJobId), waitTime);
-      return;
-    }
-
-    lastPollTimeRef.current = now;
-
-    try {
-      const data = await matcherClient.getJobProgress(targetJobId);
-      
-      // Guard: check if still valid after async
-      if (!mountedRef.current || currentJobIdRef.current !== targetJobId) {
-        return;
-      }
-      
-      setProgress(data);
-
-      // Stop polling if job is complete
-      if (isTerminalStatus(data.status)) {
-        stopPolling();
-        setIsLoading(false);
-
-        if (data.status === "COMPLETED" && onComplete) {
-          const fullJob = await matcherClient.getJob(targetJobId);
-          if (mountedRef.current) {
-            onComplete(fullJob);
-          }
-        } else if (data.status === "FAILED" && onError) {
-          onError(new Error(data.errorMessage || "Job failed"));
-        }
-        return;
-      }
-
-      // Calculate next interval: increase as job progresses
-      const progressRatio = (data.progress || 0) / 100;
-      const nextInterval = MIN_POLL_INTERVAL + (MAX_POLL_INTERVAL - MIN_POLL_INTERVAL) * progressRatio;
-
-      // Schedule next poll
-      timeoutRef.current = setTimeout(() => poll(targetJobId), nextInterval);
-      
-    } catch (error) {
-      console.error("Polling error:", error);
-      
-      // Guard: check if still valid
-      if (!mountedRef.current || currentJobIdRef.current !== targetJobId) {
-        return;
-      }
-      
-      if (onError) {
-        onError(error instanceof Error ? error : new Error("Polling failed"));
-      }
-      // Retry after max interval on error
-      timeoutRef.current = setTimeout(() => poll(targetJobId), MAX_POLL_INTERVAL);
-    }
-  }, [onComplete, onError, stopPolling]);
-
   useEffect(() => {
-    // Cleanup function
-    const cleanup = () => {
-      mountedRef.current = false;
-      stopPolling();
-    };
-
     if (!jobId) {
-      stopPolling();
+      disconnect();
       setProgress(null);
       setIsLoading(false);
       currentJobIdRef.current = null;
-      return cleanup;
+      return;
     }
 
-    // Check if this is a new job
-    if (currentJobIdRef.current === jobId && isPollingRef.current) {
-      // Already polling this job, don't restart
-      return cleanup;
+    // Don't reconnect if already connected to same job
+    if (currentJobIdRef.current === jobId && eventSourceRef.current) {
+      return;
     }
 
-    // Start polling new job
-    mountedRef.current = true;
-    currentJobIdRef.current = jobId;
-    isPollingRef.current = true;
-    lastPollTimeRef.current = 0;
-    setIsLoading(true);
+    // Disconnect any existing connection
+    disconnect();
     
-    // Initial poll after a short delay to avoid immediate double-poll in StrictMode
-    timeoutRef.current = setTimeout(() => poll(jobId), 500);
+    // Connect to new job
+    currentJobIdRef.current = jobId;
+    setIsLoading(true);
 
-    return cleanup;
-  }, [jobId, poll, stopPolling]);
+    const eventSource = matcherClient.subscribeToJobProgress(
+      jobId,
+      (data: JobProgress) => {
+        setProgress(data);
+        setIsConnected(true);
+        
+        // Handle completion
+        if (data.status === "COMPLETED") {
+          setIsLoading(false);
+          if (onComplete) {
+            // Fetch full job details
+            matcherClient.getJob(jobId)
+              .then(onComplete)
+              .catch(console.error);
+          }
+        } else if (data.status === "FAILED") {
+          setIsLoading(false);
+          if (onError) {
+            onError(new Error(data.errorMessage || "Job failed"));
+          }
+        } else if (data.status === "CANCELLED") {
+          setIsLoading(false);
+        }
+      },
+      (error) => {
+        setIsConnected(false);
+        setIsLoading(false);
+        if (onError) {
+          onError(error);
+        }
+      },
+    );
+
+    eventSourceRef.current = eventSource;
+
+    return () => {
+      disconnect();
+    };
+  }, [jobId, disconnect, onComplete, onError]);
 
   return {
     progress,
     isLoading,
-    stopPolling,
+    isConnected,
+    disconnect,
   };
 }
 
@@ -228,9 +184,4 @@ export function useMatcherHealth() {
   }, [checkHealth]);
 
   return { isHealthy, isChecking, checkHealth };
-}
-
-// Helper functions
-function isTerminalStatus(status: MatchJobStatus): boolean {
-  return ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
 }
