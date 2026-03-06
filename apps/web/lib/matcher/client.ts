@@ -33,7 +33,7 @@ class MatcherClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || "Failed to create job");
+      throw new Error(error.detail || error.error || "Failed to create job");
     }
 
     return response.json();
@@ -43,7 +43,7 @@ class MatcherClient {
    * Get full job details
    */
   async getJob(jobId: string): Promise<MatchJob> {
-    const response = await fetch(`${this.baseUrl}/api/jobs/${jobId}`);
+    const response = await fetch(`/api/matcher/jobs/${jobId}`);
 
     if (!response.ok) {
       throw new Error("Failed to get job");
@@ -53,28 +53,16 @@ class MatcherClient {
   }
 
   /**
-   * Get job progress (single request)
-   */
-  async getJobProgress(jobId: string): Promise<JobProgress> {
-    const response = await fetch(`${this.baseUrl}/api/jobs/${jobId}/progress`);
-
-    if (!response.ok) {
-      throw new Error("Failed to get job progress");
-    }
-
-    return response.json();
-  }
-
-  /**
    * Subscribe to job progress updates via SSE
-   * Returns an EventSource and a promise that resolves when connection is established
+   * Routes through Next.js API to avoid CORS issues
    */
   subscribeToJobProgress(
     jobId: string,
     onProgress: (progress: JobProgress) => void,
     onError?: (error: Error) => void,
   ): EventSource {
-    const eventSource = new EventSource(`${this.baseUrl}/api/jobs/${jobId}/stream`);
+    // Use Next.js proxy route instead of direct matcher connection
+    const eventSource = new EventSource(`/api/matcher/jobs/${jobId}/stream`);
 
     eventSource.onmessage = (event) => {
       try {
@@ -105,7 +93,7 @@ class MatcherClient {
    * Cancel a running job
    */
   async cancelJob(jobId: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/jobs/${jobId}`, {
+    const response = await fetch(`/api/matcher/jobs/${jobId}`, {
       method: "DELETE",
     });
 
@@ -118,7 +106,7 @@ class MatcherClient {
    * Get download URL for result file
    */
   getDownloadUrl(jobId: string): string {
-    return `${this.baseUrl}/api/jobs/${jobId}/download`;
+    return `/api/matcher/jobs/${jobId}/download`;
   }
 
   /**
