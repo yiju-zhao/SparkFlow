@@ -22,13 +22,27 @@ class MatchTargetType(str, Enum):
     PUBLICATION = "PUBLICATION"
 
 
+class ParsedQueryInput(BaseModel):
+    """A parsed query from the frontend."""
+
+    id: str
+    bu: str
+    query: str
+    row_index: int
+
+
 class CreateMatchJobRequest(BaseModel):
-    """Request to create a new match job."""
+    """Request to create a new match job.
+
+    Either queries or query_file_key must be provided.
+    If queries is provided, it will be used directly (no file parsing needed).
+    """
 
     user_id: str
     instance_id: str
     target_type: MatchTargetType
-    query_file_key: str
+    queries: Optional[list[ParsedQueryInput]] = None
+    query_file_key: Optional[str] = None
     top_k: int = 50
     search_k: int = 350
     include_reasons: bool = True
@@ -44,7 +58,7 @@ class MatchJobResponse(BaseModel):
     top_k: int
     search_k: int
     include_reasons: bool
-    query_file_key: str
+    query_file_key: Optional[str] = None
     query_data: Optional[list[dict[str, Any]]] = None
     result_file_key: Optional[str] = None
     status: MatchJobStatus
@@ -73,8 +87,7 @@ class ParsedQuery(BaseModel):
     """A parsed query from the uploaded Excel file."""
 
     id: str
-    key: str
-    area: str
+    bu: str
     query: str
     row_index: int
 

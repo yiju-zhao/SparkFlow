@@ -34,12 +34,12 @@ async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
 
   const queries: ParsedQuery[] = [];
   worksheet.eachRow((row, rowNumber) => {
-    const key = String(row.getCell(1).value ?? "").trim();
-    const area = String(row.getCell(2).value ?? "").trim();
-    const query = String(row.getCell(3).value ?? "").trim();
+    const bu = String(row.getCell(1).value ?? "").trim();
+    const query = String(row.getCell(2).value ?? "").trim();
+    // Skip header row or empty rows
     if (!query || query.toLowerCase() === "query") return;
-    if (!key) return;
-    queries.push({ id: uuidv4(), key, area, query, rowIndex: rowNumber });
+    if (!bu) return;
+    queries.push({ id: uuidv4(), bu, query, rowIndex: rowNumber });
   });
 
   return queries;
@@ -65,10 +65,10 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
       // Parse Excel client-side first
       const queries = await parseExcelFile(selectedFile);
       if (queries.length === 0) {
-        throw new Error("No valid rows found. Make sure columns A (key) and C (query) are filled.");
+        throw new Error("No valid rows found. Make sure columns A (BU) and B (Query) are filled.");
       }
 
-      // Upload file to S3 for the matching job
+      // Upload file to S3 for audit trail
       const formData = new FormData();
       formData.append("file", selectedFile);
 
@@ -97,7 +97,7 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
         <div>
           <h3 className="text-lg font-medium">Upload Query File</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload an Excel file containing your queries. Area and Query will be
+            Upload an Excel file with BU and Query columns. Queries will be
             automatically translated to English.
           </p>
         </div>
@@ -112,7 +112,7 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
               <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-[420px] p-4">
+          <PopoverContent align="end" className="w-[400px] p-4">
             <div className="space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide font-mono">
                 Required Format
@@ -129,18 +129,12 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
                 <TableBody>
                   <TableRow>
                     <TableCell className="text-xs text-muted-foreground">A</TableCell>
-                    <TableCell className="text-xs font-mono font-medium">key</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">Who wants the matching (person or entity name)</TableCell>
+                    <TableCell className="text-xs font-mono font-medium">bu</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">Business unit requesting the match</TableCell>
                     <TableCell className="text-xs">Yes</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="text-xs text-muted-foreground">B</TableCell>
-                    <TableCell className="text-xs font-mono font-medium">area</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">Domain or topic area to narrow the search</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">Optional</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-xs text-muted-foreground">C</TableCell>
                     <TableCell className="text-xs font-mono font-medium">query</TableCell>
                     <TableCell className="text-xs text-muted-foreground">The search query to match against sessions or publications</TableCell>
                     <TableCell className="text-xs">Yes</TableCell>
@@ -149,7 +143,7 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
               </Table>
               <p className="text-xs text-muted-foreground">
                 Columns are read by position — header names do not need to match exactly.
-                Area and Query will be automatically translated to English before matching.
+                Queries will be automatically translated to English before matching.
               </p>
             </div>
           </PopoverContent>

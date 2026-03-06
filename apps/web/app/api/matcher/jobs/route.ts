@@ -18,7 +18,19 @@ function toSnakeCase(str: string): string {
 function transformToSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
-    result[toSnakeCase(key)] = value;
+    const snakeKey = toSnakeCase(key);
+    // Handle nested objects and arrays
+    if (Array.isArray(value)) {
+      result[snakeKey] = value.map(item =>
+        typeof item === "object" && item !== null
+          ? transformToSnakeCase(item as Record<string, unknown>)
+          : item
+      );
+    } else if (typeof value === "object" && value !== null) {
+      result[snakeKey] = transformToSnakeCase(value as Record<string, unknown>);
+    } else {
+      result[snakeKey] = value;
+    }
   }
   return result;
 }
@@ -38,6 +50,8 @@ export async function POST(request: NextRequest) {
       user_id: session.user.id,
     };
 
+    console.log("[Matcher Jobs] Creating job with payload:", JSON.stringify(payload, null, 2));
+
     const response = await fetch(`${MATCHER_API_URL}/api/jobs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,6 +60,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+      console.error("[Matcher Jobs] Error response:", error);
       return NextResponse.json(
         { error: error.detail || error.error || "Failed to create job" },
         { status: response.status },

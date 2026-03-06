@@ -63,7 +63,10 @@ async def create_job(
     """
     Create a new match job.
 
-    Validates the instance exists and parses the query file before creating the job.
+    Accepts either:
+    - queries: Pre-parsed queries from frontend (preferred)
+    - query_file_key: S3 key to parse queries from file
+
     The job runs in the background.
     """
     # Verify instance exists
@@ -71,12 +74,19 @@ async def create_job(
     if not instance:
         raise HTTPException(status_code=404, detail="Instance not found")
 
-    # Parse queries from uploaded file
-    try:
-        queries = excel_processor.parse_queries(req.query_file_key)
-    except Exception as e:
-        logger.error(f"Failed to parse queries: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to parse query file: {e}")
+    # Get queries - either from request or by parsing file
+    if req.queries:
+        queries = req.queries
+        logger.info(f"Using {len(queries)} queries from request")
+    elif req.query_file_key:
+        try:
+            queries = excel_processor.parse_queries(req.query_file_key)
+            logger.info(f"Parsed {len(queries)} queries from file {req.query_file_key}")
+        except Exception as e:
+            logger.error(f"Failed to parse queries: {e}")
+            raise HTTPException(status_code=400, detail=f"Failed to parse query file: {e}")
+    else:
+        raise HTTPException(status_code=400, detail="Either queries or query_file_key must be provided")
 
     # Create job record in database
     job_id = data_loader.create_match_job(
@@ -86,7 +96,7 @@ async def create_job(
         top_k=req.top_k,
         search_k=req.search_k,
         include_reasons=req.include_reasons,
-        query_file_key=req.query_file_key,
+        query_file_key=req.query_file_key or "",
         query_data=[q.model_dump() for q in queries],
         query_count=len(queries),
     )
@@ -191,7 +201,7 @@ def _job_to_response(job: dict) -> MatchJobResponse:
         top_k=job["top_k"],
         search_k=job["search_k"],
         include_reasons=job["include_reasons"],
-        query_file_key=job["query_file_key"],
+        query_file_key=job.get("query_file_key"),
         query_data=job.get("query_data"),
         result_file_key=job.get("result_file_key"),
         status=MatchJobStatus(job["status"]),
@@ -204,5 +214,3 @@ def _job_to_response(job: dict) -> MatchJobResponse:
         started_at=job.get("started_at"),
         completed_at=job.get("completed_at"),
     )
-
-

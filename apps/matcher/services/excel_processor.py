@@ -68,12 +68,11 @@ class ExcelProcessor:
         """
         Parse queries from an uploaded Excel file.
 
-        Expected format (positional columns):
-        - Column 1 (index 0): key — who wants the matching (not translated)
-        - Column 2 (index 1): area — optional domain/area (translated to English)
-        - Column 3 (index 2): query — the actual query text (translated to English)
+        Expected format (2 columns):
+        - Column 1 (index 0): bu — business unit requesting the match
+        - Column 2 (index 1): query — the actual query text (translated to English)
 
-        Returns list of dicts with id, key, area, query, row_index
+        Returns list of dicts with id, bu, query, row_index
         """
         try:
             # Download from S3
@@ -89,18 +88,16 @@ class ExcelProcessor:
                 if row.isna().all():
                     continue
 
-                key = self._safe_str(row.iloc[0])
-                area = self._safe_str(row.iloc[1] if len(row) > 1 else "")
-                query_text = self._safe_str(row.iloc[2] if len(row) > 2 else "")
+                bu = self._safe_str(row.iloc[0])
+                query_text = self._safe_str(row.iloc[1] if len(row) > 1 else "")
 
-                # Skip rows with no query text
-                if not query_text.strip():
+                # Skip rows with no query text or header row
+                if not query_text.strip() or query_text.lower() == "query":
                     continue
 
                 query = {
                     "id": str(uuid.uuid4()),
-                    "key": key,
-                    "area": area,
+                    "bu": bu,
                     "query": query_text,
                     "row_index": idx,
                 }

@@ -69,13 +69,13 @@ export function MatcherWizard() {
   // Step 2: Preview
   const handleStartMatching = useCallback(
     async (queries: ParsedQuery[]) => {
-      if (!state.fileKey || !state.config) return;
+      if (!state.config || !state.queries) return;
 
       try {
         const job = await createJob({
           instanceId: state.config.instanceId,
           targetType: state.config.targetType,
-          queryFileKey: state.fileKey,
+          queries: state.queries, // Send parsed queries directly
           topK: state.config.topK,
           searchK: state.config.searchK,
           includeReasons: state.config.includeReasons,
@@ -92,7 +92,7 @@ export function MatcherWizard() {
         console.error("Failed to start job:", error);
       }
     },
-    [state.fileKey, state.config, createJob],
+    [state.config, state.queries, createJob],
   );
 
   // Step 3: Running
