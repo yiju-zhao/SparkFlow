@@ -1,15 +1,13 @@
 /**
  * Job Results Download Route
  *
- * Verifies ownership via database, then proxies file download from matcher service.
+ * Verifies ownership via database, then serves the Excel file directly from S3.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-const MATCHER_API_URL =
-  process.env.MATCHER_API_URL || "http://localhost:2025";
+import { s3StorageClient } from "@/lib/s3-client";
 
 export async function GET(
   request: NextRequest,
@@ -43,23 +41,35 @@ export async function GET(
       );
     }
 
-    // Stream from matcher service
-    const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/download`);
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+    // Check result file exists in S3
+    if (!job.resultFileKey) {
       return NextResponse.json(
-        { error: error.detail || "Failed to download results" },
-        { status: response.status },
+        { error: "Result file not available yet" },
+        { status: 404 },
       );
     }
 
-    // Stream the file back
-    const headers = new Headers(response.headers);
-    headers.set("Content-Disposition", `attachment; filename="match-results-${jobId}.xlsx"`);
+    // Get stream from S3
+    const { stream, contentType } = await s3StorageClient.getImageStream(
+      job.resultFileKey,
+    );
 
-    return new Response(response.body, {
-      headers,
+    // Convert Node.js Readable to web ReadableStream
+    const webStream = new ReadableStream({
+      start(controller) {
+        stream.on("data", (chunk: Buffer) => controller.enqueue(chunk));
+        stream.on("end", () => controller.close());
+        stream.on("error", (err: Error) => controller.error(err));
+      },
+    });
+
+    return new Response(webStream, {
+      headers: {
+        "Content-Type":
+          contentType ||
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="match-results-${jobId}.xlsx"`,
+      },
     });
   } catch (error) {
     console.error("Download error:", error);

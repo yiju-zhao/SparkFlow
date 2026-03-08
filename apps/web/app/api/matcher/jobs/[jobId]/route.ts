@@ -2,11 +2,13 @@
  * Single Job API Route
  *
  * Reads job from database, syncs progress from matcher service if processing.
+ * On COMPLETED: downloads Excel from matcher and uploads to S3.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { s3StorageClient } from "@/lib/s3-client";
 
 const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
@@ -59,7 +61,6 @@ export async function GET(
               status: progressData.status ?? job.status,
               matchCount: progressData.match_count ?? job.matchCount,
               errorMessage: progressData.error_message ?? job.errorMessage,
-              resultFileKey: progressData.result_file_key ?? job.resultFileKey,
               startedAt: isStarting ? new Date() : job.startedAt,
               completedAt: progressData.status === "COMPLETED" ? new Date() : job.completedAt,
             },
@@ -72,6 +73,40 @@ export async function GET(
               },
             },
           });
+
+          // If job just completed, download Excel from matcher and upload to S3
+          if (progressData.status === "COMPLETED" && !updatedJob.resultFileKey) {
+            try {
+              const dlRes = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/download`);
+              if (dlRes.ok) {
+                const buffer = Buffer.from(await dlRes.arrayBuffer());
+                const fileKey = `match-results/${jobId}.xlsx`;
+                await s3StorageClient.uploadImage(
+                  fileKey,
+                  buffer,
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                );
+
+                const finalJob = await prisma.matchJob.update({
+                  where: { id: jobId },
+                  data: { resultFileKey: fileKey },
+                  include: {
+                    instance: {
+                      select: {
+                        name: true,
+                        venue: { select: { name: true } },
+                      },
+                    },
+                  },
+                });
+
+                return NextResponse.json(finalJob);
+              }
+            } catch (s3Error) {
+              console.error("[Matcher Jobs] Failed to persist Excel to S3:", s3Error);
+              // Job is still COMPLETED, file can be retried on next poll
+            }
+          }
 
           return NextResponse.json(updatedJob);
         }
@@ -113,25 +148,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // Delete S3 files (matcher uses "sparkflow" bucket, not the images bucket)
-    const { S3Client, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
-    const matcherS3 = new S3Client({
-      endpoint: process.env.S3_ENDPOINT || "http://localhost:9002",
-      region: process.env.S3_REGION || "us-east-1",
-      credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY || "minioadmin",
-        secretAccessKey: process.env.S3_SECRET_KEY || "minioadmin",
-      },
-      forcePathStyle: true,
-    });
-    const matcherBucket = process.env.S3_BUCKET || "sparkflow";
-
+    // Delete S3 files using shared s3StorageClient
     const keysToDelete = [job.queryFileKey, job.resultFileKey].filter(Boolean);
     for (const key of keysToDelete) {
       try {
-        await matcherS3.send(
-          new DeleteObjectCommand({ Bucket: matcherBucket, Key: key! }),
-        );
+        await s3StorageClient.deleteImage(key!);
       } catch (s3Err) {
         console.error(`[Matcher] Failed to delete S3 key ${key}:`, s3Err);
         // Continue deleting other files and DB record
