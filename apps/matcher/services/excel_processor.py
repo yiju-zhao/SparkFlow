@@ -7,12 +7,8 @@ Handles reading query Excel files and writing result Excel files.
 import io
 import logging
 import os
-import uuid
-from typing import Iterator
 
-import boto3
 import pandas as pd
-from botocore.exceptions import ClientError
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
@@ -20,38 +16,6 @@ logger = logging.getLogger(__name__)
 
 class ExcelProcessor:
     """Process Excel files for queries and results."""
-
-    def __init__(self):
-        self.s3_client = self._create_s3_client()
-        self.bucket = os.getenv("S3_BUCKET", "sparkflow")
-        self._ensure_bucket_exists()
-
-    def _create_s3_client(self):
-        """Create S3 client for MinIO/S3."""
-        return boto3.client(
-            "s3",
-            endpoint_url=os.getenv("S3_ENDPOINT", "http://localhost:9002"),
-            aws_access_key_id=os.getenv("S3_ACCESS_KEY", "minioadmin"),
-            aws_secret_access_key=os.getenv("S3_SECRET_KEY", "minioadmin"),
-        )
-
-    def _ensure_bucket_exists(self):
-        """Create the bucket if it doesn't exist."""
-        try:
-            self.s3_client.head_bucket(Bucket=self.bucket)
-            logger.info(f"Bucket '{self.bucket}' exists")
-        except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code == "404":
-                try:
-                    self.s3_client.create_bucket(Bucket=self.bucket)
-                    logger.info(f"Created bucket '{self.bucket}'")
-                except ClientError as create_error:
-                    logger.error(f"Failed to create bucket '{self.bucket}': {create_error}")
-                    raise
-            else:
-                logger.error(f"Error checking bucket '{self.bucket}': {e}")
-                raise
 
     def _translate_to_english(self, text: str) -> str:
         """
@@ -83,60 +47,11 @@ class ExcelProcessor:
             logger.warning(f"Translation failed for text '{text[:50]}...': {e}. Using original.")
             return text
 
-    def parse_queries(self, file_key: str) -> list[dict]:
-        """
-        Parse queries from an uploaded Excel file.
-
-        Expected format (2 columns):
-        - Column 1 (index 0): bu — business unit requesting the match
-        - Column 2 (index 1): query — the actual query text (translated to English)
-
-        Returns list of dicts with id, bu, query, row_index
-        """
-        try:
-            # Download from S3
-            response = self.s3_client.get_object(Bucket=self.bucket, Key=file_key)
-            excel_data = response["Body"].read()
-
-            # Read Excel without using first row as header
-            df = pd.read_excel(io.BytesIO(excel_data), engine="openpyxl", header=None)
-
-            queries = []
-            for idx, row in df.iterrows():
-                # Skip empty rows
-                if row.isna().all():
-                    continue
-
-                bu = self._safe_str(row.iloc[0])
-                query_text = self._safe_str(row.iloc[1] if len(row) > 1 else "")
-
-                # Skip rows with no query text or header row
-                if not query_text.strip() or query_text.lower() == "query":
-                    continue
-
-                query = {
-                    "id": str(uuid.uuid4()),
-                    "bu": bu,
-                    "query": query_text,
-                    "row_index": idx,
-                }
-                queries.append(query)
-
-            logger.info(f"Parsed {len(queries)} queries from {file_key}")
-            return queries
-
-        except ClientError as e:
-            logger.error(f"S3 error reading {file_key}: {e}")
-            raise Exception(f"Failed to read query file: {e}")
-        except Exception as e:
-            logger.error(f"Error parsing queries from {file_key}: {e}")
-            raise
-
     def create_result_excel(
         self,
         results_by_query: dict[str, pd.DataFrame],
         master_df: pd.DataFrame | None = None,
-    ) -> str:
+    ) -> bytes:
         """
         Create a multi-tab Excel file with match results.
 
@@ -145,7 +60,7 @@ class ExcelProcessor:
             master_df: Optional aggregated master DataFrame
 
         Returns:
-            S3 key of the created file
+            Excel file as bytes
         """
         output = io.BytesIO()
 
@@ -161,23 +76,7 @@ class ExcelProcessor:
                 df.to_excel(writer, sheet_name=safe_name, index=False)
 
         output.seek(0)
-
-        # Upload to S3
-        file_key = f"match-results/{uuid.uuid4()}.xlsx"
-        self.s3_client.put_object(
-            Bucket=self.bucket,
-            Key=file_key,
-            Body=output.getvalue(),
-            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-
-        logger.info(f"Created result Excel: {file_key}")
-        return file_key
-
-    def get_result_file_stream(self, file_key: str) -> Iterator[bytes]:
-        """Get a streaming response for the result file."""
-        response = self.s3_client.get_object(Bucket=self.bucket, Key=file_key)
-        return response["Body"].iter_chunks()
+        return output.getvalue()
 
     def _sanitize_sheet_name(self, name: str) -> str:
         """Sanitize sheet name for Excel (max 31 chars, no invalid chars)."""

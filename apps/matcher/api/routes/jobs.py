@@ -8,7 +8,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from api.types import (
     CreateMatchJobRequest,
@@ -26,10 +26,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_excel_processor() -> ExcelProcessor:
-    return ExcelProcessor()
-
-
 def get_job_store() -> JobStore:
     return JobStore()
 
@@ -39,7 +35,6 @@ async def create_job(
     req: CreateMatchJobRequest,
     background_tasks: BackgroundTasks,
     request: Request,
-    excel_processor: ExcelProcessor = Depends(get_excel_processor),
     job_store: JobStore = Depends(get_job_store),
 ):
     """
@@ -75,7 +70,7 @@ async def create_job(
     # Start background processing
     job_runner = JobRunner(
         matcher=request.app.state.matcher,
-        excel_processor=excel_processor,
+        excel_processor=ExcelProcessor(),
         job_store=job_store,
     )
     background_tasks.add_task(job_runner.run_job, job_id, target_data)
@@ -123,16 +118,16 @@ async def stream_job_progress(
     job_store: JobStore = Depends(get_job_store),
 ):
     """Stream job progress updates via Server-Sent Events (SSE)."""
-    
+
     async def event_generator():
         last_progress = None
-        
+
         while True:
             job = job_store.get_job(job_id)
             if not job:
                 yield f"event: error\ndata: {json.dumps({'error': 'Job not found'})}\n\n"
                 break
-            
+
             # Build progress data
             progress_data = {
                 "id": job["id"],
@@ -142,19 +137,19 @@ async def stream_job_progress(
                 "query_count": job["query_count"],
                 "match_count": job["match_count"],
             }
-            
+
             # Only send if progress changed
             if progress_data != last_progress:
                 yield f"data: {json.dumps(progress_data)}\n\n"
                 last_progress = progress_data
-            
+
             # Stop if job is complete
             if job["status"] in ["COMPLETED", "FAILED", "CANCELLED"]:
                 break
-            
+
             # Wait before next check
             await asyncio.sleep(1)
-    
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -187,9 +182,8 @@ async def cancel_job(
 async def download_results(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
-    excel_processor: ExcelProcessor = Depends(get_excel_processor),
 ):
-    """Download the result Excel file."""
+    """Download the result Excel file from in-memory store."""
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -197,15 +191,14 @@ async def download_results(
     if job["status"] != MatchJobStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="Job not completed")
 
-    if not job.get("result_file_key"):
-        raise HTTPException(status_code=404, detail="Result file not found")
+    result_data = job_store.get_result_data(job_id)
+    if not result_data:
+        raise HTTPException(status_code=404, detail="Result data not available (may have been cleared)")
 
-    # Stream the file from S3
-    file_stream = excel_processor.get_result_file_stream(job["result_file_key"])
     filename = f"match-results-{job_id}.xlsx"
 
-    return StreamingResponse(
-        file_stream,
+    return Response(
+        content=result_data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

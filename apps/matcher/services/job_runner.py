@@ -177,7 +177,7 @@ class JobRunner:
 
             # Create result Excel
             self.job_store.update_job(job_id, progress=85, error_message="Creating result file...")
-            result_file_key = self.excel_processor.create_result_excel(
+            result_bytes = self.excel_processor.create_result_excel(
                 results_by_query=results_by_query,
                 master_df=master_df,
             )
@@ -187,7 +187,7 @@ class JobRunner:
                 job_id,
                 status="COMPLETED",
                 progress=100,
-                result_file_key=result_file_key,
+                result_data=result_bytes,
                 match_count=total_matches,
                 completed_at=datetime.utcnow(),
                 error_message=None,

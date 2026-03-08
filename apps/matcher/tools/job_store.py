@@ -62,6 +62,7 @@ class JobStore:
                 "match_count": 0,
                 "error_message": None,
                 "result_file_key": None,
+                "result_data": None,
                 "created_at": now,
                 "updated_at": now,
                 "started_at": None,
@@ -82,6 +83,12 @@ class JobStore:
             if job_id in self._jobs:
                 self._jobs[job_id].update(kwargs)
                 self._jobs[job_id]["updated_at"] = datetime.utcnow()
+
+    def get_result_data(self, job_id: str) -> Optional[bytes]:
+        """Get result Excel bytes for a job."""
+        with self._job_lock:
+            job = self._jobs.get(job_id)
+            return job.get("result_data") if job else None
 
     def get_target_data(self, job_id: str) -> Optional[list[dict]]:
         """Get target data for a job."""
