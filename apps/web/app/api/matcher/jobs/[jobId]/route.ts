@@ -14,7 +14,7 @@ const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
@@ -127,7 +127,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {

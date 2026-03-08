@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { s3StorageClient } from "@/lib/s3-client";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
