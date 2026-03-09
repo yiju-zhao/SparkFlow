@@ -2,9 +2,13 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCopilotChat, useCopilotReadable, useThreads } from "@copilotkit/react-core";
+import {
+  useCopilotChatInternal,
+  useCopilotReadable,
+  useThreads,
+} from "@copilotkit/react-core";
 import { v4 as uuidv4 } from "uuid";
-import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
+import type { Message } from "@copilotkit/shared";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
 import { useGenerativeComponents } from "./generative-ui";
@@ -64,17 +68,14 @@ export function ResearchAssistantPanel({
       description: "Current page context",
       value: contextString,
     },
-    [contextString]
+    [contextString],
   );
 
   // Get context-aware suggestions
   const suggestions = useContextSuggestions();
 
   // Use CopilotKit for chat state
-  // Note: visibleMessages and appendMessage are deprecated but still functional
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  const { visibleMessages, appendMessage, reset, isLoading } =
-    useCopilotChat();
+  const { messages, sendMessage, reset, isLoading } = useCopilotChatInternal();
 
   // Get thread management to reset thread ID on close
   const { setThreadId } = useThreads();
@@ -94,7 +95,7 @@ export function ResearchAssistantPanel({
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visibleMessages, isLoading]);
+  }, [messages, isLoading]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -104,12 +105,11 @@ export function ResearchAssistantPanel({
     const content = text || input.trim();
     if (!content || isLoading) return;
 
-    await appendMessage(
-      new TextMessage({
-        role: MessageRole.User,
-        content,
-      })
-    );
+    await sendMessage({
+      id: uuidv4(),
+      role: "user",
+      content,
+    } as Message);
     setInput("");
   };
 
@@ -121,13 +121,13 @@ export function ResearchAssistantPanel({
   };
 
   // Helper to get message content safely
-  const getMessageContent = (msg: (typeof visibleMessages)[0]): string => {
+  const getMessageContent = (msg: Message): string => {
     if ("content" in msg && typeof msg.content === "string") return msg.content;
     return "";
   };
 
   // Helper to get message role safely
-  const getMessageRole = (msg: (typeof visibleMessages)[0]) => {
+  const getMessageRole = (msg: Message) => {
     if ("role" in msg) return msg.role;
     return "assistant";
   };
@@ -138,7 +138,7 @@ export function ResearchAssistantPanel({
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm"
+            className="fixed inset-0 z-200 bg-black/20 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -147,7 +147,7 @@ export function ResearchAssistantPanel({
 
           {/* Panel */}
           <motion.div
-            className="fixed top-0 right-0 bottom-0 z-[200] w-full max-w-md flex flex-col bg-background border-l border-border shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 z-200 w-full max-w-md flex flex-col bg-background border-l border-border shadow-2xl"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -173,7 +173,7 @@ export function ResearchAssistantPanel({
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {(visibleMessages?.length ?? 0) === 0 && (
+              {(messages?.length ?? 0) === 0 && (
                 <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00D084]/10">
                     <Sparkles className="h-6 w-6 text-[#00D084]" />
@@ -200,7 +200,7 @@ export function ResearchAssistantPanel({
                 </div>
               )}
 
-              {visibleMessages?.map((msg) => (
+              {messages?.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${getMessageRole(msg) === "user" ? "justify-end" : "justify-start"}`}

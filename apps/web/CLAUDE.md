@@ -2,9 +2,18 @@
 
 ## CopilotKit
 
-- Use `useCopilotChat()` hook for chat state - `visibleMessages` and `appendMessage` are deprecated but functional
-- Suppress deprecation warnings with `// eslint-disable-next-line @typescript-eslint/no-deprecated`
-- The non-deprecated APIs (`messages`, `sendMessage`) require `useCopilotChatInternal` which has different types
+- Use `useCopilotChatInternal()` hook for chat state with non-deprecated APIs
+- Import `Message` type from `@copilotkit/shared` for type safety
+- Create messages with `{ id: uuidv4(), role: "user", content: "..." } as Message` format
+- Example:
+  ```typescript
+  import { useCopilotChatInternal } from "@copilotkit/react-core";
+  import type { Message } from "@copilotkit/shared";
+
+  const { messages, sendMessage, reset, isLoading } = useCopilotChatInternal();
+
+  await sendMessage({ id: uuidv4(), role: "user", content: "Hello" } as Message);
+  ```
 
 ## React Patterns
 
