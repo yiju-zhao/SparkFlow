@@ -1,15 +1,15 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "Error: Message not found - appears when using Research Assistant panel with CopilotKit integration"
 created: 2026-03-09T00:00:00Z
-updated: 2026-03-09T00:30:00Z
+updated: 2026-03-09T00:35:00Z
 ---
 
 ## Current Focus
-hypothesis: Fix implemented - awaiting human verification
-test: TypeScript compilation passed. Need manual testing.
-expecting: User opens panel, sends message, closes panel, reopens panel, sends new message - no error should occur
-next_action: Request human verification of the fix
+hypothesis: Resolved
+test: Human verified fix works correctly
+expecting: N/A
+next_action: Archive session
 
 ## Eliminated
 
@@ -62,5 +62,5 @@ started: Started after implementing CopilotKit integration in Phase 2
 ## Resolution
 root_cause: When the Research Assistant panel closes, reset() only clears messages and state but NOT the thread ID. When panel reopens and user sends a new message, CopilotKit sees the existing thread has more messages than local state and tries to find the new message ID in thread history - which doesn't exist because it's a new message with a new ID. This triggers "Message not found" error in getCheckpointByMessage().
 fix: Added useThreads() hook to get setThreadId function. When panel closes, now calls both reset() AND setThreadId(crypto.randomUUID()) to create a fresh thread for the next session.
-verification: TypeScript compilation passes with no errors. Need manual testing to verify the error no longer occurs.
+verification: TypeScript compilation passes. Human confirmed fix works - panel can be opened, closed, reopened, and messages sent without "Message not found" error.
 files_changed: [apps/web/components/explore/research-assistant-panel.tsx]

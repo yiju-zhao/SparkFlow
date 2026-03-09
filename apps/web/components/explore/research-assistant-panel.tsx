@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCopilotChat, useCopilotReadable, useThreads } from "@copilotkit/react-core";
+import { v4 as uuidv4 } from "uuid";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
@@ -81,7 +82,7 @@ export function ResearchAssistantPanel({
     if (!open) {
       reset();
       // Generate a new thread ID for the next session to avoid message ID mismatch
-      setThreadId(crypto.randomUUID());
+      setThreadId(uuidv4());
       setInput("");
     }
   }, [open, reset, setThreadId]);
