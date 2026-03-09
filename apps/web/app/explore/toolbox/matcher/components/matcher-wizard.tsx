@@ -171,7 +171,6 @@ export function MatcherWizard() {
       case 1:
         return (
           <ConfigStep
-            fileKey={state.fileKey!}
             queries={state.queries ?? []}
             initialConfig={state.config ?? undefined}
             onStart={handleStartMatching}

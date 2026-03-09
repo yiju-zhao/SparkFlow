@@ -13,7 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
-import { QueryPreviewTable } from "../query-preview-table";
 import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface Instance {
@@ -34,7 +33,6 @@ interface ConfigValues {
 }
 
 interface ConfigStepProps {
-  fileKey: string;
   queries: ParsedQuery[];
   initialConfig?: ConfigValues;
   onStart: (config: ConfigValues, queries: ParsedQuery[]) => void;
@@ -42,7 +40,7 @@ interface ConfigStepProps {
   onCancel: () => void;
 }
 
-export function ConfigStep({ queries: initialQueries, initialConfig, onStart, onBack }: ConfigStepProps) {
+export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigStepProps) {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +52,6 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
   const [topKStr, setTopKStr] = useState(String(initialConfig?.topK ?? 50));
   const [searchKStr, setSearchKStr] = useState(String(initialConfig?.searchK ?? 350));
   const [includeReasons, setIncludeReasons] = useState(initialConfig?.includeReasons ?? true);
-  const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries);
 
   const parsedTopK = parseInt(topKStr);
   const parsedSearchK = parseInt(searchKStr);
@@ -71,7 +68,6 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
         const data = await response.json();
         setInstances(data);
 
-        // Auto-select first instance only if no initial config
         if (!initialConfig?.instanceId && data.length > 0) {
           setInstanceId(data[0].id);
         }
@@ -109,9 +105,9 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Configure & Preview</h3>
+        <h3 className="text-lg font-medium">Configure Matching</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Select the conference, configure options, and review queries before matching.
+          Select the conference and configure matching options for your {queries.length} {queries.length === 1 ? "query" : "queries"}.
         </p>
       </div>
 
@@ -205,19 +201,6 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
           </div>
         </div>
       )}
-
-      {/* Query preview */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <Label>Queries ({queries.length})</Label>
-        </div>
-        <div className="border rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
-          <QueryPreviewTable
-            queries={queries}
-            onQueriesChange={setQueries}
-          />
-        </div>
-      </div>
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onBack}>

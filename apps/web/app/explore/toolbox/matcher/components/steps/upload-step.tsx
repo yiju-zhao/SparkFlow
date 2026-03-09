@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { QueryPreviewTable } from "../query-preview-table";
 import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface UploadStepProps {
@@ -38,7 +39,6 @@ async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
   worksheet.eachRow((row, rowNumber) => {
     const bu = String(row.getCell(1).value ?? "").trim();
     const query = String(row.getCell(2).value ?? "").trim();
-    // Skip header row or empty rows
     if (!query || query.toLowerCase() === "query") return;
     if (!bu) return;
     queries.push({ id: uuidv4(), bu, query, rowIndex: rowNumber });
@@ -48,50 +48,63 @@ async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
 }
 
 export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }: UploadStepProps) {
+  // Start in preview mode if a previous upload exists
+  const [uploadedFileKey, setUploadedFileKey] = useState<string | null>(initialFileKey ?? null);
+  const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries ?? []);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // If a previous upload exists and no new file is selected, Continue uses it directly
-  const hasPreviousUpload = !selectedFile && !!initialFileKey && !!initialQueries?.length;
+  const showPreview = queries.length > 0;
 
-  const handleFileSelect = (file: File) => {
+  // Parse immediately when file is dropped — upload happens on Continue
+  const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
+    setError(null);
+    setIsParsing(true);
+    try {
+      const parsed = await parseExcelFile(file);
+      if (parsed.length === 0) {
+        throw new Error("No valid rows found. Make sure columns A (BU) and B (Query) are filled.");
+      }
+      setQueries(parsed);
+      setUploadedFileKey(null); // new file, not yet uploaded to S3
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Parse failed");
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleReplaceFile = () => {
+    setUploadedFileKey(null);
+    setQueries([]);
+    setSelectedFile(null);
     setError(null);
   };
 
-  const handleUpload = async () => {
-    // Re-use previous upload if no new file was selected
-    if (hasPreviousUpload) {
-      onNext(initialFileKey!, initialQueries!);
+  const handleContinue = async () => {
+    if (uploadedFileKey) {
+      // Re-use existing S3 key (back-navigation case)
+      onNext(uploadedFileKey, queries);
       return;
     }
-    if (!selectedFile) return;
+    if (!selectedFile || queries.length === 0) return;
 
     setIsUploading(true);
     setError(null);
-
     try {
-      // Parse Excel client-side first
-      const queries = await parseExcelFile(selectedFile);
-      if (queries.length === 0) {
-        throw new Error("No valid rows found. Make sure columns A (BU) and B (Query) are filled.");
-      }
-
-      // Upload file to S3 for audit trail
       const formData = new FormData();
       formData.append("file", selectedFile);
-
       const response = await fetch("/api/matcher/upload", {
         method: "POST",
         body: formData,
       });
-
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to upload file");
       }
-
       const { fileKey } = await response.json();
       onNext(fileKey, queries);
     } catch (err) {
@@ -160,25 +173,35 @@ export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }:
         </Popover>
       </div>
 
-      {hasPreviousUpload && (
-        <div className="flex items-center justify-between px-4 py-3 rounded-lg border bg-muted/40 text-sm">
-          <span className="text-muted-foreground">
-            Previously uploaded — <span className="text-foreground font-medium">{initialQueries!.length} queries</span>
-          </span>
-          <button
-            type="button"
-            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-            onClick={() => setSelectedFile(null)}
-          >
-            Replace
-          </button>
+      {showPreview ? (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{queries.length}</span>{" "}
+              {queries.length === 1 ? "query" : "queries"} loaded
+            </span>
+            <Button variant="outline" size="sm" onClick={handleReplaceFile}>
+              Upload new file
+            </Button>
+          </div>
+          <div className="border rounded-lg overflow-hidden max-h-[320px] overflow-y-auto">
+            <QueryPreviewTable queries={queries} onQueriesChange={setQueries} />
+          </div>
         </div>
+      ) : (
+        <>
+          <FileDropzone
+            onFileSelect={handleFileSelect}
+            disabled={isParsing || isUploading}
+          />
+          {isParsing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Parsing file…
+            </div>
+          )}
+        </>
       )}
-
-      <FileDropzone
-        onFileSelect={handleFileSelect}
-        disabled={isUploading}
-      />
 
       {error && (
         <p className="text-sm text-destructive">{error}</p>
@@ -189,8 +212,8 @@ export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }:
           Cancel
         </Button>
         <Button
-          onClick={handleUpload}
-          disabled={(!selectedFile && !hasPreviousUpload) || isUploading}
+          onClick={handleContinue}
+          disabled={!showPreview || isUploading || isParsing}
         >
           {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Continue
