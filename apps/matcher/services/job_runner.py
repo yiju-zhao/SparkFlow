@@ -13,6 +13,7 @@ import pandas as pd
 
 from services.excel_processor import ExcelProcessor
 from services.lotus_matcher import LotusMatcher
+from services.query_optimizer import QueryOptimizer
 from tools.job_store import JobStore
 
 logger = logging.getLogger(__name__)
@@ -26,10 +27,14 @@ class JobRunner:
         matcher: LotusMatcher,
         excel_processor: ExcelProcessor,
         job_store: JobStore,
+        query_optimizer: QueryOptimizer | None = None,
     ):
         self.matcher = matcher
         self.excel_processor = excel_processor
         self.job_store = job_store
+        self.query_optimizer = query_optimizer or QueryOptimizer(
+            excel_processor=excel_processor
+        )
 
     def run_job(self, job_id: str, target_data: list[dict]):
         """
@@ -37,9 +42,8 @@ class JobRunner:
 
         Processing flow:
         1. Group queries by BU (business unit)
-        2. Aggregate queries from same BU
-        3. Translate aggregated query to English
-        4. Match against target data
+        2. Optimize each BU's query set with OpenAI
+        3. Match optimized English query against target data
         """
         logger.info(f"Starting job {job_id}")
 
@@ -88,37 +92,55 @@ class JobRunner:
 
             logger.info(f"Grouped {len(queries)} queries into {len(queries_by_bu)} BUs")
 
-            # Step 2 & 3: Aggregate and translate each BU's queries
-            aggregated_queries = []
-            for bu, query_list in queries_by_bu.items():
-                # Combine all queries from this BU
-                combined_query = "\n".join(f"- {q}" for q in query_list)
-                
-                # Translate the aggregated query to English
-                translated_query = self.excel_processor._translate_to_english(combined_query)
-                
-                aggregated_queries.append({
-                    "bu": bu,
-                    "original_count": len(query_list),
-                    "aggregated_query": translated_query,
-                })
-                logger.info(f"BU '{bu}': aggregated {len(query_list)} queries")
+            # Step 2: Optimize each BU's queries into clearer, less redundant search text
+            optimized_queries = []
+            total_bus = len(queries_by_bu)
+            for i, (bu, query_list) in enumerate(queries_by_bu.items()):
+                progress = 5 + int((i / max(total_bus, 1)) * 20)
+                self.job_store.update_job(
+                    job_id,
+                    progress=progress,
+                    error_message=f"Optimizing queries: {bu}",
+                )
 
-            # Step 4: Process each aggregated query
+                optimization = self.query_optimizer.optimize_queries(
+                    bu=bu,
+                    queries=query_list,
+                    target_type=target_type,
+                )
+                optimized_queries.append(
+                    {
+                        "bu": bu,
+                        "original_count": len(query_list),
+                        "source_queries": optimization.source_queries,
+                        "optimized_query_native": optimization.optimized_query_native,
+                        "optimized_query_en": optimization.optimized_query_en,
+                        "focuses": optimization.focuses,
+                        "used_llm": optimization.used_llm,
+                    }
+                )
+                logger.info(
+                    "BU '%s': optimized %s queries into %s chars of search text (used_llm=%s)",
+                    bu,
+                    len(query_list),
+                    len(optimization.optimized_query_en),
+                    optimization.used_llm,
+                )
+
+            # Step 3: Process each optimized BU query
             results_by_query = {}
-            total_bus = len(aggregated_queries)
             total_matches = 0
 
-            for i, agg in enumerate(aggregated_queries):
-                bu = agg["bu"]
-                query_text = agg["aggregated_query"]
+            for i, optimized in enumerate(optimized_queries):
+                bu = optimized["bu"]
+                query_text = optimized["optimized_query_en"]
 
                 if not query_text.strip():
-                    logger.warning(f"Skipping empty aggregated query for BU: {bu}")
+                    logger.warning(f"Skipping empty optimized query for BU: {bu}")
                     continue
 
                 # Update progress
-                progress = 10 + int((i / total_bus) * 70)
+                progress = 30 + int((i / max(total_bus, 1)) * 50)
                 self.job_store.update_job(
                     job_id,
                     progress=progress,
@@ -128,7 +150,7 @@ class JobRunner:
                 def progress_callback(pct, msg):
                     pass
 
-                # Run LOTUS pipeline with aggregated query
+                # Run LOTUS pipeline with optimized English query
                 matches_df = self.matcher.run_pipeline(
                     df=target_df,
                     query_text=query_text,
