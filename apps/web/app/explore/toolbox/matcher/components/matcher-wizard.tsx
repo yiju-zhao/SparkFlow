@@ -199,7 +199,7 @@ export function MatcherWizard() {
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden max-w-2xl mx-auto">
       <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
         {STEPS.map((step, index) => (
           <div key={step.id} className="flex items-center gap-1">

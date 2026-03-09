@@ -51,10 +51,17 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
   const [targetType, setTargetType] = useState<"SESSION" | "PUBLICATION">(
     initialConfig?.targetType ?? "SESSION"
   );
-  const [topK, setTopK] = useState(initialConfig?.topK ?? 50);
-  const [searchK, setSearchK] = useState(initialConfig?.searchK ?? 350);
+  const [topKStr, setTopKStr] = useState(String(initialConfig?.topK ?? 50));
+  const [searchKStr, setSearchKStr] = useState(String(initialConfig?.searchK ?? 350));
   const [includeReasons, setIncludeReasons] = useState(initialConfig?.includeReasons ?? true);
   const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries);
+
+  const parsedTopK = parseInt(topKStr);
+  const parsedSearchK = parseInt(searchKStr);
+  const topKError = !topKStr || isNaN(parsedTopK) || parsedTopK < 1 ? "Must be ≥ 1" : null;
+  const searchKError = !searchKStr || isNaN(parsedSearchK) || parsedSearchK < (isNaN(parsedTopK) ? 1 : parsedTopK)
+    ? `Must be ≥ ${isNaN(parsedTopK) ? "Top K" : parsedTopK}`
+    : null;
 
   useEffect(() => {
     async function loadInstances() {
@@ -87,8 +94,16 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
       setError("No queries to match");
       return;
     }
+    if (topKError) {
+      setError("Top K: " + topKError);
+      return;
+    }
+    if (searchKError) {
+      setError("Search K: " + searchKError);
+      return;
+    }
 
-    onStart({ instanceId, targetType, topK, searchK, includeReasons }, queries);
+    onStart({ instanceId, targetType, topK: parsedTopK, searchK: parsedSearchK, includeReasons }, queries);
   };
 
   return (
@@ -149,13 +164,15 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
                 id="topK"
                 type="number"
                 min={1}
-                max={100}
-                value={topK}
-                onChange={(e) => setTopK(parseInt(e.target.value) || 50)}
+                value={topKStr}
+                onChange={(e) => setTopKStr(e.target.value)}
+                className={topKError ? "border-destructive" : ""}
               />
-              <p className="text-xs text-muted-foreground">
-                Number of matches per query
-              </p>
+              {topKError ? (
+                <p className="text-xs text-destructive">{topKError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Number of matches per query</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -163,14 +180,16 @@ export function ConfigStep({ queries: initialQueries, initialConfig, onStart, on
               <Input
                 id="searchK"
                 type="number"
-                min={10}
-                max={500}
-                value={searchK}
-                onChange={(e) => setSearchK(parseInt(e.target.value) || 350)}
+                min={1}
+                value={searchKStr}
+                onChange={(e) => setSearchKStr(e.target.value)}
+                className={searchKError ? "border-destructive" : ""}
               />
-              <p className="text-xs text-muted-foreground">
-                Embedding pre-filter size
-              </p>
+              {searchKError ? (
+                <p className="text-xs text-destructive">{searchKError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Embedding pre-filter size</p>
+              )}
             </div>
           </div>
 
