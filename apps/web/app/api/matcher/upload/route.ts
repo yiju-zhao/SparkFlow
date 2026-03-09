@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to S3
     const buffer = Buffer.from(await file.arrayBuffer());
-    await s3StorageClient.uploadImage(
+    await s3StorageClient.upload(
       fileKey,
       buffer,
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

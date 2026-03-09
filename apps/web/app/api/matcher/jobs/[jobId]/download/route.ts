@@ -50,7 +50,7 @@ export async function GET(
     }
 
     // Get stream from S3
-    const { stream, contentType } = await s3StorageClient.getImageStream(
+    const { stream, contentType } = await s3StorageClient.getStream(
       job.resultFileKey,
     );
 

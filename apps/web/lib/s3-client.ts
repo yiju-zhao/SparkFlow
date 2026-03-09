@@ -1,8 +1,8 @@
 /**
- * S3/MinIO Client
+ * S3/MinIO Storage Client
  *
- * Handles image storage in S3-compatible object storage (MinIO).
- * Used for storing images extracted from PDFs by MinerU.
+ * Handles file storage in S3-compatible object storage (MinIO).
+ * Used for storing images, Excel files, and other documents.
  */
 
 import {
@@ -42,12 +42,12 @@ class S3StorageClient {
   }
 
   /**
-   * Upload an image to S3/MinIO
+   * Upload a file to S3/MinIO
    */
-  async uploadImage(
+  async upload(
     key: string,
     data: Buffer | Uint8Array,
-    contentType = "image/png",
+    contentType = "application/octet-stream",
   ): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
@@ -61,9 +61,9 @@ class S3StorageClient {
   }
 
   /**
-   * Get an image from S3/MinIO as a stream
+   * Get a file from S3/MinIO as a stream
    */
-  async getImageStream(
+  async getStream(
     key: string,
   ): Promise<{ stream: Readable; contentType: string | undefined }> {
     const command = new GetObjectCommand({
@@ -86,9 +86,9 @@ class S3StorageClient {
   }
 
   /**
-   * Delete an image from S3/MinIO
+   * Delete a file from S3/MinIO
    */
-  async deleteImage(key: string): Promise<void> {
+  async deleteFile(key: string): Promise<void> {
     const command = new DeleteObjectCommand({
       Bucket: this.bucketName,
       Key: key,
@@ -98,9 +98,9 @@ class S3StorageClient {
   }
 
   /**
-   * Delete all images for a source
+   * Delete all files for a source (images extracted from PDFs, etc.)
    */
-  async deleteSourceImages(sourceId: string): Promise<number> {
+  async deleteSourceFiles(sourceId: string): Promise<number> {
     const prefix = `sources/${sourceId}/images/`;
     let deletedCount = 0;
 
@@ -117,7 +117,7 @@ class S3StorageClient {
 
     for (const obj of listResponse.Contents) {
       if (obj.Key) {
-        await this.deleteImage(obj.Key);
+        await this.deleteFile(obj.Key);
         deletedCount++;
       }
     }
@@ -172,7 +172,7 @@ class S3StorageClient {
       const buffer = Buffer.from(base64Data, "base64");
       const storageKey = this.generateImageKey(sourceId, imageName);
 
-      await this.uploadImage(storageKey, buffer, contentType);
+      await this.upload(storageKey, buffer, contentType);
 
       results.push({
         originalName: imageName,
@@ -205,13 +205,12 @@ export const s3StorageClient = new S3StorageClient();
 // Export class for testing
 export { S3StorageClient };
 
-// Legacy function exports for backward compatibility
-export const uploadImage = s3StorageClient.uploadImage.bind(s3StorageClient);
-export const getImageStream =
-  s3StorageClient.getImageStream.bind(s3StorageClient);
-export const deleteImage = s3StorageClient.deleteImage.bind(s3StorageClient);
+// Legacy function exports (used by dynamic imports in source processors)
+export const deleteImage = s3StorageClient.deleteFile.bind(s3StorageClient);
 export const deleteSourceImages =
-  s3StorageClient.deleteSourceImages.bind(s3StorageClient);
+  s3StorageClient.deleteSourceFiles.bind(s3StorageClient);
+export const getImageStream =
+  s3StorageClient.getStream.bind(s3StorageClient);
 export const generateImageKey =
   s3StorageClient.generateImageKey.bind(s3StorageClient);
 export const uploadSourceImages =

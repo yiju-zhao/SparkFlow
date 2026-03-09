@@ -81,7 +81,7 @@ export async function GET(
               if (dlRes.ok) {
                 const buffer = Buffer.from(await dlRes.arrayBuffer());
                 const fileKey = `match-results/${jobId}.xlsx`;
-                await s3StorageClient.uploadImage(
+                await s3StorageClient.upload(
                   fileKey,
                   buffer,
                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -152,7 +152,7 @@ export async function DELETE(
     const keysToDelete = [job.queryFileKey, job.resultFileKey].filter(Boolean);
     for (const key of keysToDelete) {
       try {
-        await s3StorageClient.deleteImage(key!);
+        await s3StorageClient.deleteFile(key!);
       } catch (s3Err) {
         console.error(`[Matcher] Failed to delete S3 key ${key}:`, s3Err);
         // Continue deleting other files and DB record
