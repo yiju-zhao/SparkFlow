@@ -1,5 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { getInstances, getVenues } from "@/lib/actions/admin";
+import publicationSample from "@/lib/import/examples/publications-sample.json";
+import sessionSample from "@/lib/import/examples/sessions-sample.json";
+import { FormatGuideDialog } from "./components/format-guide-dialog";
 import { InstanceForm } from "./components/instance-form";
 
 export default async function InstancesPage() {
@@ -11,10 +14,16 @@ export default async function InstancesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Instances</h1>
-        <InstanceForm
-          venues={venueList}
-          trigger={<Button>New Instance</Button>}
-        />
+        <div className="flex items-center gap-2">
+          <FormatGuideDialog
+            publicationSample={publicationSample}
+            sessionSample={sessionSample}
+          />
+          <InstanceForm
+            venues={venueList}
+            trigger={<Button>New Instance</Button>}
+          />
+        </div>
       </div>
 
       {instances.length === 0 ? (

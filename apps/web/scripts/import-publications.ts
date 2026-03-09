@@ -10,10 +10,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import {
-  PublicationsFileSchema,
-  type PublicationInput,
-} from "./lib/import-schemas";
+import { PublicationsFileSchema } from "./lib/import-schemas";
 import {
   prisma,
   findOrCreateVenue,
@@ -135,6 +132,7 @@ async function main() {
           title: pub.title,
           authors: pub.authors,
           abstract: pub.abstract,
+          summary: pub.summary,
           affiliations: pub.affiliations,
           countries: pub.countries,
           keywords: pub.keywords,

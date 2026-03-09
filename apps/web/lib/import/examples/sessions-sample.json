@@ -14,6 +14,9 @@
       "topic": ["Virtual Reality", "Immersive Experiences"],
       "affiliation": ["Stanford University", "MIT Media Lab"],
       "technology": ["Unity", "OpenXR"],
+      "sessionFormat": "IN_PERSON",
+      "hasRecording": true,
+      "intendedAudience": "Researchers and practitioners building immersive systems.",
       "publicationTitles": [
         "Understanding User Behavior in Virtual Reality Environments"
       ]
@@ -30,6 +33,9 @@
       "topic": ["Accessibility", "Inclusive Design"],
       "affiliation": ["University of Washington", "Google Research"],
       "technology": ["Screen Readers", "ARIA"],
+      "sessionFormat": "BOTH",
+      "hasRecording": false,
+      "intendedAudience": "Accessibility specialists, frontend engineers, and UX researchers.",
       "publicationTitles": ["AI-Powered Accessibility Tools for Web Navigation"]
     },
     {
@@ -47,6 +53,9 @@
       "topic": ["Remote Collaboration", "CSCW"],
       "affiliation": ["Microsoft Research", "Carnegie Mellon University"],
       "technology": ["WebRTC", "Spatial Audio"],
+      "sessionFormat": "VIRTUAL",
+      "hasRecording": true,
+      "intendedAudience": "Collaboration tool builders and conference organizers.",
       "publicationTitles": [
         "Collaborative Design in Distributed Teams",
         "Paper That Does Not Exist"

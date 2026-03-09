@@ -2,17 +2,29 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import {
+  assertImportMatchesInstance,
+  importPublicationsForInstance,
+  importSessionsForInstance,
+  parseImportPayload,
+  type InstanceImportPayload,
+  type InstanceImportResult,
+} from "@/lib/import/instance-import";
 import prisma from "@/lib/prisma";
+
+async function requireAdminUser() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+}
 
 // ============================================
 // Venue Actions
 // ============================================
 
 export async function getVenues() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   return prisma.venue.findMany({
     include: {
@@ -29,10 +41,7 @@ export async function createVenue(data: {
   type?: string;
   description?: string;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   const venue = await prisma.venue.create({ data });
   revalidatePath("/admin/venues");
@@ -43,10 +52,7 @@ export async function updateVenue(
   id: string,
   data: { name?: string; type?: string; description?: string },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   const venue = await prisma.venue.update({ where: { id }, data });
   revalidatePath("/admin/venues");
@@ -54,10 +60,7 @@ export async function updateVenue(
 }
 
 export async function deleteVenue(id: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   await prisma.venue.delete({ where: { id } });
   revalidatePath("/admin/venues");
@@ -68,10 +71,7 @@ export async function deleteVenue(id: string) {
 // ============================================
 
 export async function getInstances() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   return prisma.instance.findMany({
     include: {
@@ -94,10 +94,7 @@ export async function createInstance(data: {
   website?: string;
   summary?: string;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   const instance = await prisma.instance.create({ data });
   revalidatePath("/admin/instances");
@@ -117,10 +114,7 @@ export async function updateInstance(
     summary?: string;
   },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   const instance = await prisma.instance.update({ where: { id }, data });
   revalidatePath("/admin/instances");
@@ -128,13 +122,97 @@ export async function updateInstance(
 }
 
 export async function deleteInstance(id: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   await prisma.instance.delete({ where: { id } });
   revalidatePath("/admin/instances");
+}
+
+export async function saveInstanceWithImport(input: {
+  instanceId?: string;
+  data: {
+    venueId: string;
+    year: number;
+    name: string;
+    startDate?: Date | null;
+    endDate?: Date | null;
+    location?: string;
+    website?: string;
+    summary?: string;
+  };
+  importPayload?: InstanceImportPayload;
+}): Promise<{
+  instance: {
+    id: string;
+    venueId: string;
+    year: number;
+    name: string;
+    startDate: Date | null;
+    endDate: Date | null;
+    location: string | null;
+    website: string | null;
+    summary: string | null;
+  };
+  importResult?: InstanceImportResult;
+}> {
+  await requireAdminUser();
+
+  const venue = await prisma.venue.findUnique({
+    where: { id: input.data.venueId },
+    select: { id: true, name: true },
+  });
+
+  if (!venue) {
+    throw new Error("Venue not found");
+  }
+
+  const parsedImport = input.importPayload
+    ? parseImportPayload(input.importPayload)
+    : null;
+
+  if (parsedImport) {
+    assertImportMatchesInstance(parsedImport, {
+      venueName: venue.name,
+      year: input.data.year,
+    });
+  }
+
+  const instance = input.instanceId
+    ? await prisma.instance.update({
+        where: { id: input.instanceId },
+        data: input.data,
+      })
+    : await prisma.instance.create({
+        data: input.data,
+      });
+
+  let importResult: InstanceImportResult | undefined;
+
+  if (parsedImport?.kind === "PUBLICATIONS") {
+    importResult = await importPublicationsForInstance(
+      instance.id,
+      parsedImport.data,
+      {
+        reset: input.importPayload?.reset,
+      },
+    );
+  } else if (parsedImport?.kind === "SESSIONS") {
+    importResult = await importSessionsForInstance(
+      instance.id,
+      parsedImport.data,
+      {
+        reset: input.importPayload?.reset,
+      },
+    );
+  }
+
+  revalidatePath("/admin/instances");
+  revalidatePath("/admin/sessions");
+  revalidatePath("/explore/conferences");
+  revalidatePath("/explore/publications");
+  revalidatePath("/explore/sessions");
+
+  return { instance, importResult };
 }
 
 // ============================================
@@ -142,10 +220,7 @@ export async function deleteInstance(id: string) {
 // ============================================
 
 export async function getSessions(instanceId?: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   return prisma.conferenceSession.findMany({
     where: instanceId ? { instanceId } : undefined,
@@ -180,10 +255,7 @@ export async function createSession(data: {
   affiliation?: string[];
   technology?: string[];
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   const conferenceSession = await prisma.conferenceSession.create({ data });
   revalidatePath("/admin/sessions");
@@ -210,10 +282,7 @@ export async function updateSession(
     technology?: string[];
   },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   const conferenceSession = await prisma.conferenceSession.update({
     where: { id },
@@ -224,10 +293,7 @@ export async function updateSession(
 }
 
 export async function deleteSession(id: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   await prisma.conferenceSession.delete({ where: { id } });
   revalidatePath("/admin/sessions");
