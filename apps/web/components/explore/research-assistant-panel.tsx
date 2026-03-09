@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCopilotChat, useCopilotReadable } from "@copilotkit/react-core";
+import { useCopilotChat, useCopilotReadable, useThreads } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
@@ -73,13 +73,18 @@ export function ResearchAssistantPanel({
   const { visibleMessages, appendMessage, reset, isLoading } =
     useCopilotChat();
 
-  // Reset on close
+  // Get thread management to reset thread ID on close
+  const { setThreadId } = useThreads();
+
+  // Reset on close - both messages AND thread ID to avoid "Message not found" error
   useEffect(() => {
     if (!open) {
       reset();
+      // Generate a new thread ID for the next session to avoid message ID mismatch
+      setThreadId(crypto.randomUUID());
       setInput("");
     }
-  }, [open]);
+  }, [open, reset, setThreadId]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
