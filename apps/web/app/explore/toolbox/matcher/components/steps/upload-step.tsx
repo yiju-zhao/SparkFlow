@@ -184,7 +184,7 @@ export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }:
               Upload new file
             </Button>
           </div>
-          <div className="border rounded-lg overflow-hidden max-h-[320px] overflow-y-auto">
+          <div className="border rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
             <QueryPreviewTable queries={queries} onQueriesChange={setQueries} />
           </div>
         </div>
