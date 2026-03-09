@@ -88,7 +88,7 @@ function StatsSkeleton() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-[100px] rounded-lg" />
+        <Skeleton key={i} className="h-25 rounded-lg" />
       ))}
     </div>
   );
@@ -99,11 +99,11 @@ function ChartsSkeleton() {
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="bg-card rounded-lg p-6">
         <Skeleton className="h-6 w-48 mb-4" />
-        <Skeleton className="h-[300px] w-full" />
+        <Skeleton className="h-75 w-full" />
       </div>
       <div className="bg-card rounded-lg p-6">
         <Skeleton className="h-6 w-48 mb-4" />
-        <Skeleton className="h-[300px] w-full" />
+        <Skeleton className="h-75 w-full" />
       </div>
     </div>
   );

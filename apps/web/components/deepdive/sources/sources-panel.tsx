@@ -122,7 +122,7 @@ export function SourcesPanel({
       {/* Header */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
+          <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             SOURCES
           </h2>
@@ -220,7 +220,7 @@ const SourceItem = memo(function SourceItem({
     >
       {/* Delete Badge - hover visible */}
       <button
-        className="absolute -top-2 -right-2 h-[18px] w-[18px] rounded-full bg-accent-red flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        className="absolute -top-2 -right-2 h-4.5 w-4.5 rounded-full bg-accent-red flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
         onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
         title="Delete"
       >

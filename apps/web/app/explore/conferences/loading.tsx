@@ -11,14 +11,14 @@ export default function ConferencesLoading() {
       </div>
 
       <div className="flex gap-3">
-        <Skeleton className="h-10 w-[180px]" />
-        <Skeleton className="h-10 w-[180px]" />
-        <Skeleton className="h-10 w-[180px]" />
+        <Skeleton className="h-10 w-45" />
+        <Skeleton className="h-10 w-45" />
+        <Skeleton className="h-10 w-45" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-[180px]" />
+          <Skeleton key={i} className="h-45" />
         ))}
       </div>
     </div>

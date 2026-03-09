@@ -121,7 +121,7 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
   return (
     <div
       ref={chartRef}
-      className={`w-full h-full min-h-[300px] ${className || ""}`}
+      className={`w-full h-full min-h-75 ${className || ""}`}
     />
   );
 }

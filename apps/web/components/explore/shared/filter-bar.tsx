@@ -69,7 +69,7 @@ export function FilterBar({ filters, className }: FilterBarProps) {
           value={searchParams.get(filter.key) || "all"}
           onValueChange={(value) => updateFilter(filter.key, value)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-45">
             <SelectValue placeholder={filter.placeholder || filter.label} />
           </SelectTrigger>
           <SelectContent>

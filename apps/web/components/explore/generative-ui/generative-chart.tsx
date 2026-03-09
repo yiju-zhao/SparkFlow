@@ -206,7 +206,7 @@ export function GenerativeChart({ title, chartType, data }: GenerativeChartProps
   return (
     <div className="bg-card rounded-lg p-4">
       <h3 className="text-sm font-semibold mb-4">{title}</h3>
-      <div className="h-[200px]">
+      <div className="h-50">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />
         ) : (

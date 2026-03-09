@@ -101,7 +101,7 @@ export function QueryPreviewTable({
                     onChange={(e) =>
                       setEditValues({ ...editValues, query: e.target.value })
                     }
-                    className="min-h-[60px] resize-none"
+                    className="min-h-15 resize-none"
                     rows={2}
                   />
                 ) : (

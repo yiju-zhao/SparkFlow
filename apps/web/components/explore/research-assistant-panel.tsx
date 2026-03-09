@@ -71,21 +71,25 @@ export function ResearchAssistantPanel({
   const suggestions = useContextSuggestions();
 
   // Use CopilotKit for chat state
+  // Note: visibleMessages and appendMessage are deprecated but still functional
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   const { visibleMessages, appendMessage, reset, isLoading } =
     useCopilotChat();
 
   // Get thread management to reset thread ID on close
   const { setThreadId } = useThreads();
 
-  // Reset on close - both messages AND thread ID to avoid "Message not found" error
-  useEffect(() => {
-    if (!open) {
-      reset();
-      // Generate a new thread ID for the next session to avoid message ID mismatch
-      setThreadId(uuidv4());
-      setInput("");
-    }
-  }, [open, reset, setThreadId]);
+  // Handler to close panel and reset state
+  const handleClose = () => {
+    // Reset messages first
+    reset();
+    // Generate a new thread ID for the next session to avoid message ID mismatch
+    setThreadId(uuidv4());
+    // Clear input
+    setInput("");
+    // Close the panel
+    onOpenChange(false);
+  };
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -138,7 +142,7 @@ export function ResearchAssistantPanel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
           />
 
           {/* Panel */}
@@ -161,7 +165,7 @@ export function ResearchAssistantPanel({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => onOpenChange(false)}
+                onClick={handleClose}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -182,7 +186,7 @@ export function ResearchAssistantPanel({
                       Explore trends, compare papers, find key insights
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2 w-full max-w-[280px]">
+                  <div className="flex flex-col gap-2 w-full max-w-70">
                     {suggestions.map((s) => (
                       <button
                         key={s}

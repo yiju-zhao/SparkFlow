@@ -101,7 +101,7 @@ export function RecentConferences({ conferences }: RecentConferencesProps) {
           >
             <div className="flex items-center gap-5 min-w-0">
               {/* ID / Year Column */}
-              <div className="w-[50px] shrink-0">
+              <div className="w-12.5 shrink-0">
                 <span className="font-mono text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                   #{conference.year}
                 </span>
@@ -135,7 +135,7 @@ export function RecentConferences({ conferences }: RecentConferencesProps) {
               </div>
 
               {/* Stats Column */}
-              <div className="text-right w-[80px]">
+              <div className="text-right w-20">
                 <span className="font-mono text-[13px] font-semibold text-foreground">
                   +{conference.publicationCount}
                 </span>

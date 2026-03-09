@@ -88,5 +88,5 @@ export function StatusPieChart({ data }: StatusPieChartProps) {
     );
   }
 
-  return <div ref={chartRef} className="w-full h-full min-h-[250px]" />;
+  return <div ref={chartRef} className="w-full h-full min-h-62.5" />;
 }

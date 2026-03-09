@@ -14,7 +14,7 @@ export default async function MatchHistoryPage() {
   const session = await auth();
   if (!session?.user?.id) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center justify-center min-h-100">
         <p className="text-muted-foreground">Please sign in to view your history.</p>
       </div>
     );

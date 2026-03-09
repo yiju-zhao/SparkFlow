@@ -73,7 +73,7 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
   return (
     <div className="bg-card rounded-lg p-6">
       <h3 className="text-sm font-semibold mb-4">Publications by Year</h3>
-      <div className="h-[260px]">
+      <div className="h-65">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />
         ) : (

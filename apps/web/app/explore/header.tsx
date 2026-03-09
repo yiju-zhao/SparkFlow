@@ -60,7 +60,7 @@ export function ExploreHeader({
           {subtitle && (
             <>
               <span className={`${accentColor} font-bold text-base`}>&gt;</span>
-              <span className="font-medium text-sm truncate max-w-[200px]">
+              <span className="font-medium text-sm truncate max-w-50">
                 {subtitle}
               </span>
             </>

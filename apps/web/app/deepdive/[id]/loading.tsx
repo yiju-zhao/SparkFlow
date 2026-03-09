@@ -24,7 +24,7 @@ export default function NotebookLoading() {
       {/* Main Content - 3 Panel Grid Skeleton */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sources Panel Skeleton (Left) */}
-        <div className="h-full w-[280px] shrink-0 border-r border-border">
+        <div className="h-full w-70 shrink-0 border-r border-border">
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between border-b border-border px-4 py-2">
               <Skeleton className="h-4 w-16" />
@@ -73,7 +73,7 @@ export default function NotebookLoading() {
         </div>
 
         {/* Studio Panel Skeleton (Right) */}
-        <div className="h-full w-[320px] shrink-0 border-l border-border">
+        <div className="h-full w-80 shrink-0 border-l border-border">
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between border-b border-border px-4 py-2">
               <Skeleton className="h-4 w-12" />

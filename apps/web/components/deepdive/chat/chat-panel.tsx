@@ -499,7 +499,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
       {/* Header - transparent, content scrolls behind */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between absolute top-0 left-0 right-0 z-10">
         <div className="flex items-center gap-3 bg-white dark:bg-background rounded-[4px] px-3 py-1.5">
-          <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
+          <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             DIALOGUE
           </h2>
@@ -727,7 +727,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
             }}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about your sources..."
-            className="min-h-[40px] max-h-[120px] resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0 overflow-hidden"
+            className="min-h-10 max-h-30 resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0 overflow-hidden"
             disabled={stream.isLoading}
             rows={1}
           />

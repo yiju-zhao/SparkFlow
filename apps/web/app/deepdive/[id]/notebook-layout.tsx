@@ -205,7 +205,7 @@ function NotebookLayoutInner({
             deepdive
           </Link>
           <span className="text-[#0A0A0A] dark:text-[#CE0E2D] font-bold text-[14px]">&gt;</span>
-          <span className="text-[#0A0A0A] dark:text-[#8A8A8A] font-semibold dark:font-normal text-[13px] tracking-[-0.02em] truncate max-w-[400px]">
+          <span className="text-[#0A0A0A] dark:text-[#8A8A8A] font-semibold dark:font-normal text-[13px] tracking-[-0.02em] truncate max-w-100">
             {notebook.name}
           </span>
         </div>

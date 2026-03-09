@@ -271,7 +271,7 @@ export function CollaborationNetwork({
         >
           <Maximize2 className="h-3.5 w-3.5" />
         </Button>
-        <div ref={chartRef} className="w-full h-full min-h-[300px]" />
+        <div ref={chartRef} className="w-full h-full min-h-75" />
       </div>
 
       {/* Expanded fullscreen */}

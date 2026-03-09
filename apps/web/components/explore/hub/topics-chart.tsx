@@ -75,7 +75,7 @@ export function TopicsChart({ data }: TopicsChartProps) {
   return (
     <div className="bg-card rounded-lg p-6">
       <h3 className="text-sm font-semibold mb-4">Top Research Topics</h3>
-      <div className="h-[260px]">
+      <div className="h-65">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />
         ) : (

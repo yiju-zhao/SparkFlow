@@ -96,7 +96,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
               <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-[400px] p-4">
+          <PopoverContent align="end" className="w-100 p-4">
             <div className="space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide font-mono">
                 Required Format
@@ -145,7 +145,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
               Upload new file
             </Button>
           </div>
-          <div className="border rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+          <div className="border rounded-lg overflow-hidden max-h-125 overflow-y-auto">
             <QueryPreviewTable queries={queries} onQueriesChange={setQueries} />
           </div>
         </div>

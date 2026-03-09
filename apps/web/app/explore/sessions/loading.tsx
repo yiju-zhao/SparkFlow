@@ -11,8 +11,8 @@ export default function SessionsLoading() {
       </div>
 
       <div className="flex gap-3">
-        <Skeleton className="h-10 w-[180px]" />
-        <Skeleton className="h-10 w-[180px]" />
+        <Skeleton className="h-10 w-45" />
+        <Skeleton className="h-10 w-45" />
       </div>
 
       <div className="space-y-2">

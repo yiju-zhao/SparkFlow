@@ -108,7 +108,7 @@ export function FormatGuideDialog({
               <div className="border-b bg-muted/30 px-4 py-2 text-sm font-medium">
                 Example JSON
               </div>
-              <pre className="max-h-[420px] overflow-auto bg-slate-950 p-4 text-xs text-slate-50">
+              <pre className="max-h-105 overflow-auto bg-slate-950 p-4 text-xs text-slate-50">
                 {JSON.stringify(publicationSample, null, 2)}
               </pre>
             </div>
@@ -151,7 +151,7 @@ export function FormatGuideDialog({
               <div className="border-b bg-muted/30 px-4 py-2 text-sm font-medium">
                 Example JSON
               </div>
-              <pre className="max-h-[420px] overflow-auto bg-slate-950 p-4 text-xs text-slate-50">
+              <pre className="max-h-105 overflow-auto bg-slate-950 p-4 text-xs text-slate-50">
                 {JSON.stringify(sessionSample, null, 2)}
               </pre>
             </div>
