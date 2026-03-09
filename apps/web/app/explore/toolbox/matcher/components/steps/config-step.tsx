@@ -13,6 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
+import { QueryPreviewTable } from "../query-preview-table";
+import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface Instance {
   id: string;
@@ -23,29 +25,36 @@ interface Instance {
   };
 }
 
+interface ConfigValues {
+  instanceId: string;
+  targetType: "SESSION" | "PUBLICATION";
+  topK: number;
+  searchK: number;
+  includeReasons: boolean;
+}
+
 interface ConfigStepProps {
   fileKey: string;
-  onNext: (config: {
-    instanceId: string;
-    targetType: "SESSION" | "PUBLICATION";
-    topK: number;
-    searchK: number;
-    includeReasons: boolean;
-  }) => void;
+  queries: ParsedQuery[];
+  initialConfig?: ConfigValues;
+  onStart: (config: ConfigValues, queries: ParsedQuery[]) => void;
   onBack: () => void;
   onCancel: () => void;
 }
 
-export function ConfigStep({ onNext, onBack, onCancel }: ConfigStepProps) {
+export function ConfigStep({ queries: initialQueries, initialConfig, onStart, onBack }: ConfigStepProps) {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [instanceId, setInstanceId] = useState("");
-  const [targetType, setTargetType] = useState<"SESSION" | "PUBLICATION">("SESSION");
-  const [topK, setTopK] = useState(50);
-  const [searchK, setSearchK] = useState(350);
-  const [includeReasons, setIncludeReasons] = useState(true);
+  const [instanceId, setInstanceId] = useState(initialConfig?.instanceId ?? "");
+  const [targetType, setTargetType] = useState<"SESSION" | "PUBLICATION">(
+    initialConfig?.targetType ?? "SESSION"
+  );
+  const [topK, setTopK] = useState(initialConfig?.topK ?? 50);
+  const [searchK, setSearchK] = useState(initialConfig?.searchK ?? 350);
+  const [includeReasons, setIncludeReasons] = useState(initialConfig?.includeReasons ?? true);
+  const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries);
 
   useEffect(() => {
     async function loadInstances() {
@@ -55,8 +64,8 @@ export function ConfigStep({ onNext, onBack, onCancel }: ConfigStepProps) {
         const data = await response.json();
         setInstances(data);
 
-        // Auto-select first instance
-        if (data.length > 0) {
+        // Auto-select first instance only if no initial config
+        if (!initialConfig?.instanceId && data.length > 0) {
           setInstanceId(data[0].id);
         }
       } catch (err) {
@@ -67,23 +76,27 @@ export function ConfigStep({ onNext, onBack, onCancel }: ConfigStepProps) {
     }
 
     loadInstances();
-  }, []);
+  }, [initialConfig?.instanceId]);
 
-  const handleNext = () => {
+  const handleStart = () => {
     if (!instanceId) {
       setError("Please select a conference");
       return;
     }
+    if (queries.length === 0) {
+      setError("No queries to match");
+      return;
+    }
 
-    onNext({ instanceId, targetType, topK, searchK, includeReasons });
+    onStart({ instanceId, targetType, topK, searchK, includeReasons }, queries);
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Configure Matching</h3>
+        <h3 className="text-lg font-medium">Configure & Preview</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Select the conference to match against and configure options.
+          Select the conference, configure options, and review queries before matching.
         </p>
       </div>
 
@@ -174,12 +187,25 @@ export function ConfigStep({ onNext, onBack, onCancel }: ConfigStepProps) {
         </div>
       )}
 
+      {/* Query preview */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <Label>Queries ({queries.length})</Label>
+        </div>
+        <div className="border rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
+          <QueryPreviewTable
+            queries={queries}
+            onQueriesChange={setQueries}
+          />
+        </div>
+      </div>
+
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={handleNext} disabled={!instanceId || isLoading}>
-          Continue
+        <Button onClick={handleStart} disabled={!instanceId || isLoading || queries.length === 0}>
+          Start Matching
         </Button>
       </div>
     </div>
