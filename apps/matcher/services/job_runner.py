@@ -175,6 +175,11 @@ class JobRunner:
                     else:
                         master_df[bu] = ""
 
+            # Drop database PK columns before writing to Excel
+            master_df = master_df.drop(columns=["id"], errors="ignore")
+            for bu in results_by_query:
+                results_by_query[bu] = results_by_query[bu].drop(columns=["id"], errors="ignore")
+
             # Create result Excel
             self.job_store.update_job(job_id, progress=85, error_message="Creating result file...")
             result_bytes = self.excel_processor.create_result_excel(
