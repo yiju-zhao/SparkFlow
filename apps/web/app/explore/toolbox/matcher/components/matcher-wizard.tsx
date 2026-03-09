@@ -11,11 +11,11 @@ import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
 import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
 
-const STEPS = [
-  { id: "upload", label: "upload" },
-  { id: "config", label: "configure" },
-  { id: "running", label: "match" },
-  { id: "results", label: "results" },
+// Display steps omit the "running" state — internal steps are 0=upload,1=config,2=running,3=results
+const DISPLAY_STEPS = [
+  { id: "upload", label: "upload", internalStep: 0 },
+  { id: "config", label: "configure", internalStep: 1 },
+  { id: "results", label: "results", internalStep: 3 },
 ];
 
 type WizardConfig = {
@@ -147,13 +147,12 @@ export function MatcherWizard() {
     router.push("/explore");
   }, [router]);
 
-  // Navigate to a completed step
-  const handleStepClick = useCallback((targetStep: number) => {
+  // Navigate to a completed step — allowed from any step except running (2)
+  const handleStepClick = useCallback((targetInternalStep: number) => {
     setState((prev) => {
-      // Only allow clicking completed steps (before current), not running/results
-      if (targetStep >= prev.step) return prev;
-      if (prev.step >= 2) return prev; // Can't go back from running/results
-      return { ...prev, step: targetStep };
+      if (prev.step === 2) return prev; // Can't navigate during running
+      if (targetInternalStep >= prev.step) return prev; // Can't jump forward
+      return { ...prev, step: targetInternalStep };
     });
   }, []);
 
@@ -199,50 +198,46 @@ export function MatcherWizard() {
   };
 
   return (
-    <Card className="overflow-hidden max-w-2xl mx-auto">
+    <Card className="overflow-hidden max-w-3xl mx-auto">
       <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
-        {STEPS.map((step, index) => (
-          <div key={step.id} className="flex items-center gap-1">
-            {index > 0 && (
-              <span className="text-muted-foreground/40 mx-2">/</span>
-            )}
-            <button
-              type="button"
-              onClick={() => handleStepClick(index)}
-              disabled={index >= state.step || state.step >= 2}
-              className={cn(
-                "flex items-center gap-1 rounded px-1 -mx-1 transition-colors",
-                index < state.step && state.step < 2
-                  ? "hover:bg-muted cursor-pointer"
-                  : "cursor-default",
+        {DISPLAY_STEPS.map((step, index) => {
+          const isActive = step.internalStep === state.step ||
+            (state.step === 2 && step.internalStep === 3); // show results as active during running
+          const isPast = step.internalStep < state.step && !(state.step === 2 && step.internalStep === 3);
+          const isClickable = isPast && state.step !== 2;
+          return (
+            <div key={step.id} className="flex items-center gap-1">
+              {index > 0 && (
+                <span className="text-muted-foreground/40 mx-2">/</span>
               )}
-            >
-              <span
+              <button
+                type="button"
+                onClick={() => isClickable && handleStepClick(step.internalStep)}
+                disabled={!isClickable}
                 className={cn(
-                  "tabular-nums",
-                  index === state.step
-                    ? "text-primary font-bold"
-                    : index < state.step
-                      ? "text-foreground"
-                      : "text-muted-foreground",
+                  "flex items-center gap-1 rounded px-1 -mx-1 transition-colors",
+                  isClickable ? "hover:bg-muted cursor-pointer" : "cursor-default",
                 )}
               >
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span
-                className={cn(
-                  index === state.step
-                    ? "text-foreground font-bold"
-                    : index < state.step
-                      ? "text-foreground"
-                      : "text-muted-foreground",
-                )}
-              >
-                {step.label}
-              </span>
-            </button>
-          </div>
-        ))}
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    isActive ? "text-primary font-bold" : isPast ? "text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span
+                  className={cn(
+                    isActive ? "text-foreground font-bold" : isPast ? "text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {step.label}
+                </span>
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <CardContent className="p-6">{renderStep()}</CardContent>
