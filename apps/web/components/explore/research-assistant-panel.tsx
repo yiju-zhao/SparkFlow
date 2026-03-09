@@ -1,26 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCopilotChat, useCopilotReadable } from "@copilotkit/react-core";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
+import { useGenerativeComponents } from "./generative-ui";
+import { useContextSuggestions } from "@/hooks/use-context-suggestions";
 
 interface ResearchAssistantPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  contextData?: {
+    conferenceId?: string;
+    conferenceName?: string;
+    sessionId?: string;
+    sessionTitle?: string;
+  };
 }
-
-const SUGGESTIONS = [
-  "What are the trending topics?",
-  "Which orgs published the most?",
-  "Summarize the key findings",
-];
 
 export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
@@ -39,44 +36,69 @@ export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
 export function ResearchAssistantPanel({
   open,
   onOpenChange,
+  contextData,
 }: ResearchAssistantPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Register generative UI components with CopilotKit
+  useGenerativeComponents();
+
+  // Build context string for the agent
+  const contextString = useMemo(() => {
+    if (contextData?.conferenceName) {
+      return `User is viewing conference: ${contextData.conferenceName}`;
+    }
+    if (contextData?.sessionTitle) {
+      return `User is viewing session: ${contextData.sessionTitle}`;
+    }
+    return "User is on the Research Hub homepage";
+  }, [contextData]);
+
+  // Make context readable by the agent
+  useCopilotReadable(
+    {
+      description: "Current page context",
+      value: contextString,
+    },
+    [contextString]
+  );
+
+  // Get context-aware suggestions
+  const suggestions = useContextSuggestions();
+
+  // Use CopilotKit for chat state
+  const { visibleMessages, setMessages, appendMessage, isLoading } =
+    useCopilotChat();
+
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      setMessages([]);
+      setInput("");
+    }
+  }, [open, setMessages]);
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [visibleMessages, isLoading]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const content = text || input.trim();
-    if (!content) return;
+    if (!content || isLoading) return;
 
-    const userMsg: Message = {
+    await appendMessage({
       id: Date.now().toString(),
-      role: "user",
+      role: "user" as const,
       content,
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    });
     setInput("");
-    setIsTyping(true);
-
-    // Simulated assistant response (frontend only)
-    setTimeout(() => {
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `I'd be happy to help with that! This feature is coming soon — once connected, I'll be able to analyze publications, sessions, and trends across the research hub to answer your questions in depth.`,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-      setIsTyping(false);
-    }, 1200);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -84,6 +106,18 @@ export function ResearchAssistantPanel({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  // Helper to get message content safely
+  const getMessageContent = (msg: (typeof visibleMessages)[0]) => {
+    if ("content" in msg) return msg.content;
+    return "";
+  };
+
+  // Helper to get message role safely
+  const getMessageRole = (msg: (typeof visibleMessages)[0]) => {
+    if ("role" in msg) return msg.role;
+    return "assistant";
   };
 
   return (
@@ -127,7 +161,7 @@ export function ResearchAssistantPanel({
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {messages.length === 0 && (
+              {visibleMessages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00D084]/10">
                     <Sparkles className="h-6 w-6 text-[#00D084]" />
@@ -141,7 +175,7 @@ export function ResearchAssistantPanel({
                     </p>
                   </div>
                   <div className="flex flex-col gap-2 w-full max-w-[280px]">
-                    {SUGGESTIONS.map((s) => (
+                    {suggestions.map((s) => (
                       <button
                         key={s}
                         onClick={() => handleSend(s)}
@@ -154,24 +188,24 @@ export function ResearchAssistantPanel({
                 </div>
               )}
 
-              {messages.map((msg) => (
+              {visibleMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex ${getMessageRole(msg) === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
                     className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                      msg.role === "user"
+                      getMessageRole(msg) === "user"
                         ? "bg-foreground text-background rounded-br-md"
                         : "bg-muted rounded-bl-md"
                     }`}
                   >
-                    {msg.content}
+                    {getMessageContent(msg)}
                   </div>
                 </div>
               ))}
 
-              {isTyping && (
+              {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
@@ -200,7 +234,7 @@ export function ResearchAssistantPanel({
                   size="icon"
                   className="h-7 w-7 shrink-0 rounded-lg bg-[#00D084] hover:bg-[#00B872] text-white"
                   onClick={() => handleSend()}
-                  disabled={!input.trim() || isTyping}
+                  disabled={!input.trim() || isLoading}
                 >
                   <Send className="h-3.5 w-3.5" />
                 </Button>

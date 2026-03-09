@@ -2,15 +2,15 @@
 status: awaiting_human_verify
 trigger: "sse-error-at-matching-completion"
 created: 2026-03-06T00:00:00.000Z
-updated: 2026-03-06T00:20:00.000Z
+updated: 2026-03-06T00:26:00.000Z
 ---
 
 ## Current Focus
 
-hypothesis: When matcher service closes SSE connection on job completion, the SSE proxy in Next.js doesn't properly handle the closure, causing onerror to fire and triggering error handling instead of completion
-test: Check if SSE stream proxy properly handles connection closure from backend service
-expecting: Find that SSE error fires because connection is closed abruptly without proper done event
-next_action: Investigate how matcher service sends completion event and closes connection
+hypothesis: The fix in hooks.ts was incomplete because client.ts logs the error to console BEFORE calling onError callback. The console.error at line 82 in client.ts fires even though hooks.ts ignores the callback.
+test: Modify client.ts to not log error when connection closes - either remove the console.error or make it conditional
+expecting: Console should no longer show "[MatcherClient] SSE error: {}" after completion
+next_action: Apply fix to client.ts - remove or change the console.error on line 82
 
 ## Symptoms
 
@@ -46,9 +46,14 @@ started: Started happening after recent changes to persist jobs to database and 
   found: Database only updates status when GET is called for PROCESSING jobs. No automatic update when SSE completes
   implication: If SSE errors before completion message is received, database never gets updated to COMPLETED status
 
+- timestamp: 2026-03-06T00:25:00Z
+  checked: lib/matcher/client.ts line 82 onerror handler
+  found: The console.error logs "[MatcherClient] SSE error: {}" BEFORE calling the onError callback. Even though hooks.ts ignores the callback after completion, the console.error still fires.
+  implication: Need to fix client.ts to not log an error for expected connection closure
+
 ## Resolution
 
-root_cause: SSE event_generator in matcher service sends COMPLETED status message, then immediately breaks loop and closes connection. The EventSource.onerror fires when connection closes (normal behavior). The client's onerror handler doesn't check if the job already completed - it always calls onErrorRef.current(error). This causes both onComplete and onError to potentially be called, with onError potentially overwriting the successful completion state.
-fix: Added a `jobCompleted` flag in the useJobProgress hook that is set to true when status is COMPLETED or FAILED. The onerror handler now checks this flag and ignores the error if the job already completed, logging "SSE connection closed after completion (expected)" instead.
-verification: Code change verified - the fix correctly ignores onerror events after successful completion
-files_changed: [apps/web/lib/matcher/hooks.ts]
+root_cause: Two-part issue: (1) SSE event_generator closes connection after completion, triggering EventSource.onerror. (2) client.ts logs console.error BEFORE calling onError callback, so even though hooks.ts ignores the callback after completion, the error is still logged to console.
+fix: Part 1 (hooks.ts): Added a `jobCompleted` flag that is set to true when status is COMPLETED or FAILED. The onerror handler checks this flag and ignores errors after completion. Part 2 (client.ts): Changed console.error to console.log with message "SSE connection closed" since this is expected behavior after job completion, not an error condition.
+verification: Code changes verified in both files
+files_changed: [apps/web/lib/matcher/hooks.ts, apps/web/lib/matcher/client.ts]

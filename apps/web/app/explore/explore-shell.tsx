@@ -7,11 +7,19 @@ import {
   ResearchAssistantTrigger,
 } from "@/components/explore/research-assistant-panel";
 
-interface ExploreShellProps extends ExploreHeaderProps {
-  children: React.ReactNode;
+interface AIContext {
+  conferenceId?: string;
+  conferenceName?: string;
+  sessionId?: string;
+  sessionTitle?: string;
 }
 
-export function ExploreShell({ children, ...headerProps }: ExploreShellProps) {
+interface ExploreShellProps extends ExploreHeaderProps {
+  children: React.ReactNode;
+  aiContext?: AIContext;
+}
+
+export function ExploreShell({ children, aiContext, ...headerProps }: ExploreShellProps) {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -38,6 +46,7 @@ export function ExploreShell({ children, ...headerProps }: ExploreShellProps) {
       <ResearchAssistantPanel
         open={assistantOpen}
         onOpenChange={setAssistantOpen}
+        contextData={aiContext}
       />
     </div>
   );
