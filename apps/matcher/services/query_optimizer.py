@@ -7,19 +7,16 @@ rewrite vague requests into clearer, more matchable search text.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import re
 from dataclasses import dataclass, field
 
 from openai import OpenAI
+from pydantic import BaseModel, Field
 
 from services.excel_processor import ExcelProcessor
 
 logger = logging.getLogger(__name__)
-
-_JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 OPTIMIZER_SYSTEM_PROMPT = """
 You optimize enterprise search queries for semantic matching.
@@ -30,13 +27,6 @@ Your job for each business unit (BU):
 3. Preserve the original business intent. Do not invent hard requirements that are not implied.
 4. Organize the result into 2-6 relatively independent semantic lines when multiple topics exist.
 5. Produce final search text optimized for semantic matching against conference sessions or publications.
-
-Return valid JSON only with this schema:
-{
-  "optimized_query_native": "structured text in the user's original language when possible",
-  "optimized_query_en": "structured English text for semantic matching",
-  "focuses": ["short focus 1", "short focus 2"]
-}
 """
 
 OPTIMIZER_USER_PROMPT_TEMPLATE = """
@@ -46,8 +36,22 @@ Business unit: {bu}
 Original queries:
 {queries}
 
-Please merge similar intents, remove redundancy, make vague points more specific, and return the optimized result as JSON only.
+Return a structured optimization result. Merge similar intents, remove redundancy, and make vague points more specific while preserving the original business intent.
 """
+
+
+class QueryOptimizationResponse(BaseModel):
+    """Structured output schema for query optimization."""
+
+    optimized_query_native: str = Field(
+        description="Structured query text in the user's original language when possible."
+    )
+    optimized_query_en: str = Field(
+        description="English search text optimized for semantic matching."
+    )
+    focuses: list[str] = Field(
+        description="Short, relatively independent semantic focuses covered by the optimized query."
+    )
 
 
 @dataclass(slots=True)
@@ -69,8 +73,9 @@ class QueryOptimizer:
         self.enabled = (
             os.getenv("ENABLE_MATCHER_QUERY_OPTIMIZER", "true").lower() == "true"
         )
-        self.model = os.getenv("MATCHER_QUERY_OPTIMIZER_MODEL", "gpt-4.1-mini")
-        self.base_url = os.getenv("MATCHER_QUERY_OPTIMIZER_BASE_URL")
+        self.model = os.getenv(
+            "MATCHER_QUERY_OPTIMIZER_MODEL", "gpt-4o-2024-08-06"
+        )
         self.api_key = self._resolve_api_key()
         self._client: OpenAI | None = None
 
@@ -107,33 +112,45 @@ class QueryOptimizer:
                 target_type=target_type,
                 bu=bu,
                 queries="\n".join(
-                    f"{index}. {query}" for index, query in enumerate(normalized_queries, start=1)
+                    f"{index}. {query}"
+                    for index, query in enumerate(normalized_queries, start=1)
                 ),
             )
-            response = client.chat.completions.create(
+            response = client.responses.parse(
                 model=self.model,
-                messages=[
+                input=[
                     {"role": "system", "content": OPTIMIZER_SYSTEM_PROMPT.strip()},
                     {"role": "user", "content": prompt.strip()},
                 ],
-                temperature=0.2,
-                max_tokens=900,
+                text_format=QueryOptimizationResponse,
             )
-            content = (response.choices[0].message.content or "").strip()
-            parsed = self._parse_response(content)
-            optimized_native = (parsed.get("optimized_query_native") or "").strip()
-            optimized_en = (parsed.get("optimized_query_en") or "").strip()
-            focuses = [
-                str(item).strip()
-                for item in parsed.get("focuses", [])
-                if str(item).strip()
-            ]
+            parsed = response.output_parsed
+            if not parsed:
+                refusal = self._extract_refusal(response)
+                if refusal:
+                    logger.warning(
+                        "Query optimization refused for BU '%s': %s. Falling back to deterministic merge.",
+                        bu,
+                        refusal,
+                    )
+                else:
+                    logger.warning(
+                        "Query optimization returned no parsed payload for BU '%s'. Falling back to deterministic merge.",
+                        bu,
+                    )
+                return self._fallback_result(normalized_queries, fallback_native)
+
+            optimized_native = parsed.optimized_query_native.strip()
+            optimized_en = parsed.optimized_query_en.strip()
+            focuses = [item.strip() for item in parsed.focuses if item.strip()]
 
             if not optimized_native:
                 optimized_native = fallback_native
 
             if not optimized_en:
-                optimized_en = self.excel_processor._translate_to_english(optimized_native)
+                optimized_en = self.excel_processor._translate_to_english(
+                    optimized_native
+                )
 
             return QueryOptimizationResult(
                 optimized_query_native=optimized_native,
@@ -165,10 +182,7 @@ class QueryOptimizer:
 
     def _get_client(self) -> OpenAI:
         if self._client is None:
-            client_kwargs = {"api_key": self.api_key}
-            if self.base_url:
-                client_kwargs["base_url"] = self.base_url
-            self._client = OpenAI(**client_kwargs)
+            self._client = OpenAI(api_key=self.api_key)
         return self._client
 
     @staticmethod
@@ -213,17 +227,13 @@ class QueryOptimizer:
         )
 
     @staticmethod
-    def _parse_response(content: str) -> dict:
-        if not content:
-            return {}
-
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError:
-            match = _JSON_BLOCK_RE.search(content)
-            if not match:
-                return {}
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                return {}
+    def _extract_refusal(response) -> str | None:
+        for output in getattr(response, "output", []) or []:
+            if getattr(output, "type", None) != "message":
+                continue
+            for item in getattr(output, "content", []) or []:
+                if getattr(item, "type", None) == "refusal":
+                    refusal = getattr(item, "refusal", None)
+                    if refusal:
+                        return str(refusal)
+        return None
