@@ -7,6 +7,7 @@ import { GenerativeChart } from "./generative-chart";
 
 // Re-define schemas using Zod 3-compatible pattern for CopilotKit
 // CopilotKit expects Zod 3 ZodType interface
+// Using z.any() for record values to avoid deep type instantiation issues
 const TableSchema = z.object({
   title: z.string().describe("The title displayed above the table"),
   columns: z
@@ -18,7 +19,7 @@ const TableSchema = z.object({
       })
     )
     .describe("Column definitions for the table"),
-  rows: z.array(z.record(z.string(), z.unknown())).describe("Array of row data objects"),
+  rows: z.array(z.record(z.string(), z.any())).describe("Array of row data objects"),
   rowLinkPrefix: z.string().optional().describe("URL prefix for row click navigation"),
   pageSize: z.number().optional().default(10).describe("Number of rows per page"),
 });
@@ -36,6 +37,9 @@ const ChartSchema = z.object({
     .describe("Array of data points with labels and values"),
 });
 
+// Type assertion to avoid deep type instantiation issues with useComponent
+type AnyZodSchema = z.ZodType<any, any, any>;
+
 /**
  * Hook that registers generative UI components with CopilotKit.
  *
@@ -52,11 +56,14 @@ const ChartSchema = z.object({
  */
 export function useGenerativeComponents() {
   // Register table component for displaying session/conference data
+  // Note: TypeScript may show "Type instantiation is excessively deep" due to
+  // complex Zod schema inference with useComponent generics. Runtime works correctly.
+  // @ts-expect-error - Zod schema inference exceeds TypeScript's type depth limit
   useComponent({
     name: "showTable",
     description:
       "Display a table with session or conference data. Use this when presenting structured data like search results, session lists, or venue information.",
-    parameters: TableSchema,
+    parameters: TableSchema as AnyZodSchema,
     render: GenerativeTable,
   });
 
@@ -65,7 +72,7 @@ export function useGenerativeComponents() {
     name: "showChart",
     description:
       "Display a chart (bar, line, or pie) with data from the research hub. Use this to visualize trends, distributions, or comparisons.",
-    parameters: ChartSchema,
+    parameters: ChartSchema as AnyZodSchema,
     render: GenerativeChart,
   });
 }

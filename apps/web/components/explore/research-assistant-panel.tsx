@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCopilotChat, useCopilotReadable } from "@copilotkit/react-core";
+import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
 import { useGenerativeComponents } from "./generative-ui";
@@ -69,16 +70,16 @@ export function ResearchAssistantPanel({
   const suggestions = useContextSuggestions();
 
   // Use CopilotKit for chat state
-  const { visibleMessages, setMessages, appendMessage, isLoading } =
+  const { visibleMessages, appendMessage, reset, isLoading } =
     useCopilotChat();
 
   // Reset on close
   useEffect(() => {
     if (!open) {
-      setMessages([]);
+      reset();
       setInput("");
     }
-  }, [open, setMessages]);
+  }, [open]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -93,11 +94,12 @@ export function ResearchAssistantPanel({
     const content = text || input.trim();
     if (!content || isLoading) return;
 
-    await appendMessage({
-      id: Date.now().toString(),
-      role: "user" as const,
-      content,
-    });
+    await appendMessage(
+      new TextMessage({
+        role: MessageRole.User,
+        content,
+      })
+    );
     setInput("");
   };
 
@@ -109,8 +111,8 @@ export function ResearchAssistantPanel({
   };
 
   // Helper to get message content safely
-  const getMessageContent = (msg: (typeof visibleMessages)[0]) => {
-    if ("content" in msg) return msg.content;
+  const getMessageContent = (msg: (typeof visibleMessages)[0]): string => {
+    if ("content" in msg && typeof msg.content === "string") return msg.content;
     return "";
   };
 
