@@ -163,7 +163,7 @@ export function ResearchAssistantPanel({
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {visibleMessages.length === 0 && (
+              {(visibleMessages?.length ?? 0) === 0 && (
                 <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00D084]/10">
                     <Sparkles className="h-6 w-6 text-[#00D084]" />
@@ -190,7 +190,7 @@ export function ResearchAssistantPanel({
                 </div>
               )}
 
-              {visibleMessages.map((msg) => (
+              {visibleMessages?.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${getMessageRole(msg) === "user" ? "justify-end" : "justify-start"}`}
