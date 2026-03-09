@@ -95,6 +95,7 @@ export function MatcherWizard() {
           instanceId: config.instanceId,
           targetType: config.targetType,
           queries,
+          queryFileKey: state.fileKey ?? undefined,
           topK: config.topK,
           searchK: config.searchK,
           includeReasons: config.includeReasons,

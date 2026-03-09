@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { instanceId, targetType, queries, topK = 50, searchK = 350, includeReasons = true } = body;
+    const { instanceId, targetType, queries, queryFileKey, topK = 50, searchK = 350, includeReasons = true } = body;
 
     console.log("[Matcher Jobs] Config:", { 
       instanceId, 
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
         topK,
         searchK,
         includeReasons,
-        queryFileKey: job.query_file_key || "",
+        queryFileKey: queryFileKey || job.query_file_key || "",
         queryData: queries ?? undefined,
         status: "PENDING",
         queryCount: queries?.length || 0,
