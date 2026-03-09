@@ -45,18 +45,6 @@ export function RunningStep({ progress, onCancel }: RunningStepProps) {
         </Button>
       </div>
 
-      {progress && (
-        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-          <div className="text-sm text-muted-foreground">
-            <p className="font-medium">Queries</p>
-            <p className="text-lg">{progress.queryCount}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Matches found</p>
-            <p className="text-lg">{progress.matchCount}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
