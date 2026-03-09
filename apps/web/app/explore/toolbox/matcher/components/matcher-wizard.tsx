@@ -163,6 +163,8 @@ export function MatcherWizard() {
           <UploadStep
             onNext={handleUploadComplete}
             onCancel={handleCancel}
+            initialFileKey={state.fileKey ?? undefined}
+            initialQueries={state.queries ?? undefined}
           />
         );
       case 1:

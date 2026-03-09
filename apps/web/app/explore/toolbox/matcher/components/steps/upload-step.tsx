@@ -24,6 +24,8 @@ import type { ParsedQuery } from "@/lib/matcher/types";
 interface UploadStepProps {
   onNext: (fileKey: string, queries: ParsedQuery[]) => void;
   onCancel: () => void;
+  initialFileKey?: string;
+  initialQueries?: ParsedQuery[];
 }
 
 async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
@@ -45,10 +47,13 @@ async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
   return queries;
 }
 
-export function UploadStep({ onNext, onCancel }: UploadStepProps) {
+export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }: UploadStepProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // If a previous upload exists and no new file is selected, Continue uses it directly
+  const hasPreviousUpload = !selectedFile && !!initialFileKey && !!initialQueries?.length;
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
@@ -56,6 +61,11 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
   };
 
   const handleUpload = async () => {
+    // Re-use previous upload if no new file was selected
+    if (hasPreviousUpload) {
+      onNext(initialFileKey!, initialQueries!);
+      return;
+    }
     if (!selectedFile) return;
 
     setIsUploading(true);
@@ -150,6 +160,21 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
         </Popover>
       </div>
 
+      {hasPreviousUpload && (
+        <div className="flex items-center justify-between px-4 py-3 rounded-lg border bg-muted/40 text-sm">
+          <span className="text-muted-foreground">
+            Previously uploaded — <span className="text-foreground font-medium">{initialQueries!.length} queries</span>
+          </span>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            onClick={() => setSelectedFile(null)}
+          >
+            Replace
+          </button>
+        </div>
+      )}
+
       <FileDropzone
         onFileSelect={handleFileSelect}
         disabled={isUploading}
@@ -165,7 +190,7 @@ export function UploadStep({ onNext, onCancel }: UploadStepProps) {
         </Button>
         <Button
           onClick={handleUpload}
-          disabled={!selectedFile || isUploading}
+          disabled={(!selectedFile && !hasPreviousUpload) || isUploading}
         >
           {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Continue

@@ -117,7 +117,6 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
             <TableHead>Target</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-center">Queries</TableHead>
-            <TableHead className="text-center">Matches</TableHead>
             <TableHead className="text-center">Top K / Search K</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -161,7 +160,6 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">{job.queryCount}</TableCell>
-                  <TableCell className="text-center">{job.matchCount}</TableCell>
                   <TableCell className="text-center text-muted-foreground text-sm">
                     {job.topK} / {job.searchK}
                   </TableCell>
@@ -201,7 +199,7 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
 
                 {isExpanded && hasQueries && (
                   <TableRow key={`${job.id}-detail`}>
-                    <TableCell colSpan={9} className="bg-muted/30 p-0">
+                    <TableCell colSpan={8} className="bg-muted/30 p-0">
                       <div className="px-6 py-4">
                         <p className="text-sm font-medium mb-3">
                           Query Details ({queries.length} queries)
