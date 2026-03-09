@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
           affiliation: true,
           technology: true,
           sessionFormat: true,
+          hasRecording: true,
           intendedAudience: true,
           sessionUrl: true,
         },
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
           title: true,
           authors: true,
           abstract: true,
+          summary: true,
           affiliations: true,
           countries: true,
           keywords: true,
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
           doi: true,
           pdfUrl: true,
           githubUrl: true,
+          websiteUrl: true,
           status: true,
         },
       });
