@@ -46,8 +46,8 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
   const [error, setError] = useState<string | null>(null);
 
   const [instanceId, setInstanceId] = useState(initialConfig?.instanceId ?? "");
-  const [targetType, setTargetType] = useState<"SESSION" | "PUBLICATION">(
-    initialConfig?.targetType ?? "SESSION"
+  const [targetType, setTargetType] = useState<"SESSION" | "PUBLICATION" | "">(
+    initialConfig?.targetType ?? ""
   );
   const [topKStr, setTopKStr] = useState(String(initialConfig?.topK ?? 50));
   const [searchKStr, setSearchKStr] = useState(String(initialConfig?.searchK ?? 350));
@@ -68,9 +68,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
         const data = await response.json();
         setInstances(data);
 
-        if (!initialConfig?.instanceId && data.length > 0) {
-          setInstanceId(data[0].id);
-        }
+        // No auto-selection — user must choose explicitly
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load instances");
       } finally {
@@ -86,6 +84,10 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
       setError("Please select a conference");
       return;
     }
+    if (!targetType) {
+      setError("Please select what to match against");
+      return;
+    }
     if (queries.length === 0) {
       setError("No queries to match");
       return;
@@ -99,7 +101,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
       return;
     }
 
-    onStart({ instanceId, targetType, topK: parsedTopK, searchK: parsedSearchK, includeReasons }, queries);
+    onStart({ instanceId, targetType: targetType as "SESSION" | "PUBLICATION", topK: parsedTopK, searchK: parsedSearchK, includeReasons }, queries);
   };
 
   return (
@@ -144,7 +146,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
               onValueChange={(v) => setTargetType(v as "SESSION" | "PUBLICATION")}
             >
               <SelectTrigger id="targetType">
-                <SelectValue />
+                <SelectValue placeholder="Select target type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="SESSION">Sessions</SelectItem>
@@ -206,7 +208,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
         <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={handleStart} disabled={!instanceId || isLoading || queries.length === 0}>
+        <Button onClick={handleStart} disabled={!instanceId || !targetType || isLoading || queries.length === 0}>
           Start Matching
         </Button>
       </div>
