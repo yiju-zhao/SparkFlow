@@ -61,7 +61,6 @@ class JobStore:
                 "progress": 0,
                 "match_count": 0,
                 "error_message": None,
-                "result_file_key": None,
                 "result_data": None,
                 "created_at": now,
                 "updated_at": now,

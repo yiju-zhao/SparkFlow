@@ -57,9 +57,7 @@ class MatchJobResponse(BaseModel):
     top_k: int
     search_k: int
     include_reasons: bool
-    query_file_key: Optional[str] = None
     query_data: Optional[list[dict[str, Any]]] = None
-    result_file_key: Optional[str] = None
     status: MatchJobStatus
     progress: int
     error_message: Optional[str] = None
