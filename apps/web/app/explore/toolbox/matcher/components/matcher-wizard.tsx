@@ -28,7 +28,6 @@ type WizardConfig = {
 
 type WizardState = {
   step: number;
-  fileKey: string | null;
   config: WizardConfig | null;
   queries: ParsedQuery[] | null;
   jobId: string | null;
@@ -47,7 +46,6 @@ export function MatcherWizard() {
   const router = useRouter();
   const [state, setState] = useState<WizardState>({
     step: 0,
-    fileKey: null,
     config: null,
     queries: null,
     jobId: null,
@@ -78,9 +76,9 @@ export function MatcherWizard() {
     },
   });
 
-  // Step 0: Upload — preserve fileKey and queries on re-entry
-  const handleUploadComplete = useCallback((fileKey: string, queries: ParsedQuery[]) => {
-    setState((prev) => ({ ...prev, step: 1, fileKey, queries }));
+  // Step 0: Upload — preserve queries on re-entry
+  const handleUploadComplete = useCallback((queries: ParsedQuery[]) => {
+    setState((prev) => ({ ...prev, step: 1, queries }));
   }, []);
 
   // Step 1: Config + Preview — start matching directly
@@ -95,7 +93,6 @@ export function MatcherWizard() {
           instanceId: config.instanceId,
           targetType: config.targetType,
           queries,
-          queryFileKey: state.fileKey ?? undefined,
           topK: config.topK,
           searchK: config.searchK,
           includeReasons: config.includeReasons,
@@ -132,7 +129,6 @@ export function MatcherWizard() {
   const handleReset = useCallback(() => {
     setState({
       step: 0,
-      fileKey: null,
       config: null,
       queries: null,
       jobId: null,
@@ -164,7 +160,6 @@ export function MatcherWizard() {
           <UploadStep
             onNext={handleUploadComplete}
             onCancel={handleCancel}
-            initialFileKey={state.fileKey ?? undefined}
             initialQueries={state.queries ?? undefined}
           />
         );

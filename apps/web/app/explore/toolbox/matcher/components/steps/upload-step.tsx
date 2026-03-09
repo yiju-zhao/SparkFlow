@@ -23,9 +23,8 @@ import { QueryPreviewTable } from "../query-preview-table";
 import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface UploadStepProps {
-  onNext: (fileKey: string, queries: ParsedQuery[]) => void;
+  onNext: (queries: ParsedQuery[]) => void;
   onCancel: () => void;
-  initialFileKey?: string;
   initialQueries?: ParsedQuery[];
 }
 
@@ -47,20 +46,15 @@ async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
   return queries;
 }
 
-export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }: UploadStepProps) {
-  // Start in preview mode if a previous upload exists
-  const [uploadedFileKey, setUploadedFileKey] = useState<string | null>(initialFileKey ?? null);
+export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps) {
   const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries ?? []);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const showPreview = queries.length > 0;
 
-  // Parse immediately when file is dropped — upload happens on Continue
+  // Parse immediately when file is dropped — no S3 upload needed
   const handleFileSelect = async (file: File) => {
-    setSelectedFile(file);
     setError(null);
     setIsParsing(true);
     try {
@@ -69,7 +63,6 @@ export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }:
         throw new Error("No valid rows found. Make sure columns A (BU) and B (Query) are filled.");
       }
       setQueries(parsed);
-      setUploadedFileKey(null); // new file, not yet uploaded to S3
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parse failed");
     } finally {
@@ -78,40 +71,8 @@ export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }:
   };
 
   const handleReplaceFile = () => {
-    setUploadedFileKey(null);
     setQueries([]);
-    setSelectedFile(null);
     setError(null);
-  };
-
-  const handleContinue = async () => {
-    if (uploadedFileKey) {
-      // Re-use existing S3 key (back-navigation case)
-      onNext(uploadedFileKey, queries);
-      return;
-    }
-    if (!selectedFile || queries.length === 0) return;
-
-    setIsUploading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      const response = await fetch("/api/matcher/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to upload file");
-      }
-      const { fileKey } = await response.json();
-      onNext(fileKey, queries);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   return (
@@ -192,7 +153,7 @@ export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }:
         <>
           <FileDropzone
             onFileSelect={handleFileSelect}
-            disabled={isParsing || isUploading}
+            disabled={isParsing}
           />
           {isParsing && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -212,10 +173,9 @@ export function UploadStep({ onNext, onCancel, initialFileKey, initialQueries }:
           Cancel
         </Button>
         <Button
-          onClick={handleContinue}
-          disabled={!showPreview || isUploading || isParsing}
+          onClick={() => onNext(queries)}
+          disabled={!showPreview || isParsing}
         >
-          {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Continue
         </Button>
       </div>
