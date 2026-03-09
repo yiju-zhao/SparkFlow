@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import Link from "next/link";
-import { ExploreShell } from "./explore-shell";
+import { ExploreShellWrapper } from "./explore-shell-wrapper";
 
 // Nav links component for Explore
 import ExploreNavLinks from "./nav-links";
@@ -13,7 +13,7 @@ export default async function ExploreLayout({
   const session = await auth();
 
   return (
-    <ExploreShell
+    <ExploreShellWrapper
       title="research-hub"
       navLinks={<ExploreNavLinks />}
       actionButton={
@@ -30,6 +30,6 @@ export default async function ExploreLayout({
       user={session?.user}
     >
       {children}
-    </ExploreShell>
+    </ExploreShellWrapper>
   );
 }

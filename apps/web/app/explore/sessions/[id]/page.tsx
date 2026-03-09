@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/explore/queries";
 import { Calendar, Clock, MapPin, User, ExternalLink } from "lucide-react";
+import { SetAIContext } from "@/app/explore/set-ai-context";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -19,6 +20,12 @@ export default async function SessionDetailPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      <SetAIContext
+        context={{
+          sessionId: id,
+          sessionTitle: session.title,
+        }}
+      />
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
         ~/research-hub/sessions/{session.instance.venue.name.toLowerCase()}/

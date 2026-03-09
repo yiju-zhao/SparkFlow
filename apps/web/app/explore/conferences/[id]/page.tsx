@@ -10,6 +10,7 @@ import { ConferenceHero } from "@/components/explore/conferences";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { SetAIContext } from "@/app/explore/set-ai-context";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -112,6 +113,12 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-col gap-10">
+      <SetAIContext
+        context={{
+          conferenceId: id,
+          conferenceName: `${conference.venue.name} ${conference.year}`,
+        }}
+      />
       <ConferenceHero conference={conference} />
 
       <Tabs defaultValue="publications" className="relative">

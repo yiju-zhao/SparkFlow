@@ -7,14 +7,14 @@ import {
   ResearchAssistantTrigger,
 } from "@/components/explore/research-assistant-panel";
 
-interface AIContext {
+export interface AIContext {
   conferenceId?: string;
   conferenceName?: string;
   sessionId?: string;
   sessionTitle?: string;
 }
 
-interface ExploreShellProps extends ExploreHeaderProps {
+export interface ExploreShellProps extends ExploreHeaderProps {
   children: React.ReactNode;
   aiContext?: AIContext;
 }
