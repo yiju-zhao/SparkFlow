@@ -27,7 +27,6 @@ interface FormatGuideDialogProps {
 const publicationFields = [
   "venue",
   "year",
-  "instanceMetadata",
   "publications[].title",
   "publications[].authors",
   "publications[].summary",
@@ -57,7 +56,7 @@ export function FormatGuideDialog({
       <DialogTrigger asChild>
         <Button variant="outline">Format Guide</Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+      <DialogContent className="max-h-[92vh] max-w-[min(96vw,96rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Instance Import Format Guide</DialogTitle>
           <DialogDescription>
@@ -91,14 +90,15 @@ export function FormatGuideDialog({
                   ))}
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
-                  <div>`instanceMetadata` is optional.</div>
                   <div>
-                    `publications[].summary` is now supported and maps to the
-                    Publication model.
+                    Minimal format is{" "}
+                    <code>{`{ venue, year, publications }`}</code>.
                   </div>
                   <div>
-                    Blank optional URLs are allowed, but valid URLs are
-                    preferred.
+                    `publications[].summary` maps to the Publication model.
+                  </div>
+                  <div>
+                    Blank optional URLs are allowed, but valid URLs are preferred.
                   </div>
                 </div>
               </CardContent>
@@ -108,7 +108,7 @@ export function FormatGuideDialog({
               <div className="border-b bg-muted/30 px-4 py-2 text-sm font-medium">
                 Example JSON
               </div>
-              <pre className="max-h-105 overflow-auto bg-slate-950 p-4 text-xs text-slate-50">
+              <pre className="max-h-[68vh] overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
                 {JSON.stringify(publicationSample, null, 2)}
               </pre>
             </div>
@@ -133,15 +133,15 @@ export function FormatGuideDialog({
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                   <div>
+                    Minimal format is{" "}
+                    <code>{`{ venue, year, sessions }`}</code>.
+                  </div>
+                  <div>
                     `sessionFormat` accepts `IN_PERSON`, `VIRTUAL`, or `BOTH`.
                   </div>
                   <div>
-                    `hasRecording` is boolean and defaults to `false` when
-                    omitted.
-                  </div>
-                  <div>
-                    `publicationTitles` should match imported publication titles
-                    exactly.
+                    `hasRecording` defaults to `false` when omitted, and
+                    `publicationTitles` should match publication titles exactly.
                   </div>
                 </div>
               </CardContent>
@@ -151,7 +151,7 @@ export function FormatGuideDialog({
               <div className="border-b bg-muted/30 px-4 py-2 text-sm font-medium">
                 Example JSON
               </div>
-              <pre className="max-h-105 overflow-auto bg-slate-950 p-4 text-xs text-slate-50">
+              <pre className="max-h-[68vh] overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
                 {JSON.stringify(sessionSample, null, 2)}
               </pre>
             </div>

@@ -23,19 +23,9 @@ export const PublicationInputSchema = z.object({
   websiteUrl: z.string().url().or(z.literal("")).optional(),
 });
 
-export const InstanceMetadataSchema = z.object({
-  name: z.string().optional(),
-  location: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  website: z.string().url().optional(),
-  summary: z.string().optional(),
-});
-
 export const PublicationsFileSchema = z.object({
   venue: z.string().min(1),
   year: z.number().int().min(1900).max(2100),
-  instanceMetadata: InstanceMetadataSchema.optional(),
   publications: z.array(PublicationInputSchema),
 });
 
@@ -67,7 +57,6 @@ export const SessionsFileSchema = z.object({
 });
 
 export type PublicationInput = z.infer<typeof PublicationInputSchema>;
-export type InstanceMetadata = z.infer<typeof InstanceMetadataSchema>;
 export type PublicationsFile = z.infer<typeof PublicationsFileSchema>;
 export type SessionInput = z.infer<typeof SessionInputSchema>;
 export type SessionsFile = z.infer<typeof SessionsFileSchema>;

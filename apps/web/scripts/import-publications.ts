@@ -86,10 +86,8 @@ async function main() {
   const instanceResult = await findOrCreateInstance(
     venueResult.id,
     data.year,
-    data.instanceMetadata,
   );
-  const instanceName =
-    data.instanceMetadata?.name ?? `${data.venue} ${data.year}`;
+  const instanceName = `${data.venue} ${data.year}`;
   if (instanceResult.created) {
     console.log(`\u2713 Instance "${instanceName}" created`);
   } else {

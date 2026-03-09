@@ -1,14 +1,6 @@
 {
   "venue": "CHI",
   "year": 2024,
-  "instanceMetadata": {
-    "name": "CHI 2024",
-    "location": "Honolulu, Hawaii",
-    "startDate": "2024-05-11",
-    "endDate": "2024-05-16",
-    "website": "https://chi2024.acm.org",
-    "summary": "CHI 2024 highlights leading work in HCI, design, accessibility, and emerging interfaces."
-  },
   "publications": [
     {
       "title": "Understanding User Behavior in Virtual Reality Environments",

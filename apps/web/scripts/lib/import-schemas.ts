@@ -1,6 +1,5 @@
 export {
   PublicationInputSchema,
-  InstanceMetadataSchema,
   PublicationsFileSchema,
   SessionInputSchema,
   SessionsFileSchema,
@@ -9,7 +8,6 @@ export {
 
 export type {
   PublicationInput,
-  InstanceMetadata,
   PublicationsFile,
   SessionInput,
   SessionsFile,
