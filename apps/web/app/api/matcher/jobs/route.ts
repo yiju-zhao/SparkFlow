@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           title: true,
+          type: true,
           date: true,
           startTime: true,
           endTime: true,
@@ -71,7 +72,12 @@ export async function POST(request: NextRequest) {
           speaker: true,
           abstract: true,
           overview: true,
-          type: true,
+          topic: true,
+          affiliation: true,
+          technology: true,
+          sessionFormat: true,
+          intendedAudience: true,
+          sessionUrl: true,
         },
       });
       targetData = sessions as Record<string, unknown>[];
@@ -82,9 +88,17 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           title: true,
-          abstract: true,
           authors: true,
+          abstract: true,
+          affiliations: true,
+          countries: true,
           keywords: true,
+          researchTopic: true,
+          rating: true,
+          doi: true,
+          pdfUrl: true,
+          githubUrl: true,
+          status: true,
         },
       });
       targetData = publications as Record<string, unknown>[];

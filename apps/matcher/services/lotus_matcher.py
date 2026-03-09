@@ -75,6 +75,7 @@ class LotusMatcher:
                     f"Abstract: {_truncate(_safe_str(r.get('abstract')), 500)} | "
                     f"Topics: {_safe_str(r.get('topic'))} | "
                     f"Speakers: {_safe_str(r.get('speaker'))} | "
+                    f"Affiliation: {_safe_str(r.get('affiliation'))} | "
                     f"Technologies: {_safe_str(r.get('technology'))}"
                 ),
                 axis=1,
@@ -87,7 +88,8 @@ class LotusMatcher:
                     f"Authors: {_safe_str(r.get('authors'))} | "
                     f"Abstract: {_truncate(_safe_str(r.get('abstract')), 500)} | "
                     f"Keywords: {_safe_str(r.get('keywords'))} | "
-                    f"Research Topic: {_safe_str(r.get('research_topic'))}"
+                    f"Research Topic: {_safe_str(r.get('research_topic'))} | "
+                    f"Affiliations: {_safe_str(r.get('affiliations'))}"
                 ),
                 axis=1,
             )
