@@ -6,30 +6,30 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { UploadStep } from "./steps/upload-step";
 import { ConfigStep } from "./steps/config-step";
-import { PreviewStep } from "./steps/preview-step";
 import { RunningStep } from "./steps/running-step";
 import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
 import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
 
 const STEPS = [
-  { id: "upload", label: "upload_query_file" },
-  { id: "config", label: "configure_job" },
-  { id: "preview", label: "preview_results" },
+  { id: "upload", label: "upload" },
+  { id: "config", label: "configure" },
   { id: "running", label: "match" },
   { id: "results", label: "results" },
 ];
 
+type WizardConfig = {
+  instanceId: string;
+  targetType: MatchTargetType;
+  topK: number;
+  searchK: number;
+  includeReasons: boolean;
+};
+
 type WizardState = {
   step: number;
   fileKey: string | null;
-  config: {
-    instanceId: string;
-    targetType: MatchTargetType;
-    topK: number;
-    searchK: number;
-    includeReasons: boolean;
-  } | null;
+  config: WizardConfig | null;
   queries: ParsedQuery[] | null;
   jobId: string | null;
   completedJob: {
@@ -55,13 +55,13 @@ export function MatcherWizard() {
   });
 
   const { createJob } = useMatchJob();
-  
+
   const { progress } = useJobProgress(state.jobId, {
     onComplete: (job) => {
       console.log("[Wizard] Job completed:", job);
       setState((prev) => ({
         ...prev,
-        step: 4,
+        step: 3,
         completedJob: {
           id: job.id,
           status: job.status,
@@ -78,56 +78,50 @@ export function MatcherWizard() {
     },
   });
 
-  // Step 0: Upload
+  // Step 0: Upload — preserve fileKey and queries on re-entry
   const handleUploadComplete = useCallback((fileKey: string, queries: ParsedQuery[]) => {
     setState((prev) => ({ ...prev, step: 1, fileKey, queries }));
   }, []);
 
-  // Step 1: Config
-  const handleConfigComplete = useCallback(
-    (config: WizardState["config"]) => {
-      setState((prev) => ({ ...prev, step: 2, config }));
-    },
-    [],
-  );
-
-  // Step 2: Preview - Start matching
+  // Step 1: Config + Preview — start matching directly
   const handleStartMatching = useCallback(
-    async (queries: ParsedQuery[]) => {
-      if (!state.config) return;
-
+    async (config: WizardConfig, queries: ParsedQuery[]) => {
       try {
-        console.log("[Wizard] Creating job with config:", state.config);
+        // Save config in state for back navigation
+        setState((prev) => ({ ...prev, config, queries }));
+
+        console.log("[Wizard] Creating job with config:", config);
         const job = await createJob({
-          instanceId: state.config.instanceId,
-          targetType: state.config.targetType,
+          instanceId: config.instanceId,
+          targetType: config.targetType,
           queries,
-          topK: state.config.topK,
-          searchK: state.config.searchK,
-          includeReasons: state.config.includeReasons,
+          topK: config.topK,
+          searchK: config.searchK,
+          includeReasons: config.includeReasons,
         });
 
         console.log("[Wizard] Job created:", job.id);
 
         setState((prev) => ({
           ...prev,
-          step: 3,
+          step: 2,
+          config,
           jobId: job.id,
         }));
       } catch (error) {
         console.error("[Wizard] Failed to start job:", error);
       }
     },
-    [state.config, createJob],
+    [createJob],
   );
 
-  // Step 3: Running - Cancel
+  // Step 2: Running - Cancel
   const handleCancelJob = useCallback(async () => {
     if (!state.jobId) return;
     router.push("/explore/toolbox");
   }, [state.jobId, router]);
 
-  // Step 4: Results - Download
+  // Step 3: Results - Download
   const handleDownload = useCallback(() => {
     if (!state.jobId) return;
     const downloadUrl = `/api/matcher/jobs/${state.jobId}/download`;
@@ -153,6 +147,16 @@ export function MatcherWizard() {
     router.push("/explore");
   }, [router]);
 
+  // Navigate to a completed step
+  const handleStepClick = useCallback((targetStep: number) => {
+    setState((prev) => {
+      // Only allow clicking completed steps (before current), not running/results
+      if (targetStep >= prev.step) return prev;
+      if (prev.step >= 2) return prev; // Can't go back from running/results
+      return { ...prev, step: targetStep };
+    });
+  }, []);
+
   const renderStep = () => {
     switch (state.step) {
       case 0:
@@ -166,22 +170,14 @@ export function MatcherWizard() {
         return (
           <ConfigStep
             fileKey={state.fileKey!}
-            onNext={handleConfigComplete}
-            onBack={handleBack}
-            onCancel={handleCancel}
-          />
-        );
-      case 2:
-        return (
-          <PreviewStep
             queries={state.queries ?? []}
-            config={state.config!}
+            initialConfig={state.config ?? undefined}
             onStart={handleStartMatching}
             onBack={handleBack}
             onCancel={handleCancel}
           />
         );
-      case 3:
+      case 2:
         return (
           <RunningStep
             jobId={state.jobId!}
@@ -189,7 +185,7 @@ export function MatcherWizard() {
             onCancel={handleCancelJob}
           />
         );
-      case 4:
+      case 3:
         return (
           <ResultsStep
             job={state.completedJob}
@@ -210,29 +206,41 @@ export function MatcherWizard() {
             {index > 0 && (
               <span className="text-muted-foreground/40 mx-2">/</span>
             )}
-            <span
+            <button
+              type="button"
+              onClick={() => handleStepClick(index)}
+              disabled={index >= state.step || state.step >= 2}
               className={cn(
-                "tabular-nums",
-                index === state.step
-                  ? "text-primary font-bold"
-                  : index < state.step
-                    ? "text-foreground"
-                    : "text-muted-foreground",
+                "flex items-center gap-1 rounded px-1 -mx-1 transition-colors",
+                index < state.step && state.step < 2
+                  ? "hover:bg-muted cursor-pointer"
+                  : "cursor-default",
               )}
             >
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <span
-              className={cn(
-                index === state.step
-                  ? "text-foreground font-bold"
-                  : index < state.step
-                    ? "text-foreground"
-                    : "text-muted-foreground",
-              )}
-            >
-              {step.label}
-            </span>
+              <span
+                className={cn(
+                  "tabular-nums",
+                  index === state.step
+                    ? "text-primary font-bold"
+                    : index < state.step
+                      ? "text-foreground"
+                      : "text-muted-foreground",
+                )}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span
+                className={cn(
+                  index === state.step
+                    ? "text-foreground font-bold"
+                    : index < state.step
+                      ? "text-foreground"
+                      : "text-muted-foreground",
+                )}
+              >
+                {step.label}
+              </span>
+            </button>
           </div>
         ))}
       </div>

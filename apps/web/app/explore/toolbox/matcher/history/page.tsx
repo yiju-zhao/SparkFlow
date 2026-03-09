@@ -40,6 +40,8 @@ export default async function MatchHistoryPage() {
     status: job.status,
     queryCount: job.queryCount,
     matchCount: job.matchCount,
+    topK: job.topK,
+    searchK: job.searchK,
     progress: job.progress,
     queryData: job.queryData as any,
     createdAt: job.createdAt.toISOString(),
