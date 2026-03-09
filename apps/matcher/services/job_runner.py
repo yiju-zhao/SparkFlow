@@ -175,6 +175,36 @@ class JobRunner:
                     else:
                         master_df[bu] = ""
 
+            # Add aggregated recommendation reasons column to master sheet
+            has_reasons = include_reasons and any(
+                "recommendation_reason" in results_by_query[bu].columns
+                for bu in bu_names
+            )
+            if has_reasons:
+                # Build per-BU reason maps keyed by id (or title as fallback)
+                reason_maps = {}
+                for bu in bu_names:
+                    bu_df = results_by_query[bu]
+                    if "recommendation_reason" not in bu_df.columns:
+                        continue
+                    if "id" in bu_df.columns:
+                        reason_maps[bu] = dict(zip(bu_df["id"], bu_df["recommendation_reason"]))
+                    elif "title" in bu_df.columns:
+                        reason_maps[bu] = dict(zip(bu_df["title"], bu_df["recommendation_reason"]))
+
+                id_key = "id" if "id" in master_df.columns else ("title" if "title" in master_df.columns else None)
+                if id_key and reason_maps:
+                    def get_aggregated_reasons(row, _maps=reason_maps, _key=id_key):
+                        parts = []
+                        key = row[_key]
+                        for bu, rmap in _maps.items():
+                            reason = rmap.get(key)
+                            if reason and str(reason).strip():
+                                parts.append(f"[{bu}]\n{reason}")
+                        return "\n\n".join(parts)
+
+                    master_df["recommendation_reasons"] = master_df.apply(get_aggregated_reasons, axis=1)
+
             # Drop database PK columns before writing to Excel
             master_df = master_df.drop(columns=["id"], errors="ignore")
             for bu in results_by_query:

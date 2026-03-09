@@ -165,8 +165,9 @@ class LotusMatcher:
             reason_instruction = (
                 f"Given the query:\n{query_text}\n\n"
                 f"For the item described by: {{match_text}}\n\n"
-                f"Write a concise recommendation reason (2-3 sentences) explaining "
-                f"why this item is relevant to the query. Be specific."
+                f"请用中文写出2-3句简洁的推荐理由，说明为什么该条目与查询相关。要具体说明。"
+                f"(Write a concise recommendation reason in Chinese, 2-3 sentences, "
+                f"explaining why this item is relevant to the query. Be specific.)"
             )
             top_matches = top_matches.sem_map(
                 reason_instruction, suffix="recommendation_reason"
