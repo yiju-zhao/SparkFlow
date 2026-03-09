@@ -56,7 +56,7 @@ export function FormatGuideDialog({
       <DialogTrigger asChild>
         <Button variant="outline">Format Guide</Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[92vh] max-w-[min(96vw,96rem)] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] w-[min(98vw,112rem)] max-w-none overflow-y-auto sm:w-[min(98vw,112rem)]">
         <DialogHeader>
           <DialogTitle>Instance Import Format Guide</DialogTitle>
           <DialogDescription>
