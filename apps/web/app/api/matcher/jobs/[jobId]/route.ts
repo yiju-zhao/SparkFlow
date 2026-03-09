@@ -13,6 +13,51 @@ import { s3StorageClient } from "@/lib/s3-client";
 const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
 
+function normalizeMatcherQueryData(queryData: unknown) {
+  if (!Array.isArray(queryData)) {
+    return undefined;
+  }
+
+  return queryData.map((item) => {
+    const record = (item ?? {}) as Record<string, unknown>;
+    const rawFocuses = record.optimization_focuses ?? record.optimizationFocuses;
+    const optimizationFocuses = Array.isArray(rawFocuses)
+      ? rawFocuses.filter((focus): focus is string => typeof focus === "string" && focus.length > 0)
+      : [];
+
+    return {
+      id: typeof record.id === "string" ? record.id : "",
+      bu: typeof record.bu === "string" ? record.bu : "",
+      query: typeof record.query === "string" ? record.query : "",
+      rowIndex:
+        typeof record.rowIndex === "number"
+          ? record.rowIndex
+          : typeof record.row_index === "number"
+            ? record.row_index
+            : 0,
+      optimizedQueryNative:
+        typeof record.optimizedQueryNative === "string"
+          ? record.optimizedQueryNative
+          : typeof record.optimized_query_native === "string"
+            ? record.optimized_query_native
+            : undefined,
+      optimizedQueryEn:
+        typeof record.optimizedQueryEn === "string"
+          ? record.optimizedQueryEn
+          : typeof record.optimized_query_en === "string"
+            ? record.optimized_query_en
+            : undefined,
+      optimizationFocuses,
+      optimizerUsedLlm:
+        typeof record.optimizerUsedLlm === "boolean"
+          ? record.optimizerUsedLlm
+          : typeof record.optimizer_used_llm === "boolean"
+            ? record.optimizer_used_llm
+            : undefined,
+    };
+  });
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
@@ -48,21 +93,26 @@ export async function GET(
     // If job is not in a terminal state, sync progress from matcher service
     if (job.status === "PENDING" || job.status === "PROCESSING") {
       try {
-        const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/progress`);
+        const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}`);
         if (response.ok) {
-          const progressData = await response.json();
+          const matcherJob = await response.json();
+          const normalizedQueryData = normalizeMatcherQueryData(matcherJob.query_data);
 
           // Update database with latest progress
-          const isStarting = job.status === "PENDING" && progressData.status && progressData.status !== "PENDING";
+          const isStarting =
+            job.status === "PENDING" &&
+            matcherJob.status &&
+            matcherJob.status !== "PENDING";
           const updatedJob = await prisma.matchJob.update({
             where: { id: jobId },
             data: {
-              progress: progressData.progress ?? job.progress,
-              status: progressData.status ?? job.status,
-              matchCount: progressData.match_count ?? job.matchCount,
-              errorMessage: progressData.error_message ?? job.errorMessage,
+              progress: matcherJob.progress ?? job.progress,
+              status: matcherJob.status ?? job.status,
+              matchCount: matcherJob.match_count ?? job.matchCount,
+              errorMessage: matcherJob.error_message ?? job.errorMessage,
+              queryData: normalizedQueryData ?? job.queryData ?? undefined,
               startedAt: isStarting ? new Date() : job.startedAt,
-              completedAt: progressData.status === "COMPLETED" ? new Date() : job.completedAt,
+              completedAt: matcherJob.status === "COMPLETED" ? new Date() : job.completedAt,
             },
             include: {
               instance: {
@@ -75,7 +125,7 @@ export async function GET(
           });
 
           // If job just completed, download Excel from matcher and upload to S3
-          if (progressData.status === "COMPLETED" && !updatedJob.resultFileKey) {
+          if (matcherJob.status === "COMPLETED" && !updatedJob.resultFileKey) {
             try {
               const dlRes = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/download`);
               if (dlRes.ok) {

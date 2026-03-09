@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import type { ParsedQuery } from "@/lib/matcher/types";
 import {
   Table,
   TableBody,
@@ -13,13 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Download, Trash2, ChevronDown, ChevronRight } from "lucide-react";
-
-interface ParsedQuery {
-  id: string;
-  bu: string;
-  query: string;
-  rowIndex: number;
-}
 
 interface HistoryJob {
   id: string;
@@ -99,11 +93,36 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
 
   // Group queries by BU for display
   const groupByBu = (queries: ParsedQuery[]) => {
-    const groups: Record<string, string[]> = {};
+    const groups: Record<
+      string,
+      {
+        queries: string[];
+        optimizedQueryNative?: string;
+        optimizedQueryEn?: string;
+        optimizationFocuses: string[];
+      }
+    > = {};
+
     for (const q of queries) {
-      if (!groups[q.bu]) groups[q.bu] = [];
-      groups[q.bu].push(q.query);
+      if (!groups[q.bu]) {
+        groups[q.bu] = {
+          queries: [],
+          optimizationFocuses: [],
+        };
+      }
+
+      groups[q.bu].queries.push(q.query);
+      if (!groups[q.bu].optimizedQueryNative && q.optimizedQueryNative) {
+        groups[q.bu].optimizedQueryNative = q.optimizedQueryNative;
+      }
+      if (!groups[q.bu].optimizedQueryEn && q.optimizedQueryEn) {
+        groups[q.bu].optimizedQueryEn = q.optimizedQueryEn;
+      }
+      if (groups[q.bu].optimizationFocuses.length === 0 && q.optimizationFocuses?.length) {
+        groups[q.bu].optimizationFocuses = q.optimizationFocuses;
+      }
     }
+
     return groups;
   };
 
@@ -206,21 +225,44 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                         </p>
                         <div className="space-y-3">
                           {Object.entries(groupByBu(queries)).map(
-                            ([bu, buQueries]) => (
+                            ([bu, group]) => (
                               <div key={bu} className="text-sm">
                                 <p className="font-medium text-foreground mb-1">
                                   {bu}
                                   <span className="text-muted-foreground font-normal ml-2">
-                                    ({buQueries.length} {buQueries.length === 1 ? "query" : "queries"})
+                                    ({group.queries.length} {group.queries.length === 1 ? "query" : "queries"})
                                   </span>
                                 </p>
                                 <ul className="list-disc list-inside text-muted-foreground space-y-0.5 pl-2">
-                                  {buQueries.map((q, i) => (
+                                  {group.queries.map((q, i) => (
                                     <li key={i} className="truncate max-w-2xl">
                                       {q}
                                     </li>
                                   ))}
                                 </ul>
+                                {(group.optimizedQueryNative || group.optimizedQueryEn) && (
+                                  <div className="mt-3 rounded-md border bg-background/70 p-3">
+                                    <p className="font-medium text-foreground mb-1">
+                                      Optimized Query
+                                    </p>
+                                    {group.optimizedQueryNative && (
+                                      <p className="text-muted-foreground whitespace-pre-wrap">
+                                        {group.optimizedQueryNative}
+                                      </p>
+                                    )}
+                                    {group.optimizedQueryEn &&
+                                      group.optimizedQueryEn !== group.optimizedQueryNative && (
+                                        <p className="text-muted-foreground whitespace-pre-wrap mt-2">
+                                          {group.optimizedQueryEn}
+                                        </p>
+                                      )}
+                                    {group.optimizationFocuses.length > 0 && (
+                                      <p className="text-xs text-muted-foreground mt-2">
+                                        Focuses: {group.optimizationFocuses.join(" / ")}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ),
                           )}

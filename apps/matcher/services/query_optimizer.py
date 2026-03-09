@@ -12,46 +12,28 @@ import os
 from dataclasses import dataclass, field
 
 from openai import OpenAI
-from pydantic import BaseModel, Field
 
 from services.excel_processor import ExcelProcessor
 
 logger = logging.getLogger(__name__)
 
 OPTIMIZER_SYSTEM_PROMPT = """
-You optimize enterprise search queries for semantic matching.
+You optimize search queries for semantic matching.
 
-Your job for each business unit (BU):
-1. Merge overlapping or duplicated queries into a smaller set of distinct semantic intents.
-2. Rewrite vague wording into concrete, searchable descriptions that improve matching quality.
-3. Preserve the original business intent. Do not invent hard requirements that are not implied.
-4. Organize the result into 2-6 relatively independent semantic lines when multiple topics exist.
-5. Produce final search text optimized for semantic matching against conference sessions or publications.
+Rewrite the input so it is clearer, less redundant, and easier to match.
+Keep the original meaning unchanged.
+If multiple query lines overlap, merge them naturally into a coherent query.
+Return only the optimized query text with no explanation.
 """
 
 OPTIMIZER_USER_PROMPT_TEMPLATE = """
 Target type: {target_type}
-Business unit: {bu}
 
 Original queries:
 {queries}
 
-Return a structured optimization result. Merge similar intents, remove redundancy, and make vague points more specific while preserving the original business intent.
+Optimize the query for matching while preserving the original intent.
 """
-
-
-class QueryOptimizationResponse(BaseModel):
-    """Structured output schema for query optimization."""
-
-    optimized_query_native: str = Field(
-        description="Structured query text in the user's original language when possible."
-    )
-    optimized_query_en: str = Field(
-        description="English search text optimized for semantic matching."
-    )
-    focuses: list[str] = Field(
-        description="Short, relatively independent semantic focuses covered by the optimized query."
-    )
 
 
 @dataclass(slots=True)
@@ -85,7 +67,7 @@ class QueryOptimizer:
         queries: list[str],
         target_type: str,
     ) -> QueryOptimizationResult:
-        """Optimize all queries for one BU into a single structured query."""
+        """Optimize all queries for one BU into a single clearer query."""
         normalized_queries = self._dedupe_queries(queries)
         fallback_native = self._build_fallback_query(normalized_queries)
 
@@ -110,22 +92,20 @@ class QueryOptimizer:
             client = self._get_client()
             prompt = OPTIMIZER_USER_PROMPT_TEMPLATE.format(
                 target_type=target_type,
-                bu=bu,
                 queries="\n".join(
                     f"{index}. {query}"
                     for index, query in enumerate(normalized_queries, start=1)
                 ),
             )
-            response = client.responses.parse(
+            response = client.responses.create(
                 model=self.model,
                 input=[
                     {"role": "system", "content": OPTIMIZER_SYSTEM_PROMPT.strip()},
                     {"role": "user", "content": prompt.strip()},
                 ],
-                text_format=QueryOptimizationResponse,
             )
-            parsed = response.output_parsed
-            if not parsed:
+            optimized_native = (getattr(response, "output_text", None) or "").strip()
+            if not optimized_native:
                 refusal = self._extract_refusal(response)
                 if refusal:
                     logger.warning(
@@ -135,28 +115,20 @@ class QueryOptimizer:
                     )
                 else:
                     logger.warning(
-                        "Query optimization returned no parsed payload for BU '%s'. Falling back to deterministic merge.",
+                        "Query optimization returned no text payload for BU '%s'. Falling back to deterministic merge.",
                         bu,
                     )
                 return self._fallback_result(normalized_queries, fallback_native)
 
-            optimized_native = parsed.optimized_query_native.strip()
-            optimized_en = parsed.optimized_query_en.strip()
-            focuses = [item.strip() for item in parsed.focuses if item.strip()]
-
             if not optimized_native:
                 optimized_native = fallback_native
 
-            if not optimized_en:
-                optimized_en = self.excel_processor._translate_to_english(
-                    optimized_native
-                )
+            optimized_en = self.excel_processor._translate_to_english(optimized_native)
 
             return QueryOptimizationResult(
                 optimized_query_native=optimized_native,
                 optimized_query_en=optimized_en,
                 source_queries=normalized_queries,
-                focuses=focuses,
                 used_llm=True,
             )
         except Exception as exc:

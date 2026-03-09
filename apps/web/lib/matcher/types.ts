@@ -16,6 +16,10 @@ export interface ParsedQuery {
   bu: string;  // Business unit - who wants the matching
   query: string;
   rowIndex: number;
+  optimizedQueryNative?: string;
+  optimizedQueryEn?: string;
+  optimizationFocuses?: string[];
+  optimizerUsedLlm?: boolean;
 }
 
 export interface MatchJob {

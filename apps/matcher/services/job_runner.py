@@ -94,6 +94,7 @@ class JobRunner:
 
             # Step 2: Optimize each BU's queries into clearer, less redundant search text
             optimized_queries = []
+            optimization_by_bu = {}
             total_bus = len(queries_by_bu)
             for i, (bu, query_list) in enumerate(queries_by_bu.items()):
                 progress = 5 + int((i / max(total_bus, 1)) * 20)
@@ -108,17 +109,17 @@ class JobRunner:
                     queries=query_list,
                     target_type=target_type,
                 )
-                optimized_queries.append(
-                    {
-                        "bu": bu,
-                        "original_count": len(query_list),
-                        "source_queries": optimization.source_queries,
-                        "optimized_query_native": optimization.optimized_query_native,
-                        "optimized_query_en": optimization.optimized_query_en,
-                        "focuses": optimization.focuses,
-                        "used_llm": optimization.used_llm,
-                    }
-                )
+                optimized_record = {
+                    "bu": bu,
+                    "original_count": len(query_list),
+                    "source_queries": optimization.source_queries,
+                    "optimized_query_native": optimization.optimized_query_native,
+                    "optimized_query_en": optimization.optimized_query_en,
+                    "focuses": optimization.focuses,
+                    "used_llm": optimization.used_llm,
+                }
+                optimized_queries.append(optimized_record)
+                optimization_by_bu[bu] = optimized_record
                 logger.info(
                     "BU '%s': optimized %s queries into %s chars of search text (used_llm=%s)",
                     bu,
@@ -126,6 +127,20 @@ class JobRunner:
                     len(optimization.optimized_query_en),
                     optimization.used_llm,
                 )
+
+            # Persist optimized BU query summaries into job query_data for history/debugging
+            enriched_queries = []
+            for query in queries:
+                query_record = dict(query)
+                bu = query_record.get("bu", "Unknown")
+                optimization = optimization_by_bu.get(bu)
+                if optimization:
+                    query_record["optimized_query_native"] = optimization["optimized_query_native"]
+                    query_record["optimized_query_en"] = optimization["optimized_query_en"]
+                    query_record["optimization_focuses"] = optimization["focuses"]
+                    query_record["optimizer_used_llm"] = optimization["used_llm"]
+                enriched_queries.append(query_record)
+            self.job_store.update_job(job_id, query_data=enriched_queries)
 
             # Step 3: Process each optimized BU query
             results_by_query = {}
