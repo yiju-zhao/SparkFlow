@@ -7,9 +7,13 @@ Handles reading query Excel files and writing result Excel files.
 import io
 import logging
 import os
+import re
 
 import pandas as pd
 from openai import OpenAI
+
+# Characters illegal in Excel/openpyxl cells (control chars except tab, newline, carriage return)
+_ILLEGAL_EXCEL_CHARS_RE = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
 
 logger = logging.getLogger(__name__)
 
@@ -67,16 +71,26 @@ class ExcelProcessor:
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             # Tab 1: Master aggregated view (if provided)
             if master_df is not None:
-                master_df.to_excel(writer, sheet_name="Master_Aggregated", index=False)
+                self._sanitize_df(master_df).to_excel(writer, sheet_name="Master_Aggregated", index=False)
 
             # Tabs for each query's results
             for query_name, df in results_by_query.items():
                 # Sanitize sheet name (max 31 chars, no special chars)
                 safe_name = self._sanitize_sheet_name(query_name)
-                df.to_excel(writer, sheet_name=safe_name, index=False)
+                self._sanitize_df(df).to_excel(writer, sheet_name=safe_name, index=False)
 
         output.seek(0)
         return output.getvalue()
+
+    @staticmethod
+    def _sanitize_df(df: pd.DataFrame) -> pd.DataFrame:
+        """Strip illegal Excel control characters from all string columns."""
+        df = df.copy()
+        for col in df.select_dtypes(include=["object"]).columns:
+            df[col] = df[col].apply(
+                lambda v: _ILLEGAL_EXCEL_CHARS_RE.sub("", v) if isinstance(v, str) else v
+            )
+        return df
 
     def _sanitize_sheet_name(self, name: str) -> str:
         """Sanitize sheet name for Excel (max 31 chars, no invalid chars)."""
