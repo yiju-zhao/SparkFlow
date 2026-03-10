@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/explore/queries";
 import { Calendar, Clock, MapPin, User, ExternalLink } from "lucide-react";
-import { SetAIContext } from "@/app/explore/set-ai-context";
+import { SetAIContext } from "@/components/explore/set-ai-context";
 
 interface PageProps {
   params: Promise<{ id: string }>;

@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HistoryTable } from "./history-table";
+import { HistoryTable } from "@/components/explore/toolbox/matcher/history/history-table";
 
 export const metadata: Metadata = {
   title: "Match History | SparkFlow",

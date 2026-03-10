@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { MatcherWizard } from "./components/matcher-wizard";
+import { MatcherWizard } from "@/components/explore/toolbox/matcher/matcher-wizard";
 
 export const metadata: Metadata = {
   title: "Query Matcher | SparkFlow",

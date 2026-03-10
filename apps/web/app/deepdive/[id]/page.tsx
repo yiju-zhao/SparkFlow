@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { NotebookLayout } from "./notebook-layout";
+import { NotebookLayout } from "@/components/deepdive/notebook-layout";
+import { DeepdiveShell } from "@/components/deepdive/deepdive-shell";
 
 interface NotebookPageProps {
   params: Promise<{ id: string }>;
@@ -11,35 +12,32 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
   const { id } = await params;
 
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
 
   const [notebook, sources, notes, chatSessions] = await Promise.all([
     prisma.notebook.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        userId: session!.user!.id,
       },
     }),
     prisma.source.findMany({
       where: {
         notebookId: id,
-        notebook: { userId: session.user.id },
+        notebook: { userId: session!.user!.id },
       },
       orderBy: { createdAt: "desc" },
     }),
     prisma.note.findMany({
       where: {
         notebookId: id,
-        notebook: { userId: session.user.id },
+        notebook: { userId: session!.user!.id },
       },
       orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
     }),
     prisma.chatSession.findMany({
       where: {
         notebookId: id,
-        notebook: { userId: session.user.id },
+        notebook: { userId: session!.user!.id },
         status: { in: ["ACTIVE", "CLOSED"] },
       },
       orderBy: { lastActivity: "desc" },
@@ -79,13 +77,17 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
   }));
 
   return (
-    <NotebookLayout
-      notebook={notebook}
-      sources={sources}
-      notes={notes}
-      initialChatSessions={transformedSessions}
-      initialMessages={transformedMessages}
-      user={session.user}
-    />
+    <DeepdiveShell
+      user={session?.user}
+      breadcrumb={{ label: notebook.name }}
+    >
+      <NotebookLayout
+        notebook={notebook}
+        sources={sources}
+        notes={notes}
+        initialChatSessions={transformedSessions}
+        initialMessages={transformedMessages}
+      />
+    </DeepdiveShell>
   );
 }

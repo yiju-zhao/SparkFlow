@@ -10,7 +10,7 @@ import { ConferenceHero } from "@/components/explore/conferences";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { SetAIContext } from "@/app/explore/set-ai-context";
+import { SetAIContext } from "@/components/explore/set-ai-context";
 
 interface PageProps {
   params: Promise<{ id: string }>;

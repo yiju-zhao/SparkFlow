@@ -6,11 +6,10 @@ import {
   ResearchAssistantPanel,
   ResearchAssistantTrigger,
 } from "@/components/explore/research-assistant-panel";
-import type { AIContext } from "./ai-context";
+import { AIContextProvider, useAIContext } from "./ai-context";
 
 export interface ExploreShellProps {
   children: React.ReactNode;
-  aiContext?: AIContext;
   user?: {
     name?: string | null;
     email?: string | null;
@@ -25,7 +24,8 @@ const exploreNavLinks = [
   { label: "Toolbox", href: "/explore/toolbox" },
 ];
 
-export function ExploreShell({ children, aiContext, user }: ExploreShellProps) {
+function ExploreShellInner({ children, user }: ExploreShellProps) {
+  const { context } = useAIContext();
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -56,8 +56,16 @@ export function ExploreShell({ children, aiContext, user }: ExploreShellProps) {
       <ResearchAssistantPanel
         open={assistantOpen}
         onOpenChange={setAssistantOpen}
-        contextData={aiContext}
+        contextData={context ?? undefined}
       />
     </div>
+  );
+}
+
+export function ExploreShell(props: ExploreShellProps) {
+  return (
+    <AIContextProvider>
+      <ExploreShellInner {...props} />
+    </AIContextProvider>
   );
 }

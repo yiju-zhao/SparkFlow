@@ -2,10 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
-import {
-  UserNav
-} from "@/components/user-nav";
 import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
 import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
@@ -36,11 +32,6 @@ interface NotebookLayoutProps {
   notes: Note[];
   initialChatSessions?: TransformedChatSession[];
   initialMessages?: TransformedMessage[];
-  user?: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
 }
 
 // Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
@@ -70,7 +61,6 @@ function NotebookLayoutInner({
   notes,
   initialChatSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
-  user,
 }: NotebookLayoutProps) {
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
   const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
@@ -186,124 +176,88 @@ function NotebookLayoutInner({
   const studioCollapsed = studioWidth === 0;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
-      {/* Inline Header */}
-      <div className="shrink-0 h-14 border-b-2 dark:border-b border-divider bg-[#FAFAFA] dark:bg-[#0C0C0C] flex items-center justify-between px-6">
-        {/* Left: Breadcrumb */}
-        <div className="flex items-center gap-2.5 text-sm tracking-tight">
-          <Link
-            href="/"
-            className="text-[#666666] dark:text-[#71717A] hover:text-foreground transition-colors font-normal"
+    <div className="flex flex-1 overflow-hidden">
+      {/* Sources Panel (Left) - Collapsible */}
+      {sourcesCollapsed ? (
+        <CollapsedGripStrip side="left" onExpand={handleSourcesExpand} />
+      ) : (
+        <>
+          <motion.div
+            className="h-full overflow-hidden"
+            style={{ width: sourcesWidth }}
+            initial={false}
+            animate={{ width: sourcesWidth }}
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
           >
-            sparkflow
-          </Link>
-          <span className="text-[#0A0A0A] dark:text-[#CE0E2D] font-bold text-[14px]">&gt;</span>
-          <Link
-            href="/deepdive"
-            className="text-[#666666] dark:text-[#71717A] hover:text-foreground transition-colors font-normal"
-          >
-            deepdive
-          </Link>
-          <span className="text-[#0A0A0A] dark:text-[#CE0E2D] font-bold text-[14px]">&gt;</span>
-          <span className="text-[#0A0A0A] dark:text-[#8A8A8A] font-semibold dark:font-normal text-[13px] tracking-[-0.02em] truncate max-w-100">
-            {notebook.name}
-          </span>
-        </div>
-
-        {/* Right: User */}
-        <div className="flex items-center">
-          {user && (
-            <div className="ml-2 pl-2 border-l border-border/60">
-              <UserNav user={user} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Content - 3 Panel Grid */}
-      <div className="flex flex-1 -mt-px pt-px overflow-hidden">
-        {/* Sources Panel (Left) - Collapsible */}
-        {sourcesCollapsed ? (
-          <CollapsedGripStrip side="left" onExpand={handleSourcesExpand} />
-        ) : (
-          <>
-            <motion.div
-              className="h-full overflow-hidden"
-              style={{ width: sourcesWidth }}
-              initial={false}
-              animate={{ width: sourcesWidth }}
-              transition={{ type: "spring", stiffness: 400, damping: 35 }}
-            >
-              <SourcesPanel
-                notebookId={notebook.id}
-                datasetId={notebook.ragflowDatasetId}
-                sources={sources}
-                selectedSource={selectedSource}
-                onSelectSource={handleSelectSource}
-                targetChunkId={targetChunkId}
-                targetContentPreview={targetContentPreview}
-                targetContentSuffix={targetContentSuffix}
-                navigationTrigger={navigationTrigger}
-                onChunkNavigated={handleChunkNavigated}
-              />
-            </motion.div>
-            <ResizableDivider
-              direction="vertical"
-              onDrag={handleSourcesDrag}
-              onDoubleClick={handleSourcesDoubleClick}
+            <SourcesPanel
+              notebookId={notebook.id}
+              datasetId={notebook.ragflowDatasetId}
+              sources={sources}
+              selectedSource={selectedSource}
+              onSelectSource={handleSelectSource}
+              targetChunkId={targetChunkId}
+              targetContentPreview={targetContentPreview}
+              targetContentSuffix={targetContentSuffix}
+              navigationTrigger={navigationTrigger}
+              onChunkNavigated={handleChunkNavigated}
             />
-          </>
-        )}
-
-        {/* Chat Panel (Center) */}
-        <motion.div
-          className="flex min-w-0 flex-1 flex-col overflow-hidden"
-          layout
-          transition={{
-            layout: {
-              type: "spring",
-              stiffness: 400,
-              damping: 35,
-              mass: 0.8,
-            },
-          }}
-        >
-          <ChatPanel
-            notebookId={notebook.id}
-            datasetId={notebook.ragflowDatasetId}
-            sources={sources}
-            initialSessions={initialChatSessions}
-            initialMessages={initialMessages}
+          </motion.div>
+          <ResizableDivider
+            direction="vertical"
+            onDrag={handleSourcesDrag}
+            onDoubleClick={handleSourcesDoubleClick}
           />
-        </motion.div>
+        </>
+      )}
 
-        {/* Studio Panel (Right) - Collapsible */}
-        {studioCollapsed ? (
-          <CollapsedGripStrip side="right" onExpand={handleStudioExpand} />
-        ) : (
-          <>
-            <ResizableDivider
-              direction="vertical"
-              onDrag={handleStudioDrag}
-              onDoubleClick={handleStudioDoubleClick}
+      {/* Chat Panel (Center) */}
+      <motion.div
+        className="flex min-w-0 flex-1 flex-col overflow-hidden"
+        layout
+        transition={{
+          layout: {
+            type: "spring",
+            stiffness: 400,
+            damping: 35,
+            mass: 0.8,
+          },
+        }}
+      >
+        <ChatPanel
+          notebookId={notebook.id}
+          datasetId={notebook.ragflowDatasetId}
+          sources={sources}
+          initialSessions={initialChatSessions}
+          initialMessages={initialMessages}
+        />
+      </motion.div>
+
+      {/* Studio Panel (Right) - Collapsible */}
+      {studioCollapsed ? (
+        <CollapsedGripStrip side="right" onExpand={handleStudioExpand} />
+      ) : (
+        <>
+          <ResizableDivider
+            direction="vertical"
+            onDrag={handleStudioDrag}
+            onDoubleClick={handleStudioDoubleClick}
+          />
+          <motion.div
+            className="h-full overflow-hidden"
+            style={{ width: studioWidth }}
+            initial={false}
+            animate={{ width: studioWidth }}
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+          >
+            <StudioPanel
+              notebookId={notebook.id}
+              notes={notes}
+              selectedNote={selectedNote}
+              onSelectNote={handleSelectNote}
             />
-            <motion.div
-              className="h-full overflow-hidden"
-              style={{ width: studioWidth }}
-              initial={false}
-              animate={{ width: studioWidth }}
-              transition={{ type: "spring", stiffness: 400, damping: 35 }}
-            >
-              <StudioPanel
-                notebookId={notebook.id}
-                notes={notes}
-                selectedNote={selectedNote}
-                onSelectNote={handleSelectNote}
-              />
-            </motion.div>
-          </>
-        )}
-      </div>
+          </motion.div>
+        </>
+      )}
     </div>
   );
 }

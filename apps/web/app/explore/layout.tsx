@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { ExploreShellWrapper } from "./explore-shell-wrapper";
+import { ExploreShell } from "@/components/explore/explore-shell";
 
 export default async function ExploreLayout({
   children,
@@ -9,8 +9,8 @@ export default async function ExploreLayout({
   const session = await auth();
 
   return (
-    <ExploreShellWrapper user={session?.user}>
+    <ExploreShell user={session?.user}>
       {children}
-    </ExploreShellWrapper>
+    </ExploreShell>
   );
 }
