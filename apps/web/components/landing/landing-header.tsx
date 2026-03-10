@@ -53,9 +53,12 @@ export function LandingHeader({
   }, [isScrolled, onScrollContainer]);
 
   const isIslandMode = scrolled;
-  const islandClasses = isIslandMode
-    ? "bg-background/80 backdrop-blur-lg border border-border shadow-lg rounded-full px-4 py-2 pointer-events-auto transition-all duration-300 transform translate-y-2"
-    : "pointer-events-auto transition-all duration-300 transform translate-y-0";
+  const islandClasses = cn(
+    "pointer-events-auto transition-all duration-300 transform rounded-full px-4 py-2 -mx-4",
+    isIslandMode
+      ? "bg-background/80 backdrop-blur-lg border border-border shadow-lg translate-y-2"
+      : "bg-transparent border border-transparent translate-y-0"
+  );
 
   return (
     <header
