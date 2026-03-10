@@ -127,8 +127,8 @@ export function ChatPanel({
 
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [modelSettings, setModelSettings] = useState<ModelSettings>({
-    modelProvider: "openai",
-    modelName: "gpt-4o-mini",
+    modelProvider: "google",
+    modelName: "gemini-2.5-flash",
   });
 const messagesContainerRef = useRef<HTMLDivElement>(null);
 const textareaRef = useRef<HTMLTextAreaElement>(null);

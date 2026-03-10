@@ -8,6 +8,7 @@ handled automatically by the server infrastructure. Do not specify a custom
 checkpointer as the server manages this.
 """
 
+import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from deepagents import create_deep_agent
 from deepagents.backends.filesystem import FilesystemBackend
@@ -19,8 +20,11 @@ from middleware.sources_context import inject_sources_context
 from middleware.query_optimizer import optimize_query
 
 
+# Get model name from environment or use default
+GEMINI_MODEL = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
+
 # Create Gemini model
-model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+model = ChatGoogleGenerativeAI(model=GEMINI_MODEL)
 
 # Create the RAG agent with official Deep Agents skill system
 agent_gemini = create_deep_agent(

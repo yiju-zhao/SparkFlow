@@ -16,36 +16,57 @@ interface UserSettings {
   modelName: string;
 }
 
-const MODEL_OPTIONS = {
-  openai: [
-    { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-    { value: "gpt-4.1", label: "GPT-4.1" },
-    { value: "gpt-5.2", label: "GPT-5.2" },
-  ],
-  google: [
-    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
-  ],
-};
+interface AvailableModels {
+  openai: string[];
+  google: string[];
+  defaults: {
+    provider: string;
+    model: string;
+  };
+}
 
 interface SettingsFormProps {
   initialSettings?: UserSettings;
 }
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
-  const [provider, setProvider] = useState(initialSettings?.modelProvider || "openai");
-  const [model, setModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
+  const [provider, setProvider] = useState(initialSettings?.modelProvider || "google");
+  const [model, setModel] = useState(initialSettings?.modelName || "gemini-2.5-flash");
+  const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  // Reset model when provider changes
+  // Fetch available models from environment configuration
   useEffect(() => {
-    const defaultModel = MODEL_OPTIONS[provider as keyof typeof MODEL_OPTIONS]?.[0]?.value;
-    if (defaultModel && !MODEL_OPTIONS[provider as keyof typeof MODEL_OPTIONS]?.some(m => m.value === model)) {
-      setModel(defaultModel);
+    const fetchModels = async () => {
+      try {
+        const res = await fetch("/api/models");
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableModels(data);
+
+          // If no initial settings, use defaults from env
+          if (!initialSettings) {
+            setProvider(data.defaults.provider);
+            setModel(data.defaults.model);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch available models:", error);
+      }
+    };
+    fetchModels();
+  }, [initialSettings]);
+
+  // Reset model when provider changes (if current model not in new provider's list)
+  useEffect(() => {
+    if (!availableModels) return;
+
+    const currentModels = provider === "google" ? availableModels.google : availableModels.openai;
+    if (!currentModels.includes(model)) {
+      setModel(currentModels[0]);
     }
-  }, [provider, model]);
+  }, [provider, model, availableModels]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -70,7 +91,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     }
   };
 
-  const currentModels = MODEL_OPTIONS[provider as keyof typeof MODEL_OPTIONS] || [];
+  const currentModels = availableModels
+    ? (provider === "google" ? availableModels.google : availableModels.openai)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -85,7 +108,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="openai">OpenAI</SelectItem>
-              <SelectItem value="google">Google</SelectItem>
+              <SelectItem value="google">Google (Gemini)</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
@@ -97,14 +120,14 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           <label className="text-sm font-medium text-foreground">
             Model
           </label>
-          <Select value={model} onValueChange={setModel}>
+          <Select value={model} onValueChange={setModel} disabled={!availableModels}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select model" />
+              <SelectValue placeholder={availableModels ? "Select model" : "Loading models..."} />
             </SelectTrigger>
             <SelectContent>
               {currentModels.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
+                <SelectItem key={m} value={m}>
+                  {m}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -116,7 +139,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isLoading}>
+        <Button onClick={handleSave} disabled={isLoading || !availableModels}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

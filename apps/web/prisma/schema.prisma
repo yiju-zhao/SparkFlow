@@ -54,8 +54,8 @@ model Session {
 model UserSettings {
   id            String   @id @default(cuid())
   userId        String   @unique
-  modelProvider String   @default("openai")
-  modelName     String   @default("gpt-4o-mini")
+  modelProvider String   @default("google")
+  modelName     String   @default("gemini-2.5-flash")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
