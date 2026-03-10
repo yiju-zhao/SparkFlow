@@ -45,6 +45,9 @@ class CreateMatchJobRequest(BaseModel):
     top_k: int = 50
     search_k: int = 350
     include_reasons: bool = True
+    # Model configuration from user settings
+    model_provider: str = "google"
+    model_name: str = "gemini-2.5-flash"
 
 
 class MatchJobResponse(BaseModel):

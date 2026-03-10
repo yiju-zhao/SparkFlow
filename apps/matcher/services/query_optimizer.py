@@ -1,7 +1,7 @@
 """
 Query optimization service for matcher jobs.
 
-Uses an OpenAI model to merge overlapping queries within the same BU and
+Uses Gemini by default to merge overlapping queries within the same BU and
 rewrite vague requests into clearer, more matchable search text.
 """
 
@@ -11,7 +11,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 
-from openai import OpenAI
+from google import genai
 
 from services.excel_processor import ExcelProcessor
 
@@ -48,18 +48,32 @@ class QueryOptimizationResult:
 
 
 class QueryOptimizer:
-    """Optimize grouped BU queries with an OpenAI model."""
+    """Optimize grouped BU queries with Gemini."""
 
-    def __init__(self, excel_processor: ExcelProcessor | None = None):
+    def __init__(
+        self,
+        excel_processor: ExcelProcessor | None = None,
+        model_provider: str = "google",
+        model_name: str = "gemini-2.5-flash",
+    ):
         self.excel_processor = excel_processor or ExcelProcessor()
         self.enabled = (
             os.getenv("ENABLE_MATCHER_QUERY_OPTIMIZER", "true").lower() == "true"
         )
-        self.model = os.getenv(
-            "MATCHER_QUERY_OPTIMIZER_MODEL", "gpt-4o-2024-08-06"
-        )
-        self.api_key = self._resolve_api_key()
-        self._client: OpenAI | None = None
+        self.model_provider = model_provider
+        self.model_name = model_name
+        self._client: genai.Client | None = None
+
+        # Only set API key for Google provider
+        if model_provider == "google":
+            self.api_key = os.getenv("GOOGLE_API_KEY")
+        else:
+            # For OpenAI, we'd need to implement that support
+            # For now, fall back to deterministic merge
+            self.api_key = None
+            logger.warning(
+                f"Query optimizer only supports Google Gemini. Provider '{model_provider}' will use deterministic merge."
+            )
 
     def optimize_queries(
         self,
@@ -83,7 +97,7 @@ class QueryOptimizer:
 
         if not self.api_key:
             logger.warning(
-                "Query optimizer is enabled but no OpenAI API key is configured. "
+                "Query optimizer is enabled but no GOOGLE_API_KEY is configured. "
                 "Falling back to deterministic query merge."
             )
             return self._fallback_result(normalized_queries, fallback_native)
@@ -97,27 +111,16 @@ class QueryOptimizer:
                     for index, query in enumerate(normalized_queries, start=1)
                 ),
             )
-            response = client.responses.create(
-                model=self.model,
-                input=[
-                    {"role": "system", "content": OPTIMIZER_SYSTEM_PROMPT.strip()},
-                    {"role": "user", "content": prompt.strip()},
-                ],
+            response = client.models.generate_content(
+                model=self.model_name,
+                contents=f"{OPTIMIZER_SYSTEM_PROMPT.strip()}\n\n{prompt.strip()}",
             )
-            optimized_native = (getattr(response, "output_text", None) or "").strip()
+            optimized_native = (response.text or "").strip()
             if not optimized_native:
-                refusal = self._extract_refusal(response)
-                if refusal:
-                    logger.warning(
-                        "Query optimization refused for BU '%s': %s. Falling back to deterministic merge.",
-                        bu,
-                        refusal,
-                    )
-                else:
-                    logger.warning(
-                        "Query optimization returned no text payload for BU '%s'. Falling back to deterministic merge.",
-                        bu,
-                    )
+                logger.warning(
+                    "Query optimization returned no text for BU '%s'. Falling back to deterministic merge.",
+                    bu,
+                )
                 return self._fallback_result(normalized_queries, fallback_native)
 
             if not optimized_native:
@@ -152,22 +155,10 @@ class QueryOptimizer:
             used_llm=False,
         )
 
-    def _get_client(self) -> OpenAI:
+    def _get_client(self) -> genai.Client:
         if self._client is None:
-            self._client = OpenAI(api_key=self.api_key)
+            self._client = genai.Client(api_key=self.api_key)
         return self._client
-
-    @staticmethod
-    def _resolve_api_key() -> str | None:
-        dedicated_key = os.getenv("MATCHER_QUERY_OPTIMIZER_API_KEY")
-        if dedicated_key:
-            return dedicated_key
-
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if openai_key and openai_key != "not-needed":
-            return openai_key
-
-        return None
 
     @staticmethod
     def _dedupe_queries(queries: list[str]) -> list[str]:
@@ -197,15 +188,3 @@ class QueryOptimizer:
         return "\n".join(
             f"{index}. {query}" for index, query in enumerate(queries, start=1)
         )
-
-    @staticmethod
-    def _extract_refusal(response) -> str | None:
-        for output in getattr(response, "output", []) or []:
-            if getattr(output, "type", None) != "message":
-                continue
-            for item in getattr(output, "content", []) or []:
-                if getattr(item, "type", None) == "refusal":
-                    refusal = getattr(item, "refusal", None)
-                    if refusal:
-                        return str(refusal)
-        return None

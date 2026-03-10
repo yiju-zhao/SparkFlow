@@ -46,14 +46,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { instanceId, targetType, queries, topK = 50, searchK = 350, includeReasons = true } = body;
 
-    console.log("[Matcher Jobs] Config:", { 
-      instanceId, 
-      targetType, 
+    console.log("[Matcher Jobs] Config:", {
+      instanceId,
+      targetType,
       queryCount: queries?.length,
       topK,
       searchK,
-      includeReasons 
+      includeReasons
     });
+
+    // Fetch user's matcher model settings
+    const userSettings = await prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+      select: {
+        matcherModelProvider: true,
+        matcherModelName: true,
+      },
+    });
+
+    // Use user settings or defaults
+    const modelProvider = userSettings?.matcherModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "google";
+    const modelName = userSettings?.matcherModelName || process.env.DEFAULT_MODEL_NAME || "gemini-2.5-flash";
 
     // Fetch target data from database
     let targetData: Record<string, unknown>[] = [];
@@ -125,11 +138,13 @@ export async function POST(request: NextRequest) {
         searchK,
         includeReasons,
         targetData,
+        modelProvider,
+        modelName,
       }),
       user_id: session.user.id,
     };
 
-    console.log("[Matcher Jobs] Sending to matcher - top_k:", payload.top_k, "search_k:", payload.search_k);
+    console.log("[Matcher Jobs] Sending to matcher - model:", modelProvider, modelName);
 
     const response = await fetch(`${MATCHER_API_URL}/api/jobs`, {
       method: "POST",

@@ -65,6 +65,8 @@ async def create_job(
         query_data=[q.model_dump() for q in queries],
         query_count=len(queries),
         target_data=target_data,
+        model_provider=req.model_provider,
+        model_name=req.model_name,
     )
 
     # Start background processing
@@ -72,6 +74,8 @@ async def create_job(
         matcher=request.app.state.matcher,
         excel_processor=ExcelProcessor(),
         job_store=job_store,
+        model_provider=req.model_provider,
+        model_name=req.model_name,
     )
     background_tasks.add_task(job_runner.run_job, job_id, target_data)
 
