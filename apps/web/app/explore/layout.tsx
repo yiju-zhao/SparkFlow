@@ -1,9 +1,5 @@
 import { auth } from "@/lib/auth";
-import Link from "next/link";
 import { ExploreShellWrapper } from "./explore-shell-wrapper";
-
-// Nav links component for Explore
-import ExploreNavLinks from "./nav-links";
 
 export default async function ExploreLayout({
   children,
@@ -13,22 +9,7 @@ export default async function ExploreLayout({
   const session = await auth();
 
   return (
-    <ExploreShellWrapper
-      title="research-hub"
-      navLinks={<ExploreNavLinks />}
-      actionButton={
-        <Link
-          href="/deepdive"
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-[0.15em] opacity-80 hover:opacity-100 transition-all group"
-        >
-          <span className="group-hover:-translate-x-1 transition-transform">
-            ←
-          </span>
-          <span>deepdive</span>
-        </Link>
-      }
-      user={session?.user}
-    >
+    <ExploreShellWrapper user={session?.user}>
       {children}
     </ExploreShellWrapper>
   );

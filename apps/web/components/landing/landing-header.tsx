@@ -8,43 +8,42 @@ import { UserNav } from "@/components/user-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
-const navLinks = [
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Features", href: "#features" },
-  { label: "FAQ", href: "#faq" },
-];
-
 interface LandingHeaderProps {
   user: {
     name?: string | null;
     email?: string | null;
     image?: string | null;
   } | null;
+  navLinks?: { label: string; href: string }[];
+  isScrolled?: boolean;
+  onScrollContainer?: boolean;
 }
 
-export function LandingHeader({ user }: LandingHeaderProps) {
+const defaultNavLinks = [
+  { label: "How It Works", href: "#how-it-works" },
+  { label: "Features", href: "#features" },
+  { label: "FAQ", href: "#faq" },
+];
+
+export function LandingHeader({ user, navLinks: customNavLinks, isScrolled, onScrollContainer }: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isLoggedIn = !!user;
   const deepdiveHref = isLoggedIn ? "/deepdive" : "/login";
+  const links = customNavLinks || defaultNavLinks;
 
   useEffect(() => {
+    if (onScrollContainer) {
+      setScrolled(!!isScrolled);
+      return;
+    }
     const container = document.getElementById("landing-scroll-container");
     if (!container) return;
     const handleScroll = () => setScrolled(container.scrollTop > 10);
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const handleNavClick = (href: string) => {
-    setMobileMenuOpen(false);
-    const id = href.replace("#", "");
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+  }, [isScrolled, onScrollContainer]);
 
   return (
     <header
@@ -66,14 +65,14 @@ export function LandingHeader({ user }: LandingHeaderProps) {
 
         {/* Desktop Nav */}
         <nav className="hidden items-center justify-center gap-1 md:flex">
-          {navLinks.map((link) => (
-            <button
+          {links.map((link) => (
+            <Link
               key={link.href}
-              onClick={() => handleNavClick(link.href)}
+              href={link.href}
               className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
-            </button>
+            </Link>
           ))}
         </nav>
 
@@ -113,14 +112,14 @@ export function LandingHeader({ user }: LandingHeaderProps) {
       {mobileMenuOpen && (
         <div className="border-b border-border bg-background/95 backdrop-blur-lg md:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-4">
-            {navLinks.map((link) => (
-              <button
+            {links.map((link) => (
+              <Link
                 key={link.href}
-                onClick={() => handleNavClick(link.href)}
+                href={link.href}
                 className="rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 {link.label}
-              </button>
+              </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
               {!isLoggedIn && (

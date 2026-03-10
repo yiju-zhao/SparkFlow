@@ -66,22 +66,8 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
-            <Link href="#how-it-works">Watch Demo</Link>
+            <Link href="/explore">Research Hub</Link>
           </Button>
-        </motion.div>
-
-        {/* Product Screenshot Placeholder */}
-        <motion.div variants={fadeUp} className="mt-16 w-full max-w-3xl">
-          <div className="aspect-video rounded-xl border border-border bg-secondary shadow-huawei-lg overflow-hidden">
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
-              <div className="flex gap-2">
-                <div className="h-3 w-3 rounded-full bg-accent-red/30" />
-                <div className="h-3 w-3 rounded-full bg-accent-red/20" />
-                <div className="h-3 w-3 rounded-full bg-accent-red/10" />
-              </div>
-              <span className="text-sm">SparkFlow Notebook Interface</span>
-            </div>
-          </div>
         </motion.div>
       </motion.div>
     </section>

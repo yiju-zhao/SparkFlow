@@ -1,33 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { ExploreHeader, type ExploreHeaderProps } from "./header";
+import { LandingHeader } from "@/components/landing/landing-header";
 import {
   ResearchAssistantPanel,
   ResearchAssistantTrigger,
 } from "@/components/explore/research-assistant-panel";
+import type { AIContext } from "./ai-context";
 
-export interface AIContext {
-  conferenceId?: string;
-  conferenceName?: string;
-  sessionId?: string;
-  sessionTitle?: string;
-}
-
-export interface ExploreShellProps extends ExploreHeaderProps {
+export interface ExploreShellProps {
   children: React.ReactNode;
   aiContext?: AIContext;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
 }
 
-export function ExploreShell({ children, aiContext, ...headerProps }: ExploreShellProps) {
+const exploreNavLinks = [
+  { label: "Conferences", href: "/explore/conferences" },
+  { label: "Publications", href: "/explore/publications" },
+  { label: "Sessions", href: "/explore/sessions" },
+  { label: "Toolbox", href: "/explore/toolbox" },
+];
+
+export function ExploreShell({ children, aiContext, user }: ExploreShellProps) {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="fixed top-0 left-0 right-0 z-100 pointer-events-none transition-all duration-300">
-        <ExploreHeader {...headerProps} isScrolled={isScrolled} />
-      </div>
+      <LandingHeader
+        user={user}
+        navLinks={exploreNavLinks}
+        isScrolled={isScrolled}
+        onScrollContainer
+      />
 
       {/* Scrollable content */}
       <div
