@@ -12,11 +12,23 @@ import {
 } from "@/lib/import/instance-import";
 import prisma from "@/lib/prisma";
 
-async function requireAdminUser() {
+export async function requireAdminUser() {
   const session = await auth();
   if (!session?.user?.id) {
-    throw new Error("Unauthorized");
+    throw new Error("Unauthorized: Please log in");
   }
+
+  // Verify role from database (JWT could be stale)
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+
+  if (user?.role !== "ADMIN") {
+    throw new Error("Forbidden: Admin access required");
+  }
+
+  return session.user.id;
 }
 
 // ============================================

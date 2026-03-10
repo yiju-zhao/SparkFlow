@@ -34,6 +34,12 @@ export default function AdminLayout({
           >
             Sessions
           </Link>
+          <Link
+            href="/admin/users"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Users
+          </Link>
         </div>
       </nav>
       <main className="container mx-auto px-4 py-6">{children}</main>
