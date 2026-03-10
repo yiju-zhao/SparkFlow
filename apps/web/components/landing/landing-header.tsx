@@ -77,7 +77,7 @@ export function LandingHeader({
       <div
         className={cn(
           "grid h-16 grid-cols-2 md:grid-cols-3 items-center transition-all duration-300 mx-auto",
-          variant === "explore" ? "px-12 max-w-[1400px]" : "max-w-6xl px-6",
+          variant === "explore" ? "w-full px-6 md:px-12" : "max-w-6xl px-6",
         )}
       >
         {/* Logo */}
