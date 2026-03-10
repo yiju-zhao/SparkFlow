@@ -54,17 +54,15 @@ export function LandingHeader({
 
   const isIslandMode = scrolled;
   const islandClasses = isIslandMode
-    ? "bg-background/80 backdrop-blur-lg border border-border shadow-lg rounded-full px-4 py-2 pointer-events-auto"
-    : "pointer-events-auto";
+    ? "bg-background/80 backdrop-blur-lg border border-border shadow-lg rounded-full px-4 py-2 pointer-events-auto transition-all duration-300 transform translate-y-2"
+    : "pointer-events-auto transition-all duration-300 transform translate-y-0";
 
   return (
     <header
       className={cn(
-        "fixed z-50 transition-all duration-300",
+        "fixed z-50 transition-all duration-300 left-0 right-0",
         // Position & Shape
-        isIslandMode
-          ? "top-4 left-0 right-0 max-w-7xl mx-auto pointer-events-none"
-          : "top-0 left-0 right-0",
+        isIslandMode ? "pointer-events-none" : "top-0",
         // Background & Borders
         scrolled
           ? "bg-transparent"
@@ -75,16 +73,12 @@ export function LandingHeader({
     >
       <div
         className={cn(
-          "grid h-16 grid-cols-2 md:grid-cols-3 items-center",
-          scrolled
-            ? "px-6 md:px-8"
-            : variant === "explore"
-              ? "px-12"
-              : "mx-auto max-w-6xl px-6",
+          "grid h-16 grid-cols-2 md:grid-cols-3 items-center transition-all duration-300 mx-auto",
+          variant === "explore" ? "px-12 max-w-[1400px]" : "max-w-6xl px-6",
         )}
       >
         {/* Logo */}
-        <div className={cn("flex justify-self-start", isIslandMode && islandClasses)}>
+        <div className={cn("flex justify-self-start", islandClasses)}>
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red">
               <span className="text-sm font-bold text-white">S</span>
@@ -94,7 +88,7 @@ export function LandingHeader({
         </div>
 
         {/* Desktop Nav */}
-        <nav className={cn("hidden items-center justify-center gap-1 md:flex", isIslandMode && islandClasses)}>
+        <nav className={cn("hidden items-center justify-center gap-1 md:flex", islandClasses)}>
           {links.map((link) => (
             <Link
               key={link.href}
@@ -107,7 +101,7 @@ export function LandingHeader({
         </nav>
 
         {/* Desktop Actions */}
-        <div className={cn("hidden items-center justify-end gap-2 md:flex justify-self-end", isIslandMode && islandClasses)}>
+        <div className={cn("hidden items-center justify-end gap-2 md:flex justify-self-end", islandClasses)}>
           {isLoggedIn ? (
             <UserNav user={user} />
           ) : (
@@ -121,7 +115,7 @@ export function LandingHeader({
         </div>
 
         {/* Mobile Menu Button */}
-        <div className={cn("flex items-center gap-2 md:hidden justify-self-end", isIslandMode && islandClasses)}>
+        <div className={cn("flex items-center gap-2 md:hidden justify-self-end", islandClasses)}>
           {isLoggedIn ? <UserNav user={user} /> : <ThemeToggle />}
           <Button
             variant="ghost"
