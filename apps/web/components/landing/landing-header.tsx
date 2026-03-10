@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "@/components/user-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -106,7 +106,16 @@ export function LandingHeader({
         {/* Desktop Actions */}
         <div className={cn("hidden items-center justify-end gap-2 md:flex justify-self-end", islandClasses)}>
           {isLoggedIn ? (
-            <UserNav user={user} />
+            <>
+              <Link
+                href="/deepdive"
+                className="group flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-mono font-bold uppercase tracking-widest transition-all hover:bg-muted"
+              >
+                <Sparkles className="h-4 w-4 text-accent-red transition-transform group-hover:scale-110" />
+                <span className="hidden md:inline">deepdive</span>
+              </Link>
+              <UserNav user={user} />
+            </>
           ) : (
             <>
               <ThemeToggle />
@@ -119,7 +128,20 @@ export function LandingHeader({
 
         {/* Mobile Menu Button */}
         <div className={cn("flex items-center gap-2 md:hidden justify-self-end", islandClasses)}>
-          {isLoggedIn ? <UserNav user={user} /> : <ThemeToggle />}
+          {isLoggedIn ? (
+            <>
+              <Link
+                href="/deepdive"
+                className="group flex items-center justify-center rounded-full p-2 transition-all hover:bg-muted"
+                aria-label="Deepdive"
+              >
+                <Sparkles className="h-4 w-4 text-accent-red" />
+              </Link>
+              <UserNav user={user} />
+            </>
+          ) : (
+            <ThemeToggle />
+          )}
           <Button
             variant="ghost"
             size="icon"

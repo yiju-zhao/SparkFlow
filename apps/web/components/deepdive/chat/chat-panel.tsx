@@ -56,6 +56,12 @@ interface AgentState {
   messages: Message[];
 }
 
+// User model settings
+interface ModelSettings {
+  modelProvider: string;
+  modelName: string;
+}
+
 const LANGGRAPH_API_URL =
   process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
 
@@ -120,14 +126,40 @@ export function ChatPanel({
   }, []);
 
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [modelSettings, setModelSettings] = useState<ModelSettings>({
+    modelProvider: "openai",
+    modelName: "gpt-4o-mini",
+  });
 const messagesContainerRef = useRef<HTMLDivElement>(null);
 const textareaRef = useRef<HTMLTextAreaElement>(null);
 const prevIsLoadingRef = useRef<boolean>(false);
 
+  // Fetch user model settings on mount
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (res.ok) {
+          const data = await res.json();
+          setModelSettings({
+            modelProvider: data.modelProvider || "openai",
+            modelName: data.modelName || "gpt-4o-mini",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch model settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   // LangGraph stream hook - follows docs pattern
+  // Select assistant based on user's model provider preference
+  const assistantId = modelSettings.modelProvider === "google" ? "agent_gemini" : "agent";
+
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
-    assistantId: "agent",
+    assistantId,
     threadId: threadId ?? undefined,
     onThreadId: (newThreadId) => {
       console.log("Thread created:", newThreadId);
