@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import type { JobProgress, MatchJobStatus } from "@/lib/matcher/types";
 
 interface RunningStepProps {
@@ -29,6 +30,14 @@ export function RunningStep({ progress, onCancel }: RunningStepProps) {
         <p className="text-sm text-muted-foreground mt-1">
           Please wait while we match your queries against the conference data.
         </p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Progress</span>
+          <span className="font-medium tabular-nums">{progressValue}%</span>
+        </div>
+        <Progress value={progressValue} className="h-2" />
       </div>
 
       <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg">
