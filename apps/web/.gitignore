@@ -20,7 +20,6 @@ package-lock.json
 
 # production
 /build
-/prisma
 
 # misc
 .DS_Store
@@ -42,4 +41,3 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
