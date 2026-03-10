@@ -21,7 +21,7 @@ from middleware.query_optimizer import optimize_query
 
 
 # Get model name from environment or use default
-GEMINI_MODEL = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("DEFAULT_MODEL_NAME", "gemini-2.5-flash")
 
 # Create Gemini model
 model = ChatGoogleGenerativeAI(model=GEMINI_MODEL)

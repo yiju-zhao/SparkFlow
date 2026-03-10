@@ -40,8 +40,8 @@ class JobStore:
         query_data: list[dict],
         query_count: int,
         target_data: list[dict] = None,
-        model_provider: str = "google",
-        model_name: str = "gemini-2.5-flash",
+        model_provider: str = None,  # For query optimizer only
+        model_name: str = None,      # For query optimizer only
     ) -> str:
         """Create a new job and return its ID."""
         job_id = str(uuid.uuid4())
@@ -59,8 +59,8 @@ class JobStore:
                 "query_data": query_data,
                 "query_count": query_count,
                 "target_data": target_data or [],
-                "model_provider": model_provider,
-                "model_name": model_name,
+                "model_provider": model_provider or "google",
+                "model_name": model_name or "gemini-2.5-flash",
                 "status": "PENDING",
                 "progress": 0,
                 "match_count": 0,

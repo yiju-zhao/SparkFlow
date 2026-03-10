@@ -27,16 +27,16 @@ class JobRunner:
         matcher: LotusMatcher,
         excel_processor: ExcelProcessor,
         job_store: JobStore,
-        query_optimizer: QueryOptimizer | None = None,
         model_provider: str = "google",
         model_name: str = "gemini-2.5-flash",
     ):
-        self.matcher = matcher
+        self.matcher = matcher  # Uses Xinference (local LLM) for LOTUS
         self.excel_processor = excel_processor
         self.job_store = job_store
+        # Model settings for query optimizer only (LOTUS always uses Xinference)
         self.model_provider = model_provider
         self.model_name = model_name
-        self.query_optimizer = query_optimizer or QueryOptimizer(
+        self.query_optimizer = QueryOptimizer(
             excel_processor=excel_processor,
             model_provider=model_provider,
             model_name=model_name,
