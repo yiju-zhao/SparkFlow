@@ -35,6 +35,8 @@ export async function GET() {
     select: {
       modelProvider: true,
       modelName: true,
+      matcherModelProvider: true,
+      matcherModelName: true,
     },
   });
 
@@ -44,6 +46,8 @@ export async function GET() {
     settings || {
       modelProvider: defaults.provider,
       modelName: defaults.model,
+      matcherModelProvider: defaults.provider,
+      matcherModelName: defaults.model,
     }
   );
 }
@@ -56,43 +60,74 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { modelProvider, modelName } = body;
+  const {
+    modelProvider,
+    modelName,
+    matcherModelProvider,
+    matcherModelName,
+  } = body;
 
-  // Validate provider
+  // Validate providers
   const validProviders = ["openai", "google"];
-  if (!validProviders.includes(modelProvider)) {
+  if (modelProvider && !validProviders.includes(modelProvider)) {
     return NextResponse.json(
       { error: "Invalid model provider" },
       { status: 400 }
     );
   }
-
-  // Validate model against available models from env
-  const availableModels = getAvailableModels();
-  const validModels = availableModels[modelProvider as keyof typeof availableModels];
-
-  if (!validModels?.includes(modelName)) {
+  if (matcherModelProvider && !validProviders.includes(matcherModelProvider)) {
     return NextResponse.json(
-      { error: `Invalid model name. Available models for ${modelProvider}: ${validModels.join(", ")}` },
+      { error: "Invalid matcher model provider" },
       { status: 400 }
     );
   }
 
+  // Validate models against available models from env
+  const availableModels = getAvailableModels();
+
+  if (modelProvider && modelName) {
+    const validModels = availableModels[modelProvider as keyof typeof availableModels];
+    if (!validModels?.includes(modelName)) {
+      return NextResponse.json(
+        { error: `Invalid model name. Available models for ${modelProvider}: ${validModels.join(", ")}` },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (matcherModelProvider && matcherModelName) {
+    const validModels = availableModels[matcherModelProvider as keyof typeof availableModels];
+    if (!validModels?.includes(matcherModelName)) {
+      return NextResponse.json(
+        { error: `Invalid matcher model name. Available models for ${matcherModelProvider}: ${validModels.join(", ")}` },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Build update data with only provided fields
+  const updateData: Record<string, string> = {};
+  if (modelProvider) updateData.modelProvider = modelProvider;
+  if (modelName) updateData.modelName = modelName;
+  if (matcherModelProvider) updateData.matcherModelProvider = matcherModelProvider;
+  if (matcherModelName) updateData.matcherModelName = matcherModelName;
+
   const settings = await prisma.userSettings.upsert({
     where: { userId: session.user.id },
-    update: {
-      modelProvider,
-      modelName,
-    },
+    update: updateData,
     create: {
       userId: session.user.id,
-      modelProvider,
-      modelName,
+      modelProvider: modelProvider || "google",
+      modelName: modelName || "gemini-2.5-flash",
+      matcherModelProvider: matcherModelProvider || "google",
+      matcherModelName: matcherModelName || "gemini-2.5-flash",
     },
   });
 
   return NextResponse.json({
     modelProvider: settings.modelProvider,
     modelName: settings.modelName,
+    matcherModelProvider: settings.matcherModelProvider,
+    matcherModelName: settings.matcherModelName,
   });
 }

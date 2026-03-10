@@ -14,6 +14,8 @@ import { Loader2, Check } from "lucide-react";
 interface UserSettings {
   modelProvider: string;
   modelName: string;
+  matcherModelProvider: string;
+  matcherModelName: string;
 }
 
 interface AvailableModels {
@@ -30,8 +32,10 @@ interface SettingsFormProps {
 }
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
-  const [provider, setProvider] = useState(initialSettings?.modelProvider || "google");
-  const [model, setModel] = useState(initialSettings?.modelName || "gemini-2.5-flash");
+  const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider || "google");
+  const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gemini-2.5-flash");
+  const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "google");
+  const [matcherModel, setMatcherModel] = useState(initialSettings?.matcherModelName || "gemini-2.5-flash");
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -47,8 +51,10 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
 
           // If no initial settings, use defaults from env
           if (!initialSettings) {
-            setProvider(data.defaults.provider);
-            setModel(data.defaults.model);
+            setChatProvider(data.defaults.provider);
+            setChatModel(data.defaults.model);
+            setMatcherProvider(data.defaults.provider);
+            setMatcherModel(data.defaults.model);
           }
         }
       } catch (error) {
@@ -58,15 +64,22 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     fetchModels();
   }, [initialSettings]);
 
-  // Reset model when provider changes (if current model not in new provider's list)
+  // Reset model when provider changes
   useEffect(() => {
     if (!availableModels) return;
-
-    const currentModels = provider === "google" ? availableModels.google : availableModels.openai;
-    if (!currentModels.includes(model)) {
-      setModel(currentModels[0]);
+    const currentModels = chatProvider === "google" ? availableModels.google : availableModels.openai;
+    if (!currentModels.includes(chatModel)) {
+      setChatModel(currentModels[0]);
     }
-  }, [provider, model, availableModels]);
+  }, [chatProvider, chatModel, availableModels]);
+
+  useEffect(() => {
+    if (!availableModels) return;
+    const currentModels = matcherProvider === "google" ? availableModels.google : availableModels.openai;
+    if (!currentModels.includes(matcherModel)) {
+      setMatcherModel(currentModels[0]);
+    }
+  }, [matcherProvider, matcherModel, availableModels]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -75,8 +88,10 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          modelProvider: provider,
-          modelName: model,
+          modelProvider: chatProvider,
+          modelName: chatModel,
+          matcherModelProvider: matcherProvider,
+          matcherModelName: matcherModel,
         }),
       });
 
@@ -91,54 +106,105 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     }
   };
 
-  const currentModels = availableModels
-    ? (provider === "google" ? availableModels.google : availableModels.openai)
-    : [];
+  const getModelOptions = (provider: string) => {
+    if (!availableModels) return [];
+    return provider === "google" ? availableModels.google : availableModels.openai;
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Chat/RAG Agent Model */}
       <div className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Model Provider
-          </label>
-          <Select value={provider} onValueChange={setProvider}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select provider" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="openai">OpenAI</SelectItem>
-              <SelectItem value="google">Google (Gemini)</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Choose between OpenAI and Google Gemini models
+        <div>
+          <h3 className="text-base font-medium">Chat Model</h3>
+          <p className="text-sm text-muted-foreground">
+            Model used for conversations in notebooks (Deepdive)
           </p>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Model
-          </label>
-          <Select value={model} onValueChange={setModel} disabled={!availableModels}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={availableModels ? "Select model" : "Loading models..."} />
-            </SelectTrigger>
-            <SelectContent>
-              {currentModels.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {m}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Select the specific model to use for conversations
-          </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Provider
+            </label>
+            <Select value={chatProvider} onValueChange={setChatProvider}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai">OpenAI</SelectItem>
+                <SelectItem value="google">Google (Gemini)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Model
+            </label>
+            <Select value={chatModel} onValueChange={setChatModel} disabled={!availableModels}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={availableModels ? "Select model" : "Loading..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {getModelOptions(chatProvider).map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Matcher Agent Model */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-medium">Matcher Model</h3>
+          <p className="text-sm text-muted-foreground">
+            Model used for matching queries to conference sessions/publications (Explore)
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Provider
+            </label>
+            <Select value={matcherProvider} onValueChange={setMatcherProvider}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai">OpenAI</SelectItem>
+                <SelectItem value="google">Google (Gemini)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Model
+            </label>
+            <Select value={matcherModel} onValueChange={setMatcherModel} disabled={!availableModels}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={availableModels ? "Select model" : "Loading..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {getModelOptions(matcherProvider).map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex items-center gap-3 pt-4 border-t">
         <Button onClick={handleSave} disabled={isLoading || !availableModels}>
           {isLoading ? (
             <>
@@ -156,7 +222,8 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </Button>
       </div>
 
-      {provider === "google" && (
+      {/* Note for Google models */}
+      {(chatProvider === "google" || matcherProvider === "google") && (
         <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 p-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">
             <strong>Note:</strong> To use Google Gemini models, the server administrator must configure a{" "}

@@ -16,6 +16,8 @@ export default async function SettingsPage() {
     select: {
       modelProvider: true,
       modelName: true,
+      matcherModelProvider: true,
+      matcherModelName: true,
     },
   });
 
@@ -31,9 +33,9 @@ export default async function SettingsPage() {
           </div>
 
           <div className="rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-lg font-medium mb-1">AI Model</h2>
+            <h2 className="text-lg font-medium mb-1">AI Models</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Choose your preferred AI model for conversations
+              Choose your preferred AI models for different features
             </p>
             <SettingsForm
               initialSettings={
@@ -41,6 +43,8 @@ export default async function SettingsPage() {
                   ? {
                       modelProvider: settings.modelProvider,
                       modelName: settings.modelName,
+                      matcherModelProvider: settings.matcherModelProvider,
+                      matcherModelName: settings.matcherModelName,
                     }
                   : undefined
               }

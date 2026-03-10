@@ -52,12 +52,16 @@ model Session {
 
 // User preferences for AI model selection
 model UserSettings {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  modelProvider String   @default("google")
-  modelName     String   @default("gemini-2.5-flash")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  // Chat/RAG agent model
+  modelProvider       String   @default("google")
+  modelName           String   @default("gemini-2.5-flash")
+  // Matcher agent model
+  matcherModelProvider String  @default("google")
+  matcherModelName    String   @default("gemini-2.5-flash")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
