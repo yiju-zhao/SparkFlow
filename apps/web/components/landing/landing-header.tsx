@@ -55,18 +55,27 @@ export function LandingHeader({
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        "fixed z-50 transition-all duration-300",
+        // Position & Shape
+        variant === "explore" && scrolled
+          ? "top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-5xl rounded-full"
+          : "top-0 left-0 right-0",
+        // Background & Borders
         scrolled
-          ? "bg-background/80 backdrop-blur-lg border-b border-border shadow-huawei-subtle"
+          ? variant === "explore"
+            ? "bg-background/80 backdrop-blur-lg border border-border shadow-lg"
+            : "bg-background/80 backdrop-blur-lg border-b border-border shadow-huawei-subtle"
           : variant === "explore"
             ? "bg-background"
-            : "bg-transparent",
+            : "bg-transparent"
       )}
     >
       <div
         className={cn(
           "grid h-16 grid-cols-3 items-center",
-          variant === "explore" ? "px-12" : "mx-auto max-w-6xl px-6",
+          variant === "explore" 
+            ? scrolled ? "px-6 md:px-8" : "px-12" 
+            : "mx-auto max-w-6xl px-6",
         )}
       >
         {/* Logo */}
