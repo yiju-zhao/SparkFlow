@@ -32,10 +32,11 @@ export function ExploreShell({ children, aiContext, user }: ExploreShellProps) {
   return (
     <div className="flex flex-col h-screen">
       <LandingHeader
-        user={user}
+        user={user ?? null}
         navLinks={exploreNavLinks}
         isScrolled={isScrolled}
         onScrollContainer
+        variant="explore"
       />
 
       {/* Scrollable content */}

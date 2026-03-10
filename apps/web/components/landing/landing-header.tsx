@@ -17,6 +17,7 @@ interface LandingHeaderProps {
   navLinks?: { label: string; href: string }[];
   isScrolled?: boolean;
   onScrollContainer?: boolean;
+  variant?: "landing" | "explore";
 }
 
 const defaultNavLinks = [
@@ -25,7 +26,13 @@ const defaultNavLinks = [
   { label: "FAQ", href: "#faq" },
 ];
 
-export function LandingHeader({ user, navLinks: customNavLinks, isScrolled, onScrollContainer }: LandingHeaderProps) {
+export function LandingHeader({
+  user,
+  navLinks: customNavLinks,
+  isScrolled,
+  onScrollContainer,
+  variant = "landing",
+}: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -51,10 +58,17 @@ export function LandingHeader({ user, navLinks: customNavLinks, isScrolled, onSc
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         scrolled
           ? "bg-background/80 backdrop-blur-lg border-b border-border shadow-huawei-subtle"
-          : "bg-transparent",
+          : variant === "explore"
+            ? "bg-background"
+            : "bg-transparent",
       )}
     >
-      <div className="mx-auto grid h-16 max-w-6xl grid-cols-3 items-center px-6">
+      <div
+        className={cn(
+          "grid h-16 grid-cols-3 items-center",
+          variant === "explore" ? "px-12" : "mx-auto max-w-6xl px-6",
+        )}
+      >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red">
