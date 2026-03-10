@@ -21,12 +21,12 @@ export function DeepdiveShell({ children, user, breadcrumb }: DeepdiveShellProps
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="shrink-0 border-b border-border bg-background">
-        <div className="mx-auto grid h-16 max-w-6xl grid-cols-3 items-center px-6">
+      <header className="shrink-0 border-b-2 border-border bg-background">
+        <div className="flex h-16 w-full items-center justify-between px-6">
           {/* Left: Logo or Breadcrumb */}
           <div className="flex items-center gap-2.5">
             {breadcrumb ? (
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-base">
                 <Link
                   href="/"
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -57,21 +57,18 @@ export function DeepdiveShell({ children, user, breadcrumb }: DeepdiveShellProps
             ) : (
               <Link href="/" className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red">
-                  <span className="text-sm font-bold text-white">S</span>
+                  <span className="text-base font-bold text-white">S</span>
                 </div>
                 <span className="text-lg font-semibold">SparkFlow</span>
               </Link>
             )}
           </div>
 
-          {/* Center: empty */}
-          <div />
-
           {/* Right: Explore link + User */}
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex items-center gap-3">
             <Link
               href="/explore"
-              className="group flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-mono font-bold uppercase tracking-widest transition-all hover:bg-muted"
+              className="group flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-mono font-bold uppercase tracking-widest transition-all hover:bg-muted"
             >
               <Compass className="h-4 w-4 text-[#00D084] transition-transform group-hover:scale-110" />
               <span>research-hub</span>

@@ -52,18 +52,23 @@ export function LandingHeader({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [isScrolled, onScrollContainer]);
 
+  const isExploreScrolled = variant === "explore" && scrolled;
+  const islandClasses = isExploreScrolled
+    ? "bg-background/80 backdrop-blur-lg border border-border shadow-lg rounded-full px-4 py-2 pointer-events-auto"
+    : "pointer-events-auto";
+
   return (
     <header
       className={cn(
         "fixed z-50 transition-all duration-300",
         // Position & Shape
-        variant === "explore" && scrolled
-          ? "top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-5xl rounded-full"
+        isExploreScrolled
+          ? "top-4 left-0 right-0 max-w-7xl mx-auto pointer-events-none"
           : "top-0 left-0 right-0",
         // Background & Borders
         scrolled
           ? variant === "explore"
-            ? "bg-background/80 backdrop-blur-lg border border-border shadow-lg"
+            ? "bg-transparent"
             : "bg-background/80 backdrop-blur-lg border-b border-border shadow-huawei-subtle"
           : variant === "explore"
             ? "bg-background"
@@ -72,22 +77,24 @@ export function LandingHeader({
     >
       <div
         className={cn(
-          "grid h-16 grid-cols-3 items-center",
+          "grid h-16 grid-cols-2 md:grid-cols-3 items-center",
           variant === "explore" 
             ? scrolled ? "px-6 md:px-8" : "px-12" 
             : "mx-auto max-w-6xl px-6",
         )}
       >
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red">
-            <span className="text-sm font-bold text-white">S</span>
-          </div>
-          <span className="text-lg font-semibold">SparkFlow</span>
-        </Link>
+        <div className={cn("flex justify-self-start", isExploreScrolled && islandClasses)}>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red">
+              <span className="text-sm font-bold text-white">S</span>
+            </div>
+            <span className="text-lg font-semibold">SparkFlow</span>
+          </Link>
+        </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden items-center justify-center gap-1 md:flex">
+        <nav className={cn("hidden items-center justify-center gap-1 md:flex", isExploreScrolled && islandClasses)}>
           {links.map((link) => (
             <Link
               key={link.href}
@@ -100,7 +107,7 @@ export function LandingHeader({
         </nav>
 
         {/* Desktop Actions */}
-        <div className="hidden items-center justify-end gap-2 md:flex">
+        <div className={cn("hidden items-center justify-end gap-2 md:flex justify-self-end", isExploreScrolled && islandClasses)}>
           {isLoggedIn ? (
             <UserNav user={user} />
           ) : (
@@ -114,7 +121,7 @@ export function LandingHeader({
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="flex items-center gap-2 md:hidden">
+        <div className={cn("flex items-center gap-2 md:hidden justify-self-end", isExploreScrolled && islandClasses)}>
           {isLoggedIn ? <UserNav user={user} /> : <ThemeToggle />}
           <Button
             variant="ghost"
