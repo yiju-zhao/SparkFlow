@@ -39,7 +39,7 @@ export default function ExplorePage() {
           ~/research-hub/overview
         </p>
         <h1 className="text-4xl font-bold tracking-tight mb-2">
-          Knowledge Base
+          Research Hub
         </h1>
         <p className="text-muted-foreground">
           Discover conferences, publications, and sessions in the global

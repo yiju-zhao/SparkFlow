@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useECharts } from "@/hooks/use-echarts";
+import { useECharts } from "@/lib/hooks/use-echarts";
 import { CountryStats } from "@/lib/explore/types";
 import { cn } from "@/lib/utils";
 import type { EChartsOption } from "echarts";

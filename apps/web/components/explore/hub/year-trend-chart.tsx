@@ -3,7 +3,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useECharts } from "@/hooks/use-echarts";
+import { useECharts } from "@/lib/hooks/use-echarts";
 import { BarChart3 } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { EChartsOption } from "echarts";

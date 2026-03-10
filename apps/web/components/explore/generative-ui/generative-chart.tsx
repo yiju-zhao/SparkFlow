@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { z } from "zod";
-import { useECharts } from "@/hooks/use-echarts";
+import { useECharts } from "@/lib/hooks/use-echarts";
 import { useTheme } from "next-themes";
 import { BarChart3, TrendingUp, PieChart } from "lucide-react";
 import type { EChartsOption } from "echarts";

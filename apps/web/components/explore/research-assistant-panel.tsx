@@ -12,7 +12,7 @@ import type { Message } from "@copilotkit/shared";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
 import { useGenerativeComponents } from "./generative-ui";
-import { useContextSuggestions } from "@/hooks/use-context-suggestions";
+import { useContextSuggestions } from "@/lib/hooks/use-context-suggestions";
 
 interface ResearchAssistantPanelProps {
   open: boolean;

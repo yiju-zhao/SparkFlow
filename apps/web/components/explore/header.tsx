@@ -28,22 +28,17 @@ export function ExploreHeader({
 
   return (
     <nav
-      className={`z-100 shrink-0 transition-all duration-500 ease-in-out ${isScrolled
-          ? "bg-transparent border-transparent pt-4 px-6"
-          : "border-b border-border bg-[#0A0A0A] text-white"
-        }`}
+      className={`z-100 shrink-0 transition-all duration-500 ease-in-out border-b border-border ${
+        isScrolled
+          ? "bg-background/80 backdrop-blur-lg"
+          : "bg-background"
+      }`}
     >
       <div
-        className={`grid h-14 items-center transition-all duration-500 ${isScrolled ? "grid-cols-[auto_1fr_auto] gap-4" : "grid-cols-3 px-12"
-          }`}
+        className={`grid h-14 items-center transition-all duration-500 px-12 grid-cols-3`}
       >
         {/* Left: Logo */}
-        <div
-          className={`flex items-center gap-3 transition-all duration-500 pointer-events-auto ${isScrolled
-            ? "bg-foreground/90 text-background backdrop-blur-md px-6 h-11 rounded-full shadow-huawei-md"
-            : ""
-            }`}
-        >
+        <div className="flex items-center gap-3">
           <Link
             href="/"
             className="font-medium text-sm opacity-60 hover:opacity-100 transition-opacity"
@@ -69,29 +64,16 @@ export function ExploreHeader({
 
         {/* Center: Nav links */}
         <div className="flex items-center justify-center">
-          <div
-            className={`flex items-center gap-8 transition-all duration-500 pointer-events-auto ${isScrolled
-              ? "bg-foreground/80 text-background backdrop-blur-md px-8 h-11 rounded-full shadow-huawei-md"
-              : ""
-              }`}
-          >
+          <div className="flex items-center gap-8">
             {navLinks}
           </div>
         </div>
 
         {/* Right: Actions & User */}
-        <div
-          className={`flex items-center gap-4 transition-all duration-500 pointer-events-auto ${isScrolled
-            ? "bg-foreground/90 text-background backdrop-blur-md px-6 h-11 rounded-full shadow-huawei-md"
-            : "justify-end"
-            }`}
-        >
+        <div className="flex items-center justify-end gap-4">
           {actionButton}
           {user && (
-            <div
-              className={`pl-4 border-l border-white/10 ${isScrolled ? "text-background" : "text-secondary"
-                }`}
-            >
+            <div className="pl-4 border-l border-border">
               <UserNav user={user} />
             </div>
           )}
