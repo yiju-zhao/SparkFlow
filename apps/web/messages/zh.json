@@ -49,7 +49,7 @@
       },
       "step2": {
         "title": "探索会议",
-        "description": "浏览学术会议的出版物和会议场次。发现相关研究并直接添加到您的笔记本中。"
+        "description": "浏览学术会议的论文和会议场次。发现相关研究并直接添加到您的笔记本中。"
       },
       "step3": {
         "title": "获取智能体 AI 洞见",
@@ -66,8 +66,8 @@
       },
       "explore": {
         "badge": "探索",
-        "title": "会议与出版物浏览器",
-        "description": "浏览学术会议、发现会议场次和相关出版物。直接将资料来源添加到您的笔记本中进行更深入的分析。"
+        "title": "会议与论文浏览器",
+        "description": "浏览学术会议、发现会议场次和相关论文。直接将资料来源添加到您的笔记本中进行更深入的分析。"
       },
       "insights": {
         "badge": "洞见",
@@ -89,7 +89,7 @@
       },
       "q3": {
         "question": "我可以浏览学术会议吗？",
-        "answer": "可以！SparkFlow 包含一个会议浏览器，让您可以浏览已索引学术会议的出版物、会议场次和演示文稿。您可以搜索、筛选并直接将相关论文添加到您的研究笔记本中。"
+        "answer": "可以！SparkFlow 包含一个会议浏览器，让您可以浏览已索引学术会议的论文、会议场次和演示文稿。您可以搜索、筛选并直接将相关论文添加到您的研究笔记本中。"
       },
       "q4": {
         "question": "我的研究数据安全吗？",
@@ -164,13 +164,13 @@
   "explore": {
     "title": "研究中心",
     "noRecentConferences": "暂无近期会议。",
-    "subtitle": "探索全球知识库中的会议、出版物和会议场次",
+    "subtitle": "探索全球知识库中的会议、论文和会议场次",
     "breadcrumb": "~/研究中心/概览",
     "recentConferences": "近期会议",
     "viewAll": "查看全部",
     "stats": {
       "conferences": "会议",
-      "publications": "出版物",
+      "publications": "论文",
       "sessions": "会议场次",
       "yearsCovered": "覆盖年份"
     },
@@ -200,7 +200,7 @@
       "description": "请尝试调整筛选条件"
     },
     "charts": {
-      "publicationsByYear": "按年份出版物分布",
+      "publicationsByYear": "按年份论文分布",
       "topTopics": "热门研究主题",
       "noData": "暂无数据",
       "noDataDesc": "数据将在此处显示"
@@ -214,7 +214,7 @@
       "officialWebsite": "官方网站",
       "showingSessions": "显示 {count}/{total} 个会议场次",
       "unscheduled": "未安排",
-      "tabPublications": "出版物",
+      "tabPublications": "论文",
       "tabSessions": "会议场次"
     },
     "publicationDetail": {
@@ -237,9 +237,9 @@
     },
     "publications": {
       "title": "论文",
-      "subtitle": "搜索和发现研究出版物",
-      "breadcrumb": "~/研究中心/出版物",
-      "found": "找到 {count} 篇出版物"
+      "subtitle": "搜索和发现研究论文",
+      "breadcrumb": "~/研究中心/论文",
+      "found": "找到 {count} 篇论文"
     },
     "sessions": {
       "title": "会议场次",
@@ -254,7 +254,7 @@
       "availableTools": "个可用工具",
       "queryMatcher": {
         "title": "查询匹配器",
-        "description": "使用语义搜索将查询与会议场次或出版物进行匹配",
+        "description": "使用语义搜索将查询与会议场次或论文进行匹配",
         "breadcrumb": "~/研究中心/工具箱/查询匹配器",
         "history": "历史记录"
       },
@@ -283,7 +283,7 @@
           "buColumn": "bu",
           "queryColumn": "query",
           "buDesc": "请求匹配的业务单元",
-          "queryDesc": "要与会议场次或出版物匹配的搜索查询",
+          "queryDesc": "要与会议场次或论文匹配的搜索查询",
           "yes": "是",
           "note": "按位置读取列 — 表头名称不需要完全匹配。查询将在匹配前自动翻译为英文。",
           "queriesLoaded": "已加载 {count} 个查询",
@@ -302,7 +302,7 @@
           "matchAgainst": "匹配目标",
           "matchAgainstPlaceholder": "选择目标类型",
           "sessions": "会议场次",
-          "publications": "出版物",
+          "publications": "论文",
           "topK": "Top K 结果数",
           "topKHelp": "每个查询的匹配数量",
           "searchK": "Search K",
