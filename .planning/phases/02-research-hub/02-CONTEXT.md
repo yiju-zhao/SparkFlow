@@ -1,7 +1,8 @@
 # Phase 2: Research Hub - Context
 
 **Gathered:** 2026-03-06
-**Status:** Ready for planning
+**Updated:** 2026-03-11
+**Status:** INCOMPLETE - Generative UI not working, requires fix
 
 <domain>
 ## Phase Boundary
@@ -107,6 +108,44 @@ Deliver conference discovery experience with AI-powered generative UI. Users bro
 - Additional chart types (scatter, area, radar) — bar/line/pie sufficient for v1
 
 </deferred>
+
+<gap_analysis>
+## Gap Analysis (2026-03-11)
+
+**Problem:** Generative UI components (tables, charts) are not rendering in chat. Agent returns text-only responses.
+
+**Root Cause:** The LangGraph hub agent was built with `create_deep_agent` from deepagents package, which does NOT integrate with CopilotKit's frontend tool system.
+
+**Missing Integration:**
+1. Agent state does NOT inherit from `CopilotKitState`
+2. Agent does NOT bind `state.copilotkit.actions` to the model
+3. Agent has NO visibility into frontend-registered `useComponent` tools
+
+**Required Fix:**
+Replace the hub agent with CopilotKit's recommended LangGraph pattern:
+
+```python
+from copilotkit import CopilotKitState
+
+class HubAgentState(CopilotKitState):
+    pass
+
+async def hub_node(state: HubAgentState, config: RunnableConfig):
+    model = ChatOpenAI(model="gpt-4o-mini")
+    # Bind CopilotKit's frontend actions + backend tools
+    actions = state.get("copilotkit", {}).get("actions", [])
+    model_with_tools = model.bind_tools([
+      *actions,  # Frontend tools (showTable, showChart)
+      list_venues, list_instances, list_sessions, search_sessions  # Backend tools
+    ])
+    # ...
+```
+
+**Files to Modify:**
+- `apps/agent/graphs/hub_agent.py` — Rewrite with CopilotKit pattern
+- `apps/agent/requirements.txt` — Add `copilotkit` package
+
+</gap_analysis>
 
 ---
 
