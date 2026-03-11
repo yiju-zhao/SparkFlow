@@ -16,7 +16,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Data | 5/5 | Complete | 2026-03-05 |
-| 2. Research Hub | 3/3 | Complete | 2026-03-09 |
+| 2. Research Hub | 0/2 | Replanning | - |
 | 3. Notebook Integration | 0/0 | Not started | - |
 | 4. Polish & Enhancement | 0/0 | Not started | - |
 
@@ -50,7 +50,7 @@ Plans:
 
 ### Phase 2: Research Hub
 
-**Goal**: Deliver conference discovery experience with AI-powered generative UI
+**Goal**: Deliver conference discovery experience with AI-powered generative UI via MCP Apps
 
 **Depends on**: Phase 1 (Foundation & Data)
 
@@ -59,16 +59,15 @@ Plans:
 **Success Criteria** (what must be TRUE):
 1. User can browse conferences, view sessions, filter by tag/date/speaker, and search by keyword
 2. User can ask AI assistant questions about hub content and receive natural language responses
-3. AI assistant generates dynamic tables that display filtered query results
-4. AI assistant generates dynamic charts (bar, line, pie) that visualize session data
-5. User can interact with generated components (click rows, sort columns, select filters)
+3. AI assistant generates dynamic tables that display filtered query results via MCP Apps HTML templates
+4. AI assistant generates dynamic charts (bar, line, pie) that visualize session data via Chart.js templates
+5. User can interact with generated components (tables sortable, charts interactive)
 
-**Plans**: 3 plans in 2 waves
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [x] 02-01-PLAN.md — Create generative UI components (table, chart) with CopilotKit useComponent
-- [x] 02-02-PLAN.md — Integrate CopilotKit hooks into Research Assistant Panel
-- [x] 02-03-PLAN.md — Wire page context to AI assistant and enable navigation
+- [ ] 02-01-PLAN.md — Create MCP server with SQLDatabaseToolkit and HTML templates
+- [ ] 02-02-PLAN.md — Integrate MCPAppsMiddleware with CopilotKit BuiltInAgent
 
 ---
 
@@ -148,4 +147,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-03-04*
-*Last updated: 2026-03-06*
+*Last updated: 2026-03-11 (Phase 2 replan - MCP Apps architecture)*

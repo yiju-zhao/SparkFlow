@@ -2,46 +2,51 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Plan 05 (Complete)
-status: phase-complete
-last_updated: "2026-03-06T20:35:00.000Z"
-last_activity: "2026-03-08 - Completed Quick Task 7: Move S3 storage from matcher to Next.js"
+current_plan: Plan 02 (Replanning)
+status: replanning
+last_updated: "2026-03-11T00:00:00.000Z"
+last_activity: "2026-03-11 - Replanning Phase 2 with MCP Apps architecture"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 5
+  total_plans: 7
   completed_plans: 5
 ---
 
 # Project State: DeepSense Insight Platform
 
 **Project:** DeepSense Insight Platform (Research Hub + Generative AI)
-**Current Focus:** Foundation & Data (Phase 1)
-**Last Updated:** 2026-03-05
+**Current Focus:** Phase 2 - Research Hub (Replanning for MCP Apps)
+**Last Updated:** 2026-03-11
 
 ## Progress Summary
 
 ```
 Phase 1: Foundation & Data    [██████████] 100% ✓
-Phase 2: Research Hub          [██████████] 100% ✓
+Phase 2: Research Hub          [████░░░░░░] 40% (Replanning - MCP Apps)
 Phase 3: Notebook Integration  [░░░░░░░░░░] 0%
 Phase 4: Polish & Enhancement  [░░░░░░░░░░] 0%
 
-Overall Progress: [████░░░░░░] 50%
+Overall Progress: [████░░░░░░] 40%
 ```
 
 ## Current Position
 
-**Active Phase:** Phase 2 - Research Hub ✓ Complete
+**Active Phase:** Phase 2 - Research Hub (Replanning)
 **Next Phase:** Phase 3 - Notebook Integration
-**Status:** Phase 2 Complete, ready for Phase 3
+**Status:** Replanning Phase 2 with MCP Apps architecture
 
 ### Phase 2: Research Hub
 
-**Goal:** Deliver conference discovery experience with AI-powered generative UI
+**Goal:** Deliver conference discovery experience with AI-powered generative UI via MCP Apps
 
-**Plans Complete:** 3/3
-**Status:** Complete
+**Architecture Change:**
+- OLD: CopilotKit useComponent hooks + React GenerativeTable/GenerativeChart
+- NEW: MCP Server + MCP Apps HTML templates + @ag-ui/mcp-apps-middleware
+
+**Plans:** 2 plans in 2 waves
+- [ ] 02-01: Create MCP server with SQLDatabaseToolkit and HTML templates
+- [ ] 02-02: Integrate MCPAppsMiddleware with CopilotKit BuiltInAgent
 
 ---
 
