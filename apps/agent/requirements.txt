@@ -3,11 +3,15 @@ langgraph
 langchain
 langchain-openai
 langchain-core
+langchain-community
 langgraph-cli[inmem]
 langchain-mcp-adapters
 
 # CopilotKit integration
 copilotkit
+
+# MCP Server dependencies (shared with apps/mcp-server)
+mcp
 
 # LangGraph Checkpointing
 langgraph-checkpoint-postgres
