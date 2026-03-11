@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { LandingHeader } from "@/components/landing/landing-header";
 import {
   ResearchAssistantPanel,
@@ -17,17 +18,23 @@ export interface ExploreShellProps {
   };
 }
 
-const exploreNavLinks = [
-  { label: "Conferences", href: "/explore/conferences" },
-  { label: "Publications", href: "/explore/publications" },
-  { label: "Sessions", href: "/explore/sessions" },
-  { label: "Toolbox", href: "/explore/toolbox" },
-];
+const useExploreNavLinks = () => {
+  const t = useTranslations("explore");
+  const locale = useLocale();
+
+  return [
+    { label: t("conferences.title"), href: `/${locale}/explore/conferences` },
+    { label: t("publications.title"), href: `/${locale}/explore/publications` },
+    { label: t("sessions.title"), href: `/${locale}/explore/sessions` },
+    { label: t("toolbox.title"), href: `/${locale}/explore/toolbox` },
+  ];
+};
 
 function ExploreShellInner({ children, user }: ExploreShellProps) {
   const { context } = useAIContext();
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const exploreNavLinks = useExploreNavLinks();
 
   return (
     <div className="flex flex-col h-screen">

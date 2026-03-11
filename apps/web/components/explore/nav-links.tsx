@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const navLinks = [
-  { href: "/explore/conferences", label: "conferences" },
-  { href: "/explore/publications", label: "publications" },
-  { href: "/explore/sessions", label: "sessions" },
-  { href: "/explore/toolbox", label: "toolbox" },
-] as const;
+import { useLocale, useTranslations } from "next-intl";
 
 export default function ExploreNavLinks() {
   const pathname = usePathname();
+  const locale = useLocale();
+  const t = useTranslations("explore");
+
+  const navLinks = [
+    { href: `/${locale}/explore/conferences`, label: t("conferences.title") },
+    { href: `/${locale}/explore/publications`, label: t("publications.title") },
+    { href: `/${locale}/explore/sessions`, label: t("sessions.title") },
+    { href: `/${locale}/explore/toolbox`, label: t("toolbox.title") },
+  ] as const;
 
   return (
     <>

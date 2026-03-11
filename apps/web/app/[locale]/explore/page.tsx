@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { setRequestLocale } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import {
   getGlobalStats,
   getYearTrendData,
@@ -10,6 +12,10 @@ import { GlobalStats, RecentConferences } from "@/components/explore/hub";
 import { ChartsSection } from "@/components/explore/hub/charts-section";
 
 import { Skeleton } from "@/components/ui/skeleton";
+
+interface ExplorePageProps {
+  params: Promise<{ locale: string }>;
+}
 
 async function StatsSection() {
   const stats = await getGlobalStats();
@@ -30,20 +36,23 @@ async function RecentConferencesSection() {
   return <RecentConferences conferences={conferences} />;
 }
 
-export default function ExplorePage() {
+export default async function ExplorePage({ params }: ExplorePageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("explore");
+
   return (
     <div className="flex flex-col gap-10">
       {/* Title Section */}
       <div>
         <p className="text-sm text-muted-foreground mb-2">
-          ~/research-hub/overview
+          {t("breadcrumb")}
         </p>
         <h1 className="text-4xl font-bold tracking-tight mb-2">
-          Research Hub
+          {t("title")}
         </h1>
         <p className="text-muted-foreground">
-          Discover conferences, publications, and sessions in the global
-          knowledge base
+          {t("subtitle")}
         </p>
       </div>
 
@@ -66,14 +75,14 @@ export default function ExplorePage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold font-mono tracking-tight">
-              recent conferences
+              {t("recentConferences")}
             </h2>
           </div>
           <Link
-            href="/explore/conferences"
+            href={`/${locale}/explore/conferences`}
             className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
           >
-            view all
+            {t("viewAll")}
           </Link>
         </div>
         <Suspense fallback={<RecentConferencesSkeleton />}>

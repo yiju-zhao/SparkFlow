@@ -1,10 +1,19 @@
+import { setRequestLocale } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NotebookList } from "@/components/deepdive/notebook-list";
 import { CreateNotebookDialog } from "@/components/deepdive/create-notebook-dialog";
 import { DeepdiveShell } from "@/components/deepdive/deepdive-shell";
 
-export default async function DeepdivePage() {
+interface DeepdivePageProps {
+  params: Promise<{ locale: string }>;
+}
+
+export default async function DeepdivePage({ params }: DeepdivePageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("deepdive");
   const session = await auth();
 
   const notebooks = await prisma.notebook.findMany({
@@ -25,10 +34,10 @@ export default async function DeepdivePage() {
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold font-mono tracking-tight">
-                research notebooks
+                {t("notebooks")}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Personalized knowledge bases and AI insights
+                {t("notebooksSubtitle")}
               </p>
             </div>
             <CreateNotebookDialog />

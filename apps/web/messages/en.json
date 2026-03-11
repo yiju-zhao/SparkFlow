@@ -162,7 +162,11 @@
     }
   },
   "explore": {
-    "title": "Explore",
+    "title": "Research Hub",
+    "subtitle": "Discover conferences, publications, and sessions in the global knowledge base",
+    "breadcrumb": "~/research-hub/overview",
+    "recentConferences": "recent conferences",
+    "viewAll": "view all",
     "conferences": {
       "title": "Conferences",
       "subtitle": "Browse academic conferences and their sessions"
@@ -179,6 +183,13 @@
       "title": "Toolbox",
       "subtitle": "Research tools and utilities"
     }
+  },
+  "deepdive": {
+    "title": "DeepDive",
+    "subtitle": "Personalized knowledge bases and AI insights",
+    "notebooks": "research notebooks",
+    "notebooksSubtitle": "Personalized knowledge bases and AI insights",
+    "researchHub": "research-hub"
   },
   "settings": {
     "title": "Settings",

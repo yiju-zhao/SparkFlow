@@ -162,7 +162,11 @@
     }
   },
   "explore": {
-    "title": "探索",
+    "title": "研究中心",
+    "subtitle": "探索全球知识库中的会议、出版物和会议场次",
+    "breadcrumb": "~/研究中心/概览",
+    "recentConferences": "近期会议",
+    "viewAll": "查看全部",
     "conferences": {
       "title": "会议",
       "subtitle": "浏览学术会议及其会议场次"
@@ -179,6 +183,13 @@
       "title": "工具箱",
       "subtitle": "研究工具和实用程序"
     }
+  },
+  "deepdive": {
+    "title": "深度探索",
+    "subtitle": "个性化知识库和 AI 洞见",
+    "notebooks": "研究笔记本",
+    "notebooksSubtitle": "个性化知识库和 AI 洞见",
+    "researchHub": "研究中心"
   },
   "settings": {
     "title": "设置",
