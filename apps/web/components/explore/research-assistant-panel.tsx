@@ -203,17 +203,26 @@ export function ResearchAssistantPanel({
               {messages?.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${getMessageRole(msg) === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex flex-col ${getMessageRole(msg) === "user" ? "items-end" : "items-start"}`}
                 >
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                      getMessageRole(msg) === "user"
-                        ? "bg-foreground text-background rounded-br-md"
-                        : "bg-muted rounded-bl-md"
-                    }`}
-                  >
-                    {getMessageContent(msg)}
-                  </div>
+                  {/* Text content */}
+                  {getMessageContent(msg) && (
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                        getMessageRole(msg) === "user"
+                          ? "bg-foreground text-background rounded-br-md"
+                          : "bg-muted rounded-bl-md"
+                      }`}
+                    >
+                      {getMessageContent(msg)}
+                    </div>
+                  )}
+                  {/* Generative UI components (tables, charts) */}
+                  {getMessageRole(msg) === "assistant" && (
+                    <div className="w-full mt-2">
+                      {(msg as any).generativeUI?.()}
+                    </div>
+                  )}
                 </div>
               ))}
 
