@@ -1,0 +1,235 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "noResults": "No results found",
+    "error": "An error occurred",
+    "success": "Success",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close",
+    "confirm": "Confirm"
+  },
+  "nav": {
+    "howItWorks": "How It Works",
+    "features": "Features",
+    "faq": "FAQ",
+    "deepdive": "DeepDive",
+    "explore": "Explore",
+    "settings": "Settings",
+    "admin": "Admin",
+    "signUp": "Sign Up",
+    "signIn": "Sign In",
+    "signOut": "Log out",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "landing": {
+    "hero": {
+      "title": "Intelligent Research,",
+      "titleHighlight": "Powered by Agentic AI",
+      "subtitle": "Upload your sources, explore conferences, and let Agentic AI help you discover insights — all in one intelligent notebook.",
+      "deepdiveBtn": "DeepDive",
+      "exploreBtn": "Research Hub"
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Get started with SparkFlow in three simple steps",
+      "step1": {
+        "title": "Upload Sources",
+        "description": "Import PDFs, documents, and webpages into your research notebook. SparkFlow automatically chunks and indexes everything for retrieval."
+      },
+      "step2": {
+        "title": "Explore Conferences",
+        "description": "Browse publications and sessions from academic conferences. Discover relevant research and add it directly to your notebook."
+      },
+      "step3": {
+        "title": "Get Agentic AI Insights",
+        "description": "Chat with your sources using Agentic AI that cites its answers. Ask questions, summarize findings, and uncover connections across your research."
+      }
+    },
+    "features": {
+      "coreTitle": "Built for Researchers",
+      "coreSubtitle": "Powerful tools designed to accelerate your research workflow",
+      "deepdive": {
+        "badge": "Deep Dive",
+        "title": "Agentic AI-Powered Research Notebooks",
+        "description": "Upload documents and webpages, then chat with your sources using RAG-powered Agentic AI. Every answer is grounded in your research with precise citations."
+      },
+      "explore": {
+        "badge": "Explore",
+        "title": "Conference & Publication Explorer",
+        "description": "Browse academic conferences, discover sessions, and find relevant publications. Add sources directly to your notebooks for deeper analysis."
+      },
+      "insights": {
+        "badge": "Insights",
+        "title": "Smart Summarization & Notes",
+        "description": "Automatically generate summaries, extract key findings, and organize your notes. SparkFlow connects the dots across all your research materials."
+      },
+      "preview": "Preview"
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Everything you need to know about SparkFlow",
+      "q1": {
+        "question": "What types of documents can I upload?",
+        "answer": "SparkFlow supports PDFs, Word documents, and webpages. Documents are automatically parsed, chunked, and indexed for Agentic AI-powered retrieval. Our parsers handle complex layouts including tables, figures, and multi-column text."
+      },
+      "q2": {
+        "question": "How does the Agentic AI citation system work?",
+        "answer": "When you chat with your sources, SparkFlow uses Retrieval-Augmented Generation (RAG) to ground every Agentic AI response in your actual documents. Each claim is linked back to the specific chunk it came from, so you can always verify the source."
+      },
+      "q3": {
+        "question": "Can I explore academic conferences?",
+        "answer": "Yes! SparkFlow includes a conference explorer that lets you browse publications, sessions, and presentations from indexed academic conferences. You can search, filter, and add relevant papers directly to your research notebooks."
+      },
+      "q4": {
+        "question": "Is my research data private?",
+        "answer": "Your documents and research data are stored securely and are only accessible to you. SparkFlow uses enterprise-grade encryption and access controls to protect your intellectual property."
+      },
+      "q5": {
+        "question": "Does SparkFlow support dark mode?",
+        "answer": "Absolutely! SparkFlow features a premium dark mode with carefully tuned contrast ratios for comfortable late-night research sessions. You can switch between light, dark, and system themes at any time."
+      }
+    },
+    "cta": {
+      "title": "Start Your Research Journey Today",
+      "subtitle": "Join researchers who are using SparkFlow to accelerate their work with Agentic AI-powered insights.",
+      "button": "DeepDive"
+    },
+    "footer": {
+      "tagline": "Agentic AI-powered research notebook",
+      "copyright": "SparkFlow. All rights reserved."
+    }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign In",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "button": "Sign In",
+      "buttonLoading": "Signing in...",
+      "error": "Invalid email or password",
+      "errorGeneric": "An error occurred. Please try again.",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up"
+    },
+    "signUp": {
+      "title": "Create Account",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "johndoe",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "confirmPasswordLabel": "Confirm Password",
+      "confirmPasswordPlaceholder": "••••••••",
+      "button": "Sign Up",
+      "buttonLoading": "Creating account...",
+      "errorPasswordMismatch": "Passwords do not match",
+      "errorGeneric": "Failed to create account",
+      "errorUnknown": "An error occurred. Please try again.",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in"
+    }
+  },
+  "notebook": {
+    "create": {
+      "title": "Create Notebook",
+      "nameLabel": "Name",
+      "namePlaceholder": "My Research Notebook",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "What is this notebook about?",
+      "button": "Create Notebook"
+    },
+    "empty": {
+      "title": "No notebooks yet",
+      "description": "Create your first notebook to start organizing your research"
+    },
+    "chat": {
+      "placeholder": "Ask a question about your sources...",
+      "send": "Send"
+    }
+  },
+  "explore": {
+    "title": "Explore",
+    "conferences": {
+      "title": "Conferences",
+      "subtitle": "Browse academic conferences and their sessions"
+    },
+    "publications": {
+      "title": "Publications",
+      "subtitle": "Search and discover research publications"
+    },
+    "sessions": {
+      "title": "Sessions",
+      "subtitle": "Explore conference sessions and presentations"
+    },
+    "toolbox": {
+      "title": "Toolbox",
+      "subtitle": "Research tools and utilities"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your AI model preferences",
+    "aiModels": {
+      "title": "AI Models",
+      "subtitle": "Choose your preferred AI models for different features",
+      "provider": "Provider",
+      "model": "Model",
+      "deepdiveSection": "DeepDive Model",
+      "deepdiveDescription": "Model used for research notebook conversations",
+      "matcherSection": "Matcher Model",
+      "matcherDescription": "Model used for semantic matching and similarity",
+      "saved": "Settings saved successfully",
+      "saveError": "Failed to save settings"
+    }
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage user accounts"
+    },
+    "venues": {
+      "title": "Venues",
+      "subtitle": "Manage conference venues"
+    },
+    "sessions": {
+      "title": "Sessions",
+      "subtitle": "Manage conference sessions"
+    },
+    "instances": {
+      "title": "Instances",
+      "subtitle": "Manage system instances"
+    }
+  },
+  "errors": {
+    "accessDenied": {
+      "title": "Access Denied",
+      "description": "You don't have permission to access this page.",
+      "backHome": "Go back home"
+    },
+    "notFound": {
+      "title": "Not Found",
+      "description": "The page you're looking for doesn't exist.",
+      "backHome": "Go back home"
+    }
+  },
+  "language": {
+    "switch": "Switch Language",
+    "en": "English",
+    "zh": "中文"
+  }
+}

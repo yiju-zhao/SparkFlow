@@ -5,34 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionReveal } from "./section-reveal";
-
-const faqs = [
-  {
-    question: "What types of documents can I upload?",
-    answer:
-      "SparkFlow supports PDFs, Word documents, and webpages. Documents are automatically parsed, chunked, and indexed for Agentic AI-powered retrieval. Our parsers handle complex layouts including tables, figures, and multi-column text.",
-  },
-  {
-    question: "How does the Agentic AI citation system work?",
-    answer:
-      "When you chat with your sources, SparkFlow uses Retrieval-Augmented Generation (RAG) to ground every Agentic AI response in your actual documents. Each claim is linked back to the specific chunk it came from, so you can always verify the source.",
-  },
-  {
-    question: "Can I explore academic conferences?",
-    answer:
-      "Yes! SparkFlow includes a conference explorer that lets you browse publications, sessions, and presentations from indexed academic conferences. You can search, filter, and add relevant papers directly to your research notebooks.",
-  },
-  {
-    question: "Is my research data private?",
-    answer:
-      "Your documents and research data are stored securely and are only accessible to you. SparkFlow uses enterprise-grade encryption and access controls to protect your intellectual property.",
-  },
-  {
-    question: "Does SparkFlow support dark mode?",
-    answer:
-      "Absolutely! SparkFlow features a premium dark mode with carefully tuned contrast ratios for comfortable late-night research sessions. You can switch between light, dark, and system themes at any time.",
-  },
-];
+import { useTranslations } from "next-intl";
 
 function FaqItem({
   question,
@@ -80,7 +53,16 @@ function FaqItem({
 }
 
 export function FaqSection() {
+  const t = useTranslations("landing.faq");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const faqs = [
+    { question: t("q1.question"), answer: t("q1.answer") },
+    { question: t("q2.question"), answer: t("q2.answer") },
+    { question: t("q3.question"), answer: t("q3.answer") },
+    { question: t("q4.question"), answer: t("q4.answer") },
+    { question: t("q5.question"), answer: t("q5.answer") },
+  ];
 
   return (
     <section id="faq" className="px-6 py-24">
@@ -88,11 +70,9 @@ export function FaqSection() {
         <SectionReveal>
           <div className="mb-12 text-center">
             <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-              Frequently Asked Questions
+              {t("title")}
             </h2>
-            <p className="text-muted-foreground">
-              Everything you need to know about SparkFlow
-            </p>
+            <p className="text-muted-foreground">{t("subtitle")}</p>
           </div>
         </SectionReveal>
 

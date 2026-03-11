@@ -15,11 +15,18 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings } from "lucide-react";
+import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings, Globe } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useRouter, usePathname } from "next/navigation";
+
+const locales = {
+  en: { name: "English", flag: "🇺🇸" },
+  zh: { name: "中文", flag: "🇨🇳" },
+} as const;
 
 interface UserNavProps {
   user: {
@@ -31,9 +38,20 @@ interface UserNavProps {
 
 export function UserNav({ user }: UserNavProps) {
   const { setTheme, theme } = useTheme();
+  const t = useTranslations("nav");
+  const tLang = useTranslations("language");
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   // Avoid hydration mismatch for theme
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  const switchLocale = (newLocale: string) => {
+    const segments = pathname.split("/");
+    segments[1] = newLocale;
+    router.push(segments.join("/"));
+  };
 
   const fallbackContent = user.name ? (
     user.name.charAt(0).toUpperCase()
@@ -92,20 +110,39 @@ export function UserNav({ user }: UserNavProps) {
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Globe className="mr-2 h-4 w-4" />
+              <span>{tLang("switch")}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                {Object.entries(locales).map(([code, { name, flag }]) => (
+                  <DropdownMenuItem
+                    key={code}
+                    onClick={() => switchLocale(code)}
+                  >
+                    <span className="mr-2">{flag}</span>
+                    {name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/settings">
+            <Link href={`/${locale}/settings`}>
               <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+              <span>{t("settings")}</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })}>
+        <DropdownMenuItem onClick={() => signOut({ callbackUrl: `/${locale}` })}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{t("signOut")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

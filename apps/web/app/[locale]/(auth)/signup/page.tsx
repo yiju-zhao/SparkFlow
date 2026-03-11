@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslations, useLocale } from "next-intl";
 
 export default function SignupPage() {
   const router = useRouter();
+  const t = useTranslations("auth.signUp");
+  const locale = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +26,7 @@ export default function SignupPage() {
     const confirmPassword = formData.get("confirmPassword") as string;
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("errorPasswordMismatch"));
       setLoading(false);
       return;
     }
@@ -38,12 +41,12 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Failed to create account");
+        setError(data.error || t("errorGeneric"));
       } else {
-        router.push("/login?registered=true");
+        router.push(`/${locale}/login?registered=true`);
       }
     } catch {
-      setError("An error occurred. Please try again.");
+      setError(t("errorUnknown"));
     } finally {
       setLoading(false);
     }
@@ -52,7 +55,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-secondary">
       <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-huawei-sm">
-        <h1 className="text-2xl font-bold text-center mb-6">Create Account</h1>
+        <h1 className="text-2xl font-bold text-center mb-6">{t("title")}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -60,27 +63,27 @@ export default function SignupPage() {
               htmlFor="username"
               className="block text-sm font-medium mb-1"
             >
-              Username
+              {t("usernameLabel")}
             </label>
             <Input
               id="username"
               name="username"
               type="text"
               required
-              placeholder="johndoe"
+              placeholder={t("usernamePlaceholder")}
             />
           </div>
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Email
+              {t("emailLabel")}
             </label>
             <Input
               id="email"
               name="email"
               type="email"
               required
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
             />
           </div>
 
@@ -89,7 +92,7 @@ export default function SignupPage() {
               htmlFor="password"
               className="block text-sm font-medium mb-1"
             >
-              Password
+              {t("passwordLabel")}
             </label>
             <Input
               id="password"
@@ -97,7 +100,7 @@ export default function SignupPage() {
               type="password"
               required
               minLength={8}
-              placeholder="••••••••"
+              placeholder={t("passwordPlaceholder")}
             />
           </div>
 
@@ -106,7 +109,7 @@ export default function SignupPage() {
               htmlFor="confirmPassword"
               className="block text-sm font-medium mb-1"
             >
-              Confirm Password
+              {t("confirmPasswordLabel")}
             </label>
             <Input
               id="confirmPassword"
@@ -114,21 +117,21 @@ export default function SignupPage() {
               type="password"
               required
               minLength={8}
-              placeholder="••••••••"
+              placeholder={t("confirmPasswordPlaceholder")}
             />
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Sign Up"}
+            {loading ? t("buttonLoading") : t("button")}
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline">
-            Sign in
+          {t("hasAccount")}{" "}
+          <Link href={`/${locale}/login`} className="text-primary hover:underline">
+            {t("signInLink")}
           </Link>
         </p>
       </div>

@@ -1,0 +1,235 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "search": "搜索",
+    "noResults": "未找到结果",
+    "error": "发生错误",
+    "success": "成功",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "close": "关闭",
+    "confirm": "确认"
+  },
+  "nav": {
+    "howItWorks": "使用方法",
+    "features": "功能特性",
+    "faq": "常见问题",
+    "deepdive": "深度探索",
+    "explore": "探索",
+    "settings": "设置",
+    "admin": "管理",
+    "signUp": "注册",
+    "signIn": "登录",
+    "signOut": "退出登录",
+    "theme": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "landing": {
+    "hero": {
+      "title": "智能研究，",
+      "titleHighlight": "由智能体 AI 驱动",
+      "subtitle": "上传您的资料来源，探索学术会议，让智能体 AI 帮助您发现洞见——一切尽在一个智能笔记本中。",
+      "deepdiveBtn": "深度探索",
+      "exploreBtn": "研究中心"
+    },
+    "howItWorks": {
+      "title": "使用方法",
+      "subtitle": "三个简单步骤开始使用 SparkFlow",
+      "step1": {
+        "title": "上传资料",
+        "description": "将 PDF、文档和网页导入您的研究笔记本。SparkFlow 会自动对所有内容进行分块和索引以便检索。"
+      },
+      "step2": {
+        "title": "探索会议",
+        "description": "浏览学术会议的出版物和会议场次。发现相关研究并直接添加到您的笔记本中。"
+      },
+      "step3": {
+        "title": "获取智能体 AI 洞见",
+        "description": "使用会引用答案来源的智能体 AI 与您的资料进行对话。提出问题、总结发现，并揭示研究之间的联系。"
+      }
+    },
+    "features": {
+      "coreTitle": "为研究者打造",
+      "coreSubtitle": "强大的工具助您加速研究工作流程",
+      "deepdive": {
+        "badge": "深度探索",
+        "title": "智能体 AI 驱动的研究笔记本",
+        "description": "上传文档和网页，然后使用 RAG 驱动的智能体 AI 与您的资料进行对话。每个回答都基于您的研究，并提供精确的引用。"
+      },
+      "explore": {
+        "badge": "探索",
+        "title": "会议与出版物浏览器",
+        "description": "浏览学术会议、发现会议场次和相关出版物。直接将资料来源添加到您的笔记本中进行更深入的分析。"
+      },
+      "insights": {
+        "badge": "洞见",
+        "title": "智能摘要与笔记",
+        "description": "自动生成摘要、提取关键发现并组织您的笔记。SparkFlow 帮您串联所有研究材料中的要点。"
+      },
+      "preview": "预览"
+    },
+    "faq": {
+      "title": "常见问题",
+      "subtitle": "关于 SparkFlow 您需要了解的一切",
+      "q1": {
+        "question": "我可以上传哪些类型的文档？",
+        "answer": "SparkFlow 支持 PDF、Word 文档和网页。文档会自动解析、分块并建立索引，以供智能体 AI 检索。我们的解析器可以处理复杂的布局，包括表格、图表和多栏文本。"
+      },
+      "q2": {
+        "question": "智能体 AI 引用系统是如何工作的？",
+        "answer": "当您与资料进行对话时，SparkFlow 使用检索增强生成（RAG）技术将每个智能体 AI 的回答基于您的实际文档。每个声明都会链接到它来源的具体片段，因此您随时可以验证来源。"
+      },
+      "q3": {
+        "question": "我可以浏览学术会议吗？",
+        "answer": "可以！SparkFlow 包含一个会议浏览器，让您可以浏览已索引学术会议的出版物、会议场次和演示文稿。您可以搜索、筛选并直接将相关论文添加到您的研究笔记本中。"
+      },
+      "q4": {
+        "question": "我的研究数据安全吗？",
+        "answer": "您的文档和研究数据安全存储，只有您可以访问。SparkFlow 使用企业级加密和访问控制来保护您的知识产权。"
+      },
+      "q5": {
+        "question": "SparkFlow 支持深色模式吗？",
+        "answer": "当然支持！SparkFlow 具有精心调整对比度的高端深色模式，适合深夜研究时舒适使用。您可以随时在浅色、深色和系统主题之间切换。"
+      }
+    },
+    "cta": {
+      "title": "今天就开始您的研究之旅",
+      "subtitle": "加入正在使用 SparkFlow 加速工作的研究者行列，获得智能体 AI 驱动的洞见。",
+      "button": "深度探索"
+    },
+    "footer": {
+      "tagline": "智能体 AI 驱动的研究笔记本",
+      "copyright": "SparkFlow. 保留所有权利。"
+    }
+  },
+  "auth": {
+    "signIn": {
+      "title": "登录",
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "••••••••",
+      "button": "登录",
+      "buttonLoading": "登录中...",
+      "error": "邮箱或密码无效",
+      "errorGeneric": "发生错误，请重试。",
+      "noAccount": "还没有账号？",
+      "signUpLink": "注册"
+    },
+    "signUp": {
+      "title": "创建账号",
+      "usernameLabel": "用户名",
+      "usernamePlaceholder": "zhangsan",
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "••••••••",
+      "confirmPasswordLabel": "确认密码",
+      "confirmPasswordPlaceholder": "••••••••",
+      "button": "注册",
+      "buttonLoading": "创建账号中...",
+      "errorPasswordMismatch": "两次密码输入不一致",
+      "errorGeneric": "创建账号失败",
+      "errorUnknown": "发生错误，请重试。",
+      "hasAccount": "已有账号？",
+      "signInLink": "登录"
+    }
+  },
+  "notebook": {
+    "create": {
+      "title": "创建笔记本",
+      "nameLabel": "名称",
+      "namePlaceholder": "我的研究笔记本",
+      "descriptionLabel": "描述（可选）",
+      "descriptionPlaceholder": "这个笔记本是关于什么的？",
+      "button": "创建笔记本"
+    },
+    "empty": {
+      "title": "暂无笔记本",
+      "description": "创建您的第一个笔记本开始组织研究"
+    },
+    "chat": {
+      "placeholder": "询问关于您资料的问题...",
+      "send": "发送"
+    }
+  },
+  "explore": {
+    "title": "探索",
+    "conferences": {
+      "title": "会议",
+      "subtitle": "浏览学术会议及其会议场次"
+    },
+    "publications": {
+      "title": "出版物",
+      "subtitle": "搜索和发现研究出版物"
+    },
+    "sessions": {
+      "title": "会议场次",
+      "subtitle": "探索会议报告和演示"
+    },
+    "toolbox": {
+      "title": "工具箱",
+      "subtitle": "研究工具和实用程序"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "配置您的 AI 模型偏好",
+    "aiModels": {
+      "title": "AI 模型",
+      "subtitle": "为不同功能选择您偏好的 AI 模型",
+      "provider": "提供商",
+      "model": "模型",
+      "deepdiveSection": "深度探索模型",
+      "deepdiveDescription": "用于研究笔记本对话的模型",
+      "matcherSection": "匹配器模型",
+      "matcherDescription": "用于语义匹配和相似度的模型",
+      "saved": "设置保存成功",
+      "saveError": "保存设置失败"
+    }
+  },
+  "admin": {
+    "title": "管理面板",
+    "users": {
+      "title": "用户",
+      "subtitle": "管理用户账号"
+    },
+    "venues": {
+      "title": "会议",
+      "subtitle": "管理学术会议"
+    },
+    "sessions": {
+      "title": "会议场次",
+      "subtitle": "管理会议场次"
+    },
+    "instances": {
+      "title": "实例",
+      "subtitle": "管理系统实例"
+    }
+  },
+  "errors": {
+    "accessDenied": {
+      "title": "访问被拒绝",
+      "description": "您没有权限访问此页面。",
+      "backHome": "返回首页"
+    },
+    "notFound": {
+      "title": "未找到",
+      "description": "您访问的页面不存在。",
+      "backHome": "返回首页"
+    }
+  },
+  "language": {
+    "switch": "切换语言",
+    "en": "English",
+    "zh": "中文"
+  }
+}
