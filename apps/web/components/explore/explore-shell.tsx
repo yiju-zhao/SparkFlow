@@ -23,6 +23,7 @@ const useExploreNavLinks = () => {
   const locale = useLocale();
 
   return [
+    { label: t("overview"), href: `/${locale}/explore` },
     { label: t("conferences.title"), href: `/${locale}/explore/conferences` },
     { label: t("publications.title"), href: `/${locale}/explore/publications` },
     { label: t("sessions.title"), href: `/${locale}/explore/sessions` },
