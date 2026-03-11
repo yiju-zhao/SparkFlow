@@ -19,10 +19,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Research Hub - Generative UI
 
-- [ ] **GENUI-01**: User can ask AI assistant questions about the hub content
-- [ ] **GENUI-02**: AI assistant can generate dynamic tables from query results
-- [ ] **GENUI-03**: AI assistant can generate dynamic charts (bar, line, pie) from data
-- [ ] **GENUI-04**: AI assistant can generate filtered views based on user constraints
+- [x] **GENUI-01**: User can ask AI assistant questions about the hub content
+- [x] **GENUI-02**: AI assistant can generate dynamic tables from query results
+- [x] **GENUI-03**: AI assistant can generate dynamic charts (bar, line, pie) from data
+- [x] **GENUI-04**: AI assistant can generate filtered views based on user constraints
 - [ ] **GENUI-05**: Generated UI components render in assistant panel
 - [ ] **GENUI-06**: User can interact with generated components (click, sort, select)
 
@@ -97,10 +97,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RHUB-05 | Phase 2 | Pending |
 | RHUB-06 | Phase 2 | Pending |
 | RHUB-07 | Phase 2 | Pending |
-| GENUI-01 | Phase 2 | Pending |
-| GENUI-02 | Phase 2 | Pending |
-| GENUI-03 | Phase 2 | Pending |
-| GENUI-04 | Phase 2 | Pending |
+| GENUI-01 | Phase 2 | Complete |
+| GENUI-02 | Phase 2 | Complete |
+| GENUI-03 | Phase 2 | Complete |
+| GENUI-04 | Phase 2 | Complete |
 | GENUI-05 | Phase 2 | Pending |
 | GENUI-06 | Phase 2 | Pending |
 | NOTE-01 | Phase 3 | Pending |

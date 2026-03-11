@@ -2,50 +2,51 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Plan 02 (Replanning)
-status: replanning
-last_updated: "2026-03-11T00:00:00.000Z"
-last_activity: "2026-03-11 - Replanning Phase 2 with MCP Apps architecture"
+current_plan: Plan 02
+status: in_progress
+last_updated: "2026-03-11T21:02:09.000Z"
+last_activity: "2026-03-11 - Completed Plan 02-01: MCP Server with SQLDatabaseToolkit"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State: DeepSense Insight Platform
 
 **Project:** DeepSense Insight Platform (Research Hub + Generative AI)
-**Current Focus:** Phase 2 - Research Hub (Replanning for MCP Apps)
+**Current Focus:** Phase 2 - Research Hub (MCP Apps Architecture)
 **Last Updated:** 2026-03-11
 
 ## Progress Summary
 
 ```
 Phase 1: Foundation & Data    [██████████] 100% ✓
-Phase 2: Research Hub          [████░░░░░░] 40% (Replanning - MCP Apps)
+Phase 2: Research Hub          [████████░░] 50% (Plan 01 complete)
 Phase 3: Notebook Integration  [░░░░░░░░░░] 0%
 Phase 4: Polish & Enhancement  [░░░░░░░░░░] 0%
 
-Overall Progress: [████░░░░░░] 40%
+Overall Progress: [████░░░░░░] 45%
 ```
 
 ## Current Position
 
-**Active Phase:** Phase 2 - Research Hub (Replanning)
+**Active Phase:** Phase 2 - Research Hub
 **Next Phase:** Phase 3 - Notebook Integration
-**Status:** Replanning Phase 2 with MCP Apps architecture
+**Status:** Plan 02-01 complete, Plan 02-02 next
 
 ### Phase 2: Research Hub
 
 **Goal:** Deliver conference discovery experience with AI-powered generative UI via MCP Apps
 
-**Architecture Change:**
-- OLD: CopilotKit useComponent hooks + React GenerativeTable/GenerativeChart
-- NEW: MCP Server + MCP Apps HTML templates + @ag-ui/mcp-apps-middleware
+**Architecture:**
+- MCP Server with SQLDatabaseToolkit for dynamic database queries
+- HTML templates for generative UI (tables, charts)
+- CopilotKit MCPAppsMiddleware integration
 
 **Plans:** 2 plans in 2 waves
-- [ ] 02-01: Create MCP server with SQLDatabaseToolkit and HTML templates
+- [x] 02-01: Create MCP server with SQLDatabaseToolkit and HTML templates ✓
 - [ ] 02-02: Integrate MCPAppsMiddleware with CopilotKit BuiltInAgent
 
 ---
@@ -82,6 +83,7 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 | 01-foundation-data | 02 | 4min | 5 | 9 | 2026-03-05 |
 | 01-foundation-data | 04 | 2min | 3 | 3 | 2026-03-05 |
 | 01-foundation-data | 05 | 3min | 3 | 4 | 2026-03-05 |
+| 02-research-hub | 01 | 5min | 3 | 7 | 2026-03-11 |
 
 ## Accumulated Context
 
@@ -100,14 +102,17 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 | psycopg3 for hub query tools | 2026-03-05 | requirements.txt specifies psycopg[binary] which is psycopg3 |
 | Hub agent config uses dataclass | 2026-03-05 | Consistent with RAGAgentConfig pattern — simpler than pydantic_settings |
 | LangGraph server manages PostgresSaver | 2026-03-05 | No custom checkpointer in hub_agent.py; mirrors rag_agent.py pattern |
+| FastMCP with streamable-http on port 3108 | 2026-03-11 | Simpler than SSE, matches MCP Apps pattern |
+| SQLDatabaseToolkit over predefined tools | 2026-03-11 | Dynamic query generation handles any user question |
+| HTML templates over React components | 2026-03-11 | Simpler architecture, no React maintenance needed |
 
 ### Todos
 
-*None (project not started)*
+*None*
 
 ### Blockers
 
-*None (project not started)*
+*None*
 
 ### Quick Tasks Completed
 
@@ -138,15 +143,16 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 
 ### Current Session Context
 
-**What was done (Phase 2):**
-- Plan 02-01: Created generative UI components (GenerativeTable, GenerativeChart) with CopilotKit useComponent
-- Plan 02-02: Integrated CopilotKit hooks into Research Assistant Panel
-- Plan 02-03: Wired page context to AI assistant (AIContextProvider, SetAIContext)
+**What was done (Phase 2 Plan 01):**
+- Created MCP server with FastMCP and SQLDatabaseToolkit
+- Built HTML templates for table and chart UIs with postMessage
+- Deleted old React generative-ui components
+- Updated hub_agent.py to remove old tool imports
 
 **Next steps:**
-- Phase 2 complete. Begin Phase 3: Notebook Integration.
+- Execute Plan 02-02: Integrate MCPAppsMiddleware with CopilotKit
 
-Last activity: 2026-03-11 - Completed quick task 8: Update README with current codebase state and professional roadmap
+Last activity: 2026-03-11 - Completed Plan 02-01: MCP Server with SQLDatabaseToolkit
 
 ---
 
