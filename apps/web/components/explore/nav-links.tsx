@@ -10,6 +10,7 @@ export default function ExploreNavLinks() {
   const t = useTranslations("explore");
 
   const navLinks = [
+    { href: `/${locale}/explore`, label: t("overview") },
     { href: `/${locale}/explore/conferences`, label: t("conferences.title") },
     { href: `/${locale}/explore/publications`, label: t("publications.title") },
     { href: `/${locale}/explore/sessions`, label: t("sessions.title") },
@@ -19,7 +20,9 @@ export default function ExploreNavLinks() {
   return (
     <>
       {navLinks.map(({ href, label }) => {
-        const isActive = pathname.startsWith(href);
+        const isActive = href === `/${locale}/explore`
+        ? pathname === `/${locale}/explore`
+        : pathname.startsWith(href);
         return (
           <Link
             key={href}

@@ -163,6 +163,7 @@
   },
   "explore": {
     "title": "Research Hub",
+    "overview": "Overview",
     "noRecentConferences": "No recent conferences available yet.",
     "subtitle": "Discover conferences, publications, and sessions in the global knowledge base",
     "breadcrumb": "~/research-hub/overview",

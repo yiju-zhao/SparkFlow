@@ -163,6 +163,7 @@
   },
   "explore": {
     "title": "研究中心",
+    "overview": "概览",
     "noRecentConferences": "暂无近期会议。",
     "subtitle": "探索全球知识库中的会议、论文和会议场次",
     "breadcrumb": "~/研究中心/概览",
