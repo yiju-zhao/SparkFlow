@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,6 +42,7 @@ interface ConfigStepProps {
 }
 
 export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigStepProps) {
+  const t = useTranslations("explore.toolbox.wizard.configure");
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,15 +83,15 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
 
   const handleStart = () => {
     if (!instanceId) {
-      setError("Please select a conference");
+      setError(t("errorSelectConference"));
       return;
     }
     if (!targetType) {
-      setError("Please select what to match against");
+      setError(t("errorSelectTarget"));
       return;
     }
     if (queries.length === 0) {
-      setError("No queries to match");
+      setError(t("errorNoQueries"));
       return;
     }
     if (topKError) {
@@ -107,9 +109,9 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Configure Matching</h3>
+        <h3 className="text-lg font-medium">{t("title")}</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Select the conference and configure matching options for your {queries.length} {queries.length === 1 ? "query" : "queries"}.
+          {t("description", { count: queries.length, noun: queries.length === 1 ? t("queryNounSingular") : t("queryNounPlural") })}
         </p>
       </div>
 
@@ -124,10 +126,10 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="instance">Conference</Label>
+            <Label htmlFor="instance">{t("conference")}</Label>
             <Select value={instanceId} onValueChange={setInstanceId}>
               <SelectTrigger id="instance">
-                <SelectValue placeholder="Select a conference" />
+                <SelectValue placeholder={t("conferencePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {instances.map((instance) => (
@@ -140,24 +142,24 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="targetType">Match Against</Label>
+            <Label htmlFor="targetType">{t("matchAgainst")}</Label>
             <Select
               value={targetType}
               onValueChange={(v) => setTargetType(v as "SESSION" | "PUBLICATION")}
             >
               <SelectTrigger id="targetType">
-                <SelectValue placeholder="Select target type" />
+                <SelectValue placeholder={t("matchAgainstPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="SESSION">Sessions</SelectItem>
-                <SelectItem value="PUBLICATION">Publications</SelectItem>
+                <SelectItem value="SESSION">{t("sessions")}</SelectItem>
+                <SelectItem value="PUBLICATION">{t("publications")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="topK">Top K Results</Label>
+              <Label htmlFor="topK">{t("topK")}</Label>
               <Input
                 id="topK"
                 type="number"
@@ -169,12 +171,12 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
               {topKError ? (
                 <p className="text-xs text-destructive">{topKError}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">Number of matches per query</p>
+                <p className="text-xs text-muted-foreground">{t("topKHelp")}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="searchK">Search K</Label>
+              <Label htmlFor="searchK">{t("searchK")}</Label>
               <Input
                 id="searchK"
                 type="number"
@@ -186,7 +188,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
               {searchKError ? (
                 <p className="text-xs text-destructive">{searchKError}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">Embedding pre-filter size</p>
+                <p className="text-xs text-muted-foreground">{t("searchKHelp")}</p>
               )}
             </div>
           </div>
@@ -198,7 +200,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
               onCheckedChange={(checked) => setIncludeReasons(checked as boolean)}
             />
             <Label htmlFor="includeReasons" className="font-normal">
-              Generate recommendation reasons (slower)
+              {t("includeReasons")}
             </Label>
           </div>
         </div>
@@ -206,10 +208,10 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onBack}>
-          Back
+          {t("back")}
         </Button>
         <Button onClick={handleStart} disabled={!instanceId || !targetType || isLoading || queries.length === 0}>
-          Start Matching
+          {t("startMatching")}
         </Button>
       </div>
     </div>

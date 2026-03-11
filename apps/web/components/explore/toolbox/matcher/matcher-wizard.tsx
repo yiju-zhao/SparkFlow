@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { UploadStep } from "./steps/upload-step";
@@ -10,13 +11,6 @@ import { RunningStep } from "./steps/running-step";
 import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
 import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
-
-// Display steps omit the "running" state — internal steps are 0=upload,1=config,2=running,3=results
-const DISPLAY_STEPS = [
-  { id: "upload", label: "upload", internalStep: 0 },
-  { id: "config", label: "configure", internalStep: 1 },
-  { id: "results", label: "results", internalStep: 3 },
-];
 
 type WizardConfig = {
   instanceId: string;
@@ -44,6 +38,14 @@ type WizardState = {
 
 export function MatcherWizard() {
   const router = useRouter();
+  const tSteps = useTranslations("explore.toolbox.wizard.steps");
+
+  const DISPLAY_STEPS = [
+    { id: "upload", label: tSteps("upload"), internalStep: 0 },
+    { id: "config", label: tSteps("configure"), internalStep: 1 },
+    { id: "results", label: tSteps("results"), internalStep: 3 },
+  ];
+
   const [state, setState] = useState<WizardState>({
     step: 0,
     config: null,

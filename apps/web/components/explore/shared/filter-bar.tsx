@@ -4,6 +4,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ export function FilterBar({ filters, className }: FilterBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations("explore.filters");
 
   const updateFilter = (key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -73,7 +75,7 @@ export function FilterBar({ filters, className }: FilterBarProps) {
             <SelectValue placeholder={filter.placeholder || filter.label} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All {filter.label}</SelectItem>
+            <SelectItem value="all">{t("all", { label: filter.label })}</SelectItem>
             {filter.options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -91,7 +93,7 @@ export function FilterBar({ filters, className }: FilterBarProps) {
           className="h-10"
         >
           <X className="h-4 w-4 mr-1" />
-          Clear
+          {t("clear")}
         </Button>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Workbook } from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 import { FileDropzone } from "../file-dropzone";
@@ -47,6 +48,7 @@ async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
 }
 
 export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps) {
+  const t = useTranslations("explore.toolbox.wizard.upload");
   const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries ?? []);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,10 +81,9 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium">Upload Query File</h3>
+          <h3 className="text-lg font-medium">{t("title")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload an Excel file with BU and Query columns. Queries will be
-            automatically translated to English.
+            {t("description")}
           </p>
         </div>
 
@@ -92,42 +93,41 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
               type="button"
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-muted/50 border border-border hover:bg-muted transition-colors shrink-0"
             >
-              <span className="font-mono">Format Guide</span>
+              <span className="font-mono">{t("formatGuide")}</span>
               <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-100 p-4">
             <div className="space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide font-mono">
-                Required Format
+                {t("requiredFormat")}
               </p>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-8 text-xs">Col</TableHead>
-                    <TableHead className="text-xs">Name</TableHead>
-                    <TableHead className="text-xs">Description</TableHead>
-                    <TableHead className="text-xs">Required</TableHead>
+                    <TableHead className="w-8 text-xs">{t("col")}</TableHead>
+                    <TableHead className="text-xs">{t("name")}</TableHead>
+                    <TableHead className="text-xs">{t("colDescription")}</TableHead>
+                    <TableHead className="text-xs">{t("required")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <TableRow>
                     <TableCell className="text-xs text-muted-foreground">A</TableCell>
-                    <TableCell className="text-xs font-mono font-medium">bu</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">Business unit requesting the match</TableCell>
-                    <TableCell className="text-xs">Yes</TableCell>
+                    <TableCell className="text-xs font-mono font-medium">{t("buColumn")}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{t("buDesc")}</TableCell>
+                    <TableCell className="text-xs">{t("yes")}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="text-xs text-muted-foreground">B</TableCell>
-                    <TableCell className="text-xs font-mono font-medium">query</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">The search query to match against sessions or publications</TableCell>
-                    <TableCell className="text-xs">Yes</TableCell>
+                    <TableCell className="text-xs font-mono font-medium">{t("queryColumn")}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{t("queryDesc")}</TableCell>
+                    <TableCell className="text-xs">{t("yes")}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
               <p className="text-xs text-muted-foreground">
-                Columns are read by position — header names do not need to match exactly.
-                Queries will be automatically translated to English before matching.
+                {t("note")}
               </p>
             </div>
           </PopoverContent>
@@ -138,11 +138,10 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{queries.length}</span>{" "}
-              {queries.length === 1 ? "query" : "queries"} loaded
+              {t("queriesLoaded", { count: queries.length })}
             </span>
             <Button variant="outline" size="sm" onClick={handleReplaceFile}>
-              Upload new file
+              {t("uploadNew")}
             </Button>
           </div>
           <div className="border rounded-lg overflow-hidden max-h-125 overflow-y-auto">
@@ -158,7 +157,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
           {isParsing && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Parsing file…
+              {t("parsing")}
             </div>
           )}
         </>
@@ -170,13 +169,13 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onCancel}>
-          Cancel
+          {t("cancel")}
         </Button>
         <Button
           onClick={() => onNext(queries)}
           disabled={!showPreview || isParsing}
         >
-          Continue
+          {t("continue")}
         </Button>
       </div>
     </div>

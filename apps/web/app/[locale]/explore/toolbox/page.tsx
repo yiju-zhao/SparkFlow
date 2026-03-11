@@ -1,42 +1,48 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { FileSearch } from "lucide-react";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export const metadata: Metadata = {
   title: "Toolbox | SparkFlow",
   description: "Utility tools for data processing and analysis",
 };
 
-const tools = [
-  {
-    href: "/explore/toolbox/matcher",
-    icon: FileSearch,
-    title: "Query Matcher",
-    description:
-      "Match queries against conference sessions or publications using semantic search",
-  },
-];
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
-export default function ToolboxPage() {
+export default async function ToolboxPage({ params }: PageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("explore.toolbox");
+
+  const tools = [
+    {
+      href: "/explore/toolbox/matcher",
+      icon: FileSearch,
+      title: t("queryMatcher.title"),
+      description: t("queryMatcher.description"),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
       <div>
-        <p className="text-sm text-muted-foreground">~/research-hub/toolbox</p>
+        <p className="text-sm text-muted-foreground">{t("breadcrumb")}</p>
       </div>
 
       {/* Title Section */}
       <div>
-        <h1 className="text-4xl font-bold tracking-tight mb-2">Toolbox</h1>
-        <p className="text-muted-foreground">
-          Utility tools for data processing and analysis
-        </p>
+        <h1 className="text-4xl font-bold tracking-tight mb-2">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Tools Grid */}
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold font-mono tracking-tight">
-          available tools
+          {tools.length} {t("availableTools")}
         </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (

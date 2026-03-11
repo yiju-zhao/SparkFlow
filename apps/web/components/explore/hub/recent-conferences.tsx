@@ -1,6 +1,9 @@
 // apps/web/components/explore/hub/recent-conferences.tsx
 
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { RecentConferenceItem } from "@/lib/explore/types";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -25,44 +28,49 @@ function formatDateRange(
   return endDate ? formatDate(endDate) : `${year}`;
 }
 
-function getStatus(startDate: Date | null, endDate: Date | null) {
-  const now = new Date();
-
-  if (startDate && startDate > now) {
-    return {
-      label: "Upcoming",
-      className:
-        "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    };
-  }
-  if (endDate && endDate < now) {
-    return {
-      label: "Completed",
-      className: "border-border bg-muted text-muted-foreground",
-    };
-  }
-  if (startDate || endDate) {
-    return {
-      label: "Ongoing",
-      className:
-        "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
-    };
-  }
-  return {
-    label: "Scheduled",
-    className: "border-border bg-muted text-muted-foreground",
-  };
-}
-
 interface RecentConferencesProps {
   conferences: RecentConferenceItem[];
 }
 
 export function RecentConferences({ conferences }: RecentConferencesProps) {
+  const t = useTranslations("explore.status");
+  const tExplore = useTranslations("explore");
+
+  function getStatus(startDate: Date | null, endDate: Date | null) {
+    const now = new Date();
+
+    if (startDate && startDate > now) {
+      return {
+        label: t("upcoming"),
+        statusCode: "UPCOMING",
+        colorClass: "text-emerald-500",
+      };
+    }
+    if (endDate && endDate < now) {
+      return {
+        label: t("completed"),
+        statusCode: "COMPLETED",
+        colorClass: "text-muted-foreground",
+      };
+    }
+    if (startDate || endDate) {
+      return {
+        label: t("ongoing"),
+        statusCode: "ONGOING",
+        colorClass: "text-blue-500",
+      };
+    }
+    return {
+      label: t("scheduled"),
+      statusCode: "SCHEDULED",
+      colorClass: "text-muted-foreground",
+    };
+  }
+
   if (!conferences.length) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card px-6 py-8 text-sm text-muted-foreground">
-        No recent conferences available yet.
+        {tExplore("noRecentConferences")}
       </div>
     );
   }
@@ -75,23 +83,7 @@ export function RecentConferences({ conferences }: RecentConferencesProps) {
           conference.endDate,
           conference.year,
         );
-        // const meta = [
-        //   conference.venueName,
-        //   dateLabel,
-        //   conference.location
-        // ].filter((item): item is string => Boolean(item)).join(' • ')
         const status = getStatus(conference.startDate, conference.endDate);
-
-        // Status label mapping for "code" style
-        let statusCode = "SCHEDULED";
-        if (status.label === "Upcoming") statusCode = "UPCOMING";
-        if (status.label === "Ongoing") statusCode = "ONGOING";
-        if (status.label === "Completed") statusCode = "COMPLETED";
-
-        // Status color mapping
-        let statusColorClass = "text-muted-foreground";
-        if (status.label === "Upcoming") statusColorClass = "text-emerald-500";
-        if (status.label === "Ongoing") statusColorClass = "text-blue-500";
 
         return (
           <Link
@@ -128,9 +120,9 @@ export function RecentConferences({ conferences }: RecentConferencesProps) {
               {/* Status Column */}
               <div className="hidden sm:block">
                 <span
-                  className={`font-mono text-[10px] font-semibold ${statusColorClass}`}
+                  className={`font-mono text-[10px] font-semibold ${status.colorClass}`}
                 >
-                  [{statusCode}]
+                  [{status.statusCode}]
                 </span>
               </div>
 

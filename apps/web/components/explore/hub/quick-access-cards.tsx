@@ -1,38 +1,44 @@
 // apps/web/components/explore/hub/quick-access-cards.tsx
 
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, FileText, Calendar, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const cards = [
-  {
-    title: "Conferences",
-    description: "Browse conferences by venue and year",
-    href: "/explore/conferences",
-    icon: Building2,
-    gradient: "from-blue-500/10 via-blue-500/5 to-transparent",
-    iconBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  },
-  {
-    title: "Publications",
-    description: "Search papers by topic, author, and more",
-    href: "/explore/publications",
-    icon: FileText,
-    gradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
-    iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  },
-  {
-    title: "Sessions",
-    description: "Explore sessions and schedules",
-    href: "/explore/sessions",
-    icon: Calendar,
-    gradient: "from-purple-500/10 via-purple-500/5 to-transparent",
-    iconBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  },
-];
-
 export function QuickAccessCards() {
+  const t = useTranslations("explore");
+  const tCards = useTranslations("explore.cards");
+
+  const cards = [
+    {
+      title: t("conferences.title"),
+      description: tCards("browseConferences"),
+      href: "/explore/conferences",
+      icon: Building2,
+      gradient: "from-blue-500/10 via-blue-500/5 to-transparent",
+      iconBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    },
+    {
+      title: t("publications.title"),
+      description: tCards("searchPapers"),
+      href: "/explore/publications",
+      icon: FileText,
+      gradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+      iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    },
+    {
+      title: t("sessions.title"),
+      description: tCards("exploreSessions"),
+      href: "/explore/sessions",
+      icon: Calendar,
+      gradient: "from-purple-500/10 via-purple-500/5 to-transparent",
+      iconBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    },
+  ];
+
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {cards.map((card) => (

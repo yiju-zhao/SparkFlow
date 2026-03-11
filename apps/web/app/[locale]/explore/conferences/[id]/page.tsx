@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import {
   getConference,
   getConferenceStats,
@@ -18,7 +19,13 @@ interface PageProps {
 
 import { PublicationStatsSection } from "@/components/explore/conferences/publication-stats-section";
 
-async function SessionsSection({ conferenceId }: { conferenceId: string }) {
+async function SessionsSection({
+  conferenceId,
+  tDetail,
+}: {
+  conferenceId: string;
+  tDetail: Awaited<ReturnType<typeof getTranslations<"explore.conferenceDetail">>>;
+}) {
   const result = await getSessions({
     conference: conferenceId,
     page: 0,
@@ -29,7 +36,10 @@ async function SessionsSection({ conferenceId }: { conferenceId: string }) {
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Showing {result.data.length} of {result.total} sessions
+        {tDetail("showingSessions", {
+          count: result.data.length,
+          total: result.total,
+        })}
       </p>
       <div className="space-y-8">
         {Object.entries(
@@ -41,7 +51,7 @@ async function SessionsSection({ conferenceId }: { conferenceId: string }) {
                     month: "long",
                     day: "numeric",
                   })
-                : "Unscheduled";
+                : tDetail("unscheduled");
               if (!acc[date]) acc[date] = [];
               acc[date].push(session);
               return acc;
@@ -102,9 +112,10 @@ async function SessionsSection({ conferenceId }: { conferenceId: string }) {
 export default async function ConferenceDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [conference, stats] = await Promise.all([
+  const [conference, stats, tDetail] = await Promise.all([
     getConference(id),
     getConferenceStats(id),
+    getTranslations("explore.conferenceDetail"),
   ]);
 
   if (!conference) {
@@ -127,7 +138,7 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
             value="publications"
             className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
-            Publications
+            {tDetail("tabPublications")}
             <span className="ml-1.5 tabular-nums">
               ({stats.publicationCount.toLocaleString()})
             </span>
@@ -136,7 +147,7 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
             value="sessions"
             className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
-            Sessions
+            {tDetail("tabSessions")}
             <span className="ml-1.5 tabular-nums">
               ({stats.sessionCount.toLocaleString()})
             </span>
@@ -155,7 +166,7 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
 
         <TabsContent value="sessions" className="mt-8">
           <Suspense fallback={<ContentSkeleton />}>
-            <SessionsSection conferenceId={id} />
+            <SessionsSection conferenceId={id} tDetail={tDetail} />
           </Suspense>
         </TabsContent>
       </Tabs>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Upload, FileSpreadsheet, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export function FileDropzone({
   disabled = false,
   className,
 }: FileDropzoneProps) {
+  const t = useTranslations("explore.toolbox.dropzone");
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -46,16 +48,16 @@ export function FileDropzone({
       ];
 
       if (!validTypes.includes(file.type)) {
-        return "Please upload an Excel file (.xlsx or .xls)";
+        return t("invalidFile");
       }
 
       if (file.size > maxSize) {
-        return `File size exceeds ${Math.round(maxSize / 1024 / 1024)}MB limit`;
+        return t("fileTooLarge", { size: Math.round(maxSize / 1024 / 1024) });
       }
 
       return null;
     },
-    [maxSize],
+    [maxSize, t],
   );
 
   const handleDrop = useCallback(
@@ -122,11 +124,10 @@ export function FileDropzone({
           <div className="flex flex-col items-center justify-center pt-5 pb-6">
             <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
             <p className="mb-2 text-sm text-muted-foreground">
-              <span className="font-semibold">Click to upload</span> or drag and
-              drop
+              <span className="font-semibold">{t("clickToUpload")}</span> {t("orDragAndDrop")}
             </p>
             <p className="text-xs text-muted-foreground">
-              Excel files (.xlsx, .xls) up to {Math.round(maxSize / 1024 / 1024)}MB
+              {t("supportedFormats", { size: Math.round(maxSize / 1024 / 1024) })}
             </p>
           </div>
           <input

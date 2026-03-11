@@ -163,25 +163,157 @@
   },
   "explore": {
     "title": "研究中心",
+    "noRecentConferences": "暂无近期会议。",
     "subtitle": "探索全球知识库中的会议、出版物和会议场次",
     "breadcrumb": "~/研究中心/概览",
     "recentConferences": "近期会议",
     "viewAll": "查看全部",
+    "stats": {
+      "conferences": "会议",
+      "publications": "出版物",
+      "sessions": "会议场次",
+      "yearsCovered": "覆盖年份"
+    },
+    "filters": {
+      "venue": "会议",
+      "year": "年份",
+      "topic": "主题",
+      "status": "状态",
+      "organization": "机构",
+      "country": "国家",
+      "conference": "会议",
+      "type": "类型",
+      "all": "所有{label}",
+      "clear": "清除"
+    },
+    "status": {
+      "upcoming": "即将召开",
+      "ongoing": "进行中",
+      "completed": "已完成",
+      "scheduled": "已安排",
+      "showRejected": "显示已拒绝/撤回"
+    },
+    "pagination": {
+      "showing": "显示 {start}-{end} 条，共 {total} 条"
+    },
+    "empty": {
+      "title": "未找到结果",
+      "description": "请尝试调整筛选条件"
+    },
+    "charts": {
+      "publicationsByYear": "按年份出版物分布",
+      "topTopics": "热门研究主题",
+      "noData": "暂无数据",
+      "noDataDesc": "数据将在此处显示"
+    },
+    "cards": {
+      "browseConferences": "按会议和年份浏览学术会议",
+      "searchPapers": "按主题、作者等搜索论文",
+      "exploreSessions": "探索会议场次和日程安排"
+    },
+    "conferenceDetail": {
+      "officialWebsite": "官方网站",
+      "showingSessions": "显示 {count}/{total} 个会议场次",
+      "unscheduled": "未安排",
+      "tabPublications": "出版物",
+      "tabSessions": "会议场次"
+    },
+    "publicationDetail": {
+      "viewPdf": "查看 PDF",
+      "github": "GitHub",
+      "website": "网站",
+      "doi": "DOI",
+      "abstract": "摘要",
+      "summary": "总结",
+      "affiliations": "所属机构",
+      "countries": "国家",
+      "keywords": "关键词",
+      "researchTopic": "研究主题",
+      "relatedSessions": "相关会议场次"
+    },
     "conferences": {
       "title": "会议",
-      "subtitle": "浏览学术会议及其会议场次"
+      "subtitle": "浏览学术会议及其会议场次",
+      "breadcrumb": "~/研究中心/会议"
     },
     "publications": {
       "title": "出版物",
-      "subtitle": "搜索和发现研究出版物"
+      "subtitle": "搜索和发现研究出版物",
+      "breadcrumb": "~/研究中心/出版物"
     },
     "sessions": {
       "title": "会议场次",
-      "subtitle": "探索会议报告和演示"
+      "subtitle": "探索会议报告和演示",
+      "breadcrumb": "~/研究中心/会议场次"
     },
     "toolbox": {
       "title": "工具箱",
-      "subtitle": "研究工具和实用程序"
+      "subtitle": "研究工具和实用程序",
+      "breadcrumb": "~/研究中心/工具箱",
+      "availableTools": "个可用工具",
+      "queryMatcher": {
+        "title": "查询匹配器",
+        "description": "使用语义搜索将查询与会议场次或出版物进行匹配",
+        "breadcrumb": "~/研究中心/工具箱/查询匹配器",
+        "history": "历史记录"
+      },
+      "dropzone": {
+        "invalidFile": "请上传 Excel 文件（.xlsx 或 .xls）",
+        "fileTooLarge": "文件大小超过 {size}MB 限制",
+        "clickToUpload": "点击上传",
+        "orDragAndDrop": "或拖放文件",
+        "supportedFormats": "Excel 文件（.xlsx、.xls），最大 {size}MB"
+      },
+      "wizard": {
+        "steps": {
+          "upload": "上传",
+          "configure": "配置",
+          "results": "结果"
+        },
+        "upload": {
+          "title": "上传查询文件",
+          "description": "上传包含 BU 和 Query 列的 Excel 文件。查询将自动翻译为英文。",
+          "formatGuide": "格式指南",
+          "requiredFormat": "必需格式",
+          "col": "列",
+          "name": "名称",
+          "colDescription": "描述",
+          "required": "必需",
+          "buColumn": "bu",
+          "queryColumn": "query",
+          "buDesc": "请求匹配的业务单元",
+          "queryDesc": "要与会议场次或出版物匹配的搜索查询",
+          "yes": "是",
+          "note": "按位置读取列 — 表头名称不需要完全匹配。查询将在匹配前自动翻译为英文。",
+          "queriesLoaded": "已加载 {count} 个查询",
+          "uploadNew": "上传新文件",
+          "parsing": "正在解析文件…",
+          "cancel": "取消",
+          "continue": "继续"
+        },
+        "configure": {
+          "title": "配置匹配",
+          "description": "请选择会议并为您的 {count} 个{noun}配置匹配选项。",
+          "queryNounSingular": "查询",
+          "queryNounPlural": "查询",
+          "conference": "会议",
+          "conferencePlaceholder": "选择会议",
+          "matchAgainst": "匹配目标",
+          "matchAgainstPlaceholder": "选择目标类型",
+          "sessions": "会议场次",
+          "publications": "出版物",
+          "topK": "Top K 结果数",
+          "topKHelp": "每个查询的匹配数量",
+          "searchK": "Search K",
+          "searchKHelp": "嵌入预过滤大小",
+          "includeReasons": "生成推荐理由（速度较慢）",
+          "back": "返回",
+          "startMatching": "开始匹配",
+          "errorSelectConference": "请选择会议",
+          "errorSelectTarget": "请选择匹配目标",
+          "errorNoQueries": "没有要匹配的查询"
+        }
+      }
     }
   },
   "deepdive": {

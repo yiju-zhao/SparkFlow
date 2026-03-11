@@ -1,5 +1,8 @@
 // apps/web/components/explore/shared/empty-state.tsx
 
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Inbox, Search, FolderOpen } from "lucide-react";
 
@@ -20,19 +23,20 @@ const icons = {
 };
 
 export function EmptyState({
-  title = "No results found",
-  description = "Try adjusting your filters",
+  title,
+  description,
   icon = "inbox",
   action,
 }: EmptyStateProps) {
+  const t = useTranslations("explore.empty");
   const Icon = icons[icon];
 
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 border border-dashed rounded-lg">
       <Icon className="h-10 w-10 text-muted-foreground mb-4" />
-      <p className="font-medium">{title}</p>
+      <p className="font-medium">{title || t("title")}</p>
       <p className="text-muted-foreground text-sm mt-1 text-center max-w-sm">
-        {description}
+        {description || t("description")}
       </p>
       {action && (
         <Button

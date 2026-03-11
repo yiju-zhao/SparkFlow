@@ -3,6 +3,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useECharts } from "@/lib/hooks/use-echarts";
 import { BarChart3 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -14,6 +15,7 @@ interface YearTrendChartProps {
 
 export function YearTrendChart({ data }: YearTrendChartProps) {
   const { theme } = useTheme();
+  const t = useTranslations("explore.charts");
   const hasData = data && data.length > 0;
 
   const option = useMemo<EChartsOption>(() => {
@@ -72,15 +74,15 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
 
   return (
     <div className="bg-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold mb-4">Publications by Year</h3>
+      <h3 className="text-sm font-semibold mb-4">{t("publicationsByYear")}</h3>
       <div className="h-65">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground border border-dashed rounded-lg">
             <BarChart3 className="h-8 w-8 mb-3" />
-            <p className="text-sm font-medium">No data yet</p>
-            <p className="text-xs mt-1">Publication trends will appear here</p>
+            <p className="text-sm font-medium">{t("noData")}</p>
+            <p className="text-xs mt-1">{t("noDataDesc")}</p>
           </div>
         )}
       </div>

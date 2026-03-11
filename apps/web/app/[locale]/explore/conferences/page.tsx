@@ -1,5 +1,6 @@
 // apps/web/app/explore/conferences/page.tsx
 
+import { getTranslations } from "next-intl/server";
 import { getConferences, getFilterOptions } from "@/lib/explore/queries";
 import { parseConferenceFilters } from "@/lib/explore/filters";
 import { ConferenceGrid } from "@/components/explore/conferences";
@@ -12,6 +13,8 @@ interface PageProps {
 export default async function ConferencesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const filters = parseConferenceFilters(params);
+  const t = await getTranslations("explore");
+  const tFilters = await getTranslations("explore.filters");
 
   // Parallel fetch (follows async-parallel best practice)
   const [conferences, filterOptions] = await Promise.all([
@@ -22,7 +25,7 @@ export default async function ConferencesPage({ searchParams }: PageProps) {
   const filterConfigs: FilterConfig[] = [
     {
       key: "venue",
-      label: "Venue",
+      label: tFilters("venue"),
       options: filterOptions.venues.map((v) => ({
         value: v.id,
         label: v.name,
@@ -30,7 +33,7 @@ export default async function ConferencesPage({ searchParams }: PageProps) {
     },
     {
       key: "year",
-      label: "Year",
+      label: tFilters("year"),
       options: filterOptions.years.map((y) => ({
         value: y.toString(),
         label: y.toString(),
@@ -43,11 +46,13 @@ export default async function ConferencesPage({ searchParams }: PageProps) {
       {/* Title Section */}
       <div>
         <p className="text-sm text-muted-foreground mb-2">
-          ~/research-hub/conferences
+          {t("conferences.breadcrumb")}
         </p>
-        <h1 className="text-4xl font-bold tracking-tight">Conferences</h1>
+        <h1 className="text-4xl font-bold tracking-tight">
+          {t("conferences.title")}
+        </h1>
         <p className="text-muted-foreground mt-2">
-          Browse {conferences.length} conferences
+          {t("conferences.subtitle")}
         </p>
       </div>
 

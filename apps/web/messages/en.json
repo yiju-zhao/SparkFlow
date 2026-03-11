@@ -163,25 +163,157 @@
   },
   "explore": {
     "title": "Research Hub",
+    "noRecentConferences": "No recent conferences available yet.",
     "subtitle": "Discover conferences, publications, and sessions in the global knowledge base",
     "breadcrumb": "~/research-hub/overview",
     "recentConferences": "recent conferences",
     "viewAll": "view all",
+    "stats": {
+      "conferences": "Conferences",
+      "publications": "Publications",
+      "sessions": "Sessions",
+      "yearsCovered": "Years Covered"
+    },
+    "filters": {
+      "venue": "Venue",
+      "year": "Year",
+      "topic": "Topic",
+      "status": "Status",
+      "organization": "Organization",
+      "country": "Country",
+      "conference": "Conference",
+      "type": "Type",
+      "all": "All {label}",
+      "clear": "Clear"
+    },
+    "status": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "completed": "Completed",
+      "scheduled": "Scheduled",
+      "showRejected": "Show Rejected/Withdrawal"
+    },
+    "pagination": {
+      "showing": "Showing {start}-{end} of {total}"
+    },
+    "empty": {
+      "title": "No results found",
+      "description": "Try adjusting your filters"
+    },
+    "charts": {
+      "publicationsByYear": "Publications by Year",
+      "topTopics": "Top Research Topics",
+      "noData": "No data yet",
+      "noDataDesc": "Data will appear here"
+    },
+    "cards": {
+      "browseConferences": "Browse conferences by venue and year",
+      "searchPapers": "Search papers by topic, author, and more",
+      "exploreSessions": "Explore sessions and schedules"
+    },
+    "conferenceDetail": {
+      "officialWebsite": "Official Website",
+      "showingSessions": "Showing {count} of {total} sessions",
+      "unscheduled": "Unscheduled",
+      "tabPublications": "Publications",
+      "tabSessions": "Sessions"
+    },
+    "publicationDetail": {
+      "viewPdf": "View PDF",
+      "github": "GitHub",
+      "website": "Website",
+      "doi": "DOI",
+      "abstract": "Abstract",
+      "summary": "Summary",
+      "affiliations": "Affiliations",
+      "countries": "Countries",
+      "keywords": "Keywords",
+      "researchTopic": "Research Topic",
+      "relatedSessions": "Related Sessions"
+    },
     "conferences": {
       "title": "Conferences",
-      "subtitle": "Browse academic conferences and their sessions"
+      "subtitle": "Browse academic conferences and their sessions",
+      "breadcrumb": "~/research-hub/conferences"
     },
     "publications": {
       "title": "Publications",
-      "subtitle": "Search and discover research publications"
+      "subtitle": "Search and discover research publications",
+      "breadcrumb": "~/research-hub/publications"
     },
     "sessions": {
       "title": "Sessions",
-      "subtitle": "Explore conference sessions and presentations"
+      "subtitle": "Explore conference sessions and presentations",
+      "breadcrumb": "~/research-hub/sessions"
     },
     "toolbox": {
       "title": "Toolbox",
-      "subtitle": "Research tools and utilities"
+      "subtitle": "Research tools and utilities",
+      "breadcrumb": "~/research-hub/toolbox",
+      "availableTools": "available tools",
+      "queryMatcher": {
+        "title": "Query Matcher",
+        "description": "Match queries against conference sessions or publications using semantic search",
+        "breadcrumb": "~/research-hub/toolbox/query-matcher",
+        "history": "History"
+      },
+      "dropzone": {
+        "invalidFile": "Please upload an Excel file (.xlsx or .xls)",
+        "fileTooLarge": "File size exceeds {size}MB limit",
+        "clickToUpload": "Click to upload",
+        "orDragAndDrop": "or drag and drop",
+        "supportedFormats": "Excel files (.xlsx, .xls) up to {size}MB"
+      },
+      "wizard": {
+        "steps": {
+          "upload": "upload",
+          "configure": "configure",
+          "results": "results"
+        },
+        "upload": {
+          "title": "Upload Query File",
+          "description": "Upload an Excel file with BU and Query columns. Queries will be automatically translated to English.",
+          "formatGuide": "Format Guide",
+          "requiredFormat": "Required Format",
+          "col": "Col",
+          "name": "Name",
+          "colDescription": "Description",
+          "required": "Required",
+          "buColumn": "bu",
+          "queryColumn": "query",
+          "buDesc": "Business unit requesting the match",
+          "queryDesc": "The search query to match against sessions or publications",
+          "yes": "Yes",
+          "note": "Columns are read by position — header names do not need to match exactly. Queries will be automatically translated to English before matching.",
+          "queriesLoaded": "{count} query/queries loaded",
+          "uploadNew": "Upload new file",
+          "parsing": "Parsing file…",
+          "cancel": "Cancel",
+          "continue": "Continue"
+        },
+        "configure": {
+          "title": "Configure Matching",
+          "description": "Select the conference and configure matching options for your {count} {noun}.",
+          "queryNounSingular": "query",
+          "queryNounPlural": "queries",
+          "conference": "Conference",
+          "conferencePlaceholder": "Select a conference",
+          "matchAgainst": "Match Against",
+          "matchAgainstPlaceholder": "Select target type",
+          "sessions": "Sessions",
+          "publications": "Publications",
+          "topK": "Top K Results",
+          "topKHelp": "Number of matches per query",
+          "searchK": "Search K",
+          "searchKHelp": "Embedding pre-filter size",
+          "includeReasons": "Generate recommendation reasons (slower)",
+          "back": "Back",
+          "startMatching": "Start Matching",
+          "errorSelectConference": "Please select a conference",
+          "errorSelectTarget": "Please select what to match against",
+          "errorNoQueries": "No queries to match"
+        }
+      }
     }
   },
   "deepdive": {

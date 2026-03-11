@@ -4,6 +4,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useTransition } from "react";
+import { useTranslations } from "next-intl";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,7 @@ export function StatusToggles({ className }: StatusTogglesProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations("explore.status");
 
   const showExcluded = searchParams.get("showExcluded") === "true";
 
@@ -49,7 +51,7 @@ export function StatusToggles({ className }: StatusTogglesProps) {
         htmlFor="showExcluded"
         className={`text-sm cursor-pointer ${showExcluded ? "" : "text-muted-foreground"}`}
       >
-        Show Rejected/Withdrawal
+        {t("showRejected")}
       </Label>
     </div>
   );
