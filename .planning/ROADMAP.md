@@ -16,7 +16,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Data | 5/5 | Complete | 2026-03-05 |
-| 2. Research Hub | 0/3 | Ready | - |
+| 2. Research Hub | 3/3 | Complete | 2026-03-09 |
 | 3. Notebook Integration | 0/0 | Not started | - |
 | 4. Polish & Enhancement | 0/0 | Not started | - |
 
@@ -66,9 +66,9 @@ Plans:
 **Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 02-01-PLAN.md — Create generative UI components (table, chart) with CopilotKit useComponent
-- [ ] 02-02-PLAN.md — Integrate CopilotKit hooks into Research Assistant Panel
-- [ ] 02-03-PLAN.md — Wire page context to AI assistant and enable navigation
+- [x] 02-01-PLAN.md — Create generative UI components (table, chart) with CopilotKit useComponent
+- [x] 02-02-PLAN.md — Integrate CopilotKit hooks into Research Assistant Panel
+- [x] 02-03-PLAN.md — Wire page context to AI assistant and enable navigation
 
 ---
 

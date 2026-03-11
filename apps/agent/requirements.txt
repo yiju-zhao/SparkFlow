@@ -5,7 +5,9 @@ langchain-openai
 langchain-core
 langgraph-cli[inmem]
 langchain-mcp-adapters
-deepagents
+
+# CopilotKit integration
+copilotkit
 
 # LangGraph Checkpointing
 langgraph-checkpoint-postgres
