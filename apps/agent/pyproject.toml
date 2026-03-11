@@ -1,17 +1,15 @@
 [project]
 name = "sparkflow-agent"
 version = "0.1.0"
-description = "SparkFlow RAG Agent"
+description = "SparkFlow AI agents for research hub and RAG"
 requires-python = ">=3.11"
 dependencies = [
     "langgraph",
     "langchain",
     "langchain-openai",
-    "langchain-google-genai",
     "langchain-core",
     "langgraph-cli[inmem]",
     "langchain-mcp-adapters",
-    "deepagents",
     "langgraph-checkpoint-postgres",
     "psycopg[binary]",
     "ragflow-sdk",
@@ -19,12 +17,9 @@ dependencies = [
     "pydantic",
     "python-dotenv",
     "httpx",
+    "copilotkit",
 ]
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["config*", "graphs*", "prompts*", "tools*"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
