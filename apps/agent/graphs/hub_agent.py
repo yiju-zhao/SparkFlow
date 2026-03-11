@@ -1,14 +1,11 @@
 """Research Hub Agent for conference discovery.
 
 Provides conference venue, instance, and session discovery capabilities
-via direct PostgreSQL queries, with CopilotKit generative UI integration.
+via MCP Apps with SQLDatabaseToolkit for dynamic database queries.
 
-This agent uses CopilotKit's recommended LangGraph pattern:
-- State inherits from CopilotKitState to receive frontend tools
-- Agent binds both frontend actions (showTable, showChart) and backend tools
-- Backend tool calls are executed in a loop; frontend tool calls (showTable,
-  showChart) pass through to CopilotKit which renders the React components
-- CopilotKit intercepts frontend tool calls and renders React components
+This agent will be reconfigured in Plan 02-02 to use MCPAppsMiddleware
+with CopilotKit's BuiltInAgent, connecting to the MCP server for
+generative UI (tables, charts) rendered via HTML templates.
 
 Note: When running under LangGraph server (langgraph dev/up), persistence is
 handled automatically by the server infrastructure (PostgresSaver is configured
@@ -20,15 +17,14 @@ from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
-from langgraph.prebuilt import ToolNode
 
 from config.hub_agent import HUB_AGENT_CONFIG
 from prompts.hub_agent import HUB_AGENT_SYSTEM_PROMPT
-from tools.hub_queries import list_instances, list_sessions, list_venues, search_sessions
 
-# Backend tools for database queries
-BACKEND_TOOLS = [list_venues, list_instances, list_sessions, search_sessions]
-BACKEND_TOOL_NAMES = {t.name for t in BACKEND_TOOLS}
+# Backend tools removed - replaced by MCP server with SQLDatabaseToolkit
+# in Plan 02-02 via MCPAppsMiddleware
+BACKEND_TOOLS = []
+BACKEND_TOOL_NAMES = set()
 
 
 class HubAgentState(CopilotKitState):
@@ -97,13 +93,13 @@ def route_after_hub(state: HubAgentState) -> str:
     return END
 
 
-# Build the agent graph with tool execution loop
+# Build the agent graph
+# Note: Tool execution node removed - MCP server handles queries via MCPAppsMiddleware
+# This agent will be replaced by BuiltInAgent in Plan 02-02
 builder = StateGraph(HubAgentState)
 builder.add_node("hub", hub_node)
-builder.add_node("tools", ToolNode(BACKEND_TOOLS))
 builder.set_entry_point("hub")
-builder.add_conditional_edges("hub", route_after_hub, {"tools": "tools", END: END})
-builder.add_edge("tools", "hub")  # After tool execution, loop back for next decision
+builder.add_conditional_edges("hub", route_after_hub, {END: END})
 
 # Export the compiled agent
 # Note: Checkpointer is managed by LangGraph server, not specified here
