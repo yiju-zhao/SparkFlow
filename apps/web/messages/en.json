@@ -238,12 +238,14 @@
     "publications": {
       "title": "Publications",
       "subtitle": "Search and discover research publications",
-      "breadcrumb": "~/research-hub/publications"
+      "breadcrumb": "~/research-hub/publications",
+      "found": "{count} publications found"
     },
     "sessions": {
       "title": "Sessions",
       "subtitle": "Explore conference sessions and presentations",
-      "breadcrumb": "~/research-hub/sessions"
+      "breadcrumb": "~/research-hub/sessions",
+      "found": "{count} sessions found"
     },
     "toolbox": {
       "title": "Toolbox",

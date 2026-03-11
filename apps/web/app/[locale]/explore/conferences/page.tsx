@@ -1,18 +1,21 @@
 // apps/web/app/explore/conferences/page.tsx
 
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getConferences, getFilterOptions } from "@/lib/explore/queries";
 import { parseConferenceFilters } from "@/lib/explore/filters";
 import { ConferenceGrid } from "@/components/explore/conferences";
 import { FilterBar, type FilterConfig } from "@/components/explore/shared";
 
 interface PageProps {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function ConferencesPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const filters = parseConferenceFilters(params);
+export default async function ConferencesPage({ params, searchParams }: PageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const searchParamsResolved = await searchParams;
+  const filters = parseConferenceFilters(searchParamsResolved);
   const t = await getTranslations("explore");
   const tFilters = await getTranslations("explore.filters");
 

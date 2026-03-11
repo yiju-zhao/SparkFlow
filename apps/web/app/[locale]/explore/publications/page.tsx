@@ -1,6 +1,7 @@
 // apps/web/app/explore/publications/page.tsx
 
 import Link from "next/link";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getPublications, getFilterOptions } from "@/lib/explore/queries";
 import { parsePublicationFilters, PAGE_SIZE } from "@/lib/explore/filters";
 import {
@@ -15,12 +16,17 @@ import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 
 interface PageProps {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function PublicationsPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const filters = parsePublicationFilters(params);
+export default async function PublicationsPage({ params, searchParams }: PageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const searchParamsResolved = await searchParams;
+  const filters = parsePublicationFilters(searchParamsResolved);
+  const t = await getTranslations("explore");
+  const tFilters = await getTranslations("explore.filters");
 
   // Parallel fetch (follows async-parallel best practice)
   const [result, filterOptions] = await Promise.all([
@@ -31,7 +37,7 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
   const filterConfigs: FilterConfig[] = [
     {
       key: "venue",
-      label: "Venue",
+      label: tFilters("venue"),
       options: filterOptions.venues.map((v) => ({
         value: v.id,
         label: v.name,
@@ -39,7 +45,7 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
     },
     {
       key: "year",
-      label: "Year",
+      label: tFilters("year"),
       options: filterOptions.years.map((y) => ({
         value: y.toString(),
         label: y.toString(),
@@ -47,22 +53,22 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
     },
     {
       key: "topic",
-      label: "Topic",
-      options: filterOptions.topics.map((t) => ({ value: t, label: t })),
+      label: tFilters("topic"),
+      options: filterOptions.topics.map((tp) => ({ value: tp, label: tp })),
     },
     {
       key: "status",
-      label: "Status",
+      label: tFilters("status"),
       options: filterOptions.statuses.map((s) => ({ value: s, label: s })),
     },
     {
       key: "affiliation",
-      label: "Organization",
+      label: tFilters("organization"),
       options: filterOptions.affiliations.map((a) => ({ value: a, label: a })),
     },
     {
       key: "country",
-      label: "Country",
+      label: tFilters("country"),
       options: filterOptions.countries.map((c) => ({ value: c, label: c })),
     },
   ];
@@ -74,11 +80,11 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
       {/* Title Section */}
       <div>
         <p className="text-sm text-muted-foreground mb-2">
-          ~/research-hub/publications
+          {t("publications.breadcrumb")}
         </p>
-        <h1 className="text-4xl font-bold tracking-tight">Publications</h1>
+        <h1 className="text-4xl font-bold tracking-tight">{t("publications.title")}</h1>
         <p className="text-muted-foreground mt-2">
-          {result.total.toLocaleString()} publications found
+          {t("publications.found", { count: result.total.toLocaleString() })}
         </p>
       </div>
 
@@ -90,8 +96,8 @@ export default async function PublicationsPage({ searchParams }: PageProps) {
 
       {result.data.length === 0 ? (
         <EmptyState
-          title="No publications found"
-          description="Try adjusting your filters"
+          title={t("empty.title")}
+          description={t("empty.description")}
         />
       ) : (
         <div className="bg-card rounded-lg">

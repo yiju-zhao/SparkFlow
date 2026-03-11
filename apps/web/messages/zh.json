@@ -236,14 +236,16 @@
       "breadcrumb": "~/研究中心/会议"
     },
     "publications": {
-      "title": "出版物",
+      "title": "论文",
       "subtitle": "搜索和发现研究出版物",
-      "breadcrumb": "~/研究中心/出版物"
+      "breadcrumb": "~/研究中心/出版物",
+      "found": "找到 {count} 篇出版物"
     },
     "sessions": {
       "title": "会议场次",
       "subtitle": "探索会议报告和演示",
-      "breadcrumb": "~/研究中心/会议场次"
+      "breadcrumb": "~/研究中心/会议场次",
+      "found": "找到 {count} 个会议场次"
     },
     "toolbox": {
       "title": "工具箱",

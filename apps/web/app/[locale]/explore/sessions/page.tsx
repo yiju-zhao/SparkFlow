@@ -1,6 +1,7 @@
 // apps/web/app/explore/sessions/page.tsx
 
 import Link from "next/link";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getSessions, getFilterOptions } from "@/lib/explore/queries";
 import { parseSessionFilters, PAGE_SIZE } from "@/lib/explore/filters";
 import {
@@ -14,12 +15,17 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 
 interface PageProps {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function SessionsPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const filters = parseSessionFilters(params);
+export default async function SessionsPage({ params, searchParams }: PageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const searchParamsResolved = await searchParams;
+  const filters = parseSessionFilters(searchParamsResolved);
+  const t = await getTranslations("explore");
+  const tFilters = await getTranslations("explore.filters");
 
   // Parallel fetch (follows async-parallel best practice)
   const [result, filterOptions] = await Promise.all([
@@ -30,7 +36,7 @@ export default async function SessionsPage({ searchParams }: PageProps) {
   const filterConfigs: FilterConfig[] = [
     {
       key: "venue",
-      label: "Conference",
+      label: tFilters("conference"),
       options: filterOptions.venues.map((v) => ({
         value: v.id,
         label: v.name,
@@ -38,7 +44,7 @@ export default async function SessionsPage({ searchParams }: PageProps) {
     },
     {
       key: "year",
-      label: "Year",
+      label: tFilters("year"),
       options: filterOptions.years.map((y) => ({
         value: y.toString(),
         label: y.toString(),
@@ -46,8 +52,8 @@ export default async function SessionsPage({ searchParams }: PageProps) {
     },
     {
       key: "type",
-      label: "Type",
-      options: filterOptions.sessionTypes.map((t) => ({ value: t, label: t })),
+      label: tFilters("type"),
+      options: filterOptions.sessionTypes.map((tp) => ({ value: tp, label: tp })),
     },
   ];
 
@@ -58,11 +64,11 @@ export default async function SessionsPage({ searchParams }: PageProps) {
       {/* Title Section */}
       <div>
         <p className="text-sm text-muted-foreground mb-2">
-          ~/research-hub/sessions
+          {t("sessions.breadcrumb")}
         </p>
-        <h1 className="text-4xl font-bold tracking-tight">Sessions</h1>
+        <h1 className="text-4xl font-bold tracking-tight">{t("sessions.title")}</h1>
         <p className="text-muted-foreground mt-2">
-          {result.total.toLocaleString()} sessions found
+          {t("sessions.found", { count: result.total.toLocaleString() })}
         </p>
       </div>
 
@@ -71,8 +77,8 @@ export default async function SessionsPage({ searchParams }: PageProps) {
 
       {result.data.length === 0 ? (
         <EmptyState
-          title="No sessions found"
-          description="Try adjusting your filters"
+          title={t("empty.title")}
+          description={t("empty.description")}
         />
       ) : (
         <div className="bg-card rounded-lg">
