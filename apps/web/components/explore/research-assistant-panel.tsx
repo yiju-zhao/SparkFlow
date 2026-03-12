@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useCopilotChatInternal,
@@ -23,6 +23,10 @@ interface ResearchAssistantPanelProps {
     sessionTitle?: string;
   };
 }
+
+type AssistantUiMessage = Message & {
+  generativeUI?: () => ReactNode;
+};
 
 export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
@@ -122,9 +126,22 @@ export function ResearchAssistantPanel({
     }
   };
 
-  // Helper to get message content safely
+  // CopilotKit messages can arrive as plain text or segmented content arrays.
   const getMessageContent = (msg: Message): string => {
-    if ("content" in msg && typeof msg.content === "string") return msg.content;
+    if (!("content" in msg)) return "";
+    if (typeof msg.content === "string") return msg.content;
+    if (Array.isArray(msg.content)) {
+      return msg.content
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object" && "text" in item) {
+            return typeof item.text === "string" ? item.text : "";
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
     return "";
   };
 
@@ -202,31 +219,35 @@ export function ResearchAssistantPanel({
                 </div>
               )}
 
-              {messages?.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex flex-col ${getMessageRole(msg) === "user" ? "items-end" : "items-start"}`}
-                >
-                  {/* Text content */}
-                  {getMessageContent(msg) && (
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                        getMessageRole(msg) === "user"
-                          ? "bg-foreground text-background rounded-br-md"
-                          : "bg-muted rounded-bl-md"
-                      }`}
-                    >
-                      {getMessageContent(msg)}
-                    </div>
-                  )}
-                  {/* Generative UI components (tables, charts) */}
-                  {getMessageRole(msg) === "assistant" && (
-                    <div className="w-full mt-2">
-                      {(msg as any).generativeUI?.()}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {messages?.map((msg) => {
+                const role = getMessageRole(msg);
+                const content = getMessageContent(msg);
+                const generativeUi = (msg as AssistantUiMessage).generativeUI?.();
+
+                if (!content && !generativeUi) return null;
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col ${role === "user" ? "items-end" : "items-start"}`}
+                  >
+                    {content && (
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                          role === "user"
+                            ? "bg-foreground text-background rounded-br-md"
+                            : "bg-muted rounded-bl-md"
+                        }`}
+                      >
+                        {content}
+                      </div>
+                    )}
+                    {role === "assistant" && generativeUi && (
+                      <div className="w-full mt-2">{generativeUi}</div>
+                    )}
+                  </div>
+                );
+              })}
 
               {agentError && (
                 <div className="flex justify-center">
