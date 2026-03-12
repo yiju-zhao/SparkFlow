@@ -15,6 +15,7 @@ interface MarkdownProps {
 
 const HTML_TABLE_REGEX = /<table[\s\S]*?<\/table>/gi;
 const CITATION_REGEX = /\[ref:([a-zA-Z0-9_-]+)\]/g;
+const DISALLOWED_RAW_TAGS = ["think", "answer"];
 
 function extractHtmlTables(content: string): {
   processed: string;
@@ -231,6 +232,8 @@ export const Markdown = memo(function Markdown({
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeRaw]}
+        disallowedElements={DISALLOWED_RAW_TAGS}
+        unwrapDisallowed
         components={components}
       >
         {processedContent}
