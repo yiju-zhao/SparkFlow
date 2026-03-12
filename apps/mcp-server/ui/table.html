@@ -154,8 +154,59 @@
             });
         }
 
+        function tryParseJson(value) {
+            if (typeof value !== 'string') return null;
+            try {
+                return JSON.parse(value);
+            } catch {
+                return null;
+            }
+        }
+
         function normalizeToolResult(params) {
-            const payload = params?.structuredContent || params?.content || params || {};
+            if (!params) {
+                return { title: 'Results', rows: [] };
+            }
+
+            if (params.structuredContent && typeof params.structuredContent === 'object') {
+                return params.structuredContent;
+            }
+
+            if (Array.isArray(params.content)) {
+                const textBlocks = params.content
+                    .filter((item) => item && item.type === 'text' && typeof item.text === 'string')
+                    .map((item) => item.text)
+                    .filter(Boolean);
+
+                for (const text of textBlocks) {
+                    const parsed = tryParseJson(text);
+                    if (!parsed) continue;
+
+                    if (parsed.structuredContent && typeof parsed.structuredContent === 'object') {
+                        return parsed.structuredContent;
+                    }
+
+                    if (typeof parsed === 'object') {
+                        return parsed;
+                    }
+                }
+
+                return {
+                    title: 'Results',
+                    columns: ['text'],
+                    rows: textBlocks.map((text) => ({ text })),
+                };
+            }
+
+            const parsedParams = tryParseJson(params);
+            if (parsedParams) {
+                if (parsedParams.structuredContent && typeof parsedParams.structuredContent === 'object') {
+                    return parsedParams.structuredContent;
+                }
+                return parsedParams;
+            }
+
+            const payload = params.content || params || {};
             if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
                 return payload;
             }
