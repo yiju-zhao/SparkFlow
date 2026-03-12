@@ -7,6 +7,7 @@ import {
   useCopilotReadable,
   useThreads,
 } from "@copilotkit/react-core";
+import { useRenderActivityMessage } from "@copilotkitnext/react";
 import { v4 as uuidv4 } from "uuid";
 import type { Message } from "@copilotkit/shared";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function ResearchAssistantPanel({
 
   // Use CopilotKit for chat state
   const { messages, sendMessage, reset, isLoading } = useCopilotChatInternal();
+  const { renderActivityMessage } = useRenderActivityMessage();
 
   // Get thread management to reset thread ID on close
   const { setThreadId } = useThreads();
@@ -244,6 +246,17 @@ export function ResearchAssistantPanel({
               {messages?.map((msg) => {
                 const role = getMessageRole(msg);
                 if (INTERNAL_MESSAGE_ROLES.has(role)) return null;
+
+                if (role === "activity") {
+                  const activityUi = renderActivityMessage(msg as never);
+                  if (!activityUi) return null;
+
+                  return (
+                    <div key={msg.id} className="w-full">
+                      {activityUi}
+                    </div>
+                  );
+                }
 
                 const content = getMessageContent(msg);
                 const generativeUi = (msg as AssistantUiMessage).generativeUI?.();
