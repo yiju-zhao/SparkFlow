@@ -9,7 +9,8 @@ for workflow/presentation once backend probing is complete.
 from __future__ import annotations
 
 import json
-from typing import Any, NotRequired, TypedDict
+from typing import Any
+from typing_extensions import NotRequired, TypedDict
 
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
