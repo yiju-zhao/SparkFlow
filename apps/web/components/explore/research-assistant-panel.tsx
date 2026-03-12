@@ -6,6 +6,7 @@ import {
   useRef,
   useEffect,
   useMemo,
+  useCallback,
   type ReactNode,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -81,6 +82,7 @@ export function ResearchAssistantPanel({
   const [agentError, setAgentError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const handledWorkflowIdsRef = useRef<Set<string>>(new Set());
 
   // Build context string for the agent
   const contextString = useMemo(() => {
@@ -119,6 +121,7 @@ export function ResearchAssistantPanel({
     setThreadId(uuidv4());
     // Clear input
     setInput("");
+    handledWorkflowIdsRef.current.clear();
     // Close the panel
     onOpenChange(false);
   };
@@ -132,7 +135,7 @@ export function ResearchAssistantPanel({
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  const handleSend = async (text?: string) => {
+  const handleSend = useCallback(async (text?: string) => {
     const content = text || input.trim();
     if (!content || isLoading) return;
 
@@ -147,7 +150,38 @@ export function ResearchAssistantPanel({
     } catch {
       setAgentError("Research assistant is currently unavailable. Other features still work normally.");
     }
-  };
+  }, [input, isLoading, sendMessage]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleWorkflowSubmit = (event: MessageEvent) => {
+      const data = event.data as
+        | {
+            type?: string;
+            workflowId?: string;
+            content?: unknown;
+          }
+        | undefined;
+
+      if (data?.type !== "sparkflow.workflow.submit") return;
+
+      const workflowId = data.workflowId;
+      const content =
+        typeof data.content === "string" ? data.content.trim() : "";
+
+      if (!workflowId || !content) return;
+      if (handledWorkflowIdsRef.current.has(workflowId)) return;
+
+      handledWorkflowIdsRef.current.add(workflowId);
+      void handleSend(content);
+    };
+
+    window.addEventListener("message", handleWorkflowSubmit);
+    return () => {
+      window.removeEventListener("message", handleWorkflowSubmit);
+    };
+  }, [handleSend, open]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

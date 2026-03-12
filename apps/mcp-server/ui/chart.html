@@ -98,6 +98,7 @@
     <script>
         let chartInstance = null;
         let rpcId = 0;
+        let submitCounter = 0;
 
         // Color palette matching hub theme
         const DEFAULT_COLORS = [
@@ -136,6 +137,17 @@
                 height: Math.ceil(body.scrollHeight),
             });
         }
+        function emitWorkflowSubmit(action, content, metadata = {}) {
+            submitCounter += 1;
+            window.parent?.postMessage({
+                type: 'sparkflow.workflow.submit',
+                workflowId: `chart-drilldown-${Date.now()}-${submitCounter}`,
+                source: 'chart',
+                action,
+                content,
+                metadata,
+            }, '*');
+        }
 
         function tryParseJson(value) {
             if (typeof value !== 'string') return null;
@@ -144,6 +156,13 @@
             } catch {
                 return null;
             }
+        }
+        function fillTemplate(template, payload) {
+            if (!template || typeof template !== 'string') return '';
+            return template
+                .replaceAll('{{label}}', String(payload.label ?? ''))
+                .replaceAll('{{value}}', String(payload.value ?? ''))
+                .replaceAll('{{title}}', String(payload.title ?? ''));
         }
 
         function normalizeToolResult(params) {
@@ -222,10 +241,17 @@
             }
 
             // Render the chart
-            renderChart(chartType, processedData, processedLabels, chartTitle, chartColors);
+            renderChart(
+                chartType,
+                processedData,
+                processedLabels,
+                chartTitle,
+                chartColors,
+                data.drilldownPromptTemplate,
+            );
         });
 
-        function renderChart(type, data, labels, title, colors) {
+        function renderChart(type, data, labels, title, colors, drilldownPromptTemplate) {
             document.getElementById('loading').style.display = 'none';
 
             // Check for empty data
@@ -308,12 +334,31 @@
                     animation: {
                         duration: 500,
                         easing: 'easeOutQuart'
-                    }
+                    },
+                    onClick: (_event, elements) => {
+                        if (!drilldownPromptTemplate || !elements?.length) return;
+                        const index = elements[0].index;
+                        const label = labels[index];
+                        const value = data[index];
+                        const content = fillTemplate(drilldownPromptTemplate, {
+                            label,
+                            value,
+                            title,
+                        });
+                        if (!content) return;
+                        emitWorkflowSubmit('drilldown', content, {
+                            chartTitle: title,
+                            label,
+                            value,
+                            chartType: type,
+                        });
+                    },
                 }
             };
 
             // Create chart
             chartInstance = new Chart(ctx, config);
+            document.getElementById('chart').style.cursor = drilldownPromptTemplate ? 'pointer' : 'default';
             updateSize();
         }
 

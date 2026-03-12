@@ -70,10 +70,27 @@
             background: var(--muted, #f9fafb);
         }
 
+        tr.row-clickable {
+            cursor: pointer;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: var(--muted-foreground, #737373);
+        }
+
+        .text-result {
+            display: none;
+            padding: 14px 16px;
+            border: 1px solid var(--border, #e5e5e5);
+            border-radius: 12px;
+            background: var(--muted, #f9fafb);
+            color: var(--foreground, #171717);
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
         .empty-state-icon {
@@ -111,6 +128,7 @@
         </div>
         <div id="content" style="display: none;">
             <h3 id="title" class="table-title"></h3>
+            <div id="text-result" class="text-result"></div>
             <table id="data-table">
                 <thead id="table-head"></thead>
                 <tbody id="table-body"></tbody>
@@ -125,8 +143,9 @@
     <script>
         // State for sorting
         let currentSort = { column: null, direction: 'asc' };
-        let currentData = { columns: [], rows: [], title: '' };
+        let currentData = { columns: [], rows: [], title: '', plainText: '', rowDrilldownPromptTemplate: null };
         let rpcId = 0;
+        let submitCounter = 0;
 
         function notifyParent(method, params = {}) {
             window.parent?.postMessage({
@@ -153,6 +172,17 @@
                 height: Math.ceil(body.scrollHeight),
             });
         }
+        function emitWorkflowSubmit(action, content, metadata = {}) {
+            submitCounter += 1;
+            window.parent?.postMessage({
+                type: 'sparkflow.workflow.submit',
+                workflowId: `table-row-${Date.now()}-${submitCounter}`,
+                source: 'table',
+                action,
+                content,
+                metadata,
+            }, '*');
+        }
 
         function tryParseJson(value) {
             if (typeof value !== 'string') return null;
@@ -161,6 +191,23 @@
             } catch {
                 return null;
             }
+        }
+        function fillTemplate(template, row, title) {
+            if (!template || typeof template !== 'string') return '';
+            let result = template.replaceAll('{{title}}', String(title || ''));
+            const entries = row && typeof row === 'object' ? Object.entries(row) : [];
+            for (const [key, value] of entries) {
+                result = result.replaceAll(`{{${key}}}`, String(value ?? ''));
+            }
+            return result;
+        }
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
         }
 
         function normalizeToolResult(params) {
@@ -191,11 +238,12 @@
                     }
                 }
 
-                return {
-                    title: 'Results',
-                    columns: ['text'],
-                    rows: textBlocks.map((text) => ({ text })),
-                };
+                if (textBlocks.length > 0) {
+                    return {
+                        title: 'Results',
+                        plainText: textBlocks.join('\n\n'),
+                    };
+                }
             }
 
             const parsedParams = tryParseJson(params);
@@ -213,6 +261,9 @@
             if (Array.isArray(payload)) {
                 return { title: 'Results', rows: payload };
             }
+            if (typeof payload === 'string' && payload.trim()) {
+                return { title: 'Results', plainText: payload.trim() };
+            }
             return { title: 'Results', rows: [] };
         }
 
@@ -229,6 +280,7 @@
                 let columns = data.columns || [];
                 let rows = data.rows || [];
                 let title = data.title || 'Results';
+                let plainText = typeof data.plainText === 'string' ? data.plainText : '';
 
                 // If data has a 'result' key, unwrap it
                 if (data.result && typeof data.result === 'object') {
@@ -246,10 +298,22 @@
                 }
 
                 // Store current data
-                currentData = { columns, rows, title };
+                currentData = {
+                    columns,
+                    rows,
+                    title,
+                    plainText,
+                    rowDrilldownPromptTemplate: data.rowDrilldownPromptTemplate || null,
+                };
 
                 // Render the table
-                renderTable(columns, rows, title);
+                renderTable(
+                    columns,
+                    rows,
+                    title,
+                    plainText,
+                    currentData.rowDrilldownPromptTemplate,
+                );
                 return;
             }
 
@@ -258,24 +322,39 @@
             }
         });
 
-        function renderTable(columns, rows, title) {
+        function renderTable(columns, rows, title, plainText, rowDrilldownPromptTemplate) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
 
             // Set title
             document.getElementById('title').textContent = title;
+            const textResult = document.getElementById('text-result');
+            const dataTable = document.getElementById('data-table');
+            const emptyState = document.getElementById('empty-state');
 
-            // Handle different data formats
-            // Check for empty data
-            if (!rows || rows.length === 0) {
-                document.getElementById('data-table').style.display = 'none';
-                document.getElementById('empty-state').style.display = 'block';
+            if (plainText) {
+                dataTable.style.display = 'none';
+                emptyState.style.display = 'none';
+                textResult.style.display = 'block';
+                textResult.textContent = plainText;
                 updateSize();
                 return;
             }
 
-            document.getElementById('data-table').style.display = 'table';
-            document.getElementById('empty-state').style.display = 'none';
+            textResult.style.display = 'none';
+            textResult.textContent = '';
+
+            // Handle different data formats
+            // Check for empty data
+            if (!rows || rows.length === 0) {
+                dataTable.style.display = 'none';
+                emptyState.style.display = 'block';
+                updateSize();
+                return;
+            }
+
+            dataTable.style.display = 'table';
+            emptyState.style.display = 'none';
 
             // Render header
             const thead = document.getElementById('table-head');
@@ -288,9 +367,12 @@
 
             // Render body
             const tbody = document.getElementById('table-body');
-            tbody.innerHTML = rows.map(row => {
+            tbody.innerHTML = rows.map((row, index) => {
+                const rowClass = rowDrilldownPromptTemplate && typeof row === 'object'
+                    ? ' class="row-clickable" data-row-index="' + index + '"'
+                    : '';
                 if (typeof row === 'object') {
-                    return '<tr>' + columns.map(col => {
+                    return '<tr' + rowClass + '>' + columns.map(col => {
                         const value = row[col];
                         return `<td>${formatValue(value)}</td>`;
                     }).join('') + '</tr>';
@@ -298,6 +380,22 @@
                     return `<tr><td>${formatValue(row)}</td></tr>`;
                 }
             }).join('');
+
+            if (rowDrilldownPromptTemplate) {
+                tbody.querySelectorAll('tr[data-row-index]').forEach((rowEl) => {
+                    rowEl.addEventListener('click', () => {
+                        const rowIndex = Number(rowEl.getAttribute('data-row-index'));
+                        const row = rows[rowIndex];
+                        if (!row || typeof row !== 'object') return;
+                        const content = fillTemplate(rowDrilldownPromptTemplate, row, title);
+                        if (!content) return;
+                        emitWorkflowSubmit('row-drilldown', content, {
+                            title,
+                            row,
+                        });
+                    });
+                });
+            }
 
             updateSize();
         }
@@ -333,7 +431,13 @@
             });
 
             // Re-render
-            renderTable(currentData.columns, currentData.rows, currentData.title);
+            renderTable(
+                currentData.columns,
+                currentData.rows,
+                currentData.title,
+                currentData.plainText,
+                currentData.rowDrilldownPromptTemplate,
+            );
         }
 
         function formatColumnName(name) {
@@ -347,8 +451,8 @@
         function formatValue(value) {
             if (value == null) return '-';
             if (typeof value === 'boolean') return value ? '✓' : '✗';
-            if (typeof value === 'object') return JSON.stringify(value);
-            return String(value);
+            if (typeof value === 'object') return escapeHtml(JSON.stringify(value));
+            return escapeHtml(String(value));
         }
 
         requestParent('ui/initialize');
