@@ -5,7 +5,6 @@
     "graphs": {
         "agent": "./graphs/rag_agent.py:agent",
         "agent_gemini": "./graphs/rag_agent_gemini.py:agent_gemini",
-        "hub": "./graphs/hub_agent.py:hub_agent"
     },
     "env": ".env",
     "image_distro": "wolfi"
