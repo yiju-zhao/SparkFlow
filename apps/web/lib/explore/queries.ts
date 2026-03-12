@@ -744,23 +744,19 @@ export const getYearTrendData = cache(async () => {
   const data = await prisma.instance.findMany({
     select: {
       year: true,
-      _count: { select: { publications: true } },
     },
     orderBy: { year: "asc" },
   });
 
-  // Aggregate by year (in case multiple conferences per year)
+  // Aggregate conference instances by year.
   const byYear = new Map<number, number>();
   for (const item of data) {
-    byYear.set(
-      item.year,
-      (byYear.get(item.year) || 0) + item._count.publications,
-    );
+    byYear.set(item.year, (byYear.get(item.year) || 0) + 1);
   }
 
   return Array.from(byYear.entries()).map(([year, count]) => ({
     year,
-    publications: count,
+    conferences: count,
   }));
 });
 

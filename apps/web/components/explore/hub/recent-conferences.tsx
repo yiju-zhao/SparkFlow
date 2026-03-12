@@ -127,10 +127,13 @@ export function RecentConferences({ conferences }: RecentConferencesProps) {
               </div>
 
               {/* Stats Column */}
-              <div className="text-right w-20">
-                <span className="font-mono text-[13px] font-semibold text-foreground">
-                  +{conference.publicationCount}
-                </span>
+              <div className="w-32 text-right font-mono">
+                <p className="text-[12px] font-semibold text-foreground">
+                  {conference.sessionCount} {tExplore("stats.sessions")}
+                </p>
+                <p className="text-[12px] font-semibold text-foreground">
+                  {conference.publicationCount} {tExplore("stats.publications")}
+                </p>
               </div>
             </div>
           </Link>

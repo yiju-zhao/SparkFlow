@@ -201,7 +201,7 @@
       "description": "请尝试调整筛选条件"
     },
     "charts": {
-      "publicationsByYear": "按年份论文分布",
+      "conferencesByYear": "按年份会议分布",
       "topTopics": "热门研究主题",
       "noData": "暂无数据",
       "noDataDesc": "数据将在此处显示"

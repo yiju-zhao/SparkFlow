@@ -201,7 +201,7 @@
       "description": "Try adjusting your filters"
     },
     "charts": {
-      "publicationsByYear": "Publications by Year",
+      "conferencesByYear": "Conferences by Year",
       "topTopics": "Top Research Topics",
       "noData": "No data yet",
       "noDataDesc": "Data will appear here"

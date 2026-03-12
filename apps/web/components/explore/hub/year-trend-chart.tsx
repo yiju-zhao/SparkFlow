@@ -10,7 +10,7 @@ import { useTheme } from "next-themes";
 import type { EChartsOption } from "echarts";
 
 interface YearTrendChartProps {
-  data: { year: number; publications: number }[];
+  data: { year: number; conferences: number }[];
 }
 
 export function YearTrendChart({ data }: YearTrendChartProps) {
@@ -58,7 +58,7 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
       },
       series: [
         {
-          data: data.map((d) => d.publications),
+          data: data.map((d) => d.conferences),
           type: "bar",
           itemStyle: {
             borderRadius: [4, 4, 0, 0],
@@ -74,7 +74,7 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
 
   return (
     <div className="bg-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold mb-4">{t("publicationsByYear")}</h3>
+      <h3 className="text-sm font-semibold mb-4">{t("conferencesByYear")}</h3>
       <div className="h-65">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />

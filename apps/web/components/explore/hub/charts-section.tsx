@@ -27,7 +27,7 @@ const TopicsChart = dynamic(
 );
 
 interface ChartsSectionProps {
-  yearData: { year: number; publications: number }[];
+  yearData: { year: number; conferences: number }[];
   topicsData: { topic: string; count: number }[];
 }
 
