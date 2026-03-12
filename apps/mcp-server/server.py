@@ -27,7 +27,7 @@ from mcp.server.fastmcp import FastMCP
 load_dotenv()
 
 # Initialize FastMCP server
-mcp = FastMCP("HubMCPServer", stateless_http=True, json_response=True)
+mcp = FastMCP("HubMCPServer", stateless_http=True, json_response=True, port=3108)
 
 # Initialize database connection
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -182,4 +182,4 @@ def chart_template() -> str:
 
 if __name__ == "__main__":
     print("Starting Hub MCP Server on port 3108...")
-    mcp.run(transport="streamable-http", port=3108)
+    mcp.run(transport="streamable-http")
