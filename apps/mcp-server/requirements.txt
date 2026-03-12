@@ -1,5 +1,6 @@
 # MCP Server dependencies
 mcp
+langchain
 langchain-community
 langchain-openai
 langchain-core

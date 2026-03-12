@@ -16,8 +16,10 @@ The server runs on port 3108 with streamable-http transport.
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
+from langchain.agents import create_agent
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_community.utilities import SQLDatabase
 from langchain_openai import ChatOpenAI
@@ -52,6 +54,90 @@ def get_ui_path(filename: str) -> Path:
     return Path(__file__).parent / "ui" / filename
 
 
+def _extract_text(content: Any) -> str:
+    """Extract plain text from LangChain message content blocks."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+                continue
+            if isinstance(item, dict):
+                if item.get("type") == "text" and isinstance(item.get("text"), str):
+                    parts.append(item["text"])
+                    continue
+                if isinstance(item.get("content"), str):
+                    parts.append(item["content"])
+        return "\n".join(part for part in parts if part).strip()
+    return str(content)
+
+
+def _coerce_to_table_payload(output: Any, question: str) -> dict[str, Any]:
+    """Normalize model output into the table UI contract."""
+    parsed = output
+    if isinstance(output, str):
+        stripped = output.strip()
+        if stripped:
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                parsed = {"result": stripped}
+        else:
+            parsed = {}
+
+    title = question.strip().rstrip("?") or "Query results"
+
+    if isinstance(parsed, list):
+        if parsed and isinstance(parsed[0], dict):
+            return {
+                "title": title,
+                "columns": list(parsed[0].keys()),
+                "rows": parsed,
+            }
+        return {"title": title, "columns": ["result"], "rows": [{"result": value} for value in parsed]}
+
+    if isinstance(parsed, dict):
+        rows = parsed.get("rows")
+        if isinstance(rows, list):
+            columns = parsed.get("columns")
+            if not isinstance(columns, list) and rows and isinstance(rows[0], dict):
+                columns = list(rows[0].keys())
+            return {
+                "title": parsed.get("title") or title,
+                "columns": columns or [],
+                "rows": rows,
+            }
+        result = parsed.get("result")
+        if isinstance(result, list):
+            if result and isinstance(result[0], dict):
+                return {
+                    "title": parsed.get("title") or title,
+                    "columns": list(result[0].keys()),
+                    "rows": result,
+                }
+            return {
+                "title": parsed.get("title") or title,
+                "columns": ["result"],
+                "rows": [{"result": value} for value in result],
+            }
+        if parsed:
+            return {
+                "title": parsed.get("title") or title,
+                "columns": list(parsed.keys()),
+                "rows": [parsed],
+            }
+        return {"title": title, "columns": [], "rows": []}
+
+    if parsed is None:
+        return {"title": title, "columns": [], "rows": []}
+
+    return {"title": title, "columns": ["result"], "rows": [{"result": parsed}]}
+
+
 @mcp.tool(meta={"ui/resourceUri": "ui://table"})
 def query_conferences(question: str) -> dict:
     """Query the conference database with natural language.
@@ -72,14 +158,7 @@ def query_conferences(question: str) -> dict:
     Returns:
         Structured data with UI reference for rendering
     """
-    from langchain.agents import AgentExecutor, create_tool_calling_agent
-    from langchain_core.prompts import ChatPromptTemplate
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """You are a SQL expert assistant for academic conference data.
+    system_prompt = """You are a SQL expert assistant for academic conference data.
 Use the available tools to answer questions about conferences, sessions, venues, and publications.
 
 The database has these main tables:
@@ -87,28 +166,25 @@ The database has these main tables:
 - instances: Yearly occurrences of conferences
 - conference_sessions: Individual sessions/talks within conference instances
 
-Always return structured data that can be displayed in tables or charts.
-If the result is a list, return it as an array of objects.
-If the result is a count/aggregation, return it as a single object with the value.""",
-            ),
-            ("human", "{question}"),
-            ("placeholder", "{agent_scratchpad}"),
-        ]
+Always use the SQL tools for database questions. Do not answer from prior knowledge.
+Return valid JSON only. Prefer this shape:
+{"title": "Short title", "rows": [ ... ]}
+If the result is a single count or aggregate, return:
+{"title": "Short title", "rows": [{"count": 123}]}
+If no rows match, return:
+{"title": "Short title", "rows": []}"""
+
+    agent = create_agent(
+        model=llm,
+        tools=toolkit_tools,
+        system_prompt=system_prompt,
     )
 
-    agent = create_tool_calling_agent(llm, toolkit_tools, prompt)
-    executor = AgentExecutor(agent=agent, tools=toolkit_tools, verbose=True)
-
     try:
-        result = executor.invoke({"question": question})
-        output = result.get("output", {})
-
-        # Parse output if it's a string
-        if isinstance(output, str):
-            try:
-                output = json.loads(output)
-            except json.JSONDecodeError:
-                output = {"result": output}
+        result = agent.invoke({"messages": [{"role": "user", "content": question}]})
+        messages = result.get("messages", [])
+        output_text = _extract_text(messages[-1].content if messages else "")
+        output = _coerce_to_table_payload(output_text, question)
 
         return {
             "content": [{"type": "text", "text": json.dumps(output)}],
