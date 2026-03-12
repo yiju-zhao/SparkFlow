@@ -52,7 +52,7 @@ def get_ui_path(filename: str) -> Path:
     return Path(__file__).parent / "ui" / filename
 
 
-@mcp.tool()
+@mcp.tool(meta={"ui/resourceUri": "ui://table"})
 def query_conferences(question: str) -> dict:
     """Query the conference database with natural language.
 
