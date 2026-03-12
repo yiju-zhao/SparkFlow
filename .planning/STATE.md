@@ -2,15 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Plan 02
-status: in_progress
-last_updated: "2026-03-11T21:02:09.000Z"
+status: completed
+last_updated: "2026-03-12T14:23:26.404Z"
 last_activity: "2026-03-11 - Completed Plan 02-01: MCP Server with SQLDatabaseToolkit"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State: DeepSense Insight Platform
@@ -84,6 +83,7 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 | 01-foundation-data | 04 | 2min | 3 | 3 | 2026-03-05 |
 | 01-foundation-data | 05 | 3min | 3 | 4 | 2026-03-05 |
 | 02-research-hub | 01 | 5min | 3 | 7 | 2026-03-11 |
+| Phase 02-research-hub P02 | 15min | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -105,6 +105,8 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 | FastMCP with streamable-http on port 3108 | 2026-03-11 | Simpler than SSE, matches MCP Apps pattern |
 | SQLDatabaseToolkit over predefined tools | 2026-03-11 | Dynamic query generation handles any user question |
 | HTML templates over React components | 2026-03-11 | Simpler architecture, no React maintenance needed |
+- [Phase 02-research-hub]: BuiltInAgent + MCPAppsMiddleware replaces LangGraphAgent - simpler hub architecture requiring no separate LangGraph server
+- [Phase 02-research-hub]: hub_agent.py simplified to stub - MCP server handles all hub queries via MCPAppsMiddleware
 
 ### Todos
 
