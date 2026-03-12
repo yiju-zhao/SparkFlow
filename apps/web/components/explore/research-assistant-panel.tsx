@@ -44,6 +44,7 @@ export function ResearchAssistantPanel({
   contextData,
 }: ResearchAssistantPanelProps) {
   const [input, setInput] = useState("");
+  const [agentError, setAgentError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -101,12 +102,17 @@ export function ResearchAssistantPanel({
     const content = text || input.trim();
     if (!content || isLoading) return;
 
-    await sendMessage({
-      id: uuidv4(),
-      role: "user",
-      content,
-    } as Message);
-    setInput("");
+    setAgentError(null);
+    try {
+      await sendMessage({
+        id: uuidv4(),
+        role: "user",
+        content,
+      } as Message);
+      setInput("");
+    } catch {
+      setAgentError("Research assistant is currently unavailable. Other features still work normally.");
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -221,6 +227,14 @@ export function ResearchAssistantPanel({
                   )}
                 </div>
               ))}
+
+              {agentError && (
+                <div className="flex justify-center">
+                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2 text-center max-w-[85%]">
+                    {agentError}
+                  </p>
+                </div>
+              )}
 
               {isLoading && (
                 <div className="flex justify-start">

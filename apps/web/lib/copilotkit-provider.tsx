@@ -1,11 +1,36 @@
 "use client";
 
 import { CopilotKit } from "@copilotkit/react-core";
+import { Component, ReactNode } from "react";
 
-export function CopilotKitProvider({ children }: { children: React.ReactNode }) {
+class CopilotKitErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    // If CopilotKit fails to initialize, render children without it
+    if (this.state.hasError) {
+      return this.props.children;
+    }
+    return (
+      <CopilotKit runtimeUrl="/api/copilotkit" agent="hub">
+        {this.props.children}
+      </CopilotKit>
+    );
+  }
+}
+
+export function CopilotKitProvider({ children }: { children: ReactNode }) {
   return (
-    <CopilotKit runtimeUrl="/api/copilotkit" agent="hub">
-      {children}
-    </CopilotKit>
+    <CopilotKitErrorBoundary>{children}</CopilotKitErrorBoundary>
   );
 }

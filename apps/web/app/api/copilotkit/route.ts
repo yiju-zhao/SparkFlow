@@ -36,7 +36,7 @@ Always provide helpful, accurate information about academic conferences.`,
 
 const runtime = new CopilotRuntime({
   agents: {
-    default: agent
+    hub: agent
   }
 });
 
