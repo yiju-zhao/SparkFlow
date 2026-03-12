@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import {
+  memo,
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useCopilotChatInternal,
@@ -9,7 +16,7 @@ import {
 } from "@copilotkit/react-core";
 import { useRenderActivityMessage } from "@copilotkitnext/react";
 import { v4 as uuidv4 } from "uuid";
-import type { Message } from "@copilotkit/shared";
+import type { ActivityMessage, Message } from "@copilotkit/shared";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
 import { useContextSuggestions } from "@/lib/hooks/use-context-suggestions";
@@ -30,6 +37,26 @@ type AssistantUiMessage = Message & {
 };
 
 const INTERNAL_MESSAGE_ROLES = new Set(["tool", "system", "developer"]);
+
+const ActivityMessageView = memo(function ActivityMessageView({
+  message,
+}: {
+  message: ActivityMessage;
+}) {
+  const { renderActivityMessage } = useRenderActivityMessage();
+  const activityUi = renderActivityMessage(message as never);
+
+  if (!activityUi) return null;
+
+  return <div className="w-full">{activityUi}</div>;
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.activityType === nextProps.message.activityType &&
+    JSON.stringify(prevProps.message.content) ===
+      JSON.stringify(nextProps.message.content)
+  );
+});
 
 export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
@@ -80,7 +107,6 @@ export function ResearchAssistantPanel({
 
   // Use CopilotKit for chat state
   const { messages, sendMessage, reset, isLoading } = useCopilotChatInternal();
-  const { renderActivityMessage } = useRenderActivityMessage();
 
   // Get thread management to reset thread ID on close
   const { setThreadId } = useThreads();
@@ -248,13 +274,11 @@ export function ResearchAssistantPanel({
                 if (INTERNAL_MESSAGE_ROLES.has(role)) return null;
 
                 if (role === "activity") {
-                  const activityUi = renderActivityMessage(msg as never);
-                  if (!activityUi) return null;
-
                   return (
-                    <div key={msg.id} className="w-full">
-                      {activityUi}
-                    </div>
+                    <ActivityMessageView
+                      key={msg.id}
+                      message={msg as ActivityMessage}
+                    />
                   );
                 }
 
