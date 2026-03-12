@@ -21,11 +21,6 @@ const hubAgent = new LangGraphAgent({
         url: process.env.MCP_SERVER_URL || "http://localhost:3108/mcp",
         serverId: "hub-render-server",
       },
-      {
-        type: "http",
-        url: process.env.TOOLBOX_SERVER_URL || "http://localhost:5000",
-        serverId: "hub-toolbox-server",
-      },
     ],
   }),
 );
