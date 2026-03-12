@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from "uuid";
 import type { Message } from "@copilotkit/shared";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
-import { useGenerativeComponents } from "./generative-ui";
 import { useContextSuggestions } from "@/lib/hooks/use-context-suggestions";
 
 interface ResearchAssistantPanelProps {
@@ -47,9 +46,6 @@ export function ResearchAssistantPanel({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  // Register generative UI components with CopilotKit
-  useGenerativeComponents();
 
   // Build context string for the agent
   const contextString = useMemo(() => {
