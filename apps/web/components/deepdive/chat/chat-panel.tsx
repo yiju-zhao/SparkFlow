@@ -8,8 +8,6 @@ import {
   Loader2,
   Sparkles,
   Plus,
-  History,
-  X,
   Trash2,
   StickyNote,
   Copy,
@@ -62,8 +60,7 @@ interface ModelSettings {
   modelName: string;
 }
 
-const LANGGRAPH_API_URL =
-  process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
+const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL;
 
 // Stable default props to avoid creating new arrays on each render
 const EMPTY_SESSIONS: ChatSession[] = [];
@@ -77,6 +74,12 @@ export function ChatPanel({
   initialSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
 }: ChatPanelProps) {
+  if (!LANGGRAPH_API_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_LANGGRAPH_API_URL is not configured. Set it to the reachable LangGraph server URL.",
+    );
+  }
+
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0

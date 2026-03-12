@@ -6,6 +6,10 @@ interface RouteParams {
   params: Promise<{ sessionId: string }>;
 }
 
+function getLangGraphApiUrl(): string | null {
+  return process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || null;
+}
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -106,15 +110,19 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     // Clear agent memory for this session
     try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024"}/threads/${sessionId}`,
-        {
+      const langGraphUrl = getLangGraphApiUrl();
+      if (langGraphUrl) {
+        await fetch(`${langGraphUrl}/threads/${sessionId}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${session.user.id}`,
           },
-        },
-      );
+        });
+      } else {
+        console.warn(
+          "Skipping agent memory cleanup because NEXT_PUBLIC_LANGGRAPH_API_URL is not configured.",
+        );
+      }
     } catch (agentError) {
       // Log but don't fail - agent memory cleanup is best-effort
       console.warn("Failed to clear agent memory:", agentError);
