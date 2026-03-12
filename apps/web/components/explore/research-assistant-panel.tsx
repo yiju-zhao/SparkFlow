@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  memo,
   useState,
   useRef,
   useEffect,
@@ -39,7 +38,7 @@ type AssistantUiMessage = Message & {
 
 const INTERNAL_MESSAGE_ROLES = new Set(["tool", "system", "developer"]);
 
-const ActivityMessageView = memo(function ActivityMessageView({
+function ActivityMessageView({
   message,
 }: {
   message: ActivityMessage;
@@ -50,14 +49,7 @@ const ActivityMessageView = memo(function ActivityMessageView({
   if (!activityUi) return null;
 
   return <div className="w-full">{activityUi}</div>;
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.message.id === nextProps.message.id &&
-    prevProps.message.activityType === nextProps.message.activityType &&
-    JSON.stringify(prevProps.message.content) ===
-      JSON.stringify(nextProps.message.content)
-  );
-});
+}
 
 export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
@@ -335,7 +327,9 @@ export function ResearchAssistantPanel({
                         className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                           role === "user"
                             ? "bg-foreground text-background rounded-br-md"
-                            : "bg-muted rounded-bl-md"
+                            : role === "reasoning"
+                              ? "bg-transparent text-muted-foreground px-0 py-0 text-xs"
+                              : "bg-muted rounded-bl-md"
                         }`}
                       >
                         {content}
