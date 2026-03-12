@@ -12,7 +12,7 @@ GenAI Toolbox is the database-facing MCP service for the Research Hub.
 toolbox --tools-file apps/toolbox/tools.yaml
 ```
 
-Default local URL: `http://127.0.0.1:5000`
+Default MCP endpoint: `http://127.0.0.1:5000/mcp`
 
 ## Purpose
 
