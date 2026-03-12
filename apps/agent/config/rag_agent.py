@@ -1,5 +1,6 @@
 """RAG agent configuration."""
 
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -8,8 +9,8 @@ from typing import Any
 class RAGAgentConfig:
     """Configuration for RAG agent."""
 
-    model_provider: str = "openai"
-    model_name: str = "gpt-5.2"
+    model_provider: str = os.getenv("DEFAULT_MODEL_PROVIDER", "openai")
+    model_name: str = os.getenv("DEFAULT_MODEL_NAME", "gpt-4o")
 
 
 @dataclass
@@ -22,6 +23,8 @@ class AgentContext:
 
     dataset_ids: list[str] = field(default_factory=list)
     sources_context: list[dict[str, Any]] = field(default_factory=list)
+    model_provider: str = os.getenv("DEFAULT_MODEL_PROVIDER", "openai")
+    model_name: str = os.getenv("DEFAULT_MODEL_NAME", "gpt-4o")
 
 
 RAG_AGENT_CONFIG = RAGAgentConfig()

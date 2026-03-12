@@ -153,13 +153,10 @@ const prevIsLoadingRef = useRef<boolean>(false);
     fetchSettings();
   }, []);
 
-  // LangGraph stream hook - follows docs pattern
-  // Select assistant based on user's model provider preference
-  const assistantId = modelSettings.modelProvider === "google" ? "agent_gemini" : "agent";
-
+  // LangGraph stream hook - model selection happens per-request via context
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
-    assistantId,
+    assistantId: "agent",
     threadId: threadId ?? undefined,
     onThreadId: (newThreadId) => {
       console.log("Thread created:", newThreadId);
@@ -449,6 +446,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
           context: {
             dataset_ids: datasetId ? [datasetId] : [],
             sources_context: sourcesContext,
+            model_provider: modelSettings.modelProvider,
+            model_name: modelSettings.modelName,
           },
         },
       );
