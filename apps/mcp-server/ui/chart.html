@@ -97,6 +97,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script>
         let chartInstance = null;
+        let rpcId = 0;
 
         // Color palette matching hub theme
         const DEFAULT_COLORS = [
@@ -110,9 +111,47 @@
             '#ec4899', // Pink
         ];
 
-        // Receive structured data from MCP tool
+        function notifyParent(method, params = {}) {
+            window.parent?.postMessage({
+                jsonrpc: '2.0',
+                method,
+                params,
+            }, '*');
+        }
+
+        function requestParent(method, params = {}) {
+            rpcId += 1;
+            window.parent?.postMessage({
+                jsonrpc: '2.0',
+                id: `chart-${rpcId}`,
+                method,
+                params,
+            }, '*');
+        }
+
+        function updateSize() {
+            const body = document.body;
+            notifyParent('ui/notifications/size-changed', {
+                width: Math.ceil(body.scrollWidth),
+                height: Math.ceil(body.scrollHeight),
+            });
+        }
+
+        function normalizeToolResult(params) {
+            return params?.structuredContent || params || {};
+        }
+
         window.addEventListener('message', (event) => {
-            const data = event.data;
+            const message = event.data;
+            if (!message || typeof message !== 'object' || message.jsonrpc !== '2.0') {
+                return;
+            }
+
+            if (message.method !== 'ui/notifications/tool-result') {
+                return;
+            }
+
+            const data = normalizeToolResult(message.params);
             
             // Extract chart configuration
             const chartType = data.type || 'bar';
@@ -146,10 +185,11 @@
 
             // Check for empty data
             if (!data || data.length === 0) {
-                document.getElementById('content').style.display = 'none';
-                document.getElementById('empty-state').style.display = 'block';
-                return;
-            }
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'block';
+            updateSize();
+            return;
+        }
 
             document.getElementById('content').style.display = 'block';
             document.getElementById('empty-state').style.display = 'none';
@@ -229,10 +269,12 @@
 
             // Create chart
             chartInstance = new Chart(ctx, config);
+            updateSize();
         }
 
-        // Signal ready to parent
-        window.parent?.postMessage({ type: 'chart-ready' }, '*');
+        requestParent('ui/initialize');
+        notifyParent('ui/notifications/initialized');
+        updateSize();
     </script>
 </body>
 </html>

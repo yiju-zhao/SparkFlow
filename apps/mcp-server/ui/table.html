@@ -126,36 +126,85 @@
         // State for sorting
         let currentSort = { column: null, direction: 'asc' };
         let currentData = { columns: [], rows: [], title: '' };
+        let rpcId = 0;
 
-        // Receive data from MCP tool via postMessage
+        function notifyParent(method, params = {}) {
+            window.parent?.postMessage({
+                jsonrpc: '2.0',
+                method,
+                params,
+            }, '*');
+        }
+
+        function requestParent(method, params = {}) {
+            rpcId += 1;
+            window.parent?.postMessage({
+                jsonrpc: '2.0',
+                id: `table-${rpcId}`,
+                method,
+                params,
+            }, '*');
+        }
+
+        function updateSize() {
+            const body = document.body;
+            notifyParent('ui/notifications/size-changed', {
+                width: Math.ceil(body.scrollWidth),
+                height: Math.ceil(body.scrollHeight),
+            });
+        }
+
+        function normalizeToolResult(params) {
+            const payload = params?.structuredContent || params?.content || params || {};
+            if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+                return payload;
+            }
+            if (Array.isArray(payload)) {
+                return { title: 'Results', rows: payload };
+            }
+            return { title: 'Results', rows: [] };
+        }
+
         window.addEventListener('message', (event) => {
-            const data = event.data;
-            
-            // Handle different data formats
-            let columns = data.columns || [];
-            let rows = data.rows || [];
-            let title = data.title || 'Results';
+            const message = event.data;
+            if (!message || typeof message !== 'object' || message.jsonrpc !== '2.0') {
+                return;
+            }
 
-            // If data has a 'result' key, unwrap it
-            if (data.result && typeof data.result === 'object') {
-                if (Array.isArray(data.result)) {
-                    rows = data.result;
-                    if (rows.length > 0) {
-                        columns = Object.keys(rows[0]);
+            if (message.method === 'ui/notifications/tool-result') {
+                const data = normalizeToolResult(message.params);
+
+                // Handle different data formats
+                let columns = data.columns || [];
+                let rows = data.rows || [];
+                let title = data.title || 'Results';
+
+                // If data has a 'result' key, unwrap it
+                if (data.result && typeof data.result === 'object') {
+                    if (Array.isArray(data.result)) {
+                        rows = data.result;
+                        if (rows.length > 0) {
+                            columns = Object.keys(rows[0]);
+                        }
                     }
                 }
+
+                // If rows is an array of objects, extract columns
+                if (Array.isArray(rows) && rows.length > 0 && typeof rows[0] === 'object') {
+                    columns = Object.keys(rows[0]);
+                }
+
+                // Store current data
+                currentData = { columns, rows, title };
+
+                // Render the table
+                renderTable(columns, rows, title);
+                return;
             }
 
-            // If rows is an array of objects, extract columns
-            if (Array.isArray(rows) && rows.length > 0 && typeof rows[0] === 'object') {
-                columns = Object.keys(rows[0]);
+            if (message.method === 'ui/notifications/tool-input') {
+                return;
             }
-
-            // Store current data
-            currentData = { columns, rows, title };
-
-            // Render the table
-            renderTable(columns, rows, title);
         });
 
         function renderTable(columns, rows, title) {
@@ -165,10 +214,12 @@
             // Set title
             document.getElementById('title').textContent = title;
 
+            // Handle different data formats
             // Check for empty data
             if (!rows || rows.length === 0) {
                 document.getElementById('data-table').style.display = 'none';
                 document.getElementById('empty-state').style.display = 'block';
+                updateSize();
                 return;
             }
 
@@ -196,6 +247,8 @@
                     return `<tr><td>${formatValue(row)}</td></tr>`;
                 }
             }).join('');
+
+            updateSize();
         }
 
         function sortTable(columnIndex) {
@@ -247,8 +300,9 @@
             return String(value);
         }
 
-        // Signal ready to parent
-        window.parent?.postMessage({ type: 'table-ready' }, '*');
+        requestParent('ui/initialize');
+        notifyParent('ui/notifications/initialized');
+        updateSize();
     </script>
 </body>
 </html>
