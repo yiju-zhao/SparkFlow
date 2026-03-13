@@ -188,10 +188,10 @@ export function ResearchAssistantPanel({
     if (typeof msg.content === "string") return msg.content;
     if (Array.isArray(msg.content)) {
       return msg.content
-        .map((item) => {
+        .map((item: unknown) => {
           if (typeof item === "string") return item;
           if (item && typeof item === "object" && "text" in item) {
-            return typeof item.text === "string" ? item.text : "";
+            return typeof (item as { text: unknown }).text === "string" ? (item as { text: string }).text : "";
           }
           return "";
         })

@@ -1,6 +1,6 @@
 "use client";
 
-import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotKitProvider as CopilotKitNextProvider } from "@copilotkitnext/react";
 import { Component, ReactNode } from "react";
 
 class CopilotKitErrorBoundary extends Component<
@@ -22,9 +22,9 @@ class CopilotKitErrorBoundary extends Component<
       return this.props.children;
     }
     return (
-      <CopilotKit runtimeUrl="/api/copilotkit" agent="hub">
+      <CopilotKitNextProvider runtimeUrl="/api/copilotkit">
         {this.props.children}
-      </CopilotKit>
+      </CopilotKitNextProvider>
     );
   }
 }

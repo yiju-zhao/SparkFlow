@@ -40,7 +40,7 @@ function createRuntime() {
 
   return new CopilotRuntime({
     agents: {
-      hub: hubAgent,
+      default: hubAgent,
     },
   });
 }
