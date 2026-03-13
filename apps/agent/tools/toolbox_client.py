@@ -53,8 +53,16 @@ async def call_toolbox_tool(name: str, arguments: dict[str, Any] | None = None) 
     """Call a tool on the configured Toolbox MCP server."""
     args = arguments or {}
     toolbox_url = _validate_toolbox_url(DEFAULT_TOOLBOX_URL)
-    async with streamable_http_client(toolbox_url) as (read_stream, write_stream, _):
-        async with ClientSession(read_stream, write_stream) as session:
-            await session.initialize()
-            result = await session.call_tool(name, args)
-            return _coerce_toolbox_result(result)
+    try:
+        async with streamable_http_client(toolbox_url) as (read_stream, write_stream, _):
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                result = await session.call_tool(name, args)
+                return _coerce_toolbox_result(result)
+    except BaseException as exc:
+        # streamable_http_client uses anyio.TaskGroup which wraps errors in
+        # ExceptionGroup, hiding the real cause. Unwrap single sub-exceptions
+        # so callers see a useful message.
+        if isinstance(exc, BaseExceptionGroup) and len(exc.exceptions) == 1:
+            raise exc.exceptions[0] from exc
+        raise
