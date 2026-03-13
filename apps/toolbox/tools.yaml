@@ -2,7 +2,7 @@ kind: sources
 name: sparkflow-postgres
 type: postgres
 host: 127.0.0.1
-port: 5432
+port: 5433
 database: sparkflow
 user: sparkflow
 password: sparkflow
@@ -272,7 +272,7 @@ templateParameters:
     allowedValues:
       - "i.year"
       - "v.name"
-      - "COALESCE(NULLIF(p.\"researchTopic\", ''), 'Unknown')"
+      - 'COALESCE(NULLIF(p."researchTopic", ''''), ''Unknown'')'
       - "COALESCE(NULLIF(p.status, ''), 'Unknown')"
 parameters:
   - name: venue
