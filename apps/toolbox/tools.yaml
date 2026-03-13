@@ -607,10 +607,10 @@ kind: toolsets
 name: hub_toolset
 tools:
   # Built-in PostgreSQL tools
-  - postgres-list-tables
-  - postgres-list-schemas
-  - postgres-list-indexes
-  - postgres-database-overview
+  - list_tables
+  - list_schemas
+  - list_indexes
+  - database_overview
   # Custom domain-specific tools - Publications
   - list-publication-affiliations
   - list-publication-authors
