@@ -16,33 +16,33 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy affiliation search
-    required: false
+    default: ""
   - name: venue
     type: string
     description: Optional venue name filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 10
 statement: |
   SELECT aff.value AS value, COUNT(*)::int AS count
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
   CROSS JOIN LATERAL unnest(p.affiliations) AS aff(value)
-  WHERE ($1 IS NULL OR aff.value ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
-    AND ($3 IS NULL OR i.year = $3)
+  WHERE ($1 = '' OR aff.value ILIKE '%' || $1 || '%')
+    AND ($2 = '' OR v.name ILIKE '%' || $2 || '%')
+    AND ($3 = 0 OR i.year = $3)
     AND aff.value IS NOT NULL
     AND aff.value <> ''
   GROUP BY aff.value
   ORDER BY count DESC, value ASC
-  LIMIT COALESCE($4, 10);
+  LIMIT $4;
 ---
 kind: tools
 name: list-publication-authors
@@ -53,33 +53,33 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy author search
-    required: false
+    default: ""
   - name: venue
     type: string
     description: Optional venue name filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 10
 statement: |
   SELECT author.value AS value, COUNT(*)::int AS count
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
   CROSS JOIN LATERAL unnest(p.authors) AS author(value)
-  WHERE ($1 IS NULL OR author.value ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
-    AND ($3 IS NULL OR i.year = $3)
+  WHERE ($1 = '' OR author.value ILIKE '%' || $1 || '%')
+    AND ($2 = '' OR v.name ILIKE '%' || $2 || '%')
+    AND ($3 = 0 OR i.year = $3)
     AND author.value IS NOT NULL
     AND author.value <> ''
   GROUP BY author.value
   ORDER BY count DESC, value ASC
-  LIMIT COALESCE($4, 10);
+  LIMIT $4;
 ---
 kind: tools
 name: list-publication-topics
@@ -90,19 +90,19 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy topic search
-    required: false
+    default: ""
   - name: venue
     type: string
     description: Optional venue name filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 10
 statement: |
   SELECT topic AS value, COUNT(*)::int AS count
   FROM (
@@ -110,13 +110,13 @@ statement: |
     FROM publications p
     JOIN instances i ON i.id = p."instanceId"
     JOIN venues v ON v.id = i."venueId"
-    WHERE ($1 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($1 AS text) || '%')
-      AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
-      AND ($3 IS NULL OR i.year = $3)
+    WHERE ($1 = '' OR COALESCE(p."researchTopic", '') ILIKE '%' || $1 || '%')
+      AND ($2 = '' OR v.name ILIKE '%' || $2 || '%')
+      AND ($3 = 0 OR i.year = $3)
   ) matches
   GROUP BY topic
   ORDER BY count DESC, value ASC
-  LIMIT COALESCE($4, 10);
+  LIMIT $4;
 ---
 kind: tools
 name: list-publication-statuses
@@ -127,19 +127,19 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy status search
-    required: false
+    default: ""
   - name: venue
     type: string
     description: Optional venue name filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 10
 statement: |
   SELECT status AS value, COUNT(*)::int AS count
   FROM (
@@ -147,13 +147,13 @@ statement: |
     FROM publications p
     JOIN instances i ON i.id = p."instanceId"
     JOIN venues v ON v.id = i."venueId"
-    WHERE ($1 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($1 AS text) || '%')
-      AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
-      AND ($3 IS NULL OR i.year = $3)
+    WHERE ($1 = '' OR COALESCE(p.status, '') ILIKE '%' || $1 || '%')
+      AND ($2 = '' OR v.name ILIKE '%' || $2 || '%')
+      AND ($3 = 0 OR i.year = $3)
   ) matches
   GROUP BY status
   ORDER BY count DESC, value ASC
-  LIMIT COALESCE($4, 10);
+  LIMIT $4;
 ---
 kind: tools
 name: count-publications
@@ -164,38 +164,38 @@ parameters:
   - name: venue
     type: string
     description: Optional venue name filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: affiliation
     type: string
     description: Optional affiliation filter
-    required: false
+    default: ""
   - name: author
     type: string
     description: Optional author filter
-    required: false
+    default: ""
   - name: topic
     type: string
     description: Optional topic filter
-    required: false
+    default: ""
   - name: status
     type: string
     description: Optional publication status filter
-    required: false
+    default: ""
 statement: |
   SELECT COUNT(*)::int AS value
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || CAST($3 AS text) || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || CAST($4 AS text) || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($5 AS text) || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($6 AS text) || '%');
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
+    AND ($3 = '' OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3 || '%'))
+    AND ($4 = '' OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4 || '%'))
+    AND ($5 = '' OR COALESCE(p."researchTopic", '') ILIKE '%' || $5 || '%')
+    AND ($6 = '' OR COALESCE(p.status, '') ILIKE '%' || $6 || '%');
 ---
 kind: tools
 name: list-publications
@@ -206,31 +206,31 @@ parameters:
   - name: venue
     type: string
     description: Optional venue name filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: affiliation
     type: string
     description: Optional affiliation filter
-    required: false
+    default: ""
   - name: author
     type: string
     description: Optional author filter
-    required: false
+    default: ""
   - name: topic
     type: string
     description: Optional topic filter
-    required: false
+    default: ""
   - name: status
     type: string
     description: Optional publication status filter
-    required: false
+    default: ""
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 20
 statement: |
   SELECT
     p.id,
@@ -244,14 +244,14 @@ statement: |
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || CAST($3 AS text) || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || CAST($4 AS text) || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($5 AS text) || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($6 AS text) || '%')
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
+    AND ($3 = '' OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3 || '%'))
+    AND ($4 = '' OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4 || '%'))
+    AND ($5 = '' OR COALESCE(p."researchTopic", '') ILIKE '%' || $5 || '%')
+    AND ($6 = '' OR COALESCE(p.status, '') ILIKE '%' || $6 || '%')
   ORDER BY i.year DESC, p.title ASC
-  LIMIT COALESCE($7, 20);
+  LIMIT $7;
 ---
 kind: tools
 name: aggregate-publications
@@ -278,45 +278,45 @@ parameters:
   - name: venue
     type: string
     description: Optional venue name filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: affiliation
     type: string
     description: Optional affiliation filter
-    required: false
+    default: ""
   - name: author
     type: string
     description: Optional author filter
-    required: false
+    default: ""
   - name: topic
     type: string
     description: Optional topic filter
-    required: false
+    default: ""
   - name: status
     type: string
     description: Optional publication status filter
-    required: false
+    default: ""
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 12
 statement: |
   SELECT {{.dimension}} AS label, COUNT(*)::int AS value
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || CAST($3 AS text) || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || CAST($4 AS text) || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($5 AS text) || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($6 AS text) || '%')
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
+    AND ($3 = '' OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3 || '%'))
+    AND ($4 = '' OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4 || '%'))
+    AND ($5 = '' OR COALESCE(p."researchTopic", '') ILIKE '%' || $5 || '%')
+    AND ($6 = '' OR COALESCE(p.status, '') ILIKE '%' || $6 || '%')
   GROUP BY {{.dimension}}
   ORDER BY value DESC, label ASC
-  LIMIT COALESCE($7, 12);
+  LIMIT $7;
 ---
 kind: tools
 name: count-sessions
@@ -327,33 +327,33 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: session_type
     type: string
     description: Optional session type filter
-    required: false
+    default: ""
   - name: topic
     type: string
     description: Optional topic filter
-    required: false
+    default: ""
   - name: speaker
     type: string
     description: Optional speaker filter
-    required: false
+    default: ""
 statement: |
   SELECT COUNT(*)::int AS value
   FROM conference_sessions s
   JOIN instances i ON i.id = s."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || CAST($3 AS text) || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || CAST($4 AS text) || '%'))
-    AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || CAST($5 AS text) || '%'));
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
+    AND ($3 = '' OR COALESCE(s.type, '') ILIKE '%' || $3 || '%')
+    AND ($4 = '' OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4 || '%'))
+    AND ($5 = '' OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5 || '%'));
 ---
 kind: tools
 name: list-sessions
@@ -364,27 +364,27 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: session_type
     type: string
     description: Optional session type filter
-    required: false
+    default: ""
   - name: topic
     type: string
     description: Optional topic filter
-    required: false
+    default: ""
   - name: speaker
     type: string
     description: Optional speaker filter
-    required: false
+    default: ""
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 20
 statement: |
   SELECT
     s.id,
@@ -399,13 +399,13 @@ statement: |
   FROM conference_sessions s
   JOIN instances i ON i.id = s."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || CAST($3 AS text) || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || CAST($4 AS text) || '%'))
-    AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'))
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
+    AND ($3 = '' OR COALESCE(s.type, '') ILIKE '%' || $3 || '%')
+    AND ($4 = '' OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4 || '%'))
+    AND ($5 = '' OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5 || '%'))
   ORDER BY i.year DESC, s.title ASC
-  LIMIT COALESCE($6, 20);
+  LIMIT $6;
 ---
 kind: tools
 name: aggregate-sessions
@@ -431,40 +431,40 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: session_type
     type: string
     description: Optional session type filter
-    required: false
+    default: ""
   - name: topic
     type: string
     description: Optional topic filter
-    required: false
+    default: ""
   - name: speaker
     type: string
     description: Optional speaker filter
-    required: false
+    default: ""
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 12
 statement: |
   SELECT {{.dimension}} AS label, COUNT(*)::int AS value
   FROM conference_sessions s
   JOIN instances i ON i.id = s."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || CAST($3 AS text) || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || CAST($4 AS text) || '%'))
-    AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'))
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
+    AND ($3 = '' OR COALESCE(s.type, '') ILIKE '%' || $3 || '%')
+    AND ($4 = '' OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4 || '%'))
+    AND ($5 = '' OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5 || '%'))
   GROUP BY {{.dimension}}
   ORDER BY value DESC, label ASC
-  LIMIT COALESCE($6, 12);
+  LIMIT $6;
 ---
 kind: tools
 name: count-instances
@@ -475,17 +475,17 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
 statement: |
   SELECT COUNT(*)::int AS value
   FROM instances i
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2);
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2);
 ---
 kind: tools
 name: list-instances
@@ -496,15 +496,15 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 20
 statement: |
   SELECT
     i.id,
@@ -515,10 +515,10 @@ statement: |
     COALESCE(i.website, '') AS website
   FROM instances i
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
   ORDER BY i.year DESC, v.name ASC
-  LIMIT COALESCE($3, 20);
+  LIMIT $3;
 ---
 kind: tools
 name: aggregate-instances
@@ -542,24 +542,24 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
-    required: false
+    default: ""
   - name: year
     type: integer
-    description: Optional year filter
-    required: false
+    description: Optional year filter (0 for no filter)
+    default: 0
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 12
 statement: |
   SELECT {{.dimension}} AS label, COUNT(*)::int AS value
   FROM instances i
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
-    AND ($2 IS NULL OR i.year = $2)
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
+    AND ($2 = 0 OR i.year = $2)
   GROUP BY {{.dimension}}
   ORDER BY {{.dimension}} ASC
-  LIMIT COALESCE($3, 12);
+  LIMIT $3;
 ---
 kind: tools
 name: count-venues
@@ -570,11 +570,11 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy venue search
-    required: false
+    default: ""
 statement: |
   SELECT COUNT(*)::int AS value
   FROM venues v
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%');
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%');
 ---
 kind: tools
 name: list-venues
@@ -585,11 +585,11 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy venue search
-    required: false
+    default: ""
   - name: limit
     type: integer
     description: Maximum rows
-    required: false
+    default: 20
 statement: |
   SELECT
     v.id,
@@ -598,10 +598,10 @@ statement: |
     COUNT(i.id)::int AS instance_count
   FROM venues v
   LEFT JOIN instances i ON i."venueId" = v.id
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
+  WHERE ($1 = '' OR v.name ILIKE '%' || $1 || '%')
   GROUP BY v.id, v.name, v.type
   ORDER BY v.name ASC
-  LIMIT COALESCE($2, 20);
+  LIMIT $2;
 ---
 kind: toolsets
 name: hub_toolset
