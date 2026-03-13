@@ -35,7 +35,7 @@ statement: |
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
   CROSS JOIN LATERAL unnest(p.affiliations) AS aff(value)
-  WHERE ($1 IS NULL OR aff.value ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR aff.value ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
     AND ($3 IS NULL OR i.year = $3)
     AND aff.value IS NOT NULL
@@ -72,7 +72,7 @@ statement: |
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
   CROSS JOIN LATERAL unnest(p.authors) AS author(value)
-  WHERE ($1 IS NULL OR author.value ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR author.value ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
     AND ($3 IS NULL OR i.year = $3)
     AND author.value IS NOT NULL
@@ -110,7 +110,7 @@ statement: |
     FROM publications p
     JOIN instances i ON i.id = p."instanceId"
     JOIN venues v ON v.id = i."venueId"
-    WHERE ($1 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $1::text || '%')
+    WHERE ($1 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($1 AS text) || '%')
       AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
       AND ($3 IS NULL OR i.year = $3)
   ) matches
@@ -147,7 +147,7 @@ statement: |
     FROM publications p
     JOIN instances i ON i.id = p."instanceId"
     JOIN venues v ON v.id = i."venueId"
-    WHERE ($1 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $1::text || '%')
+    WHERE ($1 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($1 AS text) || '%')
       AND ($2 IS NULL OR v.name ILIKE '%' || $2::text || '%')
       AND ($3 IS NULL OR i.year = $3)
   ) matches
@@ -190,12 +190,12 @@ statement: |
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3::text || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $5::text || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $6::text || '%');
+    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || CAST($3 AS text) || '%'))
+    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || CAST($4 AS text) || '%'))
+    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($5 AS text) || '%')
+    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($6 AS text) || '%');
 ---
 kind: tools
 name: list-publications
@@ -244,12 +244,12 @@ statement: |
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3::text || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $5::text || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $6::text || '%')
+    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || CAST($3 AS text) || '%'))
+    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || CAST($4 AS text) || '%'))
+    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($5 AS text) || '%')
+    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($6 AS text) || '%')
   ORDER BY i.year DESC, p.title ASC
   LIMIT COALESCE($7, 20);
 ---
@@ -308,12 +308,12 @@ statement: |
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3::text || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $5::text || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $6::text || '%')
+    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || CAST($3 AS text) || '%'))
+    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || CAST($4 AS text) || '%'))
+    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || CAST($5 AS text) || '%')
+    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || CAST($6 AS text) || '%')
   GROUP BY {{.dimension}}
   ORDER BY value DESC, label ASC
   LIMIT COALESCE($7, 12);
@@ -349,11 +349,11 @@ statement: |
   FROM conference_sessions s
   JOIN instances i ON i.id = s."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || $3::text || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'));
+    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || CAST($3 AS text) || '%')
+    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || CAST($4 AS text) || '%'))
+    AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || CAST($5 AS text) || '%'));
 ---
 kind: tools
 name: list-sessions
@@ -399,10 +399,10 @@ statement: |
   FROM conference_sessions s
   JOIN instances i ON i.id = s."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || $3::text || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4::text || '%'))
+    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || CAST($3 AS text) || '%')
+    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || CAST($4 AS text) || '%'))
     AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'))
   ORDER BY i.year DESC, s.title ASC
   LIMIT COALESCE($6, 20);
@@ -457,10 +457,10 @@ statement: |
   FROM conference_sessions s
   JOIN instances i ON i.id = s."instanceId"
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || $3::text || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4::text || '%'))
+    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || CAST($3 AS text) || '%')
+    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || CAST($4 AS text) || '%'))
     AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'))
   GROUP BY {{.dimension}}
   ORDER BY value DESC, label ASC
@@ -484,7 +484,7 @@ statement: |
   SELECT COUNT(*)::int AS value
   FROM instances i
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2);
 ---
 kind: tools
@@ -515,7 +515,7 @@ statement: |
     COALESCE(i.website, '') AS website
   FROM instances i
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
   ORDER BY i.year DESC, v.name ASC
   LIMIT COALESCE($3, 20);
@@ -555,7 +555,7 @@ statement: |
   SELECT {{.dimension}} AS label, COUNT(*)::int AS value
   FROM instances i
   JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
     AND ($2 IS NULL OR i.year = $2)
   GROUP BY {{.dimension}}
   ORDER BY {{.dimension}} ASC
@@ -574,7 +574,7 @@ parameters:
 statement: |
   SELECT COUNT(*)::int AS value
   FROM venues v
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%');
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%');
 ---
 kind: tools
 name: list-venues
@@ -598,7 +598,7 @@ statement: |
     COUNT(i.id)::int AS instance_count
   FROM venues v
   LEFT JOIN instances i ON i."venueId" = v.id
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
+  WHERE ($1 IS NULL OR v.name ILIKE '%' || CAST($1 AS text) || '%')
   GROUP BY v.id, v.name, v.type
   ORDER BY v.name ASC
   LIMIT COALESCE($2, 20);
