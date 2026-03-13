@@ -2,72 +2,10 @@ kind: sources
 name: sparkflow-postgres
 type: postgres
 host: 127.0.0.1
-port: 5433
+port: 5432
 database: sparkflow
 user: sparkflow
 password: sparkflow
----
-kind: tools
-name: describe-publications-schema
-type: postgres-sql
-source: sparkflow-postgres
-description: Describe publication fields, types, and recommended filters.
-statement: |
-  SELECT * FROM (
-    VALUES
-      ('title', 'text', 'Publication title'),
-      ('authors', 'text[]', 'Author names array'),
-      ('affiliations', 'text[]', 'Affiliation or company names array'),
-      ('researchTopic', 'text', 'Primary research topic'),
-      ('status', 'text', 'Publication status'),
-      ('instance.year', 'integer', 'Conference year'),
-      ('venue.name', 'text', 'Conference venue name')
-  ) AS schema(field, type, description);
----
-kind: tools
-name: describe-sessions-schema
-type: postgres-sql
-source: sparkflow-postgres
-description: Describe session fields, types, and recommended filters.
-statement: |
-  SELECT * FROM (
-    VALUES
-      ('title', 'text', 'Session title'),
-      ('type', 'text', 'Session type'),
-      ('speaker', 'text[]', 'Speaker names array'),
-      ('topic', 'text[]', 'Session topics array'),
-      ('affiliation', 'text[]', 'Speaker affiliation array'),
-      ('instance.year', 'integer', 'Conference year'),
-      ('venue.name', 'text', 'Conference venue name')
-  ) AS schema(field, type, description);
----
-kind: tools
-name: describe-instances-schema
-type: postgres-sql
-source: sparkflow-postgres
-description: Describe conference instance fields.
-statement: |
-  SELECT * FROM (
-    VALUES
-      ('name', 'text', 'Instance display name'),
-      ('year', 'integer', 'Conference year'),
-      ('location', 'text', 'Conference location'),
-      ('website', 'text', 'Conference website'),
-      ('venue.name', 'text', 'Conference venue name')
-  ) AS schema(field, type, description);
----
-kind: tools
-name: describe-venues-schema
-type: postgres-sql
-source: sparkflow-postgres
-description: Describe venue fields.
-statement: |
-  SELECT * FROM (
-    VALUES
-      ('name', 'text', 'Conference venue name'),
-      ('type', 'text', 'Venue type'),
-      ('description', 'text', 'Venue description')
-  ) AS schema(field, type, description);
 ---
 kind: tools
 name: list-publication-affiliations
@@ -78,15 +16,19 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy affiliation search
+    required: false
   - name: venue
     type: string
     description: Optional venue name filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT aff.value AS value, COUNT(*)::int AS count
   FROM publications p
@@ -111,15 +53,19 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy author search
+    required: false
   - name: venue
     type: string
     description: Optional venue name filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT author.value AS value, COUNT(*)::int AS count
   FROM publications p
@@ -139,20 +85,24 @@ kind: tools
 name: list-publication-topics
 type: postgres-sql
 source: sparkflow-postgres
-description: List distinct publication topics for filter disambiguation.
+description: List distinct publication research topics for filter disambiguation.
 parameters:
   - name: query
     type: string
     description: Optional fuzzy topic search
+    required: false
   - name: venue
     type: string
     description: Optional venue name filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT topic AS value, COUNT(*)::int AS count
   FROM (
@@ -177,15 +127,19 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy status search
+    required: false
   - name: venue
     type: string
     description: Optional venue name filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT status AS value, COUNT(*)::int AS count
   FROM (
@@ -210,21 +164,27 @@ parameters:
   - name: venue
     type: string
     description: Optional venue name filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: affiliation
     type: string
     description: Optional affiliation filter
+    required: false
   - name: author
     type: string
     description: Optional author filter
+    required: false
   - name: topic
     type: string
     description: Optional topic filter
+    required: false
   - name: status
     type: string
     description: Optional publication status filter
+    required: false
 statement: |
   SELECT COUNT(*)::int AS value
   FROM publications p
@@ -246,24 +206,31 @@ parameters:
   - name: venue
     type: string
     description: Optional venue name filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: affiliation
     type: string
     description: Optional affiliation filter
+    required: false
   - name: author
     type: string
     description: Optional author filter
+    required: false
   - name: topic
     type: string
     description: Optional topic filter
+    required: false
   - name: status
     type: string
     description: Optional publication status filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT
     p.id,
@@ -287,34 +254,57 @@ statement: |
   LIMIT COALESCE($7, 20);
 ---
 kind: tools
-name: aggregate-publications-by-year
+name: aggregate-publications
 type: postgres-sql
 source: sparkflow-postgres
-description: Aggregate publication counts by year.
+description: |
+  Aggregate publication counts by a specific dimension.
+  Use this to get distribution of publications across years, venues, topics, or statuses.
+  Example:
+  {{
+      "dimension": "i.year",
+      "venue": "SIGMOD"
+  }}
+templateParameters:
+  - name: dimension
+    type: string
+    description: The dimension to aggregate by
+    allowedValues:
+      - "i.year"
+      - "v.name"
+      - "COALESCE(NULLIF(p.\"researchTopic\", ''), 'Unknown')"
+      - "COALESCE(NULLIF(p.status, ''), 'Unknown')"
 parameters:
   - name: venue
     type: string
     description: Optional venue name filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: affiliation
     type: string
     description: Optional affiliation filter
+    required: false
   - name: author
     type: string
     description: Optional author filter
+    required: false
   - name: topic
     type: string
     description: Optional topic filter
+    required: false
   - name: status
     type: string
     description: Optional publication status filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
-  SELECT i.year AS label, COUNT(*)::int AS value
+  SELECT {{.dimension}} AS label, COUNT(*)::int AS value
   FROM publications p
   JOIN instances i ON i.id = p."instanceId"
   JOIN venues v ON v.id = i."venueId"
@@ -324,133 +314,7 @@ statement: |
     AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4::text || '%'))
     AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $5::text || '%')
     AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $6::text || '%')
-  GROUP BY i.year
-  ORDER BY i.year ASC
-  LIMIT COALESCE($7, 12);
----
-kind: tools
-name: aggregate-publications-by-venue
-type: postgres-sql
-source: sparkflow-postgres
-description: Aggregate publication counts by venue.
-parameters:
-  - name: venue
-    type: string
-    description: Optional venue name filter
-  - name: year
-    type: integer
-    description: Optional year filter
-  - name: affiliation
-    type: string
-    description: Optional affiliation filter
-  - name: author
-    type: string
-    description: Optional author filter
-  - name: topic
-    type: string
-    description: Optional topic filter
-  - name: status
-    type: string
-    description: Optional publication status filter
-  - name: limit
-    type: integer
-    description: Maximum rows
-statement: |
-  SELECT v.name AS label, COUNT(*)::int AS value
-  FROM publications p
-  JOIN instances i ON i.id = p."instanceId"
-  JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3::text || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $5::text || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $6::text || '%')
-  GROUP BY v.name
-  ORDER BY value DESC, label ASC
-  LIMIT COALESCE($7, 12);
----
-kind: tools
-name: aggregate-publications-by-research-topic
-type: postgres-sql
-source: sparkflow-postgres
-description: Aggregate publication counts by research topic.
-parameters:
-  - name: venue
-    type: string
-    description: Optional venue name filter
-  - name: year
-    type: integer
-    description: Optional year filter
-  - name: affiliation
-    type: string
-    description: Optional affiliation filter
-  - name: author
-    type: string
-    description: Optional author filter
-  - name: topic
-    type: string
-    description: Optional topic filter
-  - name: status
-    type: string
-    description: Optional publication status filter
-  - name: limit
-    type: integer
-    description: Maximum rows
-statement: |
-  SELECT COALESCE(NULLIF(p."researchTopic", ''), 'Unknown') AS label, COUNT(*)::int AS value
-  FROM publications p
-  JOIN instances i ON i.id = p."instanceId"
-  JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3::text || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $5::text || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $6::text || '%')
-  GROUP BY label
-  ORDER BY value DESC, label ASC
-  LIMIT COALESCE($7, 12);
----
-kind: tools
-name: aggregate-publications-by-status
-type: postgres-sql
-source: sparkflow-postgres
-description: Aggregate publication counts by status.
-parameters:
-  - name: venue
-    type: string
-    description: Optional venue name filter
-  - name: year
-    type: integer
-    description: Optional year filter
-  - name: affiliation
-    type: string
-    description: Optional affiliation filter
-  - name: author
-    type: string
-    description: Optional author filter
-  - name: topic
-    type: string
-    description: Optional topic filter
-  - name: status
-    type: string
-    description: Optional publication status filter
-  - name: limit
-    type: integer
-    description: Maximum rows
-statement: |
-  SELECT COALESCE(NULLIF(p.status, ''), 'Unknown') AS label, COUNT(*)::int AS value
-  FROM publications p
-  JOIN instances i ON i.id = p."instanceId"
-  JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE '%' || $3::text || '%'))
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR COALESCE(p."researchTopic", '') ILIKE '%' || $5::text || '%')
-    AND ($6 IS NULL OR COALESCE(p.status, '') ILIKE '%' || $6::text || '%')
-  GROUP BY label
+  GROUP BY {{.dimension}}
   ORDER BY value DESC, label ASC
   LIMIT COALESCE($7, 12);
 ---
@@ -458,23 +322,28 @@ kind: tools
 name: count-sessions
 type: postgres-sql
 source: sparkflow-postgres
-description: Count sessions matching structured filters.
+description: Count conference sessions matching structured filters.
 parameters:
   - name: venue
     type: string
     description: Optional venue filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: session_type
     type: string
     description: Optional session type filter
+    required: false
   - name: topic
     type: string
     description: Optional topic filter
+    required: false
   - name: speaker
     type: string
     description: Optional speaker filter
+    required: false
 statement: |
   SELECT COUNT(*)::int AS value
   FROM conference_sessions s
@@ -490,26 +359,32 @@ kind: tools
 name: list-sessions
 type: postgres-sql
 source: sparkflow-postgres
-description: List sessions matching structured filters.
+description: List conference sessions matching structured filters.
 parameters:
   - name: venue
     type: string
     description: Optional venue filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: session_type
     type: string
     description: Optional session type filter
+    required: false
   - name: topic
     type: string
     description: Optional topic filter
+    required: false
   - name: speaker
     type: string
     description: Optional speaker filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT
     s.id,
@@ -533,31 +408,52 @@ statement: |
   LIMIT COALESCE($6, 20);
 ---
 kind: tools
-name: aggregate-sessions-by-year
+name: aggregate-sessions
 type: postgres-sql
 source: sparkflow-postgres
-description: Aggregate session counts by year.
+description: |
+  Aggregate session counts by a specific dimension.
+  Use this to get distribution of sessions across years, venues, or types.
+  Example:
+  {{
+      "dimension": "COALESCE(NULLIF(s.type, ''), 'Unknown')",
+      "year": 2024
+  }}
+templateParameters:
+  - name: dimension
+    type: string
+    description: The dimension to aggregate by
+    allowedValues:
+      - "i.year"
+      - "v.name"
+      - "COALESCE(NULLIF(s.type, ''), 'Unknown')"
 parameters:
   - name: venue
     type: string
     description: Optional venue filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: session_type
     type: string
     description: Optional session type filter
+    required: false
   - name: topic
     type: string
     description: Optional topic filter
+    required: false
   - name: speaker
     type: string
     description: Optional speaker filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
-  SELECT i.year AS label, COUNT(*)::int AS value
+  SELECT {{.dimension}} AS label, COUNT(*)::int AS value
   FROM conference_sessions s
   JOIN instances i ON i.id = s."instanceId"
   JOIN venues v ON v.id = i."venueId"
@@ -566,83 +462,7 @@ statement: |
     AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || $3::text || '%')
     AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4::text || '%'))
     AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'))
-  GROUP BY i.year
-  ORDER BY i.year ASC
-  LIMIT COALESCE($6, 12);
----
-kind: tools
-name: aggregate-sessions-by-venue
-type: postgres-sql
-source: sparkflow-postgres
-description: Aggregate session counts by venue.
-parameters:
-  - name: venue
-    type: string
-    description: Optional venue filter
-  - name: year
-    type: integer
-    description: Optional year filter
-  - name: session_type
-    type: string
-    description: Optional session type filter
-  - name: topic
-    type: string
-    description: Optional topic filter
-  - name: speaker
-    type: string
-    description: Optional speaker filter
-  - name: limit
-    type: integer
-    description: Maximum rows
-statement: |
-  SELECT v.name AS label, COUNT(*)::int AS value
-  FROM conference_sessions s
-  JOIN instances i ON i.id = s."instanceId"
-  JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || $3::text || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'))
-  GROUP BY v.name
-  ORDER BY value DESC, label ASC
-  LIMIT COALESCE($6, 12);
----
-kind: tools
-name: aggregate-sessions-by-type
-type: postgres-sql
-source: sparkflow-postgres
-description: Aggregate session counts by type.
-parameters:
-  - name: venue
-    type: string
-    description: Optional venue filter
-  - name: year
-    type: integer
-    description: Optional year filter
-  - name: session_type
-    type: string
-    description: Optional session type filter
-  - name: topic
-    type: string
-    description: Optional topic filter
-  - name: speaker
-    type: string
-    description: Optional speaker filter
-  - name: limit
-    type: integer
-    description: Maximum rows
-statement: |
-  SELECT COALESCE(NULLIF(s.type, ''), 'Unknown') AS label, COUNT(*)::int AS value
-  FROM conference_sessions s
-  JOIN instances i ON i.id = s."instanceId"
-  JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
-    AND ($2 IS NULL OR i.year = $2)
-    AND ($3 IS NULL OR COALESCE(s.type, '') ILIKE '%' || $3::text || '%')
-    AND ($4 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE '%' || $4::text || '%'))
-    AND ($5 IS NULL OR EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE '%' || $5::text || '%'))
-  GROUP BY label
+  GROUP BY {{.dimension}}
   ORDER BY value DESC, label ASC
   LIMIT COALESCE($6, 12);
 ---
@@ -655,9 +475,11 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
 statement: |
   SELECT COUNT(*)::int AS value
   FROM instances i
@@ -674,12 +496,15 @@ parameters:
   - name: venue
     type: string
     description: Optional venue filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT
     i.id,
@@ -696,53 +521,44 @@ statement: |
   LIMIT COALESCE($3, 20);
 ---
 kind: tools
-name: aggregate-instances-by-year
+name: aggregate-instances
 type: postgres-sql
 source: sparkflow-postgres
-description: Aggregate instance counts by year.
+description: |
+  Aggregate conference instance counts by a specific dimension.
+  Use this to get distribution of instances across years or venues.
+  Example:
+  {{
+      "dimension": "i.year"
+  }}
+templateParameters:
+  - name: dimension
+    type: string
+    description: The dimension to aggregate by
+    allowedValues:
+      - "i.year"
+      - "v.name"
 parameters:
   - name: venue
     type: string
     description: Optional venue filter
+    required: false
   - name: year
     type: integer
     description: Optional year filter
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
-  SELECT i.year AS label, COUNT(*)::int AS value
+  SELECT {{.dimension}} AS label, COUNT(*)::int AS value
   FROM instances i
   JOIN venues v ON v.id = i."venueId"
   WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
     AND ($2 IS NULL OR i.year = $2)
-  GROUP BY i.year
-  ORDER BY i.year ASC
-  LIMIT COALESCE($3, 12);
----
-kind: tools
-name: aggregate-instances-by-venue
-type: postgres-sql
-source: sparkflow-postgres
-description: Aggregate instance counts by venue.
-parameters:
-  - name: venue
-    type: string
-    description: Optional venue filter
-  - name: year
-    type: integer
-    description: Optional year filter
-  - name: limit
-    type: integer
-    description: Maximum rows
-statement: |
-  SELECT v.name AS label, COUNT(*)::int AS value
-  FROM instances i
-  JOIN venues v ON v.id = i."venueId"
-  WHERE ($1 IS NULL OR v.name ILIKE '%' || $1::text || '%')
-    AND ($2 IS NULL OR i.year = $2)
-  GROUP BY v.name
-  ORDER BY value DESC, label ASC
+  GROUP BY {{.dimension}}
+  ORDER BY {{.dimension}} ASC
   LIMIT COALESCE($3, 12);
 ---
 kind: tools
@@ -754,6 +570,7 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy venue search
+    required: false
 statement: |
   SELECT COUNT(*)::int AS value
   FROM venues v
@@ -768,9 +585,11 @@ parameters:
   - name: query
     type: string
     description: Optional fuzzy venue search
+    required: false
   - name: limit
     type: integer
     description: Maximum rows
+    required: false
 statement: |
   SELECT
     v.id,
@@ -787,28 +606,27 @@ statement: |
 kind: toolsets
 name: hub_toolset
 tools:
-  - describe-publications-schema
-  - describe-sessions-schema
-  - describe-instances-schema
-  - describe-venues-schema
+  # Built-in PostgreSQL tools
+  - postgres-list-tables
+  - postgres-list-schemas
+  - postgres-list-indexes
+  - postgres-database-overview
+  # Custom domain-specific tools - Publications
   - list-publication-affiliations
   - list-publication-authors
   - list-publication-topics
   - list-publication-statuses
   - count-publications
   - list-publications
-  - aggregate-publications-by-year
-  - aggregate-publications-by-venue
-  - aggregate-publications-by-research-topic
-  - aggregate-publications-by-status
+  - aggregate-publications
+  # Custom domain-specific tools - Sessions
   - count-sessions
   - list-sessions
-  - aggregate-sessions-by-year
-  - aggregate-sessions-by-venue
-  - aggregate-sessions-by-type
+  - aggregate-sessions
+  # Custom domain-specific tools - Instances
   - count-instances
   - list-instances
-  - aggregate-instances-by-year
-  - aggregate-instances-by-venue
+  - aggregate-instances
+  # Custom domain-specific tools - Venues
   - count-venues
   - list-venues
