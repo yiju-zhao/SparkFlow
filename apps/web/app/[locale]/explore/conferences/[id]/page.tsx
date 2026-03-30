@@ -132,7 +132,7 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
       />
       <ConferenceHero conference={conference} />
 
-      <Tabs defaultValue="publications" className="relative">
+      <Tabs defaultValue={stats.publicationCount === 0 && stats.sessionCount > 0 ? "sessions" : "publications"} className="relative">
         <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-4">
           <TabsTrigger
             value="publications"
