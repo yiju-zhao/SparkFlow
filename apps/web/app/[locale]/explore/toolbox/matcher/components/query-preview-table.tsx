@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { useState } from "react";
 import { Pencil, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,16 +14,12 @@ interface QueryPreviewTableProps {
   className?: string;
 }
 
-export interface QueryPreviewTableHandle {
-  commitPendingEdit: () => ParsedQuery[] | null;
-}
-
-export const QueryPreviewTable = forwardRef<QueryPreviewTableHandle, QueryPreviewTableProps>(function QueryPreviewTable({
+export function QueryPreviewTable({
   queries,
   onQueriesChange,
   readOnly = false,
   className,
-}, ref) {
+}: QueryPreviewTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ bu: "", query: "" });
 
@@ -32,26 +28,16 @@ export const QueryPreviewTable = forwardRef<QueryPreviewTableHandle, QueryPrevie
     setEditValues({ bu: q.bu, query: q.query });
   };
 
-  const commitPendingEdit = useCallback(() => {
-    if (!editingId) return null;
+  const handleEditSave = () => {
+    if (!editingId || !onQueriesChange) return;
 
     const updated = queries.map((q) =>
       q.id === editingId
         ? { ...q, bu: editValues.bu, query: editValues.query }
         : q,
     );
-
-    onQueriesChange?.(updated);
+    onQueriesChange(updated);
     setEditingId(null);
-    return updated;
-  }, [editValues.bu, editValues.query, editingId, onQueriesChange, queries]);
-
-  useImperativeHandle(ref, () => ({
-    commitPendingEdit,
-  }), [commitPendingEdit]);
-
-  const handleEditSave = () => {
-    commitPendingEdit();
   };
 
   const handleEditCancel = () => {
@@ -115,7 +101,7 @@ export const QueryPreviewTable = forwardRef<QueryPreviewTableHandle, QueryPrevie
                     onChange={(e) =>
                       setEditValues({ ...editValues, query: e.target.value })
                     }
-                    className="min-h-15 resize-none"
+                    className="min-h-[60px] resize-none"
                     rows={2}
                   />
                 ) : (
@@ -173,4 +159,4 @@ export const QueryPreviewTable = forwardRef<QueryPreviewTableHandle, QueryPrevie
       </table>
     </div>
   );
-});
+}

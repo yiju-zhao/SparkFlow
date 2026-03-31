@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Workbook } from "exceljs";
 import { v4 as uuidv4 } from "uuid";
@@ -20,7 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { QueryPreviewTable } from "../query-preview-table";
+import {
+  QueryPreviewTable,
+  type QueryPreviewTableHandle,
+} from "../query-preview-table";
 import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface UploadStepProps {
@@ -52,6 +55,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
   const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries ?? []);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const previewRef = useRef<QueryPreviewTableHandle>(null);
 
   const showPreview = queries.length > 0;
 
@@ -75,6 +79,11 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
   const handleReplaceFile = () => {
     setQueries([]);
     setError(null);
+  };
+
+  const handleContinue = () => {
+    const nextQueries = previewRef.current?.commitPendingEdit() ?? queries;
+    onNext(nextQueries);
   };
 
   return (
@@ -145,7 +154,11 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
             </Button>
           </div>
           <div className="border rounded-lg overflow-hidden max-h-125 overflow-y-auto">
-            <QueryPreviewTable queries={queries} onQueriesChange={setQueries} />
+            <QueryPreviewTable
+              ref={previewRef}
+              queries={queries}
+              onQueriesChange={setQueries}
+            />
           </div>
         </div>
       ) : (
@@ -172,7 +185,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
           {t("cancel")}
         </Button>
         <Button
-          onClick={() => onNext(queries)}
+          onClick={handleContinue}
           disabled={!showPreview || isParsing}
         >
           {t("continue")}
