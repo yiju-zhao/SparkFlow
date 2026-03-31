@@ -13,9 +13,13 @@ export type MatchTargetType = "SESSION" | "PUBLICATION";
 
 export interface ParsedQuery {
   id: string;
-  name: string;
-  content: string;
+  bu: string;  // Business unit - who wants the matching
+  query: string;
   rowIndex: number;
+  optimizedQueryNative?: string;
+  optimizedQueryEn?: string;
+  optimizationFocuses?: string[];
+  optimizerUsedLlm?: boolean;
 }
 
 export interface MatchJob {
@@ -26,7 +30,7 @@ export interface MatchJob {
   topK: number;
   searchK: number;
   includeReasons: boolean;
-  queryFileKey: string;
+  queryFileKey: string | null;
   queryData: ParsedQuery[] | null;
   resultFileKey: string | null;
   status: MatchJobStatus;
@@ -47,13 +51,15 @@ export interface JobProgress {
   errorMessage: string | null;
   queryCount: number;
   matchCount: number;
+  topK?: number;
 }
 
 export interface CreateMatchJobInput {
-  userId: string;
+  userId?: string; // Optional - injected by Next.js API route from session
   instanceId: string;
   targetType: MatchTargetType;
-  queryFileKey: string;
+  queries?: ParsedQuery[]; // Pre-parsed queries from frontend (preferred)
+  queryFileKey?: string; // Optional - only needed if queries not provided
   topK?: number;
   searchK?: number;
   includeReasons?: boolean;

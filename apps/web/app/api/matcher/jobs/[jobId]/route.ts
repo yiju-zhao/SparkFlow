@@ -1,17 +1,65 @@
 /**
  * Single Job API Route
  *
- * Proxies job operations to the matcher service.
+ * Reads job from database, syncs progress from matcher service if processing.
+ * On COMPLETED: downloads Excel from matcher and uploads to S3.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { s3StorageClient } from "@/lib/s3-client";
 
 const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
 
+function normalizeMatcherQueryData(queryData: unknown) {
+  if (!Array.isArray(queryData)) {
+    return undefined;
+  }
+
+  return queryData.map((item) => {
+    const record = (item ?? {}) as Record<string, unknown>;
+    const rawFocuses = record.optimization_focuses ?? record.optimizationFocuses;
+    const optimizationFocuses = Array.isArray(rawFocuses)
+      ? rawFocuses.filter((focus): focus is string => typeof focus === "string" && focus.length > 0)
+      : [];
+
+    return {
+      id: typeof record.id === "string" ? record.id : "",
+      bu: typeof record.bu === "string" ? record.bu : "",
+      query: typeof record.query === "string" ? record.query : "",
+      rowIndex:
+        typeof record.rowIndex === "number"
+          ? record.rowIndex
+          : typeof record.row_index === "number"
+            ? record.row_index
+            : 0,
+      optimizedQueryNative:
+        typeof record.optimizedQueryNative === "string"
+          ? record.optimizedQueryNative
+          : typeof record.optimized_query_native === "string"
+            ? record.optimized_query_native
+            : undefined,
+      optimizedQueryEn:
+        typeof record.optimizedQueryEn === "string"
+          ? record.optimizedQueryEn
+          : typeof record.optimized_query_en === "string"
+            ? record.optimized_query_en
+            : undefined,
+      optimizationFocuses,
+      optimizerUsedLlm:
+        typeof record.optimizerUsedLlm === "boolean"
+          ? record.optimizerUsedLlm
+          : typeof record.optimizer_used_llm === "boolean"
+            ? record.optimizer_used_llm
+            : undefined,
+    };
+  });
+}
+
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
@@ -22,24 +70,102 @@ export async function GET(
 
     const { jobId } = await params;
 
-    // Get progress (lightweight) or full job details
-    const { searchParams } = new URL(request.url);
-    const progressOnly = searchParams.get("progress") === "true";
+    // First fetch from database to verify ownership
+    const job = await prisma.matchJob.findFirst({
+      where: {
+        id: jobId,
+        userId: session.user.id,
+      },
+      include: {
+        instance: {
+          select: {
+            name: true,
+            venue: { select: { name: true } },
+          },
+        },
+      },
+    });
 
-    const endpoint = progressOnly
-      ? `${MATCHER_API_URL}/api/jobs/${jobId}/progress`
-      : `${MATCHER_API_URL}/api/jobs/${jobId}`;
-
-    const response = await fetch(endpoint);
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Job not found" },
-        { status: response.status },
-      );
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    const job = await response.json();
+    // If job is not in a terminal state, sync progress from matcher service
+    if (job.status === "PENDING" || job.status === "PROCESSING") {
+      try {
+        const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}`);
+        if (response.ok) {
+          const matcherJob = await response.json();
+          const normalizedQueryData = normalizeMatcherQueryData(matcherJob.query_data);
+
+          // Update database with latest progress
+          const isStarting =
+            job.status === "PENDING" &&
+            matcherJob.status &&
+            matcherJob.status !== "PENDING";
+          const updatedJob = await prisma.matchJob.update({
+            where: { id: jobId },
+            data: {
+              progress: matcherJob.progress ?? job.progress,
+              status: matcherJob.status ?? job.status,
+              matchCount: matcherJob.match_count ?? job.matchCount,
+              errorMessage: matcherJob.error_message ?? job.errorMessage,
+              queryData: normalizedQueryData ?? job.queryData ?? undefined,
+              startedAt: isStarting ? new Date() : job.startedAt,
+              completedAt: matcherJob.status === "COMPLETED" ? new Date() : job.completedAt,
+            },
+            include: {
+              instance: {
+                select: {
+                  name: true,
+                  venue: { select: { name: true } },
+                },
+              },
+            },
+          });
+
+          // If job just completed, download Excel from matcher and upload to S3
+          if (matcherJob.status === "COMPLETED" && !updatedJob.resultFileKey) {
+            try {
+              const dlRes = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/download`);
+              if (dlRes.ok) {
+                const buffer = Buffer.from(await dlRes.arrayBuffer());
+                const fileKey = `match-results/${jobId}.xlsx`;
+                await s3StorageClient.upload(
+                  fileKey,
+                  buffer,
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                );
+
+                const finalJob = await prisma.matchJob.update({
+                  where: { id: jobId },
+                  data: { resultFileKey: fileKey },
+                  include: {
+                    instance: {
+                      select: {
+                        name: true,
+                        venue: { select: { name: true } },
+                      },
+                    },
+                  },
+                });
+
+                return NextResponse.json(finalJob);
+              }
+            } catch (s3Error) {
+              console.error("[Matcher Jobs] Failed to persist Excel to S3:", s3Error);
+              // Job is still COMPLETED, file can be retried on next poll
+            }
+          }
+
+          return NextResponse.json(updatedJob);
+        }
+      } catch (syncError) {
+        console.error("[Matcher Jobs] Failed to sync progress:", syncError);
+        // Return database record if sync fails
+      }
+    }
+
     return NextResponse.json(job);
   } catch (error) {
     console.error("Get job error:", error);
@@ -51,7 +177,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
@@ -62,23 +188,35 @@ export async function DELETE(
 
     const { jobId } = await params;
 
-    const response = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}`, {
-      method: "DELETE",
+    // Verify ownership and get file keys
+    const job = await prisma.matchJob.findFirst({
+      where: { id: jobId, userId: session.user.id },
+      select: { queryFileKey: true, resultFileKey: true },
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      return NextResponse.json(
-        { error: error.detail || "Failed to cancel job" },
-        { status: response.status },
-      );
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Job cancelled" });
+    // Delete S3 files using shared s3StorageClient
+    const keysToDelete = [job.queryFileKey, job.resultFileKey].filter(Boolean);
+    for (const key of keysToDelete) {
+      try {
+        await s3StorageClient.deleteFile(key!);
+      } catch (s3Err) {
+        console.error(`[Matcher] Failed to delete S3 key ${key}:`, s3Err);
+        // Continue deleting other files and DB record
+      }
+    }
+
+    // Delete DB record
+    await prisma.matchJob.delete({ where: { id: jobId } });
+
+    return NextResponse.json({ message: "Job deleted" });
   } catch (error) {
-    console.error("Cancel job error:", error);
+    console.error("Delete job error:", error);
     return NextResponse.json(
-      { error: "Failed to cancel job" },
+      { error: "Failed to delete job" },
       { status: 500 },
     );
   }

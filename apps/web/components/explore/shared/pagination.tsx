@@ -4,6 +4,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useTransition, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -24,6 +25,7 @@ export function Pagination({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations("explore.pagination");
 
   const goToPage = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -51,7 +53,7 @@ export function Pagination({
       className={`flex items-center justify-between ${isPending ? "opacity-70" : ""}`}
     >
       <p className="text-sm text-muted-foreground">
-        Showing {startItem}-{endItem} of {totalItems}
+        {t("showing", { start: startItem, end: endItem, total: totalItems })}
       </p>
 
       <div className="flex items-center gap-1">

@@ -1,40 +1,40 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectionReveal } from "./section-reveal";
 
-const steps = [
-  {
-    number: "1",
-    title: "Upload Sources",
-    description:
-      "Import PDFs, documents, and webpages into your research notebook. SparkFlow automatically chunks and indexes everything for retrieval.",
-  },
-  {
-    number: "2",
-    title: "Explore Conferences",
-    description:
-      "Browse publications and sessions from academic conferences. Discover relevant research and add it directly to your notebook.",
-  },
-  {
-    number: "3",
-    title: "Get Agentic AI Insights",
-    description:
-      "Chat with your sources using Agentic AI that cites its answers. Ask questions, summarize findings, and uncover connections across your research.",
-  },
-];
-
 export function HowItWorksSection() {
+  const t = useTranslations("landing.howItWorks");
+
+  const steps = [
+    {
+      number: "1",
+      title: t("step1.title"),
+      description: t("step1.description"),
+    },
+    {
+      number: "2",
+      title: t("step2.title"),
+      description: t("step2.description"),
+    },
+    {
+      number: "3",
+      title: t("step3.title"),
+      description: t("step3.description"),
+    },
+  ];
+
   return (
     <section id="how-it-works" className="bg-secondary px-6 py-24">
       <div className="mx-auto max-w-6xl">
         <SectionReveal>
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-              How It Works
+              {t("title")}
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Get started with SparkFlow in three simple steps
+              {t("subtitle")}
             </p>
           </div>
         </SectionReveal>

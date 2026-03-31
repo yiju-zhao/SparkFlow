@@ -9,7 +9,7 @@ function ChartSkeleton() {
   return (
     <div className="bg-card rounded-lg p-6">
       <Skeleton className="h-6 w-48 mb-4" />
-      <Skeleton className="h-[300px] w-full" />
+      <Skeleton className="h-75 w-full" />
     </div>
   );
 }
@@ -27,7 +27,7 @@ const TopicsChart = dynamic(
 );
 
 interface ChartsSectionProps {
-  yearData: { year: number; publications: number }[];
+  yearData: { year: number; conferences: number }[];
   topicsData: { topic: string; count: number }[];
 }
 

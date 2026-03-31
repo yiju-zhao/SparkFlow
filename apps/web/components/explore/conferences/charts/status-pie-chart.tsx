@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useECharts } from "@/hooks/use-echarts";
+import { useECharts } from "@/lib/hooks/use-echarts";
 import { StatusStats } from "@/lib/explore/types";
 import type { EChartsOption } from "echarts";
 
@@ -88,5 +88,5 @@ export function StatusPieChart({ data }: StatusPieChartProps) {
     );
   }
 
-  return <div ref={chartRef} className="w-full h-full min-h-[250px]" />;
+  return <div ref={chartRef} className="w-full h-full min-h-62.5" />;
 }

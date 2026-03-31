@@ -1,32 +1,52 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: completed
+last_updated: "2026-03-12T14:23:26.404Z"
+last_activity: "2026-03-11 - Completed Plan 02-01: MCP Server with SQLDatabaseToolkit"
+progress:
+  total_phases: 4
+  completed_phases: 2
+  total_plans: 7
+  completed_plans: 7
+---
+
 # Project State: DeepSense Insight Platform
 
 **Project:** DeepSense Insight Platform (Research Hub + Generative AI)
-**Current Focus:** Foundation & Data (Phase 1)
-**Last Updated:** 2026-03-04
+**Current Focus:** Phase 2 - Research Hub (MCP Apps Architecture)
+**Last Updated:** 2026-03-11
 
 ## Progress Summary
 
 ```
-Phase 1: Foundation & Data    [░░░░░░░░░░] 0%
-Phase 2: Research Hub          [░░░░░░░░░░] 0%
+Phase 1: Foundation & Data    [██████████] 100% ✓
+Phase 2: Research Hub          [████████░░] 50% (Plan 01 complete)
 Phase 3: Notebook Integration  [░░░░░░░░░░] 0%
 Phase 4: Polish & Enhancement  [░░░░░░░░░░] 0%
 
-Overall Progress: [░░░░░░░░░░] 0%
+Overall Progress: [████░░░░░░] 45%
 ```
 
 ## Current Position
 
-**Active Phase:** Phase 1 - Foundation & Data
-**Current Plan:** TBD (awaiting phase planning)
-**Status:** Not started
+**Active Phase:** Phase 2 - Research Hub
+**Next Phase:** Phase 3 - Notebook Integration
+**Status:** Plan 02-01 complete, Plan 02-02 next
 
-### Phase 1: Foundation & Data
+### Phase 2: Research Hub
 
-**Goal:** Establish data model and AI infrastructure for generative UI capabilities
+**Goal:** Deliver conference discovery experience with AI-powered generative UI via MCP Apps
 
-**Plans Complete:** 0/0
-**Status:** Not started
+**Architecture:**
+- MCP Server with SQLDatabaseToolkit for dynamic database queries
+- HTML templates for generative UI (tables, charts)
+- CopilotKit MCPAppsMiddleware integration
+
+**Plans:** 2 plans in 2 waves
+- [x] 02-01: Create MCP server with SQLDatabaseToolkit and HTML templates ✓
+- [ ] 02-02: Integrate MCPAppsMiddleware with CopilotKit BuiltInAgent
 
 ---
 
@@ -56,9 +76,14 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 
 ## Performance Metrics
 
-*No metrics collected yet (project not started)*
-
----
+| Phase | Plan | Duration | Tasks | Files | Date |
+|-------|------|----------|-------|-------|------|
+| 01-foundation-data | 01 | 5min | 2 | 0 | 2026-03-05 |
+| 01-foundation-data | 02 | 4min | 5 | 9 | 2026-03-05 |
+| 01-foundation-data | 04 | 2min | 3 | 3 | 2026-03-05 |
+| 01-foundation-data | 05 | 3min | 3 | 4 | 2026-03-05 |
+| 02-research-hub | 01 | 5min | 3 | 7 | 2026-03-11 |
+| Phase 02-research-hub P02 | 15min | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -70,14 +95,26 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 | Manual curation workflow | 2026-03-04 | More control over data quality, simpler v1 implementation |
 | Hub-to-Notebook import flow | 2026-03-04 | Leverage existing RAG capabilities for deep analysis |
 | Domain-agnostic conference types | 2026-03-04 | Platform can serve any industry/domain |
+| DATA-03/DATA-04: speaker/topic as String[] arrays | 2026-03-05 | No separate Speaker/Tag models needed; arrays sufficient for v1 |
+| Conference abstraction: Venue=permanent, Instance=yearly | 2026-03-05 | Clean separation of conference identity from occurrence data |
+| Native HTML select for admin dropdowns | 2026-03-05 | Simpler than Shadcn Select for internal admin tooling |
+| Comma-separated inputs for string[] fields | 2026-03-05 | Straightforward UX for admin; no tag/chip UI needed at v1 |
+| psycopg3 for hub query tools | 2026-03-05 | requirements.txt specifies psycopg[binary] which is psycopg3 |
+| Hub agent config uses dataclass | 2026-03-05 | Consistent with RAGAgentConfig pattern — simpler than pydantic_settings |
+| LangGraph server manages PostgresSaver | 2026-03-05 | No custom checkpointer in hub_agent.py; mirrors rag_agent.py pattern |
+| FastMCP with streamable-http on port 3108 | 2026-03-11 | Simpler than SSE, matches MCP Apps pattern |
+| SQLDatabaseToolkit over predefined tools | 2026-03-11 | Dynamic query generation handles any user question |
+| HTML templates over React components | 2026-03-11 | Simpler architecture, no React maintenance needed |
+- [Phase 02-research-hub]: BuiltInAgent + MCPAppsMiddleware replaces LangGraphAgent - simpler hub architecture requiring no separate LangGraph server
+- [Phase 02-research-hub]: hub_agent.py simplified to stub - MCP server handles all hub queries via MCPAppsMiddleware
 
 ### Todos
 
-*None (project not started)*
+*None*
 
 ### Blockers
 
-*None (project not started)*
+*None*
 
 ### Quick Tasks Completed
 
@@ -85,6 +122,11 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 |---|-------------|------|--------|-----------|
 | 1 | create toolbox section and move query matcher to toolbox | 2026-03-04 | dd3e8cc | [1-create-toolbox-section-and-move-query-ma](./quick/1-create-toolbox-section-and-move-query-ma/) |
 | 2 | make a new header next to sessions called toolbox and design the toolbox page and move the query matcher to the toolbox page | 2026-03-04 | 0b33439 | [2-make-a-new-header-next-to-sessions-calle](./quick/2-make-a-new-header-next-to-sessions-calle/) |
+| 4 | fix query matcher excel input format and add translation before matching | 2026-03-05 | 9d56606 | [4-fix-query-matcher-excel-file-input-forma](./quick/4-fix-query-matcher-excel-file-input-forma/) |
+| 5 | persist match jobs to database and add history page | 2026-03-06 | 117143e | [5-use-a-sqlite-db-to-keep-track-of-the-mat](./quick/5-use-a-sqlite-db-to-keep-track-of-the-mat/) |
+| 6 | fix Zod 4 record schema syntax in generative-table.tsx | 2026-03-06 | a0bc2b3 | [6-fix-all-type-errors](./quick/6-fix-all-type-errors/) |
+| 7 | move S3 storage from matcher to Next.js | 2026-03-08 | d6ab1b4 | [7-refactor-move-s3-storage-from-matcher-to](./quick/7-refactor-move-s3-storage-from-matcher-to/) |
+| 8 | Update README with current codebase state and professional roadmap | 2026-03-11 | 1f2d3c1 | [8-update-readme-file-based-on-current-code](./quick/8-update-readme-file-based-on-current-code/) |
 
 ### Notes
 
@@ -103,21 +145,16 @@ Generative UI experience — The AI assistant creates dynamic, interactive inter
 
 ### Current Session Context
 
-**Session Date:** 2026-03-04
-**Session Goal:** Create roadmap for DeepSense Insight Platform
-
-**What was done:**
-- Analyzed 28 v1 requirements across 5 categories
-- Derived 4 phases based on coarse granularity
-- Validated 100% requirement coverage
-- Created ROADMAP.md with phase structure and success criteria
-- Created STATE.md for project tracking
-- Updated REQUIREMENTS.md with traceability
+**What was done (Phase 2 Plan 01):**
+- Created MCP server with FastMCP and SQLDatabaseToolkit
+- Built HTML templates for table and chart UIs with postMessage
+- Deleted old React generative-ui components
+- Updated hub_agent.py to remove old tool imports
 
 **Next steps:**
-- Plan Phase 1 (Foundation & Data) with `/gsd:plan-phase 1`
+- Execute Plan 02-02: Integrate MCPAppsMiddleware with CopilotKit
 
-Last activity: 2026-03-04 - Completed quick task 2: make a new header next to sessions called toolbox and design the toolbox page and move the query matcher to the toolbox page
+Last activity: 2026-03-11 - Completed Plan 02-01: MCP Server with SQLDatabaseToolkit
 
 ---
 

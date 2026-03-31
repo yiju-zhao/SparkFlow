@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useECharts } from "@/hooks/use-echarts";
+import { useECharts } from "@/lib/hooks/use-echarts";
 import { CountryStats } from "@/lib/explore/types";
 import { cn } from "@/lib/utils";
 import type { EChartsOption } from "echarts";
@@ -83,7 +83,7 @@ export function CountryBarChart({ data, className }: CountryBarChartProps) {
   return (
     <div
       ref={chartRef}
-      className={cn("w-full h-full min-h-[300px]", className)}
+      className={cn("w-full h-full min-h-75", className)}
     />
   );
 }

@@ -153,6 +153,9 @@ async function main() {
           topic: session.topic,
           affiliation: session.affiliation,
           technology: session.technology,
+          sessionFormat: session.sessionFormat,
+          hasRecording: session.hasRecording,
+          intendedAudience: session.intendedAudience,
           publications: {
             create: publicationLinks,
           },

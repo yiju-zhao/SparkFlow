@@ -15,10 +15,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Monitor, Moon, Sun, User as UserIcon } from "lucide-react";
+import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 
 interface UserNavProps {
   user: {
@@ -30,6 +32,8 @@ interface UserNavProps {
 
 export function UserNav({ user }: UserNavProps) {
   const { setTheme, theme } = useTheme();
+  const t = useTranslations("nav");
+  const locale = useLocale();
   // Avoid hydration mismatch for theme
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -93,9 +97,18 @@ export function UserNav({ user }: UserNavProps) {
           </DropdownMenuSub>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })}>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href={`/${locale}/settings`}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>{t("settings")}</span>
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => signOut({ callbackUrl: `/${locale}` })}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{t("signOut")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -7,7 +7,7 @@
 ## Phases
 
 - [ ] **Phase 1: Foundation & Data** - Data model and AI infrastructure for generative UI
-- [ ] **Phase 2: Research Hub** - Conference discovery with AI-powered generative UI
+- [x] **Phase 2: Research Hub** - Conference discovery with AI-powered generative UI (completed 2026-03-12)
 - [ ] **Phase 3: Notebook Integration** - Import sessions from Hub for deep RAG analysis
 - [ ] **Phase 4: Polish & Enhancement** - Performance, edge cases, UX refinements
 
@@ -15,8 +15,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data | 0/5 | Not started | - |
-| 2. Research Hub | 0/0 | Not started | - |
+| 1. Foundation & Data | 5/5 | Complete | 2026-03-05 |
+| 2. Research Hub | 2/2 | Complete   | 2026-03-12 |
 | 3. Notebook Integration | 0/0 | Not started | - |
 | 4. Polish & Enhancement | 0/0 | Not started | - |
 
@@ -40,17 +40,17 @@
 **Plans**: 5 plans in 4 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Verify and extend Prisma models for conference domain
-- [ ] 01-02-PLAN.md — Create admin curation UI for Venue, Instance, Session
-- [ ] 01-03-PLAN.md — Integrate CopilotKit provider with AG-UI protocol
-- [ ] 01-04-PLAN.md — Create Hub agent config, prompt, and query tools
-- [ ] 01-05-PLAN.md — Assemble Hub agent with PostgresSaver and register
+- [x] 01-01-PLAN.md — Verify and extend Prisma models for conference domain
+- [x] 01-02-PLAN.md — Create admin curation UI for Venue, Instance, Session
+- [x] 01-03-PLAN.md — Integrate CopilotKit provider with AG-UI protocol
+- [x] 01-04-PLAN.md — Create Hub agent config, prompt, and query tools
+- [x] 01-05-PLAN.md — Assemble Hub agent with PostgresSaver and register
 
 ---
 
 ### Phase 2: Research Hub
 
-**Goal**: Deliver conference discovery experience with AI-powered generative UI
+**Goal**: Deliver conference discovery experience with AI-powered generative UI via MCP Apps
 
 **Depends on**: Phase 1 (Foundation & Data)
 
@@ -59,11 +59,15 @@ Plans:
 **Success Criteria** (what must be TRUE):
 1. User can browse conferences, view sessions, filter by tag/date/speaker, and search by keyword
 2. User can ask AI assistant questions about hub content and receive natural language responses
-3. AI assistant generates dynamic tables that display filtered query results
-4. AI assistant generates dynamic charts (bar, line, pie) that visualize session data
-5. User can interact with generated components (click rows, sort columns, select filters)
+3. AI assistant generates dynamic tables that display filtered query results via MCP Apps HTML templates
+4. AI assistant generates dynamic charts (bar, line, pie) that visualize session data via Chart.js templates
+5. User can interact with generated components (tables sortable, charts interactive)
 
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
+
+Plans:
+- [ ] 02-01-PLAN.md — Create MCP server with SQLDatabaseToolkit and HTML templates
+- [ ] 02-02-PLAN.md — Integrate MCPAppsMiddleware with CopilotKit BuiltInAgent
 
 ---
 
@@ -124,17 +128,17 @@ Plans:
 | NOTE-02 | Phase 3 | Pending |
 | NOTE-03 | Phase 3 | Pending |
 | NOTE-04 | Phase 3 | Pending |
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
-| DATA-01 | Phase 1 | Pending |
-| DATA-02 | Phase 1 | Pending |
-| DATA-03 | Phase 1 | Pending |
-| DATA-04 | Phase 1 | Pending |
-| DATA-05 | Phase 1 | Pending |
-| DATA-06 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
+| INFRA-05 | Phase 1 | Complete |
+| DATA-01 | Phase 1 | Complete |
+| DATA-02 | Phase 1 | Complete |
+| DATA-03 | Phase 1 | Complete |
+| DATA-04 | Phase 1 | Complete |
+| DATA-05 | Phase 1 | Complete |
+| DATA-06 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total
@@ -143,3 +147,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-03-04*
+*Last updated: 2026-03-11 (Phase 2 replan - MCP Apps architecture)*

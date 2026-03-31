@@ -85,7 +85,7 @@ export function StudioPanel({
           {/* Header */}
           <div className="px-6 pt-3 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
+              <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
               <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
                 STUDIO
               </h2>
@@ -329,7 +329,7 @@ function NoteViewer({
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               placeholder="Write your note in markdown..."
-              className="min-h-[300px] resize-none font-mono text-sm"
+              className="min-h-75 resize-none font-mono text-sm"
             />
           </div>
         ) : (

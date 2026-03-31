@@ -29,17 +29,17 @@ export function PublicationStatsSection({
         {/* Row 1: Pie + Word Cloud + Topics — evenly spaced */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[280px]">
+            <div className="h-70">
               <StatusPieChart data={stats.statusBreakdown} />
             </div>
           </div>
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[280px]">
+            <div className="h-70">
               <KeywordCloud data={stats.topKeywords} className="min-h-0" />
             </div>
           </div>
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[280px]">
+            <div className="h-70">
               <TopicBarChart data={stats.topTopics} />
             </div>
           </div>
@@ -48,12 +48,12 @@ export function PublicationStatsSection({
         {/* Row 2: Affiliation Bar (left) + Org Network (right) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[400px]">
+            <div className="h-100">
               <AffiliationBarChart data={stats.topAffiliations} />
             </div>
           </div>
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[400px]">
+            <div className="h-100">
               <CollaborationNetwork
                 data={stats.orgCollaboration}
                 title="Organization Collaboration Network"
@@ -66,12 +66,12 @@ export function PublicationStatsSection({
         {/* Row 3: Country Bar (left) + Geo Network (right) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[400px]">
+            <div className="h-100">
               <CountryBarChart data={stats.topCountries} />
             </div>
           </div>
           <div className="bg-card rounded-lg p-6">
-            <div className="h-[400px]">
+            <div className="h-100">
               <CollaborationNetwork
                 data={stats.geoCollaboration}
                 title="Geographic Collaboration Network"

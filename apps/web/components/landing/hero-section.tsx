@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useTranslations, useLocale } from "next-intl";
 
 const stagger = {
   hidden: {},
@@ -19,7 +20,10 @@ const fadeUp = {
 };
 
 export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
-  const deepdiveHref = isLoggedIn ? "/deepdive" : "/login";
+  const t = useTranslations("landing.hero");
+  const locale = useLocale();
+  const deepdiveHref = isLoggedIn ? `/${locale}/deepdive` : `/${locale}/login`;
+
   return (
     <section className="relative flex min-h-[90vh] items-center justify-center px-6 pt-24 pb-16">
       <motion.div
@@ -35,8 +39,8 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
           variants={fadeUp}
           className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl"
         >
-          Intelligent Research,{" "}
-          <span className="text-accent-red">Powered by Agentic AI</span>
+          {t("title")}{" "}
+          <span className="text-accent-red">{t("titleHighlight")}</span>
         </motion.h1>
 
         {/* Subline */}
@@ -44,8 +48,7 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
           variants={fadeUp}
           className="mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl"
         >
-          Upload your sources, explore conferences, and let Agentic AI help you
-          discover insights — all in one intelligent notebook.
+          {t("subtitle")}
         </motion.p>
 
         {/* CTA Buttons */}
@@ -62,26 +65,12 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
               href={deepdiveHref}
               className="font-mono font-black uppercase tracking-widest"
             >
-              DeepDive
+              {t("deepdiveBtn")}
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
-            <Link href="#how-it-works">Watch Demo</Link>
+            <Link href={`/${locale}/explore`}>{t("exploreBtn")}</Link>
           </Button>
-        </motion.div>
-
-        {/* Product Screenshot Placeholder */}
-        <motion.div variants={fadeUp} className="mt-16 w-full max-w-3xl">
-          <div className="aspect-video rounded-xl border border-border bg-secondary shadow-huawei-lg overflow-hidden">
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
-              <div className="flex gap-2">
-                <div className="h-3 w-3 rounded-full bg-accent-red/30" />
-                <div className="h-3 w-3 rounded-full bg-accent-red/20" />
-                <div className="h-3 w-3 rounded-full bg-accent-red/10" />
-              </div>
-              <span className="text-sm">SparkFlow Notebook Interface</span>
-            </div>
-          </div>
         </motion.div>
       </motion.div>
     </section>

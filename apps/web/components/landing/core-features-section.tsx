@@ -1,40 +1,40 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { SectionReveal } from "./section-reveal";
 
-const features = [
-  {
-    badge: "Deep Dive",
-    title: "Agentic AI-Powered Research Notebooks",
-    description:
-      "Upload documents and webpages, then chat with your sources using RAG-powered Agentic AI. Every answer is grounded in your research with precise citations.",
-  },
-  {
-    badge: "Explore",
-    title: "Conference & Publication Explorer",
-    description:
-      "Browse academic conferences, discover sessions, and find relevant publications. Add sources directly to your notebooks for deeper analysis.",
-  },
-  {
-    badge: "Insights",
-    title: "Smart Summarization & Notes",
-    description:
-      "Automatically generate summaries, extract key findings, and organize your notes. SparkFlow connects the dots across all your research materials.",
-  },
-];
-
 export function CoreFeaturesSection() {
+  const t = useTranslations("landing.features");
+
+  const features = [
+    {
+      badge: t("deepdive.badge"),
+      title: t("deepdive.title"),
+      description: t("deepdive.description"),
+    },
+    {
+      badge: t("explore.badge"),
+      title: t("explore.title"),
+      description: t("explore.description"),
+    },
+    {
+      badge: t("insights.badge"),
+      title: t("insights.title"),
+      description: t("insights.description"),
+    },
+  ];
+
   return (
     <section id="features" className="px-6 py-24">
       <div className="mx-auto max-w-6xl">
         <SectionReveal>
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-              Built for Researchers
+              {t("coreTitle")}
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Powerful tools designed to accelerate your research workflow
+              {t("coreSubtitle")}
             </p>
           </div>
         </SectionReveal>
@@ -71,7 +71,7 @@ export function CoreFeaturesSection() {
                 >
                   <div className="aspect-[4/3] w-full rounded-xl border border-border bg-secondary shadow-huawei-sm">
                     <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                      {feature.badge} Preview
+                      {feature.badge} {t("preview")}
                     </div>
                   </div>
                 </SectionReveal>

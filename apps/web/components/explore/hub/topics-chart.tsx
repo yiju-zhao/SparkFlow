@@ -3,7 +3,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useECharts } from "@/hooks/use-echarts";
+import { useTranslations } from "next-intl";
+import { useECharts } from "@/lib/hooks/use-echarts";
 import { Hash } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { EChartsOption } from "echarts";
@@ -14,6 +15,7 @@ interface TopicsChartProps {
 
 export function TopicsChart({ data }: TopicsChartProps) {
   const { theme } = useTheme();
+  const t = useTranslations("explore.charts");
   const hasData = data && data.length > 0;
 
   const option = useMemo<EChartsOption>(() => {
@@ -74,15 +76,15 @@ export function TopicsChart({ data }: TopicsChartProps) {
 
   return (
     <div className="bg-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold mb-4">Top Research Topics</h3>
-      <div className="h-[260px]">
+      <h3 className="text-sm font-semibold mb-4">{t("topTopics")}</h3>
+      <div className="h-65">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground border border-dashed rounded-lg">
             <Hash className="h-8 w-8 mb-3" />
-            <p className="text-sm font-medium">No topics yet</p>
-            <p className="text-xs mt-1">Research topics will appear here</p>
+            <p className="text-sm font-medium">{t("noData")}</p>
+            <p className="text-xs mt-1">{t("noDataDesc")}</p>
           </div>
         )}
       </div>

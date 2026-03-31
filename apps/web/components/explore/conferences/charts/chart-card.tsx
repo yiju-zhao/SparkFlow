@@ -14,7 +14,7 @@ export function ChartCard({
   title,
   children,
   className,
-  height = "h-[300px]",
+  height = "h-75",
   action,
 }: ChartCardProps) {
   return (

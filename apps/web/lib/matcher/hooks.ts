@@ -10,83 +10,114 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { matcherClient } from "./client";
 import type { JobProgress, MatchJob, MatchJobStatus } from "./types";
 
+// Global registry to track SSE connections by jobId
+const sseConnections = new Map<string, EventSource>();
+
 /**
- * Hook for polling job progress
+ * Hook for streaming job progress via SSE
  */
 export function useJobProgress(
   jobId: string | null,
   options: {
-    pollingInterval?: number;
     onComplete?: (job: MatchJob) => void;
     onError?: (error: Error) => void;
   } = {},
 ) {
-  const { pollingInterval = 2000, onComplete, onError } = options;
+  const { onComplete, onError } = options;
+  
   const [progress, setProgress] = useState<JobProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
-  const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
-
-  const startPolling = useCallback(() => {
-    if (!jobId) return;
-
-    stopPolling();
-    setIsLoading(true);
-
-    const poll = async () => {
-      try {
-        const data = await matcherClient.getJobProgress(jobId);
-        setProgress(data);
-
-        // Stop polling if job is complete
-        if (isTerminalStatus(data.status)) {
-          stopPolling();
-          setIsLoading(false);
-
-          if (data.status === "COMPLETED" && onComplete) {
-            const fullJob = await matcherClient.getJob(jobId);
-            onComplete(fullJob);
-          } else if (data.status === "FAILED" && onError) {
-            onError(new Error(data.errorMessage || "Job failed"));
-          }
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-        if (onError) {
-          onError(error instanceof Error ? error : new Error("Polling failed"));
-        }
-      }
-    };
-
-    // Initial poll
-    poll();
-
-    // Start interval
-    intervalRef.current = setInterval(poll, pollingInterval);
-  }, [jobId, pollingInterval, stopPolling, onComplete, onError]);
+  // Store callbacks in refs
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+    onErrorRef.current = onError;
+  }, [onComplete, onError]);
 
   useEffect(() => {
-    if (jobId) {
-      startPolling();
-    } else {
-      stopPolling();
+    if (!jobId) {
       setProgress(null);
+      setIsLoading(false);
+      setIsConnected(false);
+      return;
     }
 
-    return () => stopPolling();
-  }, [jobId, startPolling, stopPolling]);
+    // Check if connection already exists
+    if (sseConnections.has(jobId)) {
+      console.log("[Matcher] SSE connection already exists for job:", jobId);
+      setIsConnected(true);
+      setIsLoading(true);
+      return;
+    }
+
+    console.log("[Matcher] Creating SSE connection for job:", jobId);
+    setIsLoading(true);
+
+    // Track if job completed successfully - used to ignore onerror after completion
+    let jobCompleted = false;
+
+    const eventSource = matcherClient.subscribeToJobProgress(
+      jobId,
+      (data: JobProgress) => {
+        console.log("[Matcher] SSE progress:", data.status, data.progress + "%");
+        setProgress(data);
+        setIsConnected(true);
+
+        if (data.status === "COMPLETED") {
+          console.log("[Matcher] Job completed");
+          jobCompleted = true;
+          setIsLoading(false);
+          eventSource.close();
+          sseConnections.delete(jobId);
+
+          if (onCompleteRef.current) {
+            matcherClient.getJob(jobId)
+              .then(onCompleteRef.current)
+              .catch(console.error);
+          }
+        } else if (data.status === "FAILED") {
+          jobCompleted = true; // Mark as completed to prevent onerror from also firing
+          setIsLoading(false);
+          eventSource.close();
+          sseConnections.delete(jobId);
+          if (onErrorRef.current) {
+            onErrorRef.current(new Error(data.errorMessage || "Job failed"));
+          }
+        }
+      },
+      (error) => {
+        // Ignore error if job already completed - connection close after completion is normal
+        if (jobCompleted) {
+          console.log("[Matcher] SSE connection closed after completion (expected)");
+          return;
+        }
+        console.error("[Matcher] SSE error:", error);
+        setIsConnected(false);
+        setIsLoading(false);
+        eventSource.close();
+        sseConnections.delete(jobId);
+
+        if (onErrorRef.current) {
+          onErrorRef.current(error);
+        }
+      },
+    );
+
+    // Store connection globally
+    sseConnections.set(jobId, eventSource);
+
+    // Don't close on cleanup - let the connection complete naturally
+    // This prevents React StrictMode double-effect issues
+    // The connection will close when job completes or errors
+  }, [jobId]);
 
   return {
     progress,
     isLoading,
-    startPolling,
-    stopPolling,
+    isConnected,
   };
 }
 
@@ -167,9 +198,4 @@ export function useMatcherHealth() {
   }, [checkHealth]);
 
   return { isHealthy, isChecking, checkHealth };
-}
-
-// Helper functions
-function isTerminalStatus(status: MatchJobStatus): boolean {
-  return ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
 }

@@ -22,16 +22,32 @@ class MatchTargetType(str, Enum):
     PUBLICATION = "PUBLICATION"
 
 
+class ParsedQueryInput(BaseModel):
+    """A parsed query from the frontend."""
+
+    id: str
+    bu: str
+    query: str
+    row_index: int
+
+
 class CreateMatchJobRequest(BaseModel):
-    """Request to create a new match job."""
+    """Request to create a new match job.
+
+    All data is passed directly from Next.js - no callbacks needed.
+    """
 
     user_id: str
     instance_id: str
     target_type: MatchTargetType
-    query_file_key: str
+    queries: list[ParsedQueryInput]
+    target_data: list[dict[str, Any]]  # Sessions or publications fetched by Next.js
     top_k: int = 50
     search_k: int = 350
     include_reasons: bool = True
+    # Model configuration from user settings
+    model_provider: str = "google"
+    model_name: str = "gemini-2.5-flash"
 
 
 class MatchJobResponse(BaseModel):
@@ -44,9 +60,7 @@ class MatchJobResponse(BaseModel):
     top_k: int
     search_k: int
     include_reasons: bool
-    query_file_key: str
     query_data: Optional[list[dict[str, Any]]] = None
-    result_file_key: Optional[str] = None
     status: MatchJobStatus
     progress: int
     error_message: Optional[str] = None
@@ -67,19 +81,3 @@ class JobProgressResponse(BaseModel):
     error_message: Optional[str] = None
     query_count: int
     match_count: int
-
-
-class ParsedQuery(BaseModel):
-    """A parsed query from the uploaded Excel file."""
-
-    id: str
-    name: str
-    content: str
-    row_index: int
-
-
-class ParsedQueriesResponse(BaseModel):
-    """Response for parsed queries preview."""
-
-    queries: list[ParsedQuery]
-    total_count: int

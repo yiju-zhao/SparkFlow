@@ -75,6 +75,7 @@ class LotusMatcher:
                     f"Abstract: {_truncate(_safe_str(r.get('abstract')), 500)} | "
                     f"Topics: {_safe_str(r.get('topic'))} | "
                     f"Speakers: {_safe_str(r.get('speaker'))} | "
+                    f"Affiliation: {_safe_str(r.get('affiliation'))} | "
                     f"Technologies: {_safe_str(r.get('technology'))}"
                 ),
                 axis=1,
@@ -87,7 +88,8 @@ class LotusMatcher:
                     f"Authors: {_safe_str(r.get('authors'))} | "
                     f"Abstract: {_truncate(_safe_str(r.get('abstract')), 500)} | "
                     f"Keywords: {_safe_str(r.get('keywords'))} | "
-                    f"Research Topic: {_safe_str(r.get('research_topic'))}"
+                    f"Research Topic: {_safe_str(r.get('research_topic'))} | "
+                    f"Affiliations: {_safe_str(r.get('affiliations'))}"
                 ),
                 axis=1,
             )
@@ -163,8 +165,9 @@ class LotusMatcher:
             reason_instruction = (
                 f"Given the query:\n{query_text}\n\n"
                 f"For the item described by: {{match_text}}\n\n"
-                f"Write a concise recommendation reason (2-3 sentences) explaining "
-                f"why this item is relevant to the query. Be specific."
+                f"请用中文写出2-3句简洁的推荐理由，说明为什么该条目与查询相关。要具体说明。"
+                f"(Write a concise recommendation reason in Chinese, 2-3 sentences, "
+                f"explaining why this item is relevant to the query. Be specific.)"
             )
             top_matches = top_matches.sem_map(
                 reason_instruction, suffix="recommendation_reason"

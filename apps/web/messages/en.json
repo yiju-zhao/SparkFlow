@@ -1,0 +1,380 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "noResults": "No results found",
+    "error": "An error occurred",
+    "success": "Success",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close",
+    "confirm": "Confirm"
+  },
+  "nav": {
+    "howItWorks": "How It Works",
+    "features": "Features",
+    "faq": "FAQ",
+    "deepdive": "DeepDive",
+    "explore": "Explore",
+    "settings": "Settings",
+    "admin": "Admin",
+    "signUp": "Sign Up",
+    "signIn": "Sign In",
+    "signOut": "Log out",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "landing": {
+    "hero": {
+      "title": "Intelligent Research,",
+      "titleHighlight": "Powered by Agentic AI",
+      "subtitle": "Upload your sources, explore conferences, and let Agentic AI help you discover insights — all in one intelligent notebook.",
+      "deepdiveBtn": "DeepDive",
+      "exploreBtn": "Research Hub"
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Get started with SparkFlow in three simple steps",
+      "step1": {
+        "title": "Upload Sources",
+        "description": "Import PDFs, documents, and webpages into your research notebook. SparkFlow automatically chunks and indexes everything for retrieval."
+      },
+      "step2": {
+        "title": "Explore Conferences",
+        "description": "Browse publications and sessions from academic conferences. Discover relevant research and add it directly to your notebook."
+      },
+      "step3": {
+        "title": "Get Agentic AI Insights",
+        "description": "Chat with your sources using Agentic AI that cites its answers. Ask questions, summarize findings, and uncover connections across your research."
+      }
+    },
+    "features": {
+      "coreTitle": "Built for Researchers",
+      "coreSubtitle": "Powerful tools designed to accelerate your research workflow",
+      "deepdive": {
+        "badge": "Deep Dive",
+        "title": "Agentic AI-Powered Research Notebooks",
+        "description": "Upload documents and webpages, then chat with your sources using RAG-powered Agentic AI. Every answer is grounded in your research with precise citations."
+      },
+      "explore": {
+        "badge": "Explore",
+        "title": "Conference & Publication Explorer",
+        "description": "Browse academic conferences, discover sessions, and find relevant publications. Add sources directly to your notebooks for deeper analysis."
+      },
+      "insights": {
+        "badge": "Insights",
+        "title": "Smart Summarization & Notes",
+        "description": "Automatically generate summaries, extract key findings, and organize your notes. SparkFlow connects the dots across all your research materials."
+      },
+      "preview": "Preview"
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Everything you need to know about SparkFlow",
+      "q1": {
+        "question": "What types of documents can I upload?",
+        "answer": "SparkFlow supports PDFs, Word documents, and webpages. Documents are automatically parsed, chunked, and indexed for Agentic AI-powered retrieval. Our parsers handle complex layouts including tables, figures, and multi-column text."
+      },
+      "q2": {
+        "question": "How does the Agentic AI citation system work?",
+        "answer": "When you chat with your sources, SparkFlow uses Retrieval-Augmented Generation (RAG) to ground every Agentic AI response in your actual documents. Each claim is linked back to the specific chunk it came from, so you can always verify the source."
+      },
+      "q3": {
+        "question": "Can I explore academic conferences?",
+        "answer": "Yes! SparkFlow includes a conference explorer that lets you browse publications, sessions, and presentations from indexed academic conferences. You can search, filter, and add relevant papers directly to your research notebooks."
+      },
+      "q4": {
+        "question": "Is my research data private?",
+        "answer": "Your documents and research data are stored securely and are only accessible to you. SparkFlow uses enterprise-grade encryption and access controls to protect your intellectual property."
+      },
+      "q5": {
+        "question": "Does SparkFlow support dark mode?",
+        "answer": "Absolutely! SparkFlow features a premium dark mode with carefully tuned contrast ratios for comfortable late-night research sessions. You can switch between light, dark, and system themes at any time."
+      }
+    },
+    "cta": {
+      "title": "Start Your Research Journey Today",
+      "subtitle": "Join researchers who are using SparkFlow to accelerate their work with Agentic AI-powered insights.",
+      "button": "DeepDive"
+    },
+    "footer": {
+      "tagline": "Agentic AI-powered research notebook",
+      "copyright": "SparkFlow. All rights reserved."
+    }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign In",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "button": "Sign In",
+      "buttonLoading": "Signing in...",
+      "error": "Invalid email or password",
+      "errorGeneric": "An error occurred. Please try again.",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up"
+    },
+    "signUp": {
+      "title": "Create Account",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "johndoe",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "confirmPasswordLabel": "Confirm Password",
+      "confirmPasswordPlaceholder": "••••••••",
+      "button": "Sign Up",
+      "buttonLoading": "Creating account...",
+      "errorPasswordMismatch": "Passwords do not match",
+      "errorGeneric": "Failed to create account",
+      "errorUnknown": "An error occurred. Please try again.",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in"
+    }
+  },
+  "notebook": {
+    "create": {
+      "title": "Create Notebook",
+      "nameLabel": "Name",
+      "namePlaceholder": "My Research Notebook",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "What is this notebook about?",
+      "button": "Create Notebook"
+    },
+    "empty": {
+      "title": "No notebooks yet",
+      "description": "Create your first notebook to start organizing your research"
+    },
+    "chat": {
+      "placeholder": "Ask a question about your sources...",
+      "send": "Send"
+    }
+  },
+  "explore": {
+    "title": "Research Hub",
+    "overview": "Overview",
+    "noRecentConferences": "No recent conferences available yet.",
+    "subtitle": "Discover conferences, publications, and sessions in the global knowledge base",
+    "breadcrumb": "~/research-hub/overview",
+    "recentConferences": "recent conferences",
+    "viewAll": "view all",
+    "stats": {
+      "conferences": "Conferences",
+      "publications": "Publications",
+      "sessions": "Sessions",
+      "yearsCovered": "Years Covered"
+    },
+    "filters": {
+      "venue": "Venue",
+      "year": "Year",
+      "topic": "Topic",
+      "status": "Status",
+      "organization": "Organization",
+      "country": "Country",
+      "conference": "Conference",
+      "type": "Type",
+      "clear": "Clear"
+    },
+    "status": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "completed": "Completed",
+      "scheduled": "Scheduled",
+      "showRejected": "Show Rejected/Withdrawal"
+    },
+    "pagination": {
+      "showing": "Showing {start}-{end} of {total}"
+    },
+    "empty": {
+      "title": "No results found",
+      "description": "Try adjusting your filters"
+    },
+    "charts": {
+      "conferencesByYear": "Conferences by Year",
+      "topTopics": "Top Research Topics",
+      "noData": "No data yet",
+      "noDataDesc": "Data will appear here"
+    },
+    "cards": {
+      "browseConferences": "Browse conferences by venue and year",
+      "searchPapers": "Search papers by topic, author, and more",
+      "exploreSessions": "Explore sessions and schedules"
+    },
+    "conferenceDetail": {
+      "officialWebsite": "Official Website",
+      "showingSessions": "Showing {count} of {total} sessions",
+      "unscheduled": "Unscheduled",
+      "tabPublications": "Publications",
+      "tabSessions": "Sessions"
+    },
+    "publicationDetail": {
+      "viewPdf": "View PDF",
+      "github": "GitHub",
+      "website": "Website",
+      "doi": "DOI",
+      "abstract": "Abstract",
+      "summary": "Summary",
+      "affiliations": "Affiliations",
+      "countries": "Countries",
+      "keywords": "Keywords",
+      "researchTopic": "Research Topic",
+      "relatedSessions": "Related Sessions"
+    },
+    "conferences": {
+      "title": "Conferences",
+      "subtitle": "Browse academic conferences and their sessions",
+      "breadcrumb": "~/research-hub/conferences"
+    },
+    "publications": {
+      "title": "Publications",
+      "subtitle": "Search and discover research publications",
+      "breadcrumb": "~/research-hub/publications",
+      "found": "{count} publications found"
+    },
+    "sessions": {
+      "title": "Sessions",
+      "subtitle": "Explore conference sessions and presentations",
+      "breadcrumb": "~/research-hub/sessions",
+      "found": "{count} sessions found"
+    },
+    "toolbox": {
+      "title": "Toolbox",
+      "subtitle": "Research tools and utilities",
+      "breadcrumb": "~/research-hub/toolbox",
+      "availableTools": "available tools",
+      "queryMatcher": {
+        "title": "Query Matcher",
+        "description": "Match queries against conference sessions or publications using semantic search",
+        "breadcrumb": "~/research-hub/toolbox/query-matcher",
+        "history": "History"
+      },
+      "dropzone": {
+        "invalidFile": "Please upload an Excel file (.xlsx or .xls)",
+        "fileTooLarge": "File size exceeds {size}MB limit",
+        "clickToUpload": "Click to upload",
+        "orDragAndDrop": "or drag and drop",
+        "supportedFormats": "Excel files (.xlsx, .xls) up to {size}MB"
+      },
+      "wizard": {
+        "steps": {
+          "upload": "upload",
+          "configure": "configure",
+          "results": "results"
+        },
+        "upload": {
+          "title": "Upload Query File",
+          "description": "Upload an Excel file with BU and Query columns. Queries will be automatically translated to English.",
+          "formatGuide": "Format Guide",
+          "requiredFormat": "Required Format",
+          "col": "Col",
+          "name": "Name",
+          "colDescription": "Description",
+          "required": "Required",
+          "buColumn": "bu",
+          "queryColumn": "query",
+          "buDesc": "Business unit requesting the match",
+          "queryDesc": "The search query to match against sessions or publications",
+          "yes": "Yes",
+          "note": "Columns are read by position — header names do not need to match exactly. Queries will be automatically translated to English before matching.",
+          "queriesLoaded": "{count} query/queries loaded",
+          "uploadNew": "Upload new file",
+          "parsing": "Parsing file…",
+          "cancel": "Cancel",
+          "continue": "Continue"
+        },
+        "configure": {
+          "title": "Configure Matching",
+          "description": "Select the conference and configure matching options for your {count} {noun}.",
+          "queryNounSingular": "query",
+          "queryNounPlural": "queries",
+          "conference": "Conference",
+          "conferencePlaceholder": "Select a conference",
+          "matchAgainst": "Match Against",
+          "matchAgainstPlaceholder": "Select target type",
+          "sessions": "Sessions",
+          "publications": "Publications",
+          "topK": "Top K Results",
+          "topKHelp": "Number of matches per query",
+          "searchK": "Search K",
+          "searchKHelp": "Embedding pre-filter size",
+          "includeReasons": "Generate recommendation reasons (slower)",
+          "back": "Back",
+          "startMatching": "Start Matching",
+          "errorSelectConference": "Please select a conference",
+          "errorSelectTarget": "Please select what to match against",
+          "errorNoQueries": "No queries to match"
+        }
+      }
+    }
+  },
+  "deepdive": {
+    "title": "DeepDive",
+    "subtitle": "Personalized knowledge bases and AI insights",
+    "notebooks": "research notebooks",
+    "notebooksSubtitle": "Personalized knowledge bases and AI insights",
+    "researchHub": "research-hub"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your AI model preferences",
+    "aiModels": {
+      "title": "AI Models",
+      "subtitle": "Choose your preferred AI models for different features",
+      "provider": "Provider",
+      "model": "Model",
+      "deepdiveSection": "DeepDive Model",
+      "deepdiveDescription": "Model used for research notebook conversations",
+      "matcherSection": "Matcher Model",
+      "matcherDescription": "Model used for semantic matching and similarity",
+      "saved": "Settings saved successfully",
+      "saveError": "Failed to save settings"
+    }
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage user accounts"
+    },
+    "venues": {
+      "title": "Venues",
+      "subtitle": "Manage conference venues"
+    },
+    "sessions": {
+      "title": "Sessions",
+      "subtitle": "Manage conference sessions"
+    },
+    "instances": {
+      "title": "Instances",
+      "subtitle": "Manage system instances"
+    }
+  },
+  "errors": {
+    "accessDenied": {
+      "title": "Access Denied",
+      "description": "You don't have permission to access this page.",
+      "backHome": "Go back home"
+    },
+    "notFound": {
+      "title": "Not Found",
+      "description": "The page you're looking for doesn't exist.",
+      "backHome": "Go back home"
+    }
+  },
+  "language": {
+    "switch": "Switch Language",
+    "en": "English",
+    "zh": "中文"
+  }
+}

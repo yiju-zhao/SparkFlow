@@ -16,11 +16,17 @@ datasource db {
 // User & Authentication
 // ============================================
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
   email        String   @unique
   passwordHash String
+  role         UserRole @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -28,6 +34,7 @@ model User {
   notebooks Notebook[]
   notes     Note[]
   sessions  Session[]
+  settings  UserSettings?
 
   @@map("users")
 }
@@ -41,6 +48,24 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+// User preferences for AI model selection
+model UserSettings {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  // Chat/RAG agent model
+  modelProvider       String   @default("google")
+  modelName           String   @default("gemini-2.5-flash")
+  // Matcher agent model
+  matcherModelProvider String  @default("google")
+  matcherModelName    String   @default("gemini-2.5-flash")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
 }
 
 // ============================================
@@ -149,6 +174,12 @@ enum SessionStatus {
   ACTIVE
   CLOSED
   ARCHIVED
+}
+
+enum SessionFormat {
+  IN_PERSON
+  VIRTUAL
+  BOTH
 }
 
 model ChatSession {
@@ -317,6 +348,10 @@ model ConferenceSession {
   topic       String[]               @default([])
   affiliation String[]               @default([])
   technology  String[]               @default([])
+
+  sessionFormat    SessionFormat?
+  hasRecording     Boolean           @default(false)
+  intendedAudience String?
 
   publications SessionPublication[]
 

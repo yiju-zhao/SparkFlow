@@ -9,22 +9,22 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Research Hub - Core
 
-- [ ] **RHUB-01**: User can view list of all conferences with basic stats (session count, date range)
-- [ ] **RHUB-02**: User can browse sessions within a conference (title, speakers, tags)
-- [ ] **RHUB-03**: User can view session detail page (full description, speaker info, related sessions)
-- [ ] **RHUB-04**: User can filter sessions by topic tag
-- [ ] **RHUB-05**: User can filter sessions by date
-- [ ] **RHUB-06**: User can filter sessions by speaker name
-- [ ] **RHUB-07**: User can search sessions by keyword (title, description, speaker)
+- [x] **RHUB-01**: User can view list of all conferences with basic stats (session count, date range)
+- [x] **RHUB-02**: User can browse sessions within a conference (title, speakers, tags)
+- [x] **RHUB-03**: User can view session detail page (full description, speaker info, related sessions)
+- [x] **RHUB-04**: User can filter sessions by topic tag
+- [x] **RHUB-05**: User can filter sessions by date
+- [x] **RHUB-06**: User can filter sessions by speaker name
+- [x] **RHUB-07**: User can search sessions by keyword (title, description, speaker)
 
 ### Research Hub - Generative UI
 
-- [ ] **GENUI-01**: User can ask AI assistant questions about the hub content
-- [ ] **GENUI-02**: AI assistant can generate dynamic tables from query results
-- [ ] **GENUI-03**: AI assistant can generate dynamic charts (bar, line, pie) from data
-- [ ] **GENUI-04**: AI assistant can generate filtered views based on user constraints
-- [ ] **GENUI-05**: Generated UI components render in assistant panel
-- [ ] **GENUI-06**: User can interact with generated components (click, sort, select)
+- [x] **GENUI-01**: User can ask AI assistant questions about the hub content
+- [x] **GENUI-02**: AI assistant can generate dynamic tables from query results
+- [x] **GENUI-03**: AI assistant can generate dynamic charts (bar, line, pie) from data
+- [x] **GENUI-04**: AI assistant can generate filtered views based on user constraints
+- [x] **GENUI-05**: Generated UI components render in assistant panel
+- [x] **GENUI-06**: User can interact with generated components (click, sort, select)
 
 ### Notebook Integration
 
@@ -38,8 +38,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INFRA-01**: CopilotKit provider wraps the application
 - [ ] **INFRA-02**: AG-UI protocol streams state updates between agent and UI
 - [ ] **INFRA-03**: MCP Apps middleware renders dynamic components
-- [ ] **INFRA-04**: Research agent connects to conference/session data
-- [ ] **INFRA-05**: Agent state persists across conversations (PostgresSaver)
+- [x] **INFRA-04**: Research agent connects to conference/session data
+- [x] **INFRA-05**: Agent state persists across conversations (PostgresSaver)
 
 ### Data Model
 
@@ -47,8 +47,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **DATA-02**: Session model (title, description, speakers, tags, conference reference)
 - [ ] **DATA-03**: Speaker model (name, bio, affiliation)
 - [ ] **DATA-04**: Tag model (name, category)
-- [ ] **DATA-05**: Admin can create/edit conferences via UI
-- [ ] **DATA-06**: Admin can create/edit sessions via UI
+- [x] **DATA-05**: Admin can create/edit conferences via UI
+- [x] **DATA-06**: Admin can create/edit sessions via UI
 
 ## v2 Requirements
 
@@ -90,19 +90,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RHUB-01 | Phase 2 | Pending |
-| RHUB-02 | Phase 2 | Pending |
-| RHUB-03 | Phase 2 | Pending |
-| RHUB-04 | Phase 2 | Pending |
-| RHUB-05 | Phase 2 | Pending |
-| RHUB-06 | Phase 2 | Pending |
-| RHUB-07 | Phase 2 | Pending |
-| GENUI-01 | Phase 2 | Pending |
-| GENUI-02 | Phase 2 | Pending |
-| GENUI-03 | Phase 2 | Pending |
-| GENUI-04 | Phase 2 | Pending |
-| GENUI-05 | Phase 2 | Pending |
-| GENUI-06 | Phase 2 | Pending |
+| RHUB-01 | Phase 2 | Complete |
+| RHUB-02 | Phase 2 | Complete |
+| RHUB-03 | Phase 2 | Complete |
+| RHUB-04 | Phase 2 | Complete |
+| RHUB-05 | Phase 2 | Complete |
+| RHUB-06 | Phase 2 | Complete |
+| RHUB-07 | Phase 2 | Complete |
+| GENUI-01 | Phase 2 | Complete |
+| GENUI-02 | Phase 2 | Complete |
+| GENUI-03 | Phase 2 | Complete |
+| GENUI-04 | Phase 2 | Complete |
+| GENUI-05 | Phase 2 | Complete |
+| GENUI-06 | Phase 2 | Complete |
 | NOTE-01 | Phase 3 | Pending |
 | NOTE-02 | Phase 3 | Pending |
 | NOTE-03 | Phase 3 | Pending |
@@ -110,14 +110,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-01 | Phase 1 | Pending |
 | INFRA-02 | Phase 1 | Pending |
 | INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Complete |
+| INFRA-05 | Phase 1 | Complete |
 | DATA-01 | Phase 1 | Pending |
 | DATA-02 | Phase 1 | Pending |
 | DATA-03 | Phase 1 | Pending |
 | DATA-04 | Phase 1 | Pending |
-| DATA-05 | Phase 1 | Pending |
-| DATA-06 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Complete |
+| DATA-06 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total

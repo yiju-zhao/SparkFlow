@@ -10,10 +10,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import {
-  PublicationsFileSchema,
-  type PublicationInput,
-} from "./lib/import-schemas";
+import { PublicationsFileSchema } from "./lib/import-schemas";
 import {
   prisma,
   findOrCreateVenue,
@@ -89,10 +86,8 @@ async function main() {
   const instanceResult = await findOrCreateInstance(
     venueResult.id,
     data.year,
-    data.instanceMetadata,
   );
-  const instanceName =
-    data.instanceMetadata?.name ?? `${data.venue} ${data.year}`;
+  const instanceName = `${data.venue} ${data.year}`;
   if (instanceResult.created) {
     console.log(`\u2713 Instance "${instanceName}" created`);
   } else {
@@ -135,6 +130,7 @@ async function main() {
           title: pub.title,
           authors: pub.authors,
           abstract: pub.abstract,
+          summary: pub.summary,
           affiliations: pub.affiliations,
           countries: pub.countries,
           keywords: pub.keywords,

@@ -10,7 +10,7 @@ ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-COPY prisma.config.ts ./
+COPY prisma/config.ts ./prisma/config.ts
 
 # Install dependencies and generate Prisma client
 RUN npm ci && npx prisma generate
@@ -28,7 +28,7 @@ ENV NODE_ENV=development
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./
+COPY --from=builder /app/prisma/config.ts ./prisma/config.ts
 
 EXPOSE 3001
 ENV PORT=3001

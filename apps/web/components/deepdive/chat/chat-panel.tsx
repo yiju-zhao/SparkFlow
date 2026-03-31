@@ -8,8 +8,6 @@ import {
   Loader2,
   Sparkles,
   Plus,
-  History,
-  X,
   Trash2,
   StickyNote,
   Copy,
@@ -56,8 +54,13 @@ interface AgentState {
   messages: Message[];
 }
 
-const LANGGRAPH_API_URL =
-  process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
+// User model settings
+interface ModelSettings {
+  modelProvider: string;
+  modelName: string;
+}
+
+const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL;
 
 // Stable default props to avoid creating new arrays on each render
 const EMPTY_SESSIONS: ChatSession[] = [];
@@ -71,6 +74,12 @@ export function ChatPanel({
   initialSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
 }: ChatPanelProps) {
+  if (!LANGGRAPH_API_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_LANGGRAPH_API_URL is not configured. Set it to the reachable LangGraph server URL.",
+    );
+  }
+
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0
@@ -120,11 +129,34 @@ export function ChatPanel({
   }, []);
 
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [modelSettings, setModelSettings] = useState<ModelSettings>({
+    modelProvider: "google",
+    modelName: "gemini-2.5-flash",
+  });
 const messagesContainerRef = useRef<HTMLDivElement>(null);
 const textareaRef = useRef<HTMLTextAreaElement>(null);
 const prevIsLoadingRef = useRef<boolean>(false);
 
-  // LangGraph stream hook - follows docs pattern
+  // Fetch user model settings on mount
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (res.ok) {
+          const data = await res.json();
+          setModelSettings({
+            modelProvider: data.modelProvider || "openai",
+            modelName: data.modelName || "gpt-4o-mini",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch model settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  // LangGraph stream hook - model selection happens per-request via context
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
     assistantId: "agent",
@@ -417,6 +449,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
           context: {
             dataset_ids: datasetId ? [datasetId] : [],
             sources_context: sourcesContext,
+            model_provider: modelSettings.modelProvider,
+            model_name: modelSettings.modelName,
           },
         },
       );
@@ -499,7 +533,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
       {/* Header - transparent, content scrolls behind */}
       <div className="px-6 pt-3 pb-3 flex items-center justify-between absolute top-0 left-0 right-0 z-10">
         <div className="flex items-center gap-3 bg-white dark:bg-background rounded-[4px] px-3 py-1.5">
-          <div className="h-[2px] w-6 bg-accent-primary dark:bg-accent-red" />
+          <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
           <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
             DIALOGUE
           </h2>
@@ -727,7 +761,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
             }}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about your sources..."
-            className="min-h-[40px] max-h-[120px] resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0 overflow-hidden"
+            className="min-h-10 max-h-30 resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0 overflow-hidden"
             disabled={stream.isLoading}
             rows={1}
           />
