@@ -19,6 +19,7 @@ import type {
   PublicationDetail,
   SessionListItem,
   SessionDetail,
+  CalendarSessionItem,
   FilterOptions,
   PaginatedResult,
 } from "./types";
@@ -696,6 +697,26 @@ export const getSessions = cache(
   },
 );
 
+export const getConferenceSessions = cache(
+  async (instanceId: string): Promise<CalendarSessionItem[]> => {
+    return prisma.conferenceSession.findMany({
+      where: { instanceId },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        location: true,
+        speaker: true,
+        sessionUrl: true,
+      },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+    });
+  },
+);
+
 export const getSession = cache(
   async (id: string): Promise<SessionDetail | null> => {
     const session = await prisma.conferenceSession.findUnique({
@@ -713,6 +734,12 @@ export const getSession = cache(
         overview: true,
         transcript: true,
         sessionUrl: true,
+        topic: true,
+        affiliation: true,
+        technology: true,
+        sessionFormat: true,
+        hasRecording: true,
+        intendedAudience: true,
         instance: {
           select: {
             id: true,
