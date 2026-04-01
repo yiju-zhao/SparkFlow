@@ -2,8 +2,16 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { MapPin, User } from "lucide-react";
+import { MapPin, User, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import type { CalendarSessionItem } from "@/lib/explore/types";
 
 // 10-color palette, muted tones, dark-mode compatible
@@ -42,11 +50,26 @@ function formatDateTab(date: Date): string {
 
 function getHourKey(startTime: string | null): string | null {
   if (!startTime) return null;
-  // startTime is like "09:00" or "09:30" or "9:00 AM"
   const match = startTime.match(/^(\d{1,2})/);
   if (!match) return null;
   const hour = parseInt(match[1], 10);
   return `${hour.toString().padStart(2, "0")}:00`;
+}
+
+function collectUnique(sessions: CalendarSessionItem[], field: "type"): string[];
+function collectUnique(sessions: CalendarSessionItem[], field: "topic" | "technology"): string[];
+function collectUnique(sessions: CalendarSessionItem[], field: "type" | "topic" | "technology"): string[] {
+  const set = new Set<string>();
+  for (const s of sessions) {
+    if (field === "type") {
+      if (s.type) set.add(s.type);
+    } else {
+      for (const v of s[field]) {
+        if (v) set.add(v);
+      }
+    }
+  }
+  return Array.from(set).sort();
 }
 
 interface SessionCardProps {
@@ -99,30 +122,52 @@ interface SessionCalendarProps {
 }
 
 export function SessionCalendar({ sessions }: SessionCalendarProps) {
+  // Color map from ALL sessions (stable regardless of filters)
   const typeColorMap = useMemo(() => buildTypeColorMap(sessions), [sessions]);
 
-  // Group sessions by date string key
+  // Filter options derived from all sessions
+  const filterOptions = useMemo(() => ({
+    types: collectUnique(sessions, "type"),
+    topics: collectUnique(sessions, "topic"),
+    technologies: collectUnique(sessions, "technology"),
+  }), [sessions]);
+
+  // Filter state
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [topicFilter, setTopicFilter] = useState<string | null>(null);
+  const [techFilter, setTechFilter] = useState<string | null>(null);
+
+  const hasActiveFilters = typeFilter || topicFilter || techFilter;
+
+  // Filtered sessions
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((s) => {
+      if (typeFilter && s.type !== typeFilter) return false;
+      if (topicFilter && !s.topic.includes(topicFilter)) return false;
+      if (techFilter && !s.technology.includes(techFilter)) return false;
+      return true;
+    });
+  }, [sessions, typeFilter, topicFilter, techFilter]);
+
+  // Group filtered sessions by date
   const { dateGroups, dateKeys, unscheduled } = useMemo(() => {
     const groups = new Map<string, CalendarSessionItem[]>();
     const noDate: CalendarSessionItem[] = [];
 
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       if (!s.date) {
         noDate.push(s);
         continue;
       }
-      // Normalize to date-only string for grouping
       const d = new Date(s.date);
-      const key = d.toISOString().split("T")[0]; // "2026-03-17"
+      const key = d.toISOString().split("T")[0];
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(s);
     }
 
-    // Sort date keys chronologically
     const sortedKeys = Array.from(groups.keys()).sort();
-
     return { dateGroups: groups, dateKeys: sortedKeys, unscheduled: noDate };
-  }, [sessions]);
+  }, [filteredSessions]);
 
   const allTabKeys = [
     ...dateKeys,
@@ -130,6 +175,11 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   ];
 
   const [activeTab, setActiveTab] = useState(allTabKeys[0] ?? "unscheduled");
+
+  // Reset tab if the current tab is no longer available after filtering
+  const effectiveTab = allTabKeys.includes(activeTab)
+    ? activeTab
+    : allTabKeys[0] ?? "unscheduled";
 
   if (sessions.length === 0) {
     return (
@@ -139,8 +189,72 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     );
   }
 
+  const clearFilters = () => {
+    setTypeFilter(null);
+    setTopicFilter(null);
+    setTechFilter(null);
+  };
+
   return (
     <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        {filterOptions.types.length > 1 && (
+          <Select
+            value={typeFilter ?? "all"}
+            onValueChange={(v) => setTypeFilter(v === "all" ? null : v)}
+          >
+            <SelectTrigger className="w-45">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {filterOptions.types.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {filterOptions.topics.length > 1 && (
+          <Select
+            value={topicFilter ?? "all"}
+            onValueChange={(v) => setTopicFilter(v === "all" ? null : v)}
+          >
+            <SelectTrigger className="w-45">
+              <SelectValue placeholder="Topic" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Topics</SelectItem>
+              {filterOptions.topics.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {filterOptions.technologies.length > 1 && (
+          <Select
+            value={techFilter ?? "all"}
+            onValueChange={(v) => setTechFilter(v === "all" ? null : v)}
+          >
+            <SelectTrigger className="w-45">
+              <SelectValue placeholder="Technology" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Technologies</SelectItem>
+              {filterOptions.technologies.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        )}
+      </div>
+
       {/* Type color legend */}
       {typeColorMap.size > 0 && (
         <div className="flex flex-wrap gap-3">
@@ -156,45 +270,51 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-1 overflow-x-auto flex-nowrap">
+      {filteredSessions.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          No sessions match the selected filters.
+        </p>
+      ) : (
+        <Tabs value={effectiveTab} onValueChange={setActiveTab}>
+          <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-1 overflow-x-auto flex-nowrap">
+            {dateKeys.map((key) => (
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
+              >
+                {formatDateTab(new Date(key + "T00:00:00"))}
+              </TabsTrigger>
+            ))}
+            {unscheduled.length > 0 && (
+              <TabsTrigger
+                value="unscheduled"
+                className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
+              >
+                Unscheduled
+              </TabsTrigger>
+            )}
+          </TabsList>
+
           {dateKeys.map((key) => (
-            <TabsTrigger
-              key={key}
-              value={key}
-              className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
-            >
-              {formatDateTab(new Date(key + "T00:00:00"))}
-            </TabsTrigger>
+            <TabsContent key={key} value={key} className="mt-6">
+              <TimeSlotGrid
+                sessions={dateGroups.get(key) ?? []}
+                typeColorMap={typeColorMap}
+              />
+            </TabsContent>
           ))}
+
           {unscheduled.length > 0 && (
-            <TabsTrigger
-              value="unscheduled"
-              className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
-            >
-              Unscheduled
-            </TabsTrigger>
+            <TabsContent value="unscheduled" className="mt-6">
+              <TimeSlotGrid
+                sessions={unscheduled}
+                typeColorMap={typeColorMap}
+              />
+            </TabsContent>
           )}
-        </TabsList>
-
-        {dateKeys.map((key) => (
-          <TabsContent key={key} value={key} className="mt-6">
-            <TimeSlotGrid
-              sessions={dateGroups.get(key) ?? []}
-              typeColorMap={typeColorMap}
-            />
-          </TabsContent>
-        ))}
-
-        {unscheduled.length > 0 && (
-          <TabsContent value="unscheduled" className="mt-6">
-            <TimeSlotGrid
-              sessions={unscheduled}
-              typeColorMap={typeColorMap}
-            />
-          </TabsContent>
-        )}
-      </Tabs>
+        </Tabs>
+      )}
     </div>
   );
 }

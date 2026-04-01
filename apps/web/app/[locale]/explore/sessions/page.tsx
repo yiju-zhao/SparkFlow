@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getSessions, getFilterOptions } from "@/lib/explore/queries";
+import { getSessions, getFilteredSessionOptions } from "@/lib/explore/queries";
 import { parseSessionFilters, PAGE_SIZE } from "@/lib/explore/filters";
 import {
   FilterBar,
@@ -30,7 +30,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
   // Parallel fetch (follows async-parallel best practice)
   const [result, filterOptions] = await Promise.all([
     getSessions(filters),
-    getFilterOptions(),
+    getFilteredSessionOptions(filters),
   ]);
 
   const filterConfigs: FilterConfig[] = [

@@ -20,17 +20,17 @@ interface PageProps {
 }
 
 function FormatBadge({ format }: { format: string }) {
-  const config: Record<string, { label: string; icon: React.ReactNode }> = {
-    IN_PERSON: { label: "In Person", icon: <Users className="h-3.5 w-3.5" /> },
-    VIRTUAL: { label: "Virtual", icon: <Monitor className="h-3.5 w-3.5" /> },
-    BOTH: { label: "Hybrid", icon: <Globe className="h-3.5 w-3.5" /> },
+  const iconMap: Record<string, React.ReactNode> = {
+    IN_PERSON: <Users className="h-3.5 w-3.5" />,
+    VIRTUAL: <Monitor className="h-3.5 w-3.5" />,
+    BOTH: <Globe className="h-3.5 w-3.5" />,
   };
-  const c = config[format];
-  if (!c) return null;
+  const icon = iconMap[format] ?? <Globe className="h-3.5 w-3.5" />;
+  const label = format.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return (
     <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm text-muted-foreground">
-      {c.icon}
-      {c.label}
+      {icon}
+      {label}
     </span>
   );
 }
