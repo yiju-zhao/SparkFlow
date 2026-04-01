@@ -19,6 +19,7 @@ import type {
   PublicationDetail,
   SessionListItem,
   SessionDetail,
+  CalendarSessionItem,
   FilterOptions,
   PaginatedResult,
 } from "./types";
@@ -693,6 +694,26 @@ export const getSessions = cache(
       page: filters.page,
       pageSize: PAGE_SIZE,
     };
+  },
+);
+
+export const getConferenceSessions = cache(
+  async (instanceId: string): Promise<CalendarSessionItem[]> => {
+    return prisma.conferenceSession.findMany({
+      where: { instanceId },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        location: true,
+        speaker: true,
+        sessionUrl: true,
+      },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+    });
   },
 );
 
