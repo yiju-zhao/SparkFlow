@@ -1,13 +1,38 @@
-// apps/web/app/explore/sessions/[id]/page.tsx
-
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/explore/queries";
-import { Calendar, Clock, MapPin, User, ExternalLink } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  ExternalLink,
+  Video,
+  Monitor,
+  Users,
+  Globe,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { SetAIContext } from "@/components/explore/set-ai-context";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+function FormatBadge({ format }: { format: string }) {
+  const config: Record<string, { label: string; icon: React.ReactNode }> = {
+    IN_PERSON: { label: "In Person", icon: <Users className="h-3.5 w-3.5" /> },
+    VIRTUAL: { label: "Virtual", icon: <Monitor className="h-3.5 w-3.5" /> },
+    BOTH: { label: "Hybrid", icon: <Globe className="h-3.5 w-3.5" /> },
+  };
+  const c = config[format];
+  if (!c) return null;
+  return (
+    <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm text-muted-foreground">
+      {c.icon}
+      {c.label}
+    </span>
+  );
 }
 
 export default async function SessionDetailPage({ params }: PageProps) {
@@ -26,6 +51,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
           sessionTitle: session.title,
         }}
       />
+
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
         ~/research-hub/sessions/{session.instance.venue.name.toLowerCase()}/
@@ -33,11 +59,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
       </p>
 
       {/* Title */}
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight mb-4">
-          {session.title}
-        </h1>
-      </div>
+      <h1 className="text-4xl font-bold tracking-tight">{session.title}</h1>
 
       {/* Metadata pills */}
       <div className="flex flex-wrap items-center gap-3">
@@ -71,17 +93,21 @@ export default async function SessionDetailPage({ params }: PageProps) {
             {session.location}
           </span>
         )}
-        {session.speaker && (
+        {session.sessionFormat && (
+          <FormatBadge format={session.sessionFormat} />
+        )}
+        {session.intendedAudience && (
           <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm text-muted-foreground">
-            <User className="h-3.5 w-3.5" />
-            {session.speaker}
+            {session.intendedAudience}
           </span>
         )}
-      </div>
-
-      {/* Actions */}
-      {session.sessionUrl && (
-        <div className="flex flex-wrap gap-3">
+        {session.hasRecording && (
+          <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm text-emerald-600 dark:text-emerald-400">
+            <Video className="h-3.5 w-3.5" />
+            Recording Available
+          </span>
+        )}
+        {session.sessionUrl && (
           <a
             href={session.sessionUrl}
             target="_blank"
@@ -91,6 +117,67 @@ export default async function SessionDetailPage({ params }: PageProps) {
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
             View Session
           </a>
+        )}
+      </div>
+
+      {/* Speakers */}
+      {session.speaker.length > 0 && (
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap gap-2">
+            {session.speaker.map((name) => (
+              <span
+                key={name}
+                className="px-2.5 py-1 bg-muted rounded-md text-sm"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tags */}
+      {(session.topic.length > 0 ||
+        session.technology.length > 0 ||
+        session.affiliation.length > 0) && (
+        <div className="space-y-3">
+          {session.topic.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Topics
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {session.topic.map((t) => (
+                  <Badge key={t} variant="secondary">{t}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {session.technology.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Technologies
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {session.technology.map((t) => (
+                  <Badge key={t} variant="secondary">{t}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {session.affiliation.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Affiliations
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {session.affiliation.map((a) => (
+                  <Badge key={a} variant="secondary">{a}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
