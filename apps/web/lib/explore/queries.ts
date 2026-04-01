@@ -713,6 +713,12 @@ export const getSession = cache(
         overview: true,
         transcript: true,
         sessionUrl: true,
+        topic: true,
+        affiliation: true,
+        technology: true,
+        sessionFormat: true,
+        hasRecording: true,
+        intendedAudience: true,
         instance: {
           select: {
             id: true,

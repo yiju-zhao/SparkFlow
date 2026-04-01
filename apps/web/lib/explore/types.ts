@@ -142,6 +142,18 @@ export interface SessionListItem {
   instance: { name: string; year: number; venue: { name: string } };
 }
 
+export interface CalendarSessionItem {
+  id: string;
+  title: string;
+  type: string | null;
+  date: Date | null;
+  startTime: string | null;
+  endTime: string | null;
+  location: string | null;
+  speaker: string[];
+  sessionUrl: string | null;
+}
+
 export interface SessionDetail {
   id: string;
   title: string;
@@ -155,6 +167,12 @@ export interface SessionDetail {
   overview: string | null;
   transcript: string | null;
   sessionUrl: string | null;
+  topic: string[];
+  affiliation: string[];
+  technology: string[];
+  sessionFormat: "IN_PERSON" | "VIRTUAL" | "BOTH" | null;
+  hasRecording: boolean;
+  intendedAudience: string | null;
   instance: { id: string; name: string; year: number; venue: { name: string } };
   publications: { id: string; title: string; authors: string[] }[];
 }
