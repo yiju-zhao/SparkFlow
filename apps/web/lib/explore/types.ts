@@ -152,6 +152,8 @@ export interface CalendarSessionItem {
   location: string | null;
   speaker: string[];
   sessionUrl: string | null;
+  topic: string[];
+  technology: string[];
 }
 
 export interface SessionDetail {

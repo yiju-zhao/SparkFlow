@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getPublications, getFilterOptions } from "@/lib/explore/queries";
+import { getPublications, getFilteredPublicationOptions, getFilterOptions } from "@/lib/explore/queries";
 import { parsePublicationFilters, PAGE_SIZE } from "@/lib/explore/filters";
 import {
   FilterBar,
@@ -29,10 +29,18 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
   const tFilters = await getTranslations("explore.filters");
 
   // Parallel fetch (follows async-parallel best practice)
-  const [result, filterOptions] = await Promise.all([
+  const [result, filteredOptions, globalOptions] = await Promise.all([
     getPublications(filters),
+    getFilteredPublicationOptions(filters),
     getFilterOptions(),
   ]);
+
+  // Use cascading options for venue/year/topic/status, global for affiliations/countries
+  const filterOptions = {
+    ...filteredOptions,
+    affiliations: globalOptions.affiliations,
+    countries: globalOptions.countries,
+  };
 
   const filterConfigs: FilterConfig[] = [
     {

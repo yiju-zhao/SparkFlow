@@ -193,6 +193,216 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
   return result;
 });
 
+// ============ CASCADING FILTER OPTIONS ============
+
+interface SessionFilterOptions {
+  venues: { id: string; name: string }[];
+  years: number[];
+  sessionTypes: string[];
+}
+
+export const getFilteredSessionOptions = cache(
+  async (filters: SessionFilters): Promise<SessionFilterOptions> => {
+    const cacheKey = `session-opts-${filters.venue ?? ""}-${filters.year ?? ""}-${filters.type ?? ""}`;
+    const cached = filterOptionsCache.get(cacheKey);
+    if (cached) {
+      return cached as unknown as SessionFilterOptions;
+    }
+
+    // Build where clause helpers
+    const buildSessionWhere = (
+      excludeKey?: "venue" | "year" | "type",
+    ): Prisma.ConferenceSessionWhereInput => {
+      const where: Prisma.ConferenceSessionWhereInput = {};
+      const instanceWhere: Prisma.InstanceWhereInput = {};
+
+      if (excludeKey !== "venue" && filters.venue) {
+        instanceWhere.venueId = filters.venue;
+      }
+      if (excludeKey !== "year" && filters.year) {
+        instanceWhere.year = filters.year;
+      }
+      if (Object.keys(instanceWhere).length > 0) {
+        where.instance = instanceWhere;
+      }
+      if (excludeKey !== "type" && filters.type) {
+        where.type = filters.type;
+      }
+      return where;
+    };
+
+    const [venueInstances, yearInstances, types] = await Promise.all([
+      // Venues: get instances matching year + type filters
+      prisma.instance.findMany({
+        where: {
+          ...(filters.year ? { year: filters.year } : {}),
+          ...(filters.type
+            ? { sessions: { some: { type: filters.type } } }
+            : { sessions: { some: {} } }),
+        },
+        select: { venue: { select: { id: true, name: true } } },
+        distinct: ["venueId"],
+      }),
+      // Years: get instances matching venue + type filters
+      prisma.instance.findMany({
+        where: {
+          ...(filters.venue ? { venueId: filters.venue } : {}),
+          ...(filters.type
+            ? { sessions: { some: { type: filters.type } } }
+            : { sessions: { some: {} } }),
+        },
+        select: { year: true },
+        distinct: ["year"],
+        orderBy: { year: "desc" },
+      }),
+      // Types: get distinct types from sessions matching venue + year
+      prisma.conferenceSession.findMany({
+        where: buildSessionWhere("type"),
+        select: { type: true },
+        distinct: ["type"],
+      }),
+    ]);
+
+    const uniqueVenues = new Map<string, string>();
+    for (const inst of venueInstances) {
+      uniqueVenues.set(inst.venue.id, inst.venue.name);
+    }
+
+    const result: SessionFilterOptions = {
+      venues: Array.from(uniqueVenues.entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      years: yearInstances.map((y) => y.year),
+      sessionTypes: types
+        .map((s) => s.type)
+        .filter((s): s is string => s !== null && s !== ""),
+    };
+
+    filterOptionsCache.set(cacheKey, result as unknown as FilterOptions);
+    return result;
+  },
+);
+
+interface PublicationFilterOptions {
+  venues: { id: string; name: string }[];
+  years: number[];
+  topics: string[];
+  statuses: string[];
+  affiliations: string[];
+  countries: string[];
+}
+
+export const getFilteredPublicationOptions = cache(
+  async (filters: PublicationFilters): Promise<PublicationFilterOptions> => {
+    const cacheKey = `pub-opts-${filters.venue ?? ""}-${filters.year ?? ""}-${filters.topic ?? ""}-${filters.status ?? ""}-${filters.affiliation ?? ""}-${filters.country ?? ""}`;
+    const cached = filterOptionsCache.get(cacheKey);
+    if (cached) {
+      return cached as unknown as PublicationFilterOptions;
+    }
+
+    // Build where clause excluding one dimension at a time
+    const buildPubWhere = (
+      excludeKey?: "venue" | "year" | "topic" | "status" | "affiliation" | "country",
+    ): Prisma.PublicationWhereInput => {
+      const where: Prisma.PublicationWhereInput = {};
+      const instanceWhere: Prisma.InstanceWhereInput = {};
+
+      if (excludeKey !== "venue" && filters.venue) {
+        instanceWhere.venueId = filters.venue;
+      }
+      if (excludeKey !== "year" && filters.year) {
+        instanceWhere.year = filters.year;
+      }
+      if (Object.keys(instanceWhere).length > 0) {
+        where.instance = instanceWhere;
+      }
+      if (excludeKey !== "topic" && filters.topic) {
+        where.researchTopic = filters.topic;
+      }
+      if (excludeKey !== "status" && filters.status) {
+        where.status = filters.status;
+      }
+      if (excludeKey !== "affiliation" && filters.affiliation) {
+        where.affiliations = { has: filters.affiliation };
+      }
+      if (excludeKey !== "country" && filters.country) {
+        where.countries = { has: filters.country };
+      }
+
+      // Default: hide rejected/withdrawn unless specific status selected or showExcluded
+      if (!filters.status && !filters.showExcluded) {
+        where.OR = [
+          { status: { notIn: ["Reject", "Withdrawal"] } },
+          { status: null },
+        ];
+      }
+
+      return where;
+    };
+
+    const [venueInstances, yearInstances, topics, statuses] = await Promise.all([
+      // Venues
+      prisma.instance.findMany({
+        where: {
+          ...(filters.year ? { year: filters.year } : {}),
+          publications: { some: buildPubWhere("venue") },
+        },
+        select: { venue: { select: { id: true, name: true } } },
+        distinct: ["venueId"],
+      }),
+      // Years
+      prisma.instance.findMany({
+        where: {
+          ...(filters.venue ? { venueId: filters.venue } : {}),
+          publications: { some: buildPubWhere("year") },
+        },
+        select: { year: true },
+        distinct: ["year"],
+        orderBy: { year: "desc" },
+      }),
+      // Topics
+      prisma.publication.findMany({
+        where: { ...buildPubWhere("topic"), researchTopic: { not: null, notIn: [""] } },
+        select: { researchTopic: true },
+        distinct: ["researchTopic"],
+      }),
+      // Statuses
+      prisma.publication.findMany({
+        where: { ...buildPubWhere("status"), status: { not: null, notIn: [""] } },
+        select: { status: true },
+        distinct: ["status"],
+      }),
+    ]);
+
+    const uniqueVenues = new Map<string, string>();
+    for (const inst of venueInstances) {
+      uniqueVenues.set(inst.venue.id, inst.venue.name);
+    }
+
+    const result: PublicationFilterOptions = {
+      venues: Array.from(uniqueVenues.entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      years: yearInstances.map((y) => y.year),
+      topics: topics
+        .map((t) => t.researchTopic)
+        .filter((t): t is string => t !== null)
+        .sort((a, b) => a.localeCompare(b)),
+      statuses: statuses
+        .map((s) => s.status)
+        .filter((s): s is string => s !== null)
+        .sort((a, b) => a.localeCompare(b)),
+      // Affiliations and countries are expensive array-unnest queries;
+      // keep them global (from getFilterOptions) for simplicity
+      affiliations: [],
+      countries: [],
+    };
+
+    filterOptionsCache.set(cacheKey, result as unknown as FilterOptions);
+    return result;
+  },
+);
+
 // ============ CONFERENCES ============
 
 export const getConferences = cache(
@@ -711,6 +921,8 @@ export const getConferenceSessions = cache(
         location: true,
         speaker: true,
         sessionUrl: true,
+        topic: true,
+        technology: true,
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
