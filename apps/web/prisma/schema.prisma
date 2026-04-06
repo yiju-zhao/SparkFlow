@@ -135,7 +135,7 @@ model SourceImage {
   sourceId     String
   originalName String // Original filename (e.g., "image_0.png")
   data         Bytes  // Raw image binary (bytea)
-  mimeType     String? // MIME type (e.g., "image/png")
+  mimeType     String // MIME type (e.g., "image/png")
   width        Int?
   height       Int?
   createdAt    DateTime @default(now())
@@ -171,9 +171,6 @@ model ChatSession {
 
   // LangGraph Integration
   langgraphThreadId String? @unique // Separate from session ID, can be regenerated
-
-  // RagFlow Integration
-  ragflowAgentId String?
 
   // Timestamps
   startedAt    DateTime  @default(now())
