@@ -66,14 +66,7 @@ function NotebookLayoutInner({
   const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  const [targetChunkId, setTargetChunkId] = useState<string | null>(null);
-  const [targetContentPreview, setTargetContentPreview] = useState<
-    string | null
-  >(null);
-  const [targetContentSuffix, setTargetContentSuffix] = useState<string | null>(
-    null,
-  );
-  const [navigationTrigger, setNavigationTrigger] = useState(0);
+  // Citation navigation state (placeholder for future PageIndex-based navigation)
 
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
@@ -130,31 +123,12 @@ function NotebookLayoutInner({
     }
   }, []);
 
-  // Handle citation click - look up chunk via API to find source
-  const handleCitationNavigate = useCallback(async (chunkId: string) => {
-    try {
-      const res = await fetch(`/api/chunks/${chunkId}`);
-      if (!res.ok) {
-        console.warn(`Chunk ${chunkId} not found`);
-        return;
-      }
-      const data = await res.json();
-      const { contentPreview, contentSuffix, source } = data;
-
-      if (source) {
-        // Expand sources panel if collapsed, snap to content width
-        if (sourcesWidth === 0) {
-          setSourcesWidth(SOURCES_CONTENT_WIDTH);
-        }
-        // Use the source from API response (guaranteed to have fresh content)
-        setSelectedSource(source as Source);
-        setTargetChunkId(chunkId);
-        setTargetContentPreview(contentPreview);
-        setTargetContentSuffix(contentSuffix || null);
-        setNavigationTrigger((n) => n + 1); // Force effect to run
-      }
-    } catch (error) {
-      console.error("Failed to navigate to chunk:", error);
+  // Handle citation click — placeholder for future PageIndex-based navigation
+  const handleCitationNavigate = useCallback(async (_refId: string) => {
+    // TODO: Implement PageIndex section-based citation navigation
+    // For now, just expand the sources panel
+    if (sourcesWidth === 0) {
+      setSourcesWidth(SOURCES_CONTENT_WIDTH);
     }
   }, [sourcesWidth]);
 
@@ -163,13 +137,6 @@ function NotebookLayoutInner({
     setOnNavigate(handleCitationNavigate);
     return () => setOnNavigate(null);
   }, [setOnNavigate, handleCitationNavigate]);
-
-  // Memoized callback for chunk navigation cleanup
-  const handleChunkNavigated = useCallback(() => {
-    setTargetChunkId(null);
-    setTargetContentPreview(null);
-    setTargetContentSuffix(null);
-  }, []);
 
   // Determine if panels are collapsed
   const sourcesCollapsed = sourcesWidth === 0;

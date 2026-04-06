@@ -7,7 +7,7 @@ export type {
   User,
   Notebook,
   Source,
-  Chunk,
+
   ChatSession,
   ChatMessage,
   Note,
@@ -17,7 +17,7 @@ export type {
 /**
  * Source status enum values.
  */
-export type SourceStatus = "UPLOADING" | "PROCESSING" | "READY" | "FAILED";
+export type SourceStatus = "UPLOADING" | "PROCESSING" | "READY" | "PARTIAL" | "FAILED";
 
 /**
  * Source type enum values.
