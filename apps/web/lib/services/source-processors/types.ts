@@ -3,7 +3,6 @@
  */
 export interface ProcessingContext {
   sourceId: string;
-  ragflowDatasetId: string | null;
   notebookId: string;
 }
 
@@ -13,7 +12,6 @@ export interface ProcessingContext {
 export interface ProcessingResult {
   success: boolean;
   content?: string;
-  ragflowDocumentId?: string;
   metadata?: Record<string, unknown>;
   errorMessage?: string;
 }
@@ -24,8 +22,8 @@ export interface ProcessingResult {
 export interface SourceUpdateData {
   title?: string;
   content?: string;
-  ragflowDocumentId?: string;
-  status: "UPLOADING" | "PROCESSING" | "READY" | "FAILED";
+  markdownContent?: string;
+  status: "UPLOADING" | "PROCESSING" | "READY" | "PARTIAL" | "FAILED";
   errorMessage?: string | null;
   metadata?: Record<string, unknown>;
 }

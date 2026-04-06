@@ -10,17 +10,41 @@ import {
 } from "./source-processors/fallback-processor";
 import type { Source } from "@prisma/client";
 
+/**
+ * Store extracted images in PostgreSQL and rewrite markdown image references.
+ */
+export async function storeImagesAndRewriteMarkdown(
+  sourceId: string,
+  markdown: string,
+  images: { name: string; data: Buffer; mimeType: string }[]
+): Promise<string> {
+  let rewrittenMarkdown = markdown;
+
+  for (const image of images) {
+    const savedImage = await prisma.sourceImage.create({
+      data: {
+        sourceId,
+        originalName: image.name,
+        mimeType: image.mimeType,
+        data: image.data,
+      },
+    });
+
+    rewrittenMarkdown = rewrittenMarkdown.replaceAll(
+      image.name,
+      `/api/images/${savedImage.id}`
+    );
+  }
+
+  return rewrittenMarkdown;
+}
+
 class SourceService {
-  /**
-   * Add a webpage source to a notebook.
-   */
   async addWebpageSource(
     notebookId: string,
-    ragflowDatasetId: string | null,
     url: string,
     title?: string,
   ): Promise<Source> {
-    // Create source with PROCESSING status
     const source = await prisma.source.create({
       data: {
         notebookId,
@@ -31,13 +55,10 @@ class SourceService {
       },
     });
 
-    // Revalidate immediately so it shows up in the list
     revalidatePath(`/deepdive/${notebookId}`);
 
-    // Process in the background (fire and forget)
     const context: ProcessingContext = {
       sourceId: source.id,
-      ragflowDatasetId,
       notebookId,
     };
 
@@ -49,15 +70,10 @@ class SourceService {
     return source;
   }
 
-  /**
-   * Upload a document source to a notebook.
-   */
   async uploadDocumentSource(
     notebookId: string,
-    ragflowDatasetId: string | null,
     file: File,
   ): Promise<Source> {
-    // Create source with PROCESSING status
     const source = await prisma.source.create({
       data: {
         notebookId,
@@ -67,13 +83,10 @@ class SourceService {
       },
     });
 
-    // Revalidate immediately so it shows up in the list
     revalidatePath(`/deepdive/${notebookId}`);
 
-    // Process in the background (fire and forget)
     const context: ProcessingContext = {
       sourceId: source.id,
-      ragflowDatasetId,
       notebookId,
     };
 
@@ -86,9 +99,6 @@ class SourceService {
     return source;
   }
 
-  /**
-   * Process a document based on its file type.
-   */
   private async processDocument(
     file: File,
     fileExtension: string,
@@ -105,9 +115,6 @@ class SourceService {
     }
   }
 
-  /**
-   * Run a processing function in the background with error handling.
-   */
   private processInBackground(
     processFn: () => Promise<unknown>,
     notebookId: string,
@@ -115,7 +122,6 @@ class SourceService {
     processFn()
       .catch(console.error)
       .finally(() => {
-        // Final revalidate to update status
         try {
           revalidatePath(`/deepdive/${notebookId}`);
         } catch {

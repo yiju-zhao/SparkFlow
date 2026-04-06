@@ -15,7 +15,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings } from "lucide-react";
+import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings, Shield } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -27,6 +27,7 @@ interface UserNavProps {
     name?: string | null;
     email?: string | null;
     image?: string | null;
+    role?: string | null;
   };
 }
 
@@ -98,6 +99,14 @@ export function UserNav({ user }: UserNavProps) {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          {user.role === "ADMIN" && (
+            <DropdownMenuItem asChild>
+              <Link href={`/${locale}/admin`}>
+                <Shield className="mr-2 h-4 w-4" />
+                <span>Admin</span>
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href={`/${locale}/settings`}>
               <Settings className="mr-2 h-4 w-4" />

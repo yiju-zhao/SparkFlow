@@ -1,7 +1,7 @@
 import { getInstances } from "@/lib/actions/admin";
-import { SessionList } from "./components/session-list";
+import { PublicationList } from "./components/publication-list";
 
-export default async function SessionsPage() {
+export default async function PublicationsPage() {
   const instances = await getInstances();
 
   const instanceList = instances.map((inst) => ({
@@ -11,5 +11,5 @@ export default async function SessionsPage() {
     venue: { name: inst.venue.name },
   }));
 
-  return <SessionList instances={instanceList} />;
+  return <PublicationList instances={instanceList} />;
 }

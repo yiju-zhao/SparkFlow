@@ -35,6 +35,12 @@ export default function AdminLayout({
             Sessions
           </Link>
           <Link
+            href="/admin/publications"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Publications
+          </Link>
+          <Link
             href="/admin/users"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
