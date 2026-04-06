@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+type Page = import("playwright").Page;
 
 interface ScrapeResult {
   markdown: string;

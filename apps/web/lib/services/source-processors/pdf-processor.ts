@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { parsePdf } from "@/lib/services/mineru-client";
 import { storeImagesAndRewriteMarkdown } from "@/lib/services/source-service";
 import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
 import type { ProcessingContext, ProcessingResult } from "./types";
@@ -24,6 +23,7 @@ export async function processPdfDocument(
 
     let mineruResult;
     try {
+      const { parsePdf } = await import("@/lib/services/mineru-client");
       mineruResult = await parsePdf(tempPath);
     } finally {
       await unlink(tempPath).catch(() => {});

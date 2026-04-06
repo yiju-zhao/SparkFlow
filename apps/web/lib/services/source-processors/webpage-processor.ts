@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { scrapeWebpage } from "@/lib/services/playwright-scraper";
 import { storeImagesAndRewriteMarkdown } from "@/lib/services/source-service";
 import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
 import type { ProcessingContext, ProcessingResult } from "./types";
@@ -17,6 +16,7 @@ export async function processWebpage(
       data: { status: "PROCESSING" },
     });
 
+    const { scrapeWebpage } = await import("@/lib/services/playwright-scraper");
     const result = await scrapeWebpage(url);
 
     const markdown = await storeImagesAndRewriteMarkdown(
