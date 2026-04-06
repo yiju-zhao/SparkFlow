@@ -19,7 +19,7 @@ from langgraph.runtime import Runtime
 
 from config.rag_agent import AgentContext
 from prompts.rag_agent import RAG_AGENT_SYSTEM_PROMPT
-from tools.ragflow import explore, search, probe, get_first_chunk
+from tools.pageindex_tools import pageindex_tools
 from middleware.sources_context import inject_sources_context
 from middleware.query_optimizer import optimize_query
 
@@ -37,7 +37,7 @@ def _build_agent(model):
         model=model,
         backend=FilesystemBackend(root_dir="."),
         skills=["./skills/"],
-        tools=[explore, search, probe, get_first_chunk],
+        tools=pageindex_tools,
         system_prompt=RAG_AGENT_SYSTEM_PROMPT,
         middleware=[inject_sources_context, optimize_query],
         context_schema=AgentContext,

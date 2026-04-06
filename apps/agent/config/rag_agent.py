@@ -21,7 +21,6 @@ class AgentContext:
     via runtime.context in tools and middleware.
     """
 
-    dataset_ids: list[str] = field(default_factory=list)
     sources_context: list[dict[str, Any]] = field(default_factory=list)
     model_provider: str = os.getenv("DEFAULT_MODEL_PROVIDER", "openai")
     model_name: str = os.getenv("DEFAULT_MODEL_NAME", "gpt-4o")
