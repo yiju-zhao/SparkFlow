@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Check, Copy } from "lucide-react";
 
 interface FormatGuideDialogProps {
   publicationSample: unknown;
@@ -46,6 +48,29 @@ const sessionFields = [
   "sessions[].intendedAudience",
   "sessions[].publicationTitles",
 ];
+
+function CopyMarkdownButton({ json, label }: { json: unknown; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    const md = `# ${label} Import Format\n\n\`\`\`json\n${JSON.stringify(json, null, 2)}\n\`\`\``;
+    navigator.clipboard.writeText(md).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleCopy}>
+      {copied ? (
+        <Check className="mr-2 h-3.5 w-3.5" />
+      ) : (
+        <Copy className="mr-2 h-3.5 w-3.5" />
+      )}
+      {copied ? "Copied!" : "Copy as Markdown"}
+    </Button>
+  );
+}
 
 export function FormatGuideDialog({
   publicationSample,
@@ -105,10 +130,11 @@ export function FormatGuideDialog({
             </Card>
 
             <div className="overflow-hidden rounded-lg border">
-              <div className="border-b bg-muted/30 px-4 py-2 text-sm font-medium">
-                Example JSON
+              <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
+                <span className="text-sm font-medium">Example JSON</span>
+                <CopyMarkdownButton json={publicationSample} label="Publications" />
               </div>
-              <pre className="max-h-[68vh] overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
+              <pre className="overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
                 {JSON.stringify(publicationSample, null, 2)}
               </pre>
             </div>
@@ -148,10 +174,11 @@ export function FormatGuideDialog({
             </Card>
 
             <div className="overflow-hidden rounded-lg border">
-              <div className="border-b bg-muted/30 px-4 py-2 text-sm font-medium">
-                Example JSON
+              <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
+                <span className="text-sm font-medium">Example JSON</span>
+                <CopyMarkdownButton json={sessionSample} label="Sessions" />
               </div>
-              <pre className="max-h-[68vh] overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
+              <pre className="overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
                 {JSON.stringify(sessionSample, null, 2)}
               </pre>
             </div>

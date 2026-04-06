@@ -310,3 +310,117 @@ export async function deleteSession(id: string) {
   await prisma.conferenceSession.delete({ where: { id } });
   revalidatePath("/admin/sessions");
 }
+
+export async function searchSessions(query: string, instanceId?: string) {
+  await requireAdminUser();
+
+  const where: Record<string, unknown> = {};
+  if (instanceId) where.instanceId = instanceId;
+  if (query.trim()) {
+    where.title = { contains: query.trim(), mode: "insensitive" };
+  }
+
+  return prisma.conferenceSession.findMany({
+    where,
+    include: {
+      instance: {
+        select: {
+          id: true,
+          name: true,
+          year: true,
+          venue: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: [{ date: "asc" }, { title: "asc" }],
+    take: 20,
+  });
+}
+
+// ============================================
+// Publication Actions
+// ============================================
+
+export async function searchPublications(query: string, instanceId?: string) {
+  await requireAdminUser();
+
+  const where: Record<string, unknown> = {};
+  if (instanceId) where.instanceId = instanceId;
+  if (query.trim()) {
+    where.title = { contains: query.trim(), mode: "insensitive" };
+  }
+
+  return prisma.publication.findMany({
+    where,
+    include: {
+      instance: {
+        select: {
+          id: true,
+          name: true,
+          year: true,
+          venue: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: [{ title: "asc" }],
+    take: 20,
+  });
+}
+
+export async function createPublication(data: {
+  instanceId: string;
+  title: string;
+  authors?: string[];
+  abstract?: string;
+  summary?: string;
+  affiliations?: string[];
+  countries?: string[];
+  keywords?: string[];
+  researchTopic?: string;
+  rating?: number;
+  status?: string;
+  doi?: string;
+  pdfUrl?: string;
+  githubUrl?: string;
+  websiteUrl?: string;
+}) {
+  await requireAdminUser();
+
+  const publication = await prisma.publication.create({ data });
+  revalidatePath("/admin/publications");
+  return publication;
+}
+
+export async function updatePublication(
+  id: string,
+  data: {
+    instanceId?: string;
+    title?: string;
+    authors?: string[];
+    abstract?: string;
+    summary?: string;
+    affiliations?: string[];
+    countries?: string[];
+    keywords?: string[];
+    researchTopic?: string;
+    rating?: number | null;
+    status?: string;
+    doi?: string;
+    pdfUrl?: string;
+    githubUrl?: string;
+    websiteUrl?: string;
+  },
+) {
+  await requireAdminUser();
+
+  const publication = await prisma.publication.update({ where: { id }, data });
+  revalidatePath("/admin/publications");
+  return publication;
+}
+
+export async function deletePublication(id: string) {
+  await requireAdminUser();
+
+  await prisma.publication.delete({ where: { id } });
+  revalidatePath("/admin/publications");
+}
