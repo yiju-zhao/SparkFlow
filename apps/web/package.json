@@ -38,6 +38,7 @@
     "exceljs": "^4.4.0",
     "framer-motion": "^12.23.26",
     "geist": "^1.5.1",
+    "jszip": "^3.10.1",
     "katex": "^0.16.27",
     "lru-cache": "^11.2.5",
     "lucide-react": "^0.562.0",
