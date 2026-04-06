@@ -52,28 +52,16 @@ interface SourceMetadata {
 
 interface SourcesPanelProps {
   notebookId: string;
-  datasetId?: string | null;
   sources: Source[];
   selectedSource: Source | null;
   onSelectSource: (source: Source | null) => void;
-  targetChunkId?: string | null;
-  targetContentPreview?: string | null;
-  targetContentSuffix?: string | null;
-  navigationTrigger?: number;
-  onChunkNavigated?: () => void;
 }
 
 export function SourcesPanel({
   notebookId,
-  datasetId,
   sources,
   selectedSource,
   onSelectSource,
-  targetChunkId,
-  targetContentPreview,
-  targetContentSuffix,
-  navigationTrigger,
-  onChunkNavigated,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: liveSources = sources } = useQuery<Source[]>({
@@ -89,11 +77,11 @@ export function SourcesPanel({
     initialData: sources,
     refetchInterval: (query) => {
       const list = query.state.data || sources;
-      const shouldPoll = list.some(
+      const hasProcessing = list.some(
         (sourceItem) =>
-          sourceItem.status === "PROCESSING" && sourceItem.ragflowDocumentId,
+          sourceItem.status === "PROCESSING" || sourceItem.status === "UPLOADING",
       );
-      return shouldPoll ? 5000 : 15000;
+      return hasProcessing ? 5000 : false;
     },
     refetchOnReconnect: true,
     refetchOnWindowFocus: true,
@@ -106,12 +94,6 @@ export function SourcesPanel({
       <SourceContentView
         key={selectedSource.id}
         source={selectedSource}
-        datasetId={datasetId}
-        targetChunkId={targetChunkId}
-        targetContentPreview={targetContentPreview}
-        targetContentSuffix={targetContentSuffix}
-        navigationTrigger={navigationTrigger}
-        onChunkNavigated={onChunkNavigated}
         onBack={() => onSelectSource(null)}
       />
     );
@@ -180,24 +162,7 @@ const SourceItem = memo(function SourceItem({
 }) {
   const [isPending, startTransition] = useTransition();
   const relativeTime = useRelativeTime(new Date(source.createdAt));
-  const ragflowMeta = useMemo(
-    () => (source.metadata as Record<string, unknown> | null) || {},
-    [source.metadata],
-  );
   const queryClient = useQueryClient();
-
-  const ragflowRun =
-    (ragflowMeta.ragflowRun as string | undefined)?.toString().toUpperCase() ||
-    null;
-  const ragflowProgress =
-    typeof ragflowMeta.ragflowProgress === "number"
-      ? ragflowMeta.ragflowProgress
-      : null;
-
-  const isRunning =
-    ragflowRun === "RUNNING" ||
-    ragflowRun === "1" ||
-    source.status === "PROCESSING";
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     startTransition(async () => {
@@ -234,18 +199,16 @@ const SourceItem = memo(function SourceItem({
           <span>•</span>
           {relativeTime && <span suppressHydrationWarning>{relativeTime}</span>}
         </div>
-        {isRunning && (
+        {source.status === "PROCESSING" && (
           <div className="mt-1 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300">
             <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-1 dark:bg-amber-900/50">
-              <span className="relative flex h-3 w-3">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
-              </span>
-              {typeof ragflowProgress === "number"
-                ? `Indexing on RagFlow · ${Math.round(ragflowProgress * 100)}%`
-                : "Indexing on RagFlow"}
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Processing...
             </span>
           </div>
+        )}
+        {source.status === "PARTIAL" && (
+          <p className="mt-1 text-[11px] text-yellow-600 dark:text-yellow-400">Preview only</p>
         )}
         {source.status === "FAILED" && source.errorMessage && (
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
@@ -258,32 +221,13 @@ const SourceItem = memo(function SourceItem({
 // Source content viewer - shows title and markdown content with TOC button
 function SourceContentView({
   source,
-  targetChunkId,
-  targetContentPreview,
-  targetContentSuffix,
-  navigationTrigger,
-  onChunkNavigated,
   onBack,
 }: {
   source: Source;
-  datasetId?: string | null;
-  targetChunkId?: string | null;
-  targetContentPreview?: string | null;
-  targetContentSuffix?: string | null;
-  navigationTrigger?: number;
-  onChunkNavigated?: () => void;
   onBack: () => void;
 }) {
   const [showToc, setShowToc] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pendingNavigationRef = useRef<{
-    preview: string;
-    suffix: string | null;
-  } | null>(null);
-  const scrollTimeoutRef = useRef<number | null>(null);
-  const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const highlightTimeoutRef = useRef<number | null>(null);
-  const highlightSpansRef = useRef<HTMLSpanElement[]>([]);
 
   const panelContext = useCollapsiblePanel();
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
@@ -348,240 +292,6 @@ function SourceContentView({
     () => storedToc ?? computeHeadings(markdownContent),
     [storedToc, computeHeadings, markdownContent],
   );
-
-  // Scroll to chunk and highlight between start marker (preview) and end marker (suffix)
-  const scrollToChunkByContent = useCallback(
-    (contentPreview: string, contentSuffix: string | null) => {
-      const container = scrollRef.current;
-      if (!container) return;
-
-      if (highlightTimeoutRef.current !== null) {
-        window.clearTimeout(highlightTimeoutRef.current);
-        highlightTimeoutRef.current = null;
-      }
-
-      highlightSpansRef.current.forEach((span) => {
-        try {
-          if (span.parentNode) {
-            while (span.firstChild) {
-              span.parentNode.insertBefore(span.firstChild, span);
-            }
-            span.remove();
-          }
-        } catch {
-          // Span already detached from DOM
-        }
-      });
-      highlightSpansRef.current = [];
-      container.normalize();
-
-      // Find start and end positions in source content
-      const normalizedContent = markdownContent.replace(/\s+/g, " ");
-      const startMarker = contentPreview
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 50);
-      const endMarker =
-        contentSuffix?.replace(/\s+/g, " ").trim().slice(-50) || null;
-
-      const startPos = normalizedContent.indexOf(startMarker);
-      if (startPos === -1) {
-        console.warn("Chunk start not found in source");
-        container.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-
-      let endPos: number;
-      if (endMarker) {
-        // Find end marker after start position
-        const searchAfter = normalizedContent.slice(startPos);
-        const endOffset = searchAfter.lastIndexOf(endMarker);
-        endPos =
-          endOffset !== -1
-            ? startPos + endOffset + endMarker.length
-            : startPos + 2048;
-      } else {
-        // Fallback to fixed chunk size
-        endPos = startPos + 2048;
-      }
-      endPos = Math.min(endPos, normalizedContent.length);
-
-      // Find text nodes and track cumulative position
-      const walker = document.createTreeWalker(
-        container,
-        NodeFilter.SHOW_TEXT,
-        null,
-      );
-      const textNodes: Text[] = [];
-      let node: Text | null;
-      while ((node = walker.nextNode() as Text | null)) {
-        textNodes.push(node);
-      }
-
-      let cumPos = 0;
-      const highlightSpans: HTMLSpanElement[] = [];
-      let firstSpan: HTMLSpanElement | null = null;
-
-      for (const textNode of textNodes) {
-        const text = textNode.textContent || "";
-        const normalizedText = text.replace(/\s+/g, " ");
-        const nodeStart = cumPos;
-        const nodeEnd = cumPos + normalizedText.length;
-
-        // Check if this node overlaps with highlight range
-        if (nodeEnd > startPos && nodeStart < endPos) {
-          const parent = textNode.parentElement;
-          if (!parent) {
-            cumPos = nodeEnd;
-            continue;
-          }
-
-          const highlightStart = Math.max(0, startPos - nodeStart);
-          const highlightEnd = Math.min(text.length, endPos - nodeStart);
-
-          const span = document.createElement("span");
-          span.className = "chunk-highlight";
-
-          const before = text.slice(0, highlightStart);
-          const highlight = text.slice(highlightStart, highlightEnd);
-          const after = text.slice(highlightEnd);
-
-          if (before)
-            parent.insertBefore(document.createTextNode(before), textNode);
-          span.textContent = highlight;
-          parent.insertBefore(span, textNode);
-          if (after) {
-            textNode.textContent = after;
-          } else {
-            textNode.remove();
-          }
-
-          highlightSpans.push(span);
-          if (!firstSpan) firstSpan = span;
-        }
-
-        cumPos = nodeEnd;
-        if (nodeStart > endPos) break;
-      }
-
-      highlightSpansRef.current = highlightSpans;
-
-      // Scroll to first highlighted span
-      if (firstSpan) {
-        const containerRect = container.getBoundingClientRect();
-        const spanRect = firstSpan.getBoundingClientRect();
-        container.scrollTo({
-          top: Math.max(
-            0,
-            spanRect.top - containerRect.top + container.scrollTop - 100,
-          ),
-          behavior: "smooth",
-        });
-      }
-
-      // Remove highlights after 60 seconds
-      highlightTimeoutRef.current = window.setTimeout(() => {
-        highlightSpansRef.current.forEach((span) => {
-          try {
-            if (span.parentNode) {
-              while (span.firstChild) {
-                span.parentNode.insertBefore(span.firstChild, span);
-              }
-              span.remove();
-            }
-          } catch {
-            // Span already detached from DOM
-          }
-        });
-        highlightSpansRef.current = [];
-        if (scrollRef.current) {
-          scrollRef.current.normalize();
-        }
-        highlightTimeoutRef.current = null;
-      }, 60000);
-    },
-    [markdownContent],
-  );
-
-  const scheduleScrollToChunk = useCallback(
-    (delayMs: number) => {
-      if (!pendingNavigationRef.current) return;
-      if (scrollTimeoutRef.current !== null) {
-        window.clearTimeout(scrollTimeoutRef.current);
-      }
-      scrollTimeoutRef.current = window.setTimeout(() => {
-        const pending = pendingNavigationRef.current;
-        if (!pending) return;
-        scrollToChunkByContent(pending.preview, pending.suffix);
-        pendingNavigationRef.current = null;
-        onChunkNavigated?.();
-      }, delayMs);
-    },
-    [onChunkNavigated, scrollToChunkByContent],
-  );
-
-  // Handle chunk navigation using content preview and suffix from API
-  useEffect(() => {
-    if (!targetChunkId || !targetContentPreview) return;
-    pendingNavigationRef.current = {
-      preview: targetContentPreview,
-      suffix: targetContentSuffix || null,
-    };
-    if (isAnimationComplete) {
-      scheduleScrollToChunk(250);
-    }
-  }, [
-    targetChunkId,
-    targetContentPreview,
-    targetContentSuffix,
-    navigationTrigger,
-    scheduleScrollToChunk,
-    isAnimationComplete,
-  ]);
-
-  useEffect(() => {
-    if (!isAnimationComplete || !pendingNavigationRef.current) return;
-    scheduleScrollToChunk(80);
-  }, [isAnimationComplete, scheduleScrollToChunk]);
-
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container || typeof ResizeObserver === "undefined") return;
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      const { width, height } = entry.contentRect;
-      const lastSize = lastSizeRef.current;
-
-      if (!lastSize || lastSize.width !== width || lastSize.height !== height) {
-        lastSizeRef.current = { width, height };
-        if (pendingNavigationRef.current) {
-          scheduleScrollToChunk(80);
-        }
-      }
-    });
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [scheduleScrollToChunk]);
-
-  useEffect(() => {
-    return () => {
-      if (scrollTimeoutRef.current !== null) {
-        window.clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (highlightTimeoutRef.current !== null) {
-        window.clearTimeout(highlightTimeoutRef.current);
-        highlightTimeoutRef.current = null;
-      }
-      highlightSpansRef.current = [];
-    };
-  }, [source.id]);
 
   const scrollToHeading = (headingText: string) => {
     const container = scrollRef.current;
@@ -749,8 +459,9 @@ function AddSourceDialog({
       url: url.trim(),
       status: "PROCESSING",
       content: null,
+      markdownContent: null,
+      indexData: null,
       fileKey: null,
-      ragflowDocumentId: null,
       errorMessage: null,
       metadata: {},
       createdAt: new Date(),
@@ -808,8 +519,9 @@ function AddSourceDialog({
         url: null,
         status: "PROCESSING",
         content: null,
+        markdownContent: null,
+        indexData: null,
         fileKey: null,
-        ragflowDocumentId: null,
         errorMessage: null,
         metadata: {},
         createdAt: new Date(),
@@ -875,8 +587,9 @@ function AddSourceDialog({
       url: documentUrl.trim(),
       status: "PROCESSING",
       content: null,
+      markdownContent: null,
+      indexData: null,
       fileKey: null,
-      ragflowDocumentId: null,
       errorMessage: null,
       metadata: {},
       createdAt: new Date(),

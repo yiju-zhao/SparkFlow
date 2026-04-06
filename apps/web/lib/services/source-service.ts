@@ -26,7 +26,7 @@ export async function storeImagesAndRewriteMarkdown(
         sourceId,
         originalName: image.name,
         mimeType: image.mimeType,
-        data: image.data,
+        data: new Uint8Array(image.data),
       },
     });
 

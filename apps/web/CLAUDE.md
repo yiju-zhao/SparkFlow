@@ -29,8 +29,6 @@ apps/web/
 ├── lib/                    # Utilities and clients
 │   ├── auth.ts             # NextAuth configuration
 │   ├── prisma.ts           # Prisma client singleton
-│   ├── s3-client.ts        # MinIO/S3 client
-│   ├── ragflow-client.ts   # RAGFlow API client
 │   └── hooks/              # Shared React hooks
 └── hooks/                  # Global React hooks
 ```

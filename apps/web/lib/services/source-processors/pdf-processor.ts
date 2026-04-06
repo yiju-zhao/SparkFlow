@@ -53,6 +53,16 @@ export async function processPdfDocument(
       },
     });
 
+    // Trigger PageIndex indexing in background (non-blocking)
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3001";
+    fetch(
+      `${baseUrl}/api/notebooks/${context.notebookId}/sources/${sourceId}/index`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    ).catch((err) => console.error("PageIndex indexing trigger failed:", err));
+
     return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

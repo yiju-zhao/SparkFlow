@@ -35,7 +35,6 @@ interface SourceContext {
 
 interface ChatPanelProps {
   notebookId: string;
-  datasetId?: string | null;
   sources?: Source[];
   initialSessions?: ChatSession[];
   initialMessages?: PreloadedMessage[];
@@ -69,7 +68,6 @@ const EMPTY_SOURCES: Source[] = [];
 
 export function ChatPanel({
   notebookId,
-  datasetId,
   sources = EMPTY_SOURCES,
   initialSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
@@ -447,7 +445,6 @@ const prevIsLoadingRef = useRef<boolean>(false);
         { messages: [{ type: "human", content: message }] },
         {
           context: {
-            dataset_ids: datasetId ? [datasetId] : [],
             sources_context: sourcesContext,
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,

@@ -7,7 +7,7 @@ export type {
   User,
   Notebook,
   Source,
-  Chunk,
+
   ChatSession,
   ChatMessage,
   Note,
@@ -17,7 +17,7 @@ export type {
 /**
  * Source status enum values.
  */
-export type SourceStatus = "UPLOADING" | "PROCESSING" | "READY" | "FAILED";
+export type SourceStatus = "UPLOADING" | "PROCESSING" | "READY" | "PARTIAL" | "FAILED";
 
 /**
  * Source type enum values.
@@ -46,7 +46,6 @@ export type SourceWithContent = {
   status: SourceStatus;
   content?: string | null;
   fileKey: string | null;
-  ragflowDocumentId: string | null;
   errorMessage: string | null;
   metadata: unknown;
   createdAt: Date;
@@ -61,8 +60,6 @@ export interface NotebookWithCounts {
   name: string;
   description: string | null;
   userId: string;
-  ragflowDatasetId: string | null;
-  ragflowAgentId: string | null;
   createdAt: Date;
   updatedAt: Date;
   _count: {

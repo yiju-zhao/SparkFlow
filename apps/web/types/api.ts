@@ -95,7 +95,6 @@ export interface SourcesStatusResponse {
   sources: Array<{
     id: string;
     status: string;
-    ragflowDocumentId: string | null;
     errorMessage: string | null;
     metadata: unknown;
   }>;
