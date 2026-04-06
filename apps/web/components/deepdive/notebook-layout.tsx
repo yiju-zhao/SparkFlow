@@ -191,15 +191,9 @@ function NotebookLayoutInner({
           >
             <SourcesPanel
               notebookId={notebook.id}
-              datasetId={notebook.ragflowDatasetId}
               sources={sources}
               selectedSource={selectedSource}
               onSelectSource={handleSelectSource}
-              targetChunkId={targetChunkId}
-              targetContentPreview={targetContentPreview}
-              targetContentSuffix={targetContentSuffix}
-              navigationTrigger={navigationTrigger}
-              onChunkNavigated={handleChunkNavigated}
             />
           </motion.div>
           <ResizableDivider
