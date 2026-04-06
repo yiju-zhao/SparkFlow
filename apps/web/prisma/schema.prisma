@@ -78,11 +78,6 @@ model Notebook {
   name        String
   description String?
 
-  // RagFlow Integration
-  ragflowDatasetId String?
-  ragflowAgentId   String?
-  ragflowChatId    String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -106,6 +101,7 @@ enum SourceType {
 enum SourceStatus {
   UPLOADING
   PROCESSING
+  PARTIAL
   READY
   FAILED
 }
@@ -118,7 +114,8 @@ model Source {
   url               String? // For webpages
   fileKey           String? // For documents (storage key)
   content           String?      @db.Text // Markdown content
-  ragflowDocumentId String?
+  indexData         Json?                 // PageIndex tree
+  markdownContent   String?      @db.Text // Full markdown preview
   status            SourceStatus @default(UPLOADING)
   errorMessage      String?
   metadata          Json?
@@ -128,33 +125,17 @@ model Source {
   // Relations
   notebook Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
   images   SourceImage[]
-  chunks   Chunk[]
 
   @@map("sources")
-}
-
-// Chunks from RagFlow for citation navigation
-model Chunk {
-  id             String  @id // RagFlow chunk ID (primary key)
-  sourceId       String
-  contentPreview String  @db.VarChar(200) // First ~100 chars for start position
-  contentSuffix  String? @db.VarChar(200) // Last ~100 chars for end position
-  position       Int     @default(0) // Order within document
-
-  // Relations
-  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  @@index([sourceId])
-  @@map("chunks")
 }
 
 // Images extracted from documents (e.g., PDFs via MinerU)
 model SourceImage {
   id           String   @id @default(cuid())
   sourceId     String
-  originalName String // Original filename from MinerU (e.g., "image_0.png")
-  storageKey   String // S3/MinIO object key
-  contentType  String? // MIME type (e.g., "image/png")
+  originalName String // Original filename (e.g., "image_0.png")
+  data         Bytes  // Raw image binary (bytea)
+  mimeType     String? // MIME type (e.g., "image/png")
   width        Int?
   height       Int?
   createdAt    DateTime @default(now())
