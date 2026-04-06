@@ -71,7 +71,6 @@ export async function addWebpageSource(
   // Process in the background using the new processor
   const context: ProcessingContext = {
     sourceId: source.id,
-    ragflowDatasetId: notebook.ragflowDatasetId,
     notebookId,
   };
 
@@ -130,7 +129,6 @@ export async function uploadDocumentSource(
   // Process in the background using the new processors
   const context: ProcessingContext = {
     sourceId: source.id,
-    ragflowDatasetId: notebook.ragflowDatasetId,
     notebookId,
   };
 

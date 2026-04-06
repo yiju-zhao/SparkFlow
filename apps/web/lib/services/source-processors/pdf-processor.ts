@@ -1,203 +1,65 @@
 import prisma from "@/lib/prisma";
-import { ragflowClient } from "@/lib/ragflow-client";
+import { parsePdf } from "@/lib/services/mineru-client";
+import { storeImagesAndRewriteMarkdown } from "@/lib/services/source-service";
 import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
-import type { Prisma } from "@prisma/client";
 import type { ProcessingContext, ProcessingResult } from "./types";
 
-/**
- * Escape special regex characters in a string.
- */
-function escapeRegExp(string: string): string {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * Process a PDF file by parsing with MineRU and uploading markdown to RagFlow.
- */
 export async function processPdfDocument(
   file: File,
-  context: ProcessingContext,
+  context: ProcessingContext
 ): Promise<ProcessingResult> {
-  const { sourceId, ragflowDatasetId } = context;
+  const { sourceId } = context;
 
   try {
-    // Update status to processing
     await prisma.source.update({
       where: { id: sourceId },
       data: { status: "PROCESSING" },
     });
 
-    // Parse PDF with MineRU
-    const { mineruClient } = await import("@/lib/mineru-client");
-    const parseResult = await mineruClient.parseDocument(file);
-    let markdown = parseResult.markdown;
-    const extractedImages = parseResult.images || {};
+    // Write file to temp location for MinerU
+    const tempPath = `/tmp/${sourceId}-${file.name}`;
+    const arrayBuffer = await file.arrayBuffer();
+    const { writeFile, unlink } = await import("fs/promises");
+    await writeFile(tempPath, Buffer.from(arrayBuffer));
 
-    // Process images if any were extracted
-    const imageMapping: Record<string, string> = {};
-    if (Object.keys(extractedImages).length > 0) {
-      const { uploadSourceImages } = await import("@/lib/s3-client");
-
-      // Upload images to S3
-      const uploadedImages = await uploadSourceImages(
-        sourceId,
-        extractedImages,
-      );
-
-      // Create SourceImage records for each uploaded image
-      for (const img of uploadedImages) {
-        const sourceImage = await prisma.sourceImage.create({
-          data: {
-            sourceId,
-            originalName: img.originalName,
-            storageKey: img.storageKey,
-            contentType: img.contentType,
-          },
-        });
-        imageMapping[img.originalName] = sourceImage.id;
-      }
-
-      // Rewrite markdown to use API URLs for images
-      for (const [originalName, imageId] of Object.entries(imageMapping)) {
-        const patterns = [
-          new RegExp(
-            `!\\[([^\\]]*)\\]\\(images/${escapeRegExp(originalName)}\\)`,
-            "g",
-          ),
-          new RegExp(
-            `!\\[([^\\]]*)\\]\\(${escapeRegExp(originalName)}\\)`,
-            "g",
-          ),
-          new RegExp(
-            `!\\[([^\\]]*)\\]\\([^)]*/${escapeRegExp(originalName)}\\)`,
-            "g",
-          ),
-        ];
-
-        for (const pattern of patterns) {
-          markdown = markdown.replace(pattern, `![$1](/api/images/${imageId})`);
-        }
-      }
+    let mineruResult;
+    try {
+      mineruResult = await parsePdf(tempPath);
+    } finally {
+      await unlink(tempPath).catch(() => {});
     }
 
-    // Upload markdown to RagFlow if dataset exists
-    if (ragflowDatasetId) {
-      try {
-        const mdBlob = new Blob([markdown], { type: "text/markdown" });
-        const mdFile = new File([mdBlob], file.name.replace(/\.pdf$/i, ".md"), {
-          type: "text/markdown",
-        });
+    // Store images in PG and rewrite markdown references
+    const markdown = await storeImagesAndRewriteMarkdown(
+      sourceId,
+      mineruResult.markdown,
+      mineruResult.images
+    );
 
-        const doc = await ragflowClient.uploadDocument(
-          ragflowDatasetId,
-          mdFile,
-          mdFile.name,
-          { autoParse: true },
-        );
-
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: {
-            ragflowDocumentId: doc.id,
-            content: markdown,
-            status: "PROCESSING",
-            metadata: {
-              fileType: "pdf",
-              markdownLength: markdown.length,
-              imageCount: Object.keys(imageMapping).length,
-              mineruVersion: parseResult.metadata.version,
-              processedAt: new Date().toISOString(),
-              ragflowRun: "RUNNING",
-              ragflowProgress: doc.progress ?? 0,
-              toc: extractTocFromMarkdown(markdown),
-            } as Prisma.InputJsonValue,
-          },
-        });
-
-        await ragflowClient.parseDocuments(ragflowDatasetId, [doc.id]);
-
-        return {
-          success: true,
-          content: markdown,
-          ragflowDocumentId: doc.id,
-          metadata: {
-            fileType: "pdf",
-            markdownLength: markdown.length,
-            imageCount: Object.keys(imageMapping).length,
-          },
-        };
-      } catch (ragflowError) {
-        console.error("RagFlow upload error:", ragflowError);
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: {
-            content: markdown,
-            status: "READY",
-            metadata: {
-              fileType: "pdf",
-              markdownLength: markdown.length,
-              imageCount: Object.keys(imageMapping).length,
-              processedAt: new Date().toISOString(),
-              ragflowError:
-                ragflowError instanceof Error
-                  ? ragflowError.message
-                  : "Upload failed",
-              toc: extractTocFromMarkdown(markdown),
-            } as Prisma.InputJsonValue,
-          },
-        });
-
-        return {
-          success: true,
-          content: markdown,
-          metadata: {
-            fileType: "pdf",
-            markdownLength: markdown.length,
-            imageCount: Object.keys(imageMapping).length,
-            ragflowFailed: true,
-          },
-        };
-      }
-    } else {
-      // No RagFlow dataset, just save content
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: {
-          content: markdown,
-          status: "READY",
-          metadata: {
-            fileType: "pdf",
-            markdownLength: markdown.length,
-            imageCount: Object.keys(imageMapping).length,
-            processedAt: new Date().toISOString(),
-            toc: extractTocFromMarkdown(markdown),
-          } as Prisma.InputJsonValue,
-        },
-      });
-
-      return {
-        success: true,
-        content: markdown,
-        metadata: {
-          fileType: "pdf",
-          markdownLength: markdown.length,
-          imageCount: Object.keys(imageMapping).length,
-        },
-      };
-    }
-  } catch (error) {
-    console.error("PDF processing error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "PDF processing failed";
+    const toc = extractTocFromMarkdown(markdown);
 
     await prisma.source.update({
       where: { id: sourceId },
       data: {
-        status: "FAILED",
-        errorMessage,
+        markdownContent: markdown,
+        content: markdown,
+        status: "READY",
+        metadata: {
+          fileType: "pdf",
+          markdownLength: markdown.length,
+          imageCount: mineruResult.images.length,
+          toc,
+        },
       },
     });
 
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    await prisma.source.update({
+      where: { id: sourceId },
+      data: { status: "FAILED", errorMessage },
+    });
     return { success: false, errorMessage };
   }
 }
