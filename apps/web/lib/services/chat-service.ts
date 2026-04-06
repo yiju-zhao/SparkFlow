@@ -28,7 +28,6 @@ class ChatService {
           notebookId,
           title: title || "New Chat",
           status: "ACTIVE",
-          ragflowAgentId: newId,
         },
       });
     }
@@ -40,13 +39,6 @@ class ChatService {
       });
       if (!session) {
         throw new Error("Session not found");
-      }
-      // Backfill ragflowAgentId if missing
-      if (!session.ragflowAgentId) {
-        return prisma.chatSession.update({
-          where: { id: session.id },
-          data: { ragflowAgentId: session.id },
-        });
       }
       return session;
     }
@@ -65,13 +57,7 @@ class ChatService {
           notebookId,
           title: "Chat",
           status: "ACTIVE",
-          ragflowAgentId: newId,
         },
-      });
-    } else if (!session.ragflowAgentId) {
-      session = await prisma.chatSession.update({
-        where: { id: session.id },
-        data: { ragflowAgentId: session.id },
       });
     }
 

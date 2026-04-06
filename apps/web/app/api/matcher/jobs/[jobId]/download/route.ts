@@ -1,13 +1,16 @@
 /**
  * Job Results Download Route
  *
- * Verifies ownership via database, then serves the Excel file directly from S3.
+ * Verifies ownership via database, then serves the Excel file from local storage.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { s3StorageClient } from "@/lib/s3-client";
+import { createReadStream } from "fs";
+import path from "path";
+
+const DATA_DIR = path.join(process.cwd(), "data");
 
 export async function GET(
   _request: NextRequest,
@@ -41,7 +44,7 @@ export async function GET(
       );
     }
 
-    // Check result file exists in S3
+    // Check result file exists
     if (!job.resultFileKey) {
       return NextResponse.json(
         { error: "Result file not available yet" },
@@ -49,10 +52,9 @@ export async function GET(
       );
     }
 
-    // Get stream from S3
-    const { stream, contentType } = await s3StorageClient.getStream(
-      job.resultFileKey,
-    );
+    // Get stream from local file
+    const filePath = path.join(DATA_DIR, job.resultFileKey);
+    const stream = createReadStream(filePath);
 
     // Convert Node.js Readable to web ReadableStream
     const webStream = new ReadableStream({
@@ -66,7 +68,6 @@ export async function GET(
     return new Response(webStream, {
       headers: {
         "Content-Type":
-          contentType ||
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="match-results-${jobId}.xlsx"`,
       },

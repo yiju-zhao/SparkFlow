@@ -219,7 +219,6 @@ function NotebookLayoutInner({
       >
         <ChatPanel
           notebookId={notebook.id}
-          datasetId={notebook.ragflowDatasetId}
           sources={sources}
           initialSessions={initialChatSessions}
           initialMessages={initialMessages}

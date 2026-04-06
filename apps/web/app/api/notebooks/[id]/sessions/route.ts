@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 
   try {
-    const { title, id, ragflowAgentId } = await req.json();
+    const { title, id } = await req.json();
     const sessionId = id || randomUUID();
 
     const chatSession = await prisma.chatSession.create({
@@ -64,7 +64,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
         notebookId,
         title: title?.trim() || "New Chat",
         status: "ACTIVE",
-        ragflowAgentId: ragflowAgentId || sessionId,
       },
     });
 

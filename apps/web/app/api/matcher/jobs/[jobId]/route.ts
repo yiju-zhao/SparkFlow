@@ -2,16 +2,19 @@
  * Single Job API Route
  *
  * Reads job from database, syncs progress from matcher service if processing.
- * On COMPLETED: downloads Excel from matcher and uploads to S3.
+ * On COMPLETED: downloads Excel from matcher and stores locally.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { s3StorageClient } from "@/lib/s3-client";
+import { mkdir, writeFile, unlink } from "fs/promises";
+import path from "path";
 
 const MATCHER_API_URL =
   process.env.MATCHER_API_URL || "http://localhost:2025";
+
+const DATA_DIR = path.join(process.cwd(), "data");
 
 function normalizeMatcherQueryData(queryData: unknown) {
   if (!Array.isArray(queryData)) {
@@ -124,18 +127,16 @@ export async function GET(
             },
           });
 
-          // If job just completed, download Excel from matcher and upload to S3
+          // If job just completed, download Excel from matcher and store locally
           if (matcherJob.status === "COMPLETED" && !updatedJob.resultFileKey) {
             try {
               const dlRes = await fetch(`${MATCHER_API_URL}/api/jobs/${jobId}/download`);
               if (dlRes.ok) {
                 const buffer = Buffer.from(await dlRes.arrayBuffer());
                 const fileKey = `match-results/${jobId}.xlsx`;
-                await s3StorageClient.upload(
-                  fileKey,
-                  buffer,
-                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                );
+                const filePath = path.join(DATA_DIR, fileKey);
+                await mkdir(path.dirname(filePath), { recursive: true });
+                await writeFile(filePath, buffer);
 
                 const finalJob = await prisma.matchJob.update({
                   where: { id: jobId },
@@ -152,8 +153,8 @@ export async function GET(
 
                 return NextResponse.json(finalJob);
               }
-            } catch (s3Error) {
-              console.error("[Matcher Jobs] Failed to persist Excel to S3:", s3Error);
+            } catch (storeError) {
+              console.error("[Matcher Jobs] Failed to persist Excel:", storeError);
               // Job is still COMPLETED, file can be retried on next poll
             }
           }
@@ -198,13 +199,13 @@ export async function DELETE(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // Delete S3 files using shared s3StorageClient
+    // Delete local files
     const keysToDelete = [job.queryFileKey, job.resultFileKey].filter(Boolean);
     for (const key of keysToDelete) {
       try {
-        await s3StorageClient.deleteFile(key!);
-      } catch (s3Err) {
-        console.error(`[Matcher] Failed to delete S3 key ${key}:`, s3Err);
+        await unlink(path.join(DATA_DIR, key!));
+      } catch (fsErr) {
+        console.error(`[Matcher] Failed to delete file ${key}:`, fsErr);
         // Continue deleting other files and DB record
       }
     }

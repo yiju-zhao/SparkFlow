@@ -154,11 +154,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const { ragflowAgentId, langgraphThreadId } = await req.json();
+    const { langgraphThreadId } = await req.json();
 
-    // At least one field must be provided
-    if (!ragflowAgentId && !langgraphThreadId) {
-      return new Response("ragflowAgentId or langgraphThreadId is required", {
+    if (!langgraphThreadId) {
+      return new Response("langgraphThreadId is required", {
         status: 400,
       });
     }
@@ -176,14 +175,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return new Response("Unauthorized", { status: 403 });
     }
 
-    const updateData: { ragflowAgentId?: string; langgraphThreadId?: string } =
-      {};
-    if (ragflowAgentId) updateData.ragflowAgentId = ragflowAgentId;
-    if (langgraphThreadId) updateData.langgraphThreadId = langgraphThreadId;
-
     const updated = await prisma.chatSession.update({
       where: { id: sessionId },
-      data: updateData,
+      data: { langgraphThreadId },
     });
 
     return NextResponse.json(updated);

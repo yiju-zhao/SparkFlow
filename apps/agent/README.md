@@ -21,8 +21,6 @@ langgraph dev --host 0.0.0.0 --port 2024
 
 ## Key Environment Variables
 - `OPENAI_API_KEY`
-- `RAGFLOW_BASE_URL`
-- `RAGFLOW_API_KEY`
 - `TOOLBOX_SERVER_URL`
 - `MCP_SERVER_URL`
 - `HUB_MODEL_PROVIDER`

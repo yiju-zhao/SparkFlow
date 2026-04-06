@@ -49,7 +49,6 @@ export async function GET(
       createdAt: chunk.source.createdAt,
       updatedAt: chunk.source.updatedAt,
       notebookId: chunk.source.notebookId,
-      ragflowDocumentId: chunk.source.ragflowDocumentId,
       fileKey: chunk.source.fileKey,
       errorMessage: chunk.source.errorMessage,
     },

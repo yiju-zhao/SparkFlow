@@ -2,12 +2,14 @@
  * Matcher Upload API Route
  *
  * Handles Excel file uploads for query matching.
+ * Stores files on local filesystem under data/matcher-queries/.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { s3StorageClient } from "@/lib/s3-client";
 import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 
 const ALLOWED_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -15,6 +17,8 @@ const ALLOWED_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const DATA_DIR = path.join(process.cwd(), "data");
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,17 +50,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate storage key
+    // Generate storage key and path
     const userId = session.user.id;
     const fileKey = `matcher-queries/${userId}/${randomUUID()}-${file.name}`;
+    const filePath = path.join(DATA_DIR, fileKey);
 
-    // Upload to S3
+    // Ensure directory exists and write file
+    await mkdir(path.dirname(filePath), { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
-    await s3StorageClient.upload(
-      fileKey,
-      buffer,
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
+    await writeFile(filePath, buffer);
 
     return NextResponse.json({
       fileKey,
