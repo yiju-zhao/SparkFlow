@@ -17,8 +17,8 @@ mcp
 langgraph-checkpoint-postgres
 psycopg[binary]
 
-# RAGFlow Python SDK
-ragflow-sdk
+# PageIndex for document indexing
+pageindex
 
 # AI/ML providers
 openai
