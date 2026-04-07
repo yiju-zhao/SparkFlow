@@ -2,23 +2,19 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
+// GET is unauthenticated — wiki pages are read-only accessible by notebook ID.
+// This allows the LangGraph agent to read pages without session cookies.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; slug: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id: notebookId, slug } = await params;
 
   const page = await prisma.wikiPage.findUnique({
     where: { notebookId_slug: { notebookId, slug } },
-    include: { notebook: { select: { userId: true } } },
   });
 
-  if (!page || page.notebook.userId !== session.user.id) {
+  if (!page) {
     return NextResponse.json({ error: "Page not found" }, { status: 404 });
   }
 
