@@ -11,10 +11,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "50mb",
     },
     // Optimize barrel file imports for faster cold starts
-    optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
+    optimizePackageImports: [
+      "lucide-react",
+      "framer-motion",
+      "recharts",
+      "echarts",
+      "@copilotkit/react-core",
+      "@copilotkit/react-ui",
+    ],
   },
   // Prevent Turbopack from bundling native/heavy server-only packages
-  serverExternalPackages: ["playwright"],
+  serverExternalPackages: ["playwright", "pg", "@prisma/adapter-pg", "jszip"],
   // Allow dev server access from local network IPs (for remote development)
   allowedDevOrigins: ["10.218.163.144", "*.local"],
 };

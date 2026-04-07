@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@ag-ui/mcp-apps-middleware": "latest",
-    "@aws-sdk/client-s3": "^3.970.0",
     "@copilotkit/react-core": "^1.52.1",
     "@copilotkit/react-ui": "^1.52.1",
     "@copilotkit/runtime": "^1.52.1",

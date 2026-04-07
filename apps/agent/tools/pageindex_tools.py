@@ -8,7 +8,7 @@ import os
 
 import httpx
 from langchain_core.tools import tool
-from langgraph.types import ToolRuntime
+from langchain.tools import ToolRuntime
 
 from utils.pageindex_client import (
     retrieve,
