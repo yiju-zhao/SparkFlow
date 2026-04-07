@@ -65,6 +65,7 @@ export async function ingestSourceToWiki(
 
 Output a JSON object with this exact structure:
 {
+  "normalizedTitle": "Clean, descriptive title for the source",
   "summary": {
     "slug": "source-slug-name",
     "title": "Source Title — Summary",
@@ -78,6 +79,15 @@ Output a JSON object with this exact structure:
   ],
   "updatedIndex": "full updated index markdown including all existing pages plus new ones"
 }
+
+Source Title Normalization Rules for normalizedTitle:
+- Format: "[Author(s) Last Name(s)] — [Descriptive Title], [Year]"
+- For papers: "Vaswani et al. — Attention Is All You Need, 2017"
+- For blog posts: "Karpathy — LLM Wiki Pattern, 2026"
+- For webpages: "[Site/Author] — [Article Topic], [Year if known]"
+- Remove file extensions, version numbers, "final", "draft" etc.
+- Keep it under 80 characters
+- If author unknown, use "[Organization]" or "[Topic]" as prefix
 
 Rules:
 - Slugs must be URL-friendly: lowercase, hyphens, no spaces
@@ -118,6 +128,14 @@ ${truncated}`,
 
   const wikiData = JSON.parse(responseText);
   const writtenPages: string[] = [];
+
+  // Update source title if LLM provided a normalized one
+  if (wikiData.normalizedTitle) {
+    await prisma.source.update({
+      where: { id: sourceId },
+      data: { title: wikiData.normalizedTitle },
+    });
+  }
 
   // Write summary page
   if (wikiData.summary?.slug) {
