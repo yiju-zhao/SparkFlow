@@ -53,15 +53,15 @@ export async function processPdfDocument(
       },
     });
 
-    // Trigger PageIndex indexing in background (non-blocking)
+    // Trigger wiki ingest in background (non-blocking)
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3001";
     fetch(
-      `${baseUrl}/api/notebooks/${context.notebookId}/sources/${sourceId}/index`,
+      `${baseUrl}/api/notebooks/${context.notebookId}/ingest/${sourceId}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       }
-    ).catch((err) => console.error("PageIndex indexing trigger failed:", err));
+    ).catch((err) => console.error("Wiki ingest trigger failed:", err));
 
     return { success: true };
   } catch (error) {
