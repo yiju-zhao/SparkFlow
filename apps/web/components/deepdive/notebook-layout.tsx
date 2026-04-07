@@ -26,17 +26,28 @@ interface TransformedMessage {
   content: string;
 }
 
+interface WikiPageSummary {
+  id: string;
+  slug: string;
+  title: string;
+  pageType: string;
+  sourceRefs: string[];
+  updatedAt: string;
+}
+
 interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
   initialChatSessions?: TransformedChatSession[];
   initialMessages?: TransformedMessage[];
+  wikiPages?: WikiPageSummary[];
 }
 
 // Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
 const EMPTY_SESSIONS: TransformedChatSession[] = [];
 const EMPTY_MESSAGES: TransformedMessage[] = [];
+const EMPTY_WIKI_PAGES: WikiPageSummary[] = [];
 
 // Panel width constants
 const SOURCES_DEFAULT_WIDTH = 280;
@@ -61,6 +72,7 @@ function NotebookLayoutInner({
   notes,
   initialChatSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
+  wikiPages = EMPTY_WIKI_PAGES,
 }: NotebookLayoutProps) {
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
   const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
@@ -161,6 +173,7 @@ function NotebookLayoutInner({
               sources={sources}
               selectedSource={selectedSource}
               onSelectSource={handleSelectSource}
+              wikiPages={wikiPages}
             />
           </motion.div>
           <ResizableDivider

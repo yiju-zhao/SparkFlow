@@ -51,11 +51,21 @@ interface SourceMetadata {
   [key: string]: unknown;
 }
 
+interface WikiPageSummary {
+  id: string;
+  slug: string;
+  title: string;
+  pageType: string;
+  sourceRefs: string[];
+  updatedAt: string;
+}
+
 interface SourcesPanelProps {
   notebookId: string;
   sources: Source[];
   selectedSource: Source | null;
   onSelectSource: (source: Source | null) => void;
+  wikiPages?: WikiPageSummary[];
 }
 
 export function SourcesPanel({
@@ -63,6 +73,7 @@ export function SourcesPanel({
   sources,
   selectedSource,
   onSelectSource,
+  wikiPages = [],
 }: SourcesPanelProps) {
   const [activeTab, setActiveTab] = useState<"sources" | "wiki">("sources");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -173,7 +184,7 @@ export function SourcesPanel({
           />
         </>
       ) : (
-        <WikiPanel notebookId={notebookId} />
+        <WikiPanel notebookId={notebookId} initialPages={wikiPages} />
       )}
     </div>
   );

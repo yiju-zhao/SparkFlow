@@ -13,7 +13,7 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
 
   const session = await auth();
 
-  const [notebook, sources, notes, chatSessions] = await Promise.all([
+  const [notebook, sources, notes, chatSessions, wikiPages] = await Promise.all([
     prisma.notebook.findFirst({
       where: {
         id,
@@ -44,6 +44,18 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
       include: {
         _count: { select: { messages: true } },
       },
+    }),
+    prisma.wikiPage.findMany({
+      where: { notebookId: id },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        pageType: true,
+        sourceRefs: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: "desc" },
     }),
   ]);
 
@@ -87,6 +99,10 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
         notes={notes}
         initialChatSessions={transformedSessions}
         initialMessages={transformedMessages}
+        wikiPages={wikiPages.map((p) => ({
+          ...p,
+          updatedAt: p.updatedAt.toISOString(),
+        }))}
       />
     </DeepdiveShell>
   );
