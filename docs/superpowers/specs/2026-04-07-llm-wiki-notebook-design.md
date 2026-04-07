@@ -69,6 +69,7 @@ model Notebook {
 Default schema (stored as JSON):
 ```json
 {
+  "searchCollections": ["publications", "sessions"],
   "pageTypes": {
     "entity": "People, organizations, methods, datasets, tools",
     "concept": "Themes, topics, theories, research areas",
@@ -83,6 +84,8 @@ Default schema (stored as JSON):
   "emphasis": []
 }
 ```
+
+`searchCollections` controls which knowledge pools (Publications, Sessions, 公众号, 推特, etc.) are searched when the user searches for sources in the Add Source modal. Configured in Notebook Settings, not in the modal itself.
 
 User and agent co-evolve the schema through chat ("focus more on methodology comparisons", "track author affiliations").
 
@@ -173,10 +176,8 @@ When user clicks + in sources panel:
 │         Add Sources to Notebook          │
 │                                          │
 │  ┌────────────────────────────────────┐  │
-│  │ 🔍 Search across collections...    │  │
+│  │ 🔍 Search for sources...           │  │
 │  └────────────────────────────────────┘  │
-│  [📚 Publications ✓] [🎤 Sessions ✓]    │
-│  [📱 公众号] [🐦 推特] ...               │
 │                                          │
 │  ─── or ───                              │
 │                                          │
@@ -185,7 +186,7 @@ When user clicks + in sources panel:
 └─────────────────────────────────────────┘
 ```
 
-**Search:** User types query → semantic search across toggled collections (Publications, Sessions, future: 公众号, 推特) → ranked results with relevance snippets → user selects items → "Add to notebook" → creates Source from collection item → triggers ingest.
+**Search:** User types query → semantic search across collections enabled in Notebook Settings (`wikiSchema.searchCollections`) → ranked results with relevance snippets → user selects items → "Add to notebook" → creates Source from collection item → triggers ingest. No collection toggles in the modal — configured once in settings.
 
 **Upload/URL/Text:** Existing functionality, unchanged.
 
