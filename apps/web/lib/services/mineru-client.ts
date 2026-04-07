@@ -2,7 +2,7 @@ import { readFile } from "fs/promises";
 
 interface MineruResult {
   markdown: string;
-  images: { name: string; data: Buffer; mimeType: string }[];
+  images: { name: string; fullPath?: string; data: Buffer; mimeType: string }[];
 }
 
 const MINERU_MODE = process.env.MINERU_MODE || "local";
@@ -174,8 +174,12 @@ async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
         webp: "image/webp",
         svg: "image/svg+xml",
       };
+      // Store both the full path and filename — markdown may reference either
+      const fullPath = path;
+      const fileName = path.split("/").pop()!;
       images.push({
-        name: path.split("/").pop()!,
+        name: fileName,
+        fullPath,
         data: Buffer.from(data),
         mimeType: mimeMap[ext] || "image/png",
       });

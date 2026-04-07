@@ -16,7 +16,7 @@ import type { Source } from "@prisma/client";
 export async function storeImagesAndRewriteMarkdown(
   sourceId: string,
   markdown: string,
-  images: { name: string; data: Buffer; mimeType: string }[]
+  images: { name: string; fullPath?: string; data: Buffer; mimeType: string }[]
 ): Promise<string> {
   let rewrittenMarkdown = markdown;
 
@@ -30,10 +30,12 @@ export async function storeImagesAndRewriteMarkdown(
       },
     });
 
-    rewrittenMarkdown = rewrittenMarkdown.replaceAll(
-      image.name,
-      `/api/images/${savedImage.id}`
-    );
+    const apiUrl = `/api/images/${savedImage.id}`;
+    // Replace full path first (e.g., "images/image_0.png"), then filename alone
+    if (image.fullPath) {
+      rewrittenMarkdown = rewrittenMarkdown.replaceAll(image.fullPath, apiUrl);
+    }
+    rewrittenMarkdown = rewrittenMarkdown.replaceAll(image.name, apiUrl);
   }
 
   return rewrittenMarkdown;
