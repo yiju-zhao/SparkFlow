@@ -231,6 +231,61 @@ No separate "source pool" table — the Research Hub collections ARE the pool.
 - "Add to Notebook" button on Research Hub items
 - "Save as wiki page" button on chat messages
 
+## Chat Integration
+
+### Citation Rendering
+
+Chat messages from the agent contain two types of references:
+- `[[slug]]` → renders as clickable pill/link. Clicking switches to Wiki tab and opens that page.
+- `[source:id]` → renders as numbered citation superscript. Clicking switches to Sources tab and selects that source.
+
+### Ingest Notifications
+
+After wiki ingest completes, the agent posts a structured message in chat:
+```
+📚 Processed: "Attention Is All You Need"
+Created: [[transformer-architecture]], [[self-attention]], [[vaswani-2017-summary]]
+Updated: [[neural-network-architectures]], [[index]]
+Want me to focus on anything specific?
+```
+
+### "Save to Wiki" Button
+
+When the agent produces substantial synthesis, the message includes a "Save to wiki" action button. Clicking it:
+1. Fires non-blocking POST to `/api/notebooks/[id]/ingest` (background)
+2. Agent creates WikiPage from chat answer content
+3. `sourceRefs` points to the original sources the answer cited (no circular references)
+4. Updates index.md
+5. Posts confirmation in chat when done
+6. Chat continues unblocked throughout
+
+The chat answer is saved as a **wiki page** (Layer 2 — synthesized knowledge), NOT as a raw source (Layer 1). This preserves the clean separation: sources are external inputs, wiki is derived knowledge.
+
+### Non-Blocking Ingest
+
+All ingest operations (source upload, "save to wiki") are non-blocking. The agent processes in the background, posts notifications when done. The user can keep chatting while the wiki is being updated.
+
+## Error Handling & Edge Cases
+
+### Ingest Failures
+- Source stays READY (raw content preserved)
+- Agent posts error in chat with "Re-ingest" option
+- No partial wiki updates — agent writes all page changes in one batch
+
+### Concurrent Ingests
+Multiple source uploads queue and run sequentially per notebook. Each ingest sees the wiki state left by the previous one.
+
+### Schema Evolution
+When user changes wiki conventions via chat, agent applies new rules going forward. Full wiki rewrite only on explicit request.
+
+### Scale
+- <50 wiki pages: index.md is sufficient (agent reads in full)
+- 50-500 pages: index.md + selective page reads + wiki_search as backup
+- 500+ pages: PostgreSQL full-text search via tsvector (future)
+
+### Empty State
+New notebook starts with empty Sources tab, Wiki tab showing only index.md (empty catalog) and log.md (empty log), and a welcome message in chat.
+
 ## Migration
 
 1. Add WikiPage model + Notebook.wikiSchema to Prisma schema
@@ -240,5 +295,7 @@ No separate "source pool" table — the Research Hub collections ARE the pool.
 5. Create wiki agent tools
 6. Update agent graph to use wiki tools
 7. Add Wiki tab to sources panel
-8. Update Add Source modal
-9. For existing notebooks: wiki starts empty, gets built as user interacts
+8. Update Add Source modal with collection search
+9. Add "Save to wiki" button on chat messages
+10. Add "Add to Notebook" button on Research Hub items
+11. For existing notebooks: wiki starts empty, gets built as user interacts
