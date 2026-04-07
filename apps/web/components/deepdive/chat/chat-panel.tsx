@@ -12,6 +12,7 @@ import {
   StickyNote,
   Copy,
   Check,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -341,6 +342,45 @@ const prevIsLoadingRef = useRef<boolean>(false);
     }
   }, []);
 
+  // Save AI message content as a wiki page
+  const [savingWikiId, setSavingWikiId] = useState<string | null>(null);
+  const handleSaveToWiki = useCallback(
+    async (messageId: string, content: string) => {
+      if (savingWikiId) return;
+      setSavingWikiId(messageId);
+      try {
+        const slug = `synthesis-${Date.now()}`;
+        const title = content
+          .slice(0, 60)
+          .replace(/[#*\n]/g, "")
+          .trim() + "...";
+        await fetch(`/api/notebooks/${notebookId}/wiki/${slug}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            content,
+            pageType: "COMPARISON",
+            sourceRefs: [],
+          }),
+        });
+        // Log the save
+        fetch(`/api/notebooks/${notebookId}/wiki/log`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            entry: `saved | Chat synthesis saved as [[${slug}]]`,
+          }),
+        }).catch(() => {});
+      } catch (error) {
+        console.error("Failed to save to wiki:", error);
+      } finally {
+        setSavingWikiId(null);
+      }
+    },
+    [notebookId, savingWikiId],
+  );
+
   // Create new session in database
   const createSession = useCallback(
     async (title?: string) => {
@@ -659,6 +699,22 @@ const prevIsLoadingRef = useRef<boolean>(false);
                               <StickyNote className="h-3.5 w-3.5" />
                             )}
                             <span>SAVE TO STUDIO</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
+                            onClick={() =>
+                              handleSaveToWiki(messageKey, content)
+                            }
+                            disabled={savingWikiId === messageKey}
+                          >
+                            {savingWikiId === messageKey ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <BookOpen className="h-3.5 w-3.5" />
+                            )}
+                            <span>SAVE TO WIKI</span>
                           </Button>
                           <Button
                             variant="ghost"
