@@ -53,15 +53,15 @@ export async function processPdfDocument(
       },
     });
 
-    // Trigger wiki ingest in background (non-blocking)
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3001";
-    fetch(
-      `${baseUrl}/api/notebooks/${context.notebookId}/ingest/${sourceId}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      }
-    ).catch((err) => console.error("Wiki ingest trigger failed:", err));
+    // Trigger wiki ingest in background (non-blocking, direct function call)
+    import("@/lib/services/wiki-ingest")
+      .then(({ ingestSourceToWiki }) =>
+        ingestSourceToWiki(context.notebookId, sourceId)
+      )
+      .then((result) =>
+        console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`)
+      )
+      .catch((err) => console.error("Wiki ingest failed:", err));
 
     return { success: true };
   } catch (error) {
