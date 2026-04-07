@@ -18,19 +18,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { createNote } from "@/lib/actions/notes";
-import type { TocHeading } from "@/lib/utils/toc-extractor";
 import type { Source } from "@prisma/client";
 
 interface PreloadedMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-}
-
-interface SourceContext {
-  id: string;
-  title: string;
-  toc: TocHeading[];
 }
 
 interface ChatPanelProps {
@@ -404,24 +397,6 @@ const prevIsLoadingRef = useRef<boolean>(false);
     }
   };
 
-  // Build sources context for agent (title + TOC headings)
-  const sourcesContext = useMemo((): SourceContext[] => {
-    return sources
-      .filter((s) => {
-        if (s.status !== "READY") return false;
-        const meta = s.metadata as Record<string, unknown> | null;
-        return meta?.toc && Array.isArray(meta.toc);
-      })
-      .map((s) => {
-        const meta = s.metadata as Record<string, unknown>;
-        return {
-          id: s.id,
-          title: s.title,
-          toc: meta.toc as TocHeading[],
-        };
-      });
-  }, [sources]);
-
   // Submit message - follows docs pattern exactly
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -445,7 +420,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
         { messages: [{ type: "human", content: message }] },
         {
           context: {
-            sources_context: sourcesContext,
+            notebook_id: notebookId,
+            wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
           },
