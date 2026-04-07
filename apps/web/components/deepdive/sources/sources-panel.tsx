@@ -39,6 +39,7 @@ import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
 import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
 import type { TocHeading } from "@/lib/utils/toc-extractor";
+import { WikiPanel } from "@/components/deepdive/wiki/wiki-panel";
 
 // Extended Source type with the new content field (until Prisma client is regenerated)
 type Source = PrismaSource & {
@@ -63,6 +64,7 @@ export function SourcesPanel({
   selectedSource,
   onSelectSource,
 }: SourcesPanelProps) {
+  const [activeTab, setActiveTab] = useState<"sources" | "wiki">("sources");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: liveSources = sources } = useQuery<Source[]>({
     queryKey: ["notebook-sources", notebookId],
@@ -101,54 +103,78 @@ export function SourcesPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="px-6 pt-3 pb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
-          <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
-            SOURCES
-          </h2>
+      {/* Tab Bar */}
+      <div className="px-6 pt-3 pb-1 flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <button
+            className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+              activeTab === "sources"
+                ? "text-foreground bg-accent/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("sources")}
+          >
+            Sources
+          </button>
+          <button
+            className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+              activeTab === "wiki"
+                ? "text-foreground bg-accent/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("wiki")}
+          >
+            Wiki
+          </button>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
-          onClick={() => setIsDialogOpen(true)}
-          title="Add Source"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Sources List */}
-      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
-        {liveSources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <FileText className="h-8 w-8 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
-            <p className="text-xs text-muted-foreground">
-              Add documents or webpages
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {liveSources.map((source) => (
-              <SourceItem
-                key={source.id}
-                source={source}
-                onSelect={() => onSelectSource(source)}
-              />
-            ))}
-          </div>
+        {activeTab === "sources" && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
+            onClick={() => setIsDialogOpen(true)}
+            title="Add Source"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         )}
       </div>
 
-      {/* Add Source Dialog */}
-      <AddSourceDialog
-        notebookId={notebookId}
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-      />
+      {activeTab === "sources" ? (
+        <>
+          {/* Sources List */}
+          <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+            {liveSources.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FileText className="h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Add documents or webpages
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {liveSources.map((source) => (
+                  <SourceItem
+                    key={source.id}
+                    source={source}
+                    onSelect={() => onSelectSource(source)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add Source Dialog */}
+          <AddSourceDialog
+            notebookId={notebookId}
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+          />
+        </>
+      ) : (
+        <WikiPanel notebookId={notebookId} />
+      )}
     </div>
   );
 }
