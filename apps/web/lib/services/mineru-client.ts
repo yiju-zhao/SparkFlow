@@ -56,7 +56,7 @@ function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
 }
 
 async function parsePdfViaApi(
-  fileUrl: string,
+  filePath: string,
   options?: { modelVersion?: string }
 ): Promise<MineruResult> {
   if (!MINERU_API_TOKEN) {
@@ -69,28 +69,48 @@ async function parsePdfViaApi(
     Authorization: `Bearer ${MINERU_API_TOKEN}`,
   };
 
-  const submitRes = await fetch("https://mineru.net/api/v4/extract/task", {
+  const fileName = filePath.split("/").pop()!;
+
+  // Step 1: Request presigned upload URL via batch API
+  const batchRes = await fetch("https://mineru.net/api/v4/file-urls/batch", {
     method: "POST",
     headers,
-    body: JSON.stringify({ url: fileUrl, model_version: modelVersion }),
+    body: JSON.stringify({
+      files: [{ name: fileName }],
+      model_version: modelVersion,
+    }),
   });
 
-  if (!submitRes.ok) {
-    throw new Error(`MinerU API submit failed: ${submitRes.status}`);
+  if (!batchRes.ok) {
+    throw new Error(`MinerU API batch request failed: ${batchRes.status}`);
   }
 
-  const submitData = await submitRes.json();
-  if (submitData.code !== 0) {
-    throw new Error(`MinerU API submit error: ${submitData.msg}`);
+  const batchData = await batchRes.json();
+  if (batchData.code !== 0) {
+    throw new Error(`MinerU API batch error: ${batchData.msg}`);
   }
 
-  const taskId = submitData.data.task_id;
-  const result = await pollMineruTask(taskId, headers);
+  const batchId = batchData.data.batch_id;
+  const uploadUrl = batchData.data.file_urls[0];
+
+  // Step 2: Upload file to presigned URL
+  const fileBuffer = await readFile(filePath);
+  const uploadRes = await fetch(uploadUrl, {
+    method: "PUT",
+    body: fileBuffer,
+  });
+
+  if (!uploadRes.ok) {
+    throw new Error(`MinerU file upload failed: ${uploadRes.status}`);
+  }
+
+  // Step 3: Poll for batch results
+  const result = await pollMineruBatch(batchId, headers);
   return downloadAndExtractZip(result.full_zip_url);
 }
 
-async function pollMineruTask(
-  taskId: string,
+async function pollMineruBatch(
+  batchId: string,
   headers: Record<string, string>,
   maxAttempts = 120,
   intervalMs = 3000
@@ -98,21 +118,27 @@ async function pollMineruTask(
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs));
 
-    const res = await fetch(`https://mineru.net/api/v4/extract/task/${taskId}`, {
-      headers,
-    });
+    const res = await fetch(
+      `https://mineru.net/api/v4/extract-results/batch/${batchId}`,
+      { headers }
+    );
 
     if (!res.ok) continue;
 
     const data = await res.json();
-    const state = data.data?.state;
+    const results = data.data?.extract_result;
 
-    if (state === "done") {
-      return { full_zip_url: data.data.full_zip_url };
+    if (!results || results.length === 0) continue;
+
+    const result = results[0];
+
+    if (result.state === "done") {
+      return { full_zip_url: result.full_zip_url };
     }
-    if (state === "failed") {
-      throw new Error(`MinerU extraction failed: ${data.data.err_msg || "unknown error"}`);
+    if (result.state === "failed") {
+      throw new Error(`MinerU extraction failed: ${result.err_msg || "unknown error"}`);
     }
+    // "waiting-file", "pending", "running", "converting" — keep polling
   }
 
   throw new Error(`MinerU extraction timed out after ${maxAttempts * intervalMs / 1000}s`);
