@@ -142,7 +142,7 @@ Agent reports findings in chat with suggested actions.
 | `wiki_write(slug, title, content, pageType, sourceRefs)` | Create/update wiki page | `PUT /api/notebooks/[id]/wiki/[slug]` |
 | `wiki_list()` | Read index.md | `GET /api/notebooks/[id]/wiki/index` |
 | `wiki_log(entry)` | Append to log.md | `POST /api/notebooks/[id]/wiki/log` |
-| `wiki_search(query)` | Full-text search over wiki pages | `GET /api/notebooks/[id]/wiki/search?q=...` |
+| ~~`wiki_search`~~ | Not needed — index.md is sufficient at 50-source notebook cap | — |
 | `source_read(sourceId)` | Read raw source markdown | `GET /api/notebooks/[id]/sources/[sourceId]/content` |
 | `source_list()` | List all sources in notebook | `GET /api/notebooks/[id]/sources` |
 
@@ -216,11 +216,11 @@ No separate "source pool" table — the Research Hub collections ARE the pool.
 ### API Routes (Next.js)
 - `GET/PUT /api/notebooks/[id]/wiki/[slug]` — read/write wiki pages
 - `POST /api/notebooks/[id]/wiki/log` — append to log
-- `GET /api/notebooks/[id]/wiki/search` — full-text search
+- ~~wiki search~~ — not needed, index.md is sufficient at 50-source cap
 - `POST /api/notebooks/[id]/ingest/[sourceId]` — trigger wiki ingest
 
 ### Agent (Python)
-- `tools/wiki_tools.py` — wiki_read, wiki_write, wiki_list, wiki_log, wiki_search, source_read, source_list
+- `tools/wiki_tools.py` — wiki_read, wiki_write, wiki_list, wiki_log, source_read, source_list
 - Update `graphs/rag_agent.py` to register wiki tools
 - Update middleware to load wiki schema into agent context
 
@@ -279,9 +279,7 @@ Multiple source uploads queue and run sequentially per notebook. Each ingest see
 When user changes wiki conventions via chat, agent applies new rules going forward. Full wiki rewrite only on explicit request.
 
 ### Scale
-- <50 wiki pages: index.md is sufficient (agent reads in full)
-- 50-500 pages: index.md + selective page reads + wiki_search as backup
-- 500+ pages: PostgreSQL full-text search via tsvector (future)
+Each notebook is capped at ~50 raw sources. This produces ~100-200 wiki pages max (a few pages per source + cross-cutting concept/comparison pages). Wiki pages naturally merge — two sources about the same entity update one page, not two. So index.md is sufficient as the sole retrieval mechanism. No vector search or full-text search infrastructure needed.
 
 ### Empty State
 New notebook starts with empty Sources tab, Wiki tab showing only index.md (empty catalog) and log.md (empty log), and a welcome message in chat.
