@@ -66,7 +66,7 @@ function NotebookLayoutInner({
   const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  // Citation navigation state (placeholder for future PageIndex-based navigation)
+  // Citation navigation state (placeholder for future wiki-based navigation)
 
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
@@ -123,9 +123,9 @@ function NotebookLayoutInner({
     }
   }, []);
 
-  // Handle citation click — placeholder for future PageIndex-based navigation
+  // Handle citation click — placeholder for future wiki-based navigation
   const handleCitationNavigate = useCallback(async (_refId: string) => {
-    // TODO: Implement PageIndex section-based citation navigation
+    // TODO: Implement wiki-based citation navigation
     // For now, just expand the sources panel
     if (sourcesWidth === 0) {
       setSourcesWidth(SOURCES_CONTENT_WIDTH);

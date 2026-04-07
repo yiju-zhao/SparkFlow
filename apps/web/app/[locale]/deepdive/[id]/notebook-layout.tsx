@@ -131,7 +131,7 @@ function NotebookLayoutInner({
     }
   }, []);
 
-  // Handle citation click — placeholder for future PageIndex-based navigation
+  // Handle citation click — placeholder for future wiki-based navigation
   const handleCitationNavigate = useCallback(async (_refId: string) => {
     if (sourcesWidth === 0) {
       setSourcesWidth(SOURCES_CONTENT_WIDTH);
