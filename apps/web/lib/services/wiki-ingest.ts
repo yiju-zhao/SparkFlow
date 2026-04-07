@@ -36,6 +36,21 @@ export async function ingestSourceToWiki(
       ? content.slice(0, 50000) + "\n\n[... truncated ...]"
       : content;
 
+  // Fetch existing entity/concept pages so LLM can merge new info
+  const existingPages = await prisma.wikiPage.findMany({
+    where: {
+      notebookId,
+      pageType: { in: ["ENTITY", "CONCEPT"] },
+    },
+    select: { slug: true, title: true, content: true, sourceRefs: true },
+  });
+
+  const existingPagesContext = existingPages.length > 0
+    ? existingPages
+        .map((p) => `### [[${p.slug}]] — ${p.title}\n${p.content.slice(0, 500)}${p.content.length > 500 ? "..." : ""}`)
+        .join("\n\n")
+    : "(no existing pages yet)";
+
   // Dynamic import to avoid bundling OpenAI at compile time
   const { default: OpenAI } = await import("openai");
   const openai = new OpenAI();
@@ -67,17 +82,23 @@ Output a JSON object with this exact structure:
 Rules:
 - Slugs must be URL-friendly: lowercase, hyphens, no spaces
 - Use [[slug]] to link between wiki pages
-- Use [source:${sourceId}] to cite the source
+- Use [source:${sourceId}] inline to cite specific claims from this source
+- When updating existing pages with content from a new source, ADD to the existing content — don't replace it. Mark which claims come from which source using [source:id] inline
 - Keep entity/concept pages focused — one clear topic per page
 - The updated index must list ALL pages (existing + new), organized by category with one-line summaries
 - Only create entities/concepts that are genuinely important, not every noun
-- Content should be informative and concise`,
+- Content should be informative and concise
+- If an existing page already has content from other sources, preserve that content and add new information with the new source citation`,
       },
       {
         role: "user",
         content: `## Current Wiki Index
 
 ${currentIndex}
+
+## Existing Wiki Pages (for merging — add new info, don't replace)
+
+${existingPagesContext}
 
 ## Source to Ingest
 

@@ -184,7 +184,11 @@ export function SourcesPanel({
           />
         </>
       ) : (
-        <WikiPanel notebookId={notebookId} initialPages={wikiPages} />
+        <WikiPanel
+          notebookId={notebookId}
+          initialPages={wikiPages}
+          sources={liveSources.map((s) => ({ id: s.id, title: s.title }))}
+        />
       )}
     </div>
   );

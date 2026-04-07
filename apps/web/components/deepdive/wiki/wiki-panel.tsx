@@ -15,9 +15,15 @@ interface WikiPage {
   updatedAt: string;
 }
 
+interface SourceInfo {
+  id: string;
+  title: string;
+}
+
 interface WikiPanelProps {
   notebookId: string;
   initialPages?: WikiPage[];
+  sources?: SourceInfo[];
 }
 
 const PAGE_TYPE_ICONS: Record<string, typeof FileText> = {
@@ -36,7 +42,15 @@ const PAGE_TYPE_LABELS: Record<string, string> = {
   COMPARISON: "Comparisons",
 };
 
-export function WikiPanel({ notebookId, initialPages = [] }: WikiPanelProps) {
+export function WikiPanel({ notebookId, initialPages = [], sources = [] }: WikiPanelProps) {
+  // Build source ID → title map for resolving [source:id] references
+  const sourceMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of sources) {
+      map[s.id] = s.title;
+    }
+    return map;
+  }, [sources]);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
   const { data: pages = initialPages } = useQuery<WikiPage[]>({
@@ -69,6 +83,7 @@ export function WikiPanel({ notebookId, initialPages = [] }: WikiPanelProps) {
       <WikiPageView
         notebookId={notebookId}
         slug={selectedSlug}
+        sourceMap={sourceMap}
         onBack={() => setSelectedSlug(null)}
         onNavigate={(slug) => setSelectedSlug(slug)}
       />
@@ -169,11 +184,13 @@ const WikiPageItem = memo(function WikiPageItem({
 function WikiPageView({
   notebookId,
   slug,
+  sourceMap,
   onBack,
   onNavigate,
 }: {
   notebookId: string;
   slug: string;
+  sourceMap: Record<string, string>;
   onBack: () => void;
   onNavigate: (slug: string) => void;
 }) {
@@ -186,18 +203,42 @@ function WikiPageView({
     },
   });
 
+  // Resolve source IDs to titles for display
+  const sourceTitles = useMemo(() => {
+    if (!page?.sourceRefs) return [];
+    return page.sourceRefs.map((id) => ({
+      id,
+      title: sourceMap[id] || id.slice(0, 8) + "...",
+    }));
+  }, [page?.sourceRefs, sourceMap]);
+
   return (
     <div className="flex h-full flex-col">
-      <div className="px-6 pt-3 pb-3 flex items-center gap-2">
-        <button
-          onClick={onBack}
-          className="h-7 w-7 flex items-center justify-center rounded-[4px] hover:bg-accent/80 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <h2 className="text-[13px] font-semibold truncate">
-          {page?.title || slug}
-        </h2>
+      <div className="px-6 pt-3 pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBack}
+            className="h-7 w-7 flex items-center justify-center rounded-[4px] hover:bg-accent/80 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <h2 className="text-[13px] font-semibold truncate">
+            {page?.title || slug}
+          </h2>
+        </div>
+        {sourceTitles.length > 0 && (
+          <div className="mt-1 ml-9 flex flex-wrap gap-1">
+            {sourceTitles.map(({ id, title }) => (
+              <span
+                key={id}
+                className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-muted-foreground"
+                title={`Source: ${title}`}
+              >
+                {title.length > 30 ? title.slice(0, 30) + "..." : title}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -206,7 +247,7 @@ function WikiPageView({
             <span className="text-sm text-muted-foreground">Loading...</span>
           </div>
         ) : page?.content ? (
-          <WikiMarkdown content={page.content} onNavigate={onNavigate} />
+          <WikiMarkdown content={page.content} sourceMap={sourceMap} onNavigate={onNavigate} />
         ) : (
           <p className="text-sm text-muted-foreground">No content</p>
         )}
@@ -217,14 +258,28 @@ function WikiPageView({
 
 function WikiMarkdown({
   content,
+  sourceMap,
   onNavigate,
 }: {
   content: string;
+  sourceMap: Record<string, string>;
   onNavigate: (slug: string) => void;
 }) {
-  const processed = content.replace(
+  // Replace [[slug]] with clickable wiki links
+  let processed = content.replace(
     /\[\[([a-zA-Z0-9_-]+)\]\]/g,
     (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
+  );
+
+  // Replace [source:id] with source titles
+  processed = processed.replace(
+    /\[source:([a-zA-Z0-9_-]+)\]/g,
+    (_, id) => {
+      const title = sourceMap[id];
+      return title
+        ? `<source-ref title="${title}">📄 ${title.length > 25 ? title.slice(0, 25) + "…" : title}</source-ref>`
+        : `<source-ref>📄 ${id.slice(0, 8)}…</source-ref>`;
+    }
   );
 
   return (
@@ -253,6 +308,15 @@ function WikiMarkdown({
         }
         wiki-link:hover {
           text-decoration-style: solid;
+        }
+        source-ref {
+          display: inline;
+          font-size: 0.75rem;
+          color: var(--color-muted-foreground, #6b7280);
+          background: var(--color-accent, #f3f4f6);
+          border-radius: 4px;
+          padding: 1px 4px;
+          opacity: 0.8;
         }
       `}</style>
     </div>
