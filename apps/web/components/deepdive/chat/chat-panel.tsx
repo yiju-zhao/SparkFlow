@@ -455,12 +455,25 @@ const prevIsLoadingRef = useRef<boolean>(false);
       }
       setStreamSessionId(targetSessionId ?? null);
 
-      // Submit to LangGraph (optimization happens in agent)
+      // Fetch latest wiki index to include in agent context
+      let wikiIndex = "";
+      try {
+        const wikiRes = await fetch(`/api/notebooks/${notebookId}/wiki/index`);
+        if (wikiRes.ok) {
+          const wikiData = await wikiRes.json();
+          wikiIndex = wikiData.content || "";
+        }
+      } catch {
+        // Wiki fetch failed — agent will work without it
+      }
+
+      // Submit to LangGraph with wiki context
       stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
           context: {
             notebook_id: notebookId,
+            wiki_index: wikiIndex,
             wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
