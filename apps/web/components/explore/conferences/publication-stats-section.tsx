@@ -1,15 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ConferenceStats } from "@/lib/explore/types";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { StatusPieChart } from "./charts/status-pie-chart";
-import { KeywordCloud } from "./charts/keyword-cloud";
-import { AffiliationBarChart } from "./charts/affiliation-bar-chart";
-import { CountryBarChart } from "./charts/country-bar-chart";
-import { TopicBarChart } from "./charts/topic-bar-chart";
-import { CollaborationNetwork } from "./charts/collaboration-network";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function ChartSkeleton({ className }: { className?: string }) {
+  return <Skeleton className={`w-full ${className || "h-70"}`} />;
+}
+
+const StatusPieChart = dynamic(
+  () => import("./charts/status-pie-chart").then((m) => ({ default: m.StatusPieChart })),
+  { loading: () => <ChartSkeleton />, ssr: false },
+);
+const KeywordCloud = dynamic(
+  () => import("./charts/keyword-cloud").then((m) => ({ default: m.KeywordCloud })),
+  { loading: () => <ChartSkeleton />, ssr: false },
+);
+const AffiliationBarChart = dynamic(
+  () => import("./charts/affiliation-bar-chart").then((m) => ({ default: m.AffiliationBarChart })),
+  { loading: () => <ChartSkeleton className="h-100" />, ssr: false },
+);
+const CountryBarChart = dynamic(
+  () => import("./charts/country-bar-chart").then((m) => ({ default: m.CountryBarChart })),
+  { loading: () => <ChartSkeleton className="h-100" />, ssr: false },
+);
+const TopicBarChart = dynamic(
+  () => import("./charts/topic-bar-chart").then((m) => ({ default: m.TopicBarChart })),
+  { loading: () => <ChartSkeleton />, ssr: false },
+);
+const CollaborationNetwork = dynamic(
+  () => import("./charts/collaboration-network").then((m) => ({ default: m.CollaborationNetwork })),
+  { loading: () => <ChartSkeleton className="h-100" />, ssr: false },
+);
 
 interface PublicationStatsSectionProps {
   venueId: string;

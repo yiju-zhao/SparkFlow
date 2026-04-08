@@ -2,7 +2,6 @@
 
 import { useMemo, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import * as echarts from "echarts";
 import { KeywordStats } from "@/lib/explore/types";
 import type { ECharts } from "echarts";
 
@@ -30,11 +29,15 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
   const { resolvedTheme } = useTheme();
   const [isReady, setIsReady] = useState(false);
 
-  // Dynamically import echarts-wordcloud on client only
+  // Dynamically import echarts + wordcloud on client only
+  const echartsRef = useRef<typeof import("echarts") | null>(null);
   useEffect(() => {
-    import("echarts-wordcloud").then(() => {
-      setIsReady(true);
-    });
+    Promise.all([import("echarts"), import("echarts-wordcloud")]).then(
+      ([mod]) => {
+        echartsRef.current = mod;
+        setIsReady(true);
+      },
+    );
   }, []);
 
   const wordData = useMemo(() => {
@@ -50,14 +53,14 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
   }, [data]);
 
   useEffect(() => {
-    if (!isReady || !chartRef.current || wordData.length === 0) return;
+    if (!isReady || !echartsRef.current || !chartRef.current || wordData.length === 0) return;
 
     if (chartInstance.current && !chartInstance.current.isDisposed()) {
       chartInstance.current.dispose();
       chartInstance.current = null;
     }
 
-    chartInstance.current = echarts.init(
+    chartInstance.current = echartsRef.current.init(
       chartRef.current,
       resolvedTheme === "dark" ? "dark" : undefined,
     );
