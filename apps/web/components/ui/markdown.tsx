@@ -41,6 +41,32 @@ const HtmlTable = memo(function HtmlTable({ html }: { html: string }) {
   );
 });
 
+/**
+ * Wrap bare LaTeX environments in $$ delimiters so remark-math can parse them.
+ * Handles: \begin{...}...\end{...}, \[...\], \(...\), and bare \frac, \mathcal etc.
+ */
+function preprocessLatex(content: string): string {
+  // Wrap \begin{env}...\end{env} blocks in $$
+  let result = content.replace(
+    /(?<!\$)\\\begin\{([^}]+)\}([\s\S]*?)\\\end\{\1\}(?!\$)/g,
+    (_, env, body) => `$$\n\\begin{${env}}${body}\\end{${env}}\n$$`
+  );
+
+  // Wrap \[...\] display math in $$
+  result = result.replace(
+    /(?<!\$)\\\[([\s\S]*?)\\\](?!\$)/g,
+    (_, body) => `$$${body}$$`
+  );
+
+  // Wrap \(...\) inline math in $
+  result = result.replace(
+    /(?<!\$)\\\(([\s\S]*?)\\\)(?!\$)/g,
+    (_, body) => `$${body}$`
+  );
+
+  return result;
+}
+
 function preprocessCitations(content: string): string {
   const chunkIndexMap = new Map<string, number>();
   let nextIndex = 1;
@@ -191,7 +217,7 @@ export const Markdown = memo(function Markdown({
     [children],
   );
   const processedContent = useMemo(
-    () => preprocessCitations(contentWithoutTables),
+    () => preprocessCitations(preprocessLatex(contentWithoutTables)),
     [contentWithoutTables],
   );
 
