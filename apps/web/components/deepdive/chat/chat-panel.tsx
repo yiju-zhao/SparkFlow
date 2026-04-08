@@ -642,7 +642,6 @@ const prevIsLoadingRef = useRef<boolean>(false);
       {/* Messages - using stream.messages directly */}
       <div
         ref={messagesContainerRef}
-        suppressHydrationWarning
         className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 pt-14 space-y-4"
         style={{
           contentVisibility: "auto",
