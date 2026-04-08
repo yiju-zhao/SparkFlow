@@ -45,15 +45,14 @@ export async function processWebpage(
       },
     });
 
-    // Trigger wiki ingest in background (non-blocking, direct function call)
-    import("@/lib/services/wiki-ingest")
-      .then(({ ingestSourceToWiki }) =>
-        ingestSourceToWiki(context.notebookId, sourceId)
-      )
-      .then((result) =>
-        console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`)
-      )
-      .catch((err) => console.error("Wiki ingest failed:", err));
+    // Trigger wiki ingest (awaited to prevent premature termination)
+    try {
+      const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
+      const result = await ingestSourceToWiki(context.notebookId, sourceId);
+      console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`);
+    } catch (err) {
+      console.error("Wiki ingest failed:", err);
+    }
 
     return { success: true };
   } catch (error) {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -9,6 +10,13 @@ export default function AdminLayout({
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-card">
         <div className="container mx-auto px-4 py-3 flex items-center gap-6">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            title="Back to home"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
           <span className="font-semibold text-sm">Admin</span>
           <Link
             href="/admin"
