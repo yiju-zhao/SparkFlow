@@ -52,7 +52,7 @@ export async function removeSourceFromWiki(
   const cleaned = removeSourceFromGraph(graphData, sourceId);
 
   // 2. Re-cluster
-  const { graphWithCommunities, communities } = clusterGraph(cleaned);
+  const { graphWithCommunities, communities } = await clusterGraph(cleaned);
 
   // 3. Store updated graph
   await prisma.notebookGraph.update({

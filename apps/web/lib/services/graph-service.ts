@@ -4,8 +4,6 @@
  */
 
 import prisma from "@/lib/prisma";
-import Graph from "graphology";
-import louvain from "graphology-communities-louvain";
 
 // ============================================================
 // Types
@@ -183,13 +181,16 @@ export function mergeGraph(
 // 3. Cluster — Louvain community detection
 // ============================================================
 
-export function clusterGraph(graphData: GraphData): {
+export async function clusterGraph(graphData: GraphData): Promise<{
   graphWithCommunities: GraphData;
   communities: CommunityMap;
-} {
+}> {
   if (graphData.nodes.length === 0) {
     return { graphWithCommunities: graphData, communities: {} };
   }
+
+  const { default: Graph } = await import("graphology");
+  const { default: louvain } = await import("graphology-communities-louvain");
 
   const g = new Graph({ type: "undirected" });
 
@@ -438,7 +439,7 @@ export async function runGraphPipeline(
   const merged = mergeGraph(existing, extraction);
 
   // 3. Cluster
-  const { graphWithCommunities, communities } = clusterGraph(merged);
+  const { graphWithCommunities, communities } = await clusterGraph(merged);
 
   // 4. Store graph
   await prisma.notebookGraph.upsert({
