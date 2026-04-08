@@ -14,14 +14,19 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",
-      "recharts",
       "echarts",
+      "date-fns",
       "@copilotkit/react-core",
       "@copilotkit/react-ui",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-select",
+      "@radix-ui/react-popover",
     ],
   },
   // Prevent Turbopack from bundling native/heavy server-only packages
-  serverExternalPackages: ["playwright", "pg", "@prisma/adapter-pg", "jszip", "graphology", "graphology-communities-louvain"],
+  serverExternalPackages: ["playwright", "pg", "@prisma/adapter-pg", "jszip", "graphology", "graphology-communities-louvain", "openai", "bcryptjs"],
   // Allow dev server access from local network IPs (for remote development)
   allowedDevOrigins: ["10.218.163.144", "*.local"],
 };

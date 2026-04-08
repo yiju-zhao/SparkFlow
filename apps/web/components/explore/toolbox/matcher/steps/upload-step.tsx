@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Workbook } from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 import { FileDropzone } from "../file-dropzone";
 import { Button } from "@/components/ui/button";
@@ -33,6 +32,7 @@ interface UploadStepProps {
 }
 
 async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
+  const { Workbook } = await import("exceljs");
   const buffer = await file.arrayBuffer();
   const workbook = new Workbook();
   await workbook.xlsx.load(buffer);

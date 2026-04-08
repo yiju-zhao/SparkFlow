@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import * as echarts from "echarts";
 import type { EChartsOption, ECharts } from "echarts";
 
 interface UseEChartsOptions {
@@ -25,17 +24,23 @@ export function useECharts({ option }: UseEChartsOptions) {
   useEffect(() => {
     if (!isMounted || !chartRef.current) return;
 
-    const theme = resolvedTheme === "dark" ? "dark" : undefined;
+    let cancelled = false;
 
-    // Dispose existing instance if theme changes
-    if (chartInstance.current) {
-      chartInstance.current.dispose();
-      chartInstance.current = null;
-    }
+    import("echarts").then((echarts) => {
+      if (cancelled || !chartRef.current) return;
 
-    // Initialize chart with theme
-    chartInstance.current = echarts.init(chartRef.current, theme);
-    chartInstance.current.setOption(option);
+      const theme = resolvedTheme === "dark" ? "dark" : undefined;
+
+      // Dispose existing instance if theme changes
+      if (chartInstance.current) {
+        chartInstance.current.dispose();
+        chartInstance.current = null;
+      }
+
+      // Initialize chart with theme
+      chartInstance.current = echarts.init(chartRef.current, theme);
+      chartInstance.current.setOption(option);
+    });
 
     // Handle resize
     const handleResize = () => {
@@ -47,6 +52,7 @@ export function useECharts({ option }: UseEChartsOptions) {
 
     // Cleanup
     return () => {
+      cancelled = true;
       window.removeEventListener("resize", handleResize);
       if (chartInstance.current && !chartInstance.current.isDisposed()) {
         chartInstance.current.dispose();
