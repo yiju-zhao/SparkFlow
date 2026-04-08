@@ -89,6 +89,7 @@ model Notebook {
   messages     ChatMessage[]
   notes        Note[]
   wikiPages    WikiPage[]
+  graph        NotebookGraph?
 
   // Unique constraint: one notebook name per user
   @@unique([userId, name])
@@ -173,6 +174,17 @@ model WikiPage {
   @@unique([notebookId, slug])
   @@index([notebookId])
   @@map("wiki_pages")
+}
+
+model NotebookGraph {
+  id          String   @id @default(cuid())
+  notebookId  String   @unique
+  graphData   Json     // {nodes: [...], edges: [...]}
+  communities Json     // {community_id: [node_ids]}
+  updatedAt   DateTime @updatedAt
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  @@map("notebook_graphs")
 }
 
 // ============================================
