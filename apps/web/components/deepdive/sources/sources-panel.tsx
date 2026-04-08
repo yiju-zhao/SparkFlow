@@ -66,6 +66,7 @@ interface SourcesPanelProps {
   selectedSource: Source | null;
   onSelectSource: (source: Source | null) => void;
   wikiPages?: WikiPageSummary[];
+  graphData?: any;
 }
 
 export function SourcesPanel({
@@ -74,6 +75,7 @@ export function SourcesPanel({
   selectedSource,
   onSelectSource,
   wikiPages = [],
+  graphData,
 }: SourcesPanelProps) {
   const [activeTab, setActiveTab] = useState<"sources" | "wiki">("sources");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -188,6 +190,7 @@ export function SourcesPanel({
           notebookId={notebookId}
           initialPages={wikiPages}
           sources={liveSources.map((s) => ({ id: s.id, title: s.title }))}
+          graphData={graphData}
         />
       )}
     </div>

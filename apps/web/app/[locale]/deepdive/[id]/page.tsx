@@ -13,7 +13,7 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
 
   const session = await auth();
 
-  const [notebook, sources, notes, chatSessions, wikiPages] = await Promise.all([
+  const [notebook, sources, notes, chatSessions, wikiPages, notebookGraph] = await Promise.all([
     prisma.notebook.findFirst({
       where: {
         id,
@@ -56,6 +56,10 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
         updatedAt: true,
       },
       orderBy: { updatedAt: "desc" },
+    }),
+    prisma.notebookGraph.findUnique({
+      where: { notebookId: id },
+      select: { graphData: true },
     }),
   ]);
 
@@ -103,6 +107,7 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
           ...p,
           updatedAt: p.updatedAt.toISOString(),
         }))}
+        graphData={notebookGraph?.graphData || null}
       />
     </DeepdiveShell>
   );

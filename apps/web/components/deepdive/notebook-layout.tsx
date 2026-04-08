@@ -42,6 +42,7 @@ interface NotebookLayoutProps {
   initialChatSessions?: TransformedChatSession[];
   initialMessages?: TransformedMessage[];
   wikiPages?: WikiPageSummary[];
+  graphData?: any;
 }
 
 // Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
@@ -73,6 +74,7 @@ function NotebookLayoutInner({
   initialChatSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
   wikiPages = EMPTY_WIKI_PAGES,
+  graphData,
 }: NotebookLayoutProps) {
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
   const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
@@ -174,6 +176,7 @@ function NotebookLayoutInner({
               selectedSource={selectedSource}
               onSelectSource={handleSelectSource}
               wikiPages={wikiPages}
+              graphData={graphData}
             />
           </motion.div>
           <ResizableDivider
