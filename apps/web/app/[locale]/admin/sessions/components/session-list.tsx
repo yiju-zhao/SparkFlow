@@ -107,7 +107,7 @@ export function SessionList({ instances }: { instances: Instance[] }) {
                   </td>
                   <td className="py-3 text-muted-foreground whitespace-nowrap">
                     {sess.date
-                      ? new Date(sess.date).toLocaleDateString()
+                      ? new Date(sess.date).toISOString().split("T")[0]
                       : "—"}
                   </td>
                   <td className="py-3 text-muted-foreground max-w-xs truncate">

@@ -256,7 +256,7 @@ export default async function PublicationDetailPage({ params }: PageProps) {
                     )}
                     {session.date && (
                       <span className="truncate">
-                        {new Date(session.date).toLocaleDateString()}
+                        {new Date(session.date).toISOString().split("T")[0]}
                         {session.startTime && ` ${session.startTime}`}
                         {session.endTime && ` - ${session.endTime}`}
                       </span>

@@ -77,7 +77,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
         {session.date && (
           <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
-            {new Date(session.date).toLocaleDateString()}
+            {new Date(session.date).toISOString().split("T")[0]}
           </span>
         )}
         {(session.startTime || session.endTime) && (

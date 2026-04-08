@@ -50,10 +50,10 @@ export default async function InstancesPage() {
                 <td className="py-3">{inst.name}</td>
                 <td className="py-3 text-muted-foreground">
                   {inst.startDate
-                    ? new Date(inst.startDate).toLocaleDateString()
+                    ? new Date(inst.startDate).toISOString().split("T")[0]
                     : "—"}
                   {inst.endDate
-                    ? ` – ${new Date(inst.endDate).toLocaleDateString()}`
+                    ? ` – ${new Date(inst.endDate).toISOString().split("T")[0]}`
                     : ""}
                 </td>
                 <td className="py-3">{inst._count.sessions}</td>

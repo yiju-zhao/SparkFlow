@@ -136,7 +136,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
                     )}
                     {session.date && (
                       <span className="truncate">
-                        {new Date(session.date).toLocaleDateString()}
+                        {new Date(session.date).toISOString().split("T")[0]}
                         {session.startTime && ` ${session.startTime}`}
                         {session.endTime && ` - ${session.endTime}`}
                       </span>
