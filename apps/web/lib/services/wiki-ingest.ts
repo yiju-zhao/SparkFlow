@@ -257,3 +257,159 @@ ${truncated}`,
 
   return { pagesWritten: writtenPages.length, pages: writtenPages };
 }
+
+/**
+ * Remove a source's contributions from the wiki.
+ * Deletes the summary page, updates entity/concept pages to remove
+ * content from this source, and deletes pages with no remaining sources.
+ */
+export async function removeSourceFromWiki(
+  notebookId: string,
+  sourceId: string,
+  sourceTitle: string
+): Promise<{ pagesDeleted: number; pagesUpdated: number }> {
+  // Find all wiki pages that reference this source
+  const affectedPages = await prisma.wikiPage.findMany({
+    where: {
+      notebookId,
+      sourceRefs: { has: sourceId },
+    },
+  });
+
+  if (affectedPages.length === 0) {
+    return { pagesDeleted: 0, pagesUpdated: 0 };
+  }
+
+  let pagesDeleted = 0;
+  let pagesUpdated = 0;
+
+  // Pages that ONLY reference this source — delete them
+  const singleSourcePages = affectedPages.filter(
+    (p) => p.sourceRefs.length === 1 && p.pageType !== "INDEX" && p.pageType !== "LOG"
+  );
+
+  // Pages that reference multiple sources — need LLM to revise
+  const multiSourcePages = affectedPages.filter(
+    (p) => p.sourceRefs.length > 1 && p.pageType !== "INDEX" && p.pageType !== "LOG"
+  );
+
+  // Delete single-source pages
+  if (singleSourcePages.length > 0) {
+    await prisma.wikiPage.deleteMany({
+      where: {
+        id: { in: singleSourcePages.map((p) => p.id) },
+      },
+    });
+    pagesDeleted = singleSourcePages.length;
+  }
+
+  // For multi-source pages, call LLM to revise content
+  if (multiSourcePages.length > 0) {
+    const { default: OpenAI } = await import("openai");
+    const openai = new OpenAI();
+
+    for (const page of multiSourcePages) {
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          temperature: 0.3,
+          messages: [
+            {
+              role: "system",
+              content: `You are revising a wiki page. A source has been removed from the notebook.
+Remove all content attributed to [source:${sourceId}] from the page.
+Keep content from other sources intact.
+Output only the revised markdown content — nothing else.
+If after removal the page has no meaningful content left, output exactly: EMPTY`,
+            },
+            {
+              role: "user",
+              content: `## Wiki Page: ${page.title}
+
+${page.content}
+
+## Task
+Remove all content from source "${sourceTitle}" (ID: ${sourceId}) from this page.`,
+            },
+          ],
+        });
+
+        const revised = completion.choices[0]?.message?.content?.trim();
+
+        if (!revised || revised === "EMPTY") {
+          await prisma.wikiPage.delete({ where: { id: page.id } });
+          pagesDeleted++;
+        } else {
+          await prisma.wikiPage.update({
+            where: { id: page.id },
+            data: {
+              content: revised,
+              sourceRefs: page.sourceRefs.filter((ref) => ref !== sourceId),
+            },
+          });
+          pagesUpdated++;
+        }
+      } catch (err) {
+        // If LLM fails, just remove the sourceRef without revising content
+        console.error(`Failed to revise page ${page.slug}:`, err);
+        await prisma.wikiPage.update({
+          where: { id: page.id },
+          data: {
+            sourceRefs: page.sourceRefs.filter((ref) => ref !== sourceId),
+          },
+        });
+        pagesUpdated++;
+      }
+    }
+  }
+
+  // Rebuild index from remaining pages
+  const remainingPages = await prisma.wikiPage.findMany({
+    where: {
+      notebookId,
+      pageType: { notIn: ["INDEX", "LOG"] },
+    },
+    select: { slug: true, title: true, pageType: true },
+    orderBy: { title: "asc" },
+  });
+
+  const grouped: Record<string, { slug: string; title: string }[]> = {};
+  for (const p of remainingPages) {
+    if (!grouped[p.pageType]) grouped[p.pageType] = [];
+    grouped[p.pageType].push(p);
+  }
+
+  const indexSections = Object.entries(grouped)
+    .map(([type, pages]) => {
+      const label = { ENTITY: "Entities", CONCEPT: "Concepts", SUMMARY: "Summaries", COMPARISON: "Comparisons" }[type] || type;
+      return `## ${label}\n\n${pages.map((p) => `- [[${p.slug}]] — ${p.title}`).join("\n")}`;
+    })
+    .join("\n\n");
+
+  const indexContent = remainingPages.length > 0
+    ? `# Wiki Index\n\n${indexSections}`
+    : "# Wiki Index\n\nThis wiki is empty. Add sources to start building your knowledge base.";
+
+  await prisma.wikiPage.upsert({
+    where: { notebookId_slug: { notebookId, slug: "index" } },
+    create: { notebookId, slug: "index", title: "Wiki Index", content: indexContent, pageType: "INDEX", sourceRefs: [] },
+    update: { content: indexContent },
+  });
+
+  // Log the removal
+  const today = new Date().toISOString().split("T")[0];
+  const logEntry = `\n## [${today}] remove | ${sourceTitle}\nDeleted ${pagesDeleted} pages, updated ${pagesUpdated} pages`;
+
+  const logPage = await prisma.wikiPage.findUnique({
+    where: { notebookId_slug: { notebookId, slug: "log" } },
+  });
+
+  if (logPage) {
+    await prisma.wikiPage.update({
+      where: { id: logPage.id },
+      data: { content: logPage.content + logEntry },
+    });
+  }
+
+  return { pagesDeleted, pagesUpdated };
+}

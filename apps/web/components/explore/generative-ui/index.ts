@@ -56,9 +56,6 @@ type AnyZodSchema = z.ZodType<any, any, any>;
  */
 export function useGenerativeComponents() {
   // Register table component for displaying session/conference data
-  // Note: TypeScript may show "Type instantiation is excessively deep" due to
-  // complex Zod schema inference with useComponent generics. Runtime works correctly.
-  // @ts-expect-error - Zod schema inference exceeds TypeScript's type depth limit
   useComponent({
     name: "showTable",
     description:

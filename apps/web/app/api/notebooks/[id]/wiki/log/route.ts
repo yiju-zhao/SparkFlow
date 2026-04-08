@@ -9,7 +9,7 @@ export async function POST(
   const { id: notebookId } = await params;
 
   const notebook = await prisma.notebook.findUnique({
-    where: { id: notebookId, userId: session.user.id },
+    where: { id: notebookId },
   });
 
   if (!notebook) {
