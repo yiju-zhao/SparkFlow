@@ -455,12 +455,40 @@ const prevIsLoadingRef = useRef<boolean>(false);
       }
       setStreamSessionId(targetSessionId ?? null);
 
-      // Submit to LangGraph — agent uses wiki tools for progressive disclosure
+      // Fetch wiki content to inject into agent context
+      let wikiContent = "";
+      try {
+        // Fetch all wiki pages (community pages have the compiled knowledge)
+        const wikiRes = await fetch(`/api/notebooks/${notebookId}/wiki`);
+        if (wikiRes.ok) {
+          const { pages } = await wikiRes.json();
+          if (pages && pages.length > 0) {
+            // Fetch content for each non-LOG page (index + community pages)
+            const pageContents = await Promise.all(
+              pages
+                .filter((p: any) => p.pageType !== "LOG")
+                .slice(0, 10) // limit to 10 pages
+                .map(async (p: any) => {
+                  const res = await fetch(`/api/notebooks/${notebookId}/wiki/${p.slug}`);
+                  if (!res.ok) return null;
+                  const data = await res.json();
+                  return `## ${data.title}\n\n${data.content}`;
+                })
+            );
+            wikiContent = pageContents.filter(Boolean).join("\n\n---\n\n");
+          }
+        }
+      } catch {
+        // Wiki fetch failed — agent will work without it
+      }
+
+      // Submit to LangGraph with wiki knowledge injected
       stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
           context: {
             notebook_id: notebookId,
+            wiki_content: wikiContent,
             wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
@@ -614,6 +642,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
       {/* Messages - using stream.messages directly */}
       <div
         ref={messagesContainerRef}
+        suppressHydrationWarning
         className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 pt-14 space-y-4"
         style={{
           contentVisibility: "auto",
