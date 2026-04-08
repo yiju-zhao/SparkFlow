@@ -1,9 +1,8 @@
 import { memo, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
-import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
+import katex from "katex";
 import { cn } from "@/lib/utils";
 import { useCitationSafe } from "@/lib/context/citation-context";
 import "katex/dist/katex.min.css";
@@ -42,40 +41,70 @@ const HtmlTable = memo(function HtmlTable({ html }: { html: string }) {
 });
 
 /**
- * Wrap bare LaTeX in $/$$ delimiters so remark-math can parse them.
- * Inspired by Open WebUI's katex-extension approach.
+ * Render LaTeX math to HTML using KaTeX directly.
+ * Inspired by Open WebUI's approach: tokenize all delimiter types,
+ * render with katex.renderToString(), output raw HTML.
  *
- * Handles:
- * - \begin{env}...\end{env} → $$\begin{env}...\end{env}$$
- * - \[...\] → $$...$$
- * - \(...\) → $...$
- * - Bare LaTeX lines starting with known commands → $$...$$
+ * This replaces remark-math + rehype-katex with a single preprocessor
+ * that handles ALL delimiter types LLMs output.
  */
+
+// Delimiter types to recognize (same as Open WebUI)
+const MATH_DELIMITERS: { left: string; right: string; display: boolean }[] = [
+  { left: "$$", right: "$$", display: true },
+  { left: "$", right: "$", display: false },
+  { left: "\\(", right: "\\)", display: false },
+  { left: "\\[", right: "\\]", display: true },
+];
+
+// \begin{env}...\end{env} patterns
+const BEGIN_END_REGEX = /\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g;
+
+// Bare LaTeX lines (no delimiters) starting with known commands
+const BARE_LATEX_REGEX = /^(\\(?:mathcal|mathbb|mathbf|mathrm|frac|sum|prod|int|lim|left|right|operatorname)\b[\s\S]*?)$/gm;
+
+function renderKatex(latex: string, displayMode: boolean): string {
+  try {
+    return katex.renderToString(latex.trim(), {
+      displayMode,
+      throwOnError: false,
+      trust: true,
+    });
+  } catch {
+    // If KaTeX can't render, return the raw LaTeX in a code block
+    return `<code>${latex}</code>`;
+  }
+}
+
 function preprocessLatex(content: string): string {
-  // 1. \begin{env}...\end{env} blocks
-  let result = content.replace(
-    /(?<!\$)\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}(?!\$)/g,
-    (match) => `$$\n${match}\n$$`
+  // 1. Handle \begin{env}...\end{env} — always display mode
+  let result = content.replace(BEGIN_END_REGEX, (match) =>
+    renderKatex(match, true)
   );
 
-  // 2. \[...\] display math
-  result = result.replace(
-    /(?<!\$)\\\[([\s\S]*?)\\\](?!\$)/g,
-    (_, body) => `$$\n${body.trim()}\n$$`
+  // 2. Handle $$...$$ (display) — must come before single $
+  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, body) =>
+    renderKatex(body, true)
   );
 
-  // 3. \(...\) inline math
-  result = result.replace(
-    /(?<!\$)\\\((.*?)\\\)(?!\$)/g,
-    (_, body) => `$${body}$`
+  // 3. Handle \[...\] (display)
+  result = result.replace(/\\\[([\s\S]*?)\\\]/g, (_, body) =>
+    renderKatex(body, true)
   );
 
-  // 4. Bare LaTeX blocks: lines that start with a LaTeX command and contain
-  //    math-only content (no plain text words). These are standalone equations
-  //    the LLM output without any delimiters.
-  result = result.replace(
-    /^(\\(?:mathcal|mathbb|mathbf|mathrm|frac|sum|prod|int|lim|sup|inf|max|min|left|right|operatorname)\b[^\n]*(?:\n(?![\n\w#\-*>])[^\n]+)*)$/gm,
-    (match) => `$$\n${match}\n$$`
+  // 4. Handle \(...\) (inline)
+  result = result.replace(/\\\((.*?)\\\)/g, (_, body) =>
+    renderKatex(body, false)
+  );
+
+  // 5. Handle $...$ (inline) — careful not to match currency like "$5"
+  result = result.replace(/(?<!\$)\$(?!\$)(?!\d)((?:\\.|[^$\\])+?)\$(?!\$)/g, (_, body) =>
+    renderKatex(body, false)
+  );
+
+  // 6. Handle bare LaTeX lines
+  result = result.replace(BARE_LATEX_REGEX, (match) =>
+    renderKatex(match, true)
   );
 
   return result;
@@ -270,8 +299,8 @@ export const Markdown = memo(function Markdown({
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 500px" }}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeRaw, rehypeKatex]}
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
         disallowedElements={DISALLOWED_RAW_TAGS}
         unwrapDisallowed
         components={components}
