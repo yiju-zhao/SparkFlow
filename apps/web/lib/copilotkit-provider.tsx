@@ -1,7 +1,11 @@
 "use client";
 
-import { CopilotKit } from "@copilotkit/react-core";
-import { Component, ReactNode } from "react";
+import { Component, ReactNode, Suspense, lazy } from "react";
+
+// Lazy-load CopilotKit SDK — it's ~8-12MB and only needed for chat features
+const CopilotKit = lazy(() =>
+  import("@copilotkit/react-core").then((mod) => ({ default: mod.CopilotKit }))
+);
 
 class CopilotKitErrorBoundary extends Component<
   { children: ReactNode },
@@ -17,14 +21,15 @@ class CopilotKitErrorBoundary extends Component<
   }
 
   render() {
-    // If CopilotKit fails to initialize, render children without it
     if (this.state.hasError) {
       return this.props.children;
     }
     return (
-      <CopilotKit runtimeUrl="/api/copilotkit">
-        {this.props.children}
-      </CopilotKit>
+      <Suspense fallback={this.props.children}>
+        <CopilotKit runtimeUrl="/api/copilotkit">
+          {this.props.children}
+        </CopilotKit>
+      </Suspense>
     );
   }
 }

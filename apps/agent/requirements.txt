@@ -17,8 +17,6 @@ mcp
 langgraph-checkpoint-postgres
 psycopg[binary]
 
-# PageIndex for document indexing
-pageindex
 
 # AI/ML providers
 openai

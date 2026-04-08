@@ -31,15 +31,15 @@ export async function processTextDocument(
       },
     });
 
-    // Trigger PageIndex indexing in background (non-blocking)
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3001";
-    fetch(
-      `${baseUrl}/api/notebooks/${context.notebookId}/sources/${sourceId}/index`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      }
-    ).catch((err) => console.error("PageIndex indexing trigger failed:", err));
+    // Trigger wiki ingest (awaited to prevent premature termination)
+    try {
+      const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
+      const result = await ingestSourceToWiki(context.notebookId, sourceId);
+      console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`);
+    } catch (err) {
+      console.error("Wiki ingest failed:", err);
+      // Don't fail the source processing if wiki ingest fails
+    }
 
     return { success: true };
   } catch (error) {

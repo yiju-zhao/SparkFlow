@@ -12,25 +12,19 @@ import {
   StickyNote,
   Copy,
   Check,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/ui/markdown";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { createNote } from "@/lib/actions/notes";
-import type { TocHeading } from "@/lib/utils/toc-extractor";
 import type { Source } from "@prisma/client";
 
 interface PreloadedMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-}
-
-interface SourceContext {
-  id: string;
-  title: string;
-  toc: TocHeading[];
 }
 
 interface ChatPanelProps {
@@ -348,6 +342,45 @@ const prevIsLoadingRef = useRef<boolean>(false);
     }
   }, []);
 
+  // Save AI message content as a wiki page
+  const [savingWikiId, setSavingWikiId] = useState<string | null>(null);
+  const handleSaveToWiki = useCallback(
+    async (messageId: string, content: string) => {
+      if (savingWikiId) return;
+      setSavingWikiId(messageId);
+      try {
+        const slug = `synthesis-${Date.now()}`;
+        const title = content
+          .slice(0, 60)
+          .replace(/[#*\n]/g, "")
+          .trim() + "...";
+        await fetch(`/api/notebooks/${notebookId}/wiki/${slug}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            content,
+            pageType: "COMPARISON",
+            sourceRefs: [],
+          }),
+        });
+        // Log the save
+        fetch(`/api/notebooks/${notebookId}/wiki/log`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            entry: `saved | Chat synthesis saved as [[${slug}]]`,
+          }),
+        }).catch(() => {});
+      } catch (error) {
+        console.error("Failed to save to wiki:", error);
+      } finally {
+        setSavingWikiId(null);
+      }
+    },
+    [notebookId, savingWikiId],
+  );
+
   // Create new session in database
   const createSession = useCallback(
     async (title?: string) => {
@@ -404,24 +437,6 @@ const prevIsLoadingRef = useRef<boolean>(false);
     }
   };
 
-  // Build sources context for agent (title + TOC headings)
-  const sourcesContext = useMemo((): SourceContext[] => {
-    return sources
-      .filter((s) => {
-        if (s.status !== "READY") return false;
-        const meta = s.metadata as Record<string, unknown> | null;
-        return meta?.toc && Array.isArray(meta.toc);
-      })
-      .map((s) => {
-        const meta = s.metadata as Record<string, unknown>;
-        return {
-          id: s.id,
-          title: s.title,
-          toc: meta.toc as TocHeading[],
-        };
-      });
-  }, [sources]);
-
   // Submit message - follows docs pattern exactly
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -440,12 +455,13 @@ const prevIsLoadingRef = useRef<boolean>(false);
       }
       setStreamSessionId(targetSessionId ?? null);
 
-      // Submit to LangGraph (optimization happens in agent)
+      // Submit to LangGraph — agent uses wiki tools for progressive disclosure
       stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
           context: {
-            sources_context: sourcesContext,
+            notebook_id: notebookId,
+            wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
           },
@@ -683,6 +699,22 @@ const prevIsLoadingRef = useRef<boolean>(false);
                               <StickyNote className="h-3.5 w-3.5" />
                             )}
                             <span>SAVE TO STUDIO</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
+                            onClick={() =>
+                              handleSaveToWiki(messageKey, content)
+                            }
+                            disabled={savingWikiId === messageKey}
+                          >
+                            {savingWikiId === messageKey ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <BookOpen className="h-3.5 w-3.5" />
+                            )}
+                            <span>SAVE TO WIKI</span>
                           </Button>
                           <Button
                             variant="ghost"

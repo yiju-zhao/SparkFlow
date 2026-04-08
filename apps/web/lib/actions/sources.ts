@@ -170,6 +170,22 @@ export async function deleteSource(sourceId: string) {
     throw new Error("Source not found");
   }
 
+  const notebookId = source.notebook.id;
+  const sourceTitle = source.title;
+
+  // Delete the source record first
   await prisma.source.delete({ where: { id: sourceId } });
-  revalidatePath(`/deepdive/${source.notebook.id}`);
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  // Remove source contributions from wiki in background (non-blocking)
+  import("@/lib/services/wiki-ingest")
+    .then(({ removeSourceFromWiki }) =>
+      removeSourceFromWiki(notebookId, sourceId, sourceTitle)
+    )
+    .then((result) =>
+      console.log(
+        `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`
+      )
+    )
+    .catch((err) => console.error("Wiki source removal failed:", err));
 }

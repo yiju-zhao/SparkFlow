@@ -39,6 +39,7 @@ import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
 import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
 import type { TocHeading } from "@/lib/utils/toc-extractor";
+import { WikiPanel } from "@/components/deepdive/wiki/wiki-panel";
 
 // Extended Source type with the new content field (until Prisma client is regenerated)
 type Source = PrismaSource & {
@@ -50,11 +51,22 @@ interface SourceMetadata {
   [key: string]: unknown;
 }
 
+interface WikiPageSummary {
+  id: string;
+  slug: string;
+  title: string;
+  pageType: string;
+  sourceRefs: string[];
+  updatedAt: string;
+}
+
 interface SourcesPanelProps {
   notebookId: string;
   sources: Source[];
   selectedSource: Source | null;
   onSelectSource: (source: Source | null) => void;
+  wikiPages?: WikiPageSummary[];
+  graphData?: any;
 }
 
 export function SourcesPanel({
@@ -62,7 +74,10 @@ export function SourcesPanel({
   sources,
   selectedSource,
   onSelectSource,
+  wikiPages = [],
+  graphData,
 }: SourcesPanelProps) {
+  const [activeTab, setActiveTab] = useState<"sources" | "wiki">("sources");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: liveSources = sources } = useQuery<Source[]>({
     queryKey: ["notebook-sources", notebookId],
@@ -101,54 +116,83 @@ export function SourcesPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="px-6 pt-3 pb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
-          <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
-            SOURCES
-          </h2>
+      {/* Tab Bar */}
+      <div className="px-6 pt-3 pb-1 flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <button
+            className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+              activeTab === "sources"
+                ? "text-foreground bg-accent/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("sources")}
+          >
+            Sources
+          </button>
+          <button
+            className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+              activeTab === "wiki"
+                ? "text-foreground bg-accent/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("wiki")}
+          >
+            Wiki
+          </button>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
-          onClick={() => setIsDialogOpen(true)}
-          title="Add Source"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Sources List */}
-      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
-        {liveSources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <FileText className="h-8 w-8 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
-            <p className="text-xs text-muted-foreground">
-              Add documents or webpages
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {liveSources.map((source) => (
-              <SourceItem
-                key={source.id}
-                source={source}
-                onSelect={() => onSelectSource(source)}
-              />
-            ))}
-          </div>
+        {activeTab === "sources" && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
+            onClick={() => setIsDialogOpen(true)}
+            title="Add Source"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         )}
       </div>
 
-      {/* Add Source Dialog */}
-      <AddSourceDialog
-        notebookId={notebookId}
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-      />
+      {activeTab === "sources" ? (
+        <>
+          {/* Sources List */}
+          <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+            {liveSources.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FileText className="h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Add documents or webpages
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {liveSources.map((source) => (
+                  <SourceItem
+                    key={source.id}
+                    source={source}
+                    onSelect={() => onSelectSource(source)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add Source Dialog */}
+          <AddSourceDialog
+            notebookId={notebookId}
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+          />
+        </>
+      ) : (
+        <WikiPanel
+          notebookId={notebookId}
+          initialPages={wikiPages}
+          sources={liveSources.map((s) => ({ id: s.id, title: s.title }))}
+          graphData={graphData}
+        />
+      )}
     </div>
   );
 }
@@ -213,6 +257,28 @@ const SourceItem = memo(function SourceItem({
         {source.status === "FAILED" && source.errorMessage && (
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}
+        {/* Wiki ingest status */}
+        {(() => {
+          const meta = source.metadata as Record<string, unknown> | null;
+          const wikiStatus = meta?.wikiStatus as string | undefined;
+          if (!wikiStatus || wikiStatus === "done") return null;
+          if (wikiStatus === "failed") {
+            return <p className="mt-1 text-[10px] text-red-500">Wiki ingest failed</p>;
+          }
+          const labels: Record<string, string> = {
+            starting: "Wiki: starting...",
+            extracting: "Wiki: extracting graph...",
+            merging: "Wiki: merging...",
+            clustering: "Wiki: clustering...",
+            generating: "Wiki: generating pages...",
+          };
+          return (
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] text-blue-600 dark:text-blue-400">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              {labels[wikiStatus] || `Wiki: ${wikiStatus}`}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -460,7 +526,6 @@ function AddSourceDialog({
       status: "PROCESSING",
       content: null,
       markdownContent: null,
-      indexData: null,
       fileKey: null,
       errorMessage: null,
       metadata: {},
@@ -520,8 +585,7 @@ function AddSourceDialog({
         status: "PROCESSING",
         content: null,
         markdownContent: null,
-        indexData: null,
-        fileKey: null,
+          fileKey: null,
         errorMessage: null,
         metadata: {},
         createdAt: new Date(),
@@ -588,7 +652,6 @@ function AddSourceDialog({
       status: "PROCESSING",
       content: null,
       markdownContent: null,
-      indexData: null,
       fileKey: null,
       errorMessage: null,
       metadata: {},

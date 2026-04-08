@@ -59,7 +59,7 @@ export async function GET(
     // Convert Node.js Readable to web ReadableStream
     const webStream = new ReadableStream({
       start(controller) {
-        stream.on("data", (chunk: Buffer) => controller.enqueue(chunk));
+        stream.on("data", (chunk: string | Buffer) => controller.enqueue(chunk));
         stream.on("end", () => controller.close());
         stream.on("error", (err: Error) => controller.error(err));
       },

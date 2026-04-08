@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useTheme } from "next-themes";
-import * as echarts from "echarts";
 import { NetworkGraphData } from "@/lib/explore/types";
 import { Maximize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,9 +25,13 @@ export function CollaborationNetwork({
   const chartInstance = useRef<ECharts | null>(null);
   const expandedChartInstance = useRef<ECharts | null>(null);
   const { resolvedTheme } = useTheme();
+  const echartsRef = useRef<typeof import("echarts") | null>(null);
 
   useEffect(() => {
-    setIsReady(true);
+    import("echarts").then((mod) => {
+      echartsRef.current = mod;
+      setIsReady(true);
+    });
   }, []);
 
   // Close expanded view on Escape
@@ -175,7 +178,7 @@ export function CollaborationNetwork({
       }
 
       if (chartRef.current) {
-        chartInstance.current = echarts.init(
+        chartInstance.current = echartsRef.current!.init(
           chartRef.current,
           resolvedTheme === "dark" ? "dark" : undefined,
         );
@@ -218,7 +221,7 @@ export function CollaborationNetwork({
       }
 
       if (expandedChartRef.current) {
-        expandedChartInstance.current = echarts.init(
+        expandedChartInstance.current = echartsRef.current!.init(
           expandedChartRef.current,
           resolvedTheme === "dark" ? "dark" : undefined,
         );

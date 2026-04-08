@@ -26,17 +26,29 @@ interface TransformedMessage {
   content: string;
 }
 
+interface WikiPageSummary {
+  id: string;
+  slug: string;
+  title: string;
+  pageType: string;
+  sourceRefs: string[];
+  updatedAt: string;
+}
+
 interface NotebookLayoutProps {
   notebook: Notebook;
   sources: Source[];
   notes: Note[];
   initialChatSessions?: TransformedChatSession[];
   initialMessages?: TransformedMessage[];
+  wikiPages?: WikiPageSummary[];
+  graphData?: any;
 }
 
 // Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
 const EMPTY_SESSIONS: TransformedChatSession[] = [];
 const EMPTY_MESSAGES: TransformedMessage[] = [];
+const EMPTY_WIKI_PAGES: WikiPageSummary[] = [];
 
 // Panel width constants
 const SOURCES_DEFAULT_WIDTH = 280;
@@ -61,12 +73,14 @@ function NotebookLayoutInner({
   notes,
   initialChatSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
+  wikiPages = EMPTY_WIKI_PAGES,
+  graphData,
 }: NotebookLayoutProps) {
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
   const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  // Citation navigation state (placeholder for future PageIndex-based navigation)
+  // Citation navigation state (placeholder for future wiki-based navigation)
 
   // Citation navigation setup
   const { setOnNavigate } = useCitation();
@@ -123,9 +137,9 @@ function NotebookLayoutInner({
     }
   }, []);
 
-  // Handle citation click — placeholder for future PageIndex-based navigation
+  // Handle citation click — placeholder for future wiki-based navigation
   const handleCitationNavigate = useCallback(async (_refId: string) => {
-    // TODO: Implement PageIndex section-based citation navigation
+    // TODO: Implement wiki-based citation navigation
     // For now, just expand the sources panel
     if (sourcesWidth === 0) {
       setSourcesWidth(SOURCES_CONTENT_WIDTH);
@@ -161,6 +175,8 @@ function NotebookLayoutInner({
               sources={sources}
               selectedSource={selectedSource}
               onSelectSource={handleSelectSource}
+              wikiPages={wikiPages}
+              graphData={graphData}
             />
           </motion.div>
           <ResizableDivider

@@ -20,6 +20,7 @@ export default async function Home({
               name: session.user.name ?? null,
               email: session.user.email ?? null,
               image: session.user.image ?? null,
+              role: session.user.role ?? null,
             }
           : null
       }

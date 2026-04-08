@@ -2,12 +2,40 @@ import { readFile } from "fs/promises";
 
 interface MineruResult {
   markdown: string;
-  images: { name: string; data: Buffer; mimeType: string }[];
+  images: { name: string; fullPath?: string; data: Buffer; mimeType: string }[];
 }
 
 const MINERU_MODE = process.env.MINERU_MODE || "local";
 const MINERU_LOCAL_URL = process.env.MINERU_LOCAL_URL || "http://localhost:8000";
 const MINERU_API_TOKEN = process.env.MINERU_API_TOKEN || "";
+
+/** Extract a human-readable message from fetch errors (which bury the cause). */
+function describeFetchError(error: unknown, context: string): string {
+  if (!(error instanceof Error)) return `${context}: ${String(error)}`;
+  const cause = (error as Error & { cause?: Error }).cause;
+  const detail = cause ? `${cause.message || cause}` : error.message;
+  return `${context}: ${detail}`;
+}
+
+/** Retry a fetch call up to `retries` times on network errors. */
+async function fetchWithRetry(
+  input: string | URL | Request,
+  init?: RequestInit,
+  retries = 2,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fetch(input, init);
+    } catch (err) {
+      lastError = err;
+      if (i < retries) {
+        await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
 
 export async function parsePdf(
   filePathOrUrl: string,
@@ -25,10 +53,15 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
   formData.append("file", new Blob([fileBuffer]), filePath.split("/").pop()!);
   formData.append("parse_method", "auto");
 
-  const response = await fetch(`${MINERU_LOCAL_URL}/api/v1/extract`, {
-    method: "POST",
-    body: formData,
-  });
+  let response: Response;
+  try {
+    response = await fetchWithRetry(`${MINERU_LOCAL_URL}/api/v1/extract`, {
+      method: "POST",
+      body: formData,
+    });
+  } catch (err) {
+    throw new Error(describeFetchError(err, "MinerU local connection failed"));
+  }
 
   if (!response.ok) {
     throw new Error(`MinerU local parse failed: ${response.status} ${response.statusText}`);
@@ -56,7 +89,7 @@ function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
 }
 
 async function parsePdfViaApi(
-  fileUrl: string,
+  filePath: string,
   options?: { modelVersion?: string }
 ): Promise<MineruResult> {
   if (!MINERU_API_TOKEN) {
@@ -69,28 +102,58 @@ async function parsePdfViaApi(
     Authorization: `Bearer ${MINERU_API_TOKEN}`,
   };
 
-  const submitRes = await fetch("https://mineru.net/api/v4/extract/task", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ url: fileUrl, model_version: modelVersion }),
-  });
+  const fileName = filePath.split("/").pop()!;
 
-  if (!submitRes.ok) {
-    throw new Error(`MinerU API submit failed: ${submitRes.status}`);
+  // Step 1: Request presigned upload URL via batch API
+  let batchRes: Response;
+  try {
+    batchRes = await fetchWithRetry("https://mineru.net/api/v4/file-urls/batch", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        files: [{ name: fileName }],
+        model_version: modelVersion,
+      }),
+    });
+  } catch (err) {
+    throw new Error(describeFetchError(err, "MinerU API batch request network error"));
   }
 
-  const submitData = await submitRes.json();
-  if (submitData.code !== 0) {
-    throw new Error(`MinerU API submit error: ${submitData.msg}`);
+  if (!batchRes.ok) {
+    throw new Error(`MinerU API batch request failed: ${batchRes.status}`);
   }
 
-  const taskId = submitData.data.task_id;
-  const result = await pollMineruTask(taskId, headers);
+  const batchData = await batchRes.json();
+  if (batchData.code !== 0) {
+    throw new Error(`MinerU API batch error: ${batchData.msg}`);
+  }
+
+  const batchId = batchData.data.batch_id;
+  const uploadUrl = batchData.data.file_urls[0];
+
+  // Step 2: Upload file to presigned URL (Alibaba Cloud OSS)
+  const fileBuffer = await readFile(filePath);
+  let uploadRes: Response;
+  try {
+    uploadRes = await fetchWithRetry(uploadUrl, {
+      method: "PUT",
+      body: fileBuffer,
+    });
+  } catch (err) {
+    throw new Error(describeFetchError(err, "MinerU file upload to OSS failed"));
+  }
+
+  if (!uploadRes.ok) {
+    throw new Error(`MinerU file upload failed: ${uploadRes.status}`);
+  }
+
+  // Step 3: Poll for batch results
+  const result = await pollMineruBatch(batchId, headers);
   return downloadAndExtractZip(result.full_zip_url);
 }
 
-async function pollMineruTask(
-  taskId: string,
+async function pollMineruBatch(
+  batchId: string,
   headers: Record<string, string>,
   maxAttempts = 120,
   intervalMs = 3000
@@ -98,21 +161,33 @@ async function pollMineruTask(
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs));
 
-    const res = await fetch(`https://mineru.net/api/v4/extract/task/${taskId}`, {
-      headers,
-    });
+    let res: Response;
+    try {
+      res = await fetchWithRetry(
+        `https://mineru.net/api/v4/extract-results/batch/${batchId}`,
+        { headers },
+        1,
+      );
+    } catch {
+      continue; // transient network error during polling, retry on next iteration
+    }
 
     if (!res.ok) continue;
 
     const data = await res.json();
-    const state = data.data?.state;
+    const results = data.data?.extract_result;
 
-    if (state === "done") {
-      return { full_zip_url: data.data.full_zip_url };
+    if (!results || results.length === 0) continue;
+
+    const result = results[0];
+
+    if (result.state === "done") {
+      return { full_zip_url: result.full_zip_url };
     }
-    if (state === "failed") {
-      throw new Error(`MinerU extraction failed: ${data.data.err_msg || "unknown error"}`);
+    if (result.state === "failed") {
+      throw new Error(`MinerU extraction failed: ${result.err_msg || "unknown error"}`);
     }
+    // "waiting-file", "pending", "running", "converting" — keep polling
   }
 
   throw new Error(`MinerU extraction timed out after ${maxAttempts * intervalMs / 1000}s`);
@@ -121,7 +196,12 @@ async function pollMineruTask(
 async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
   const { default: JSZip } = await import("jszip");
 
-  const response = await fetch(zipUrl);
+  let response: Response;
+  try {
+    response = await fetchWithRetry(zipUrl);
+  } catch (err) {
+    throw new Error(describeFetchError(err, "Failed to download MinerU result zip"));
+  }
   if (!response.ok) {
     throw new Error(`Failed to download MinerU result zip: ${response.status}`);
   }
@@ -148,8 +228,12 @@ async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
         webp: "image/webp",
         svg: "image/svg+xml",
       };
+      // Store both the full path and filename — markdown may reference either
+      const fullPath = path;
+      const fileName = path.split("/").pop()!;
       images.push({
-        name: path.split("/").pop()!,
+        name: fileName,
+        fullPath,
         data: Buffer.from(data),
         mimeType: mimeMap[ext] || "image/png",
       });

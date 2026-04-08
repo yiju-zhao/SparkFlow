@@ -1,4 +1,4 @@
-import { chromium, type Page } from "playwright";
+type Page = import("playwright").Page;
 
 interface ScrapeResult {
   markdown: string;
@@ -7,6 +7,7 @@ interface ScrapeResult {
 }
 
 export async function scrapeWebpage(url: string): Promise<ScrapeResult> {
+  const { chromium } = await import("playwright");
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     userAgent:

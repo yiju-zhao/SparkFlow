@@ -32,6 +32,48 @@ export async function createNotebook(name: string, description?: string) {
       name,
       description,
       userId: session.user.id,
+      wikiSchema: {
+        searchCollections: ["publications", "sessions"],
+        pageTypes: {
+          entity: "People, organizations, methods, datasets, tools",
+          concept: "Themes, topics, theories, research areas",
+          summary: "Per-source summaries with key takeaways",
+          comparison: "Cross-source analyses, contrasts, debates",
+        },
+        emphasis: [],
+      },
+    },
+  });
+
+  // Auto-create index and log wiki pages
+  const today = new Date().toISOString().split("T")[0];
+  await prisma.wikiPage.createMany({
+    data: [
+      {
+        notebookId: notebook.id,
+        slug: "index",
+        title: "Wiki Index",
+        content: `# ${name} — Wiki Index\n\nThis wiki is empty. Add sources to start building your knowledge base.\n\n## Entities\n\n(none yet)\n\n## Concepts\n\n(none yet)\n\n## Summaries\n\n(none yet)\n\n## Comparisons\n\n(none yet)\n`,
+        pageType: "INDEX",
+        sourceRefs: [],
+      },
+      {
+        notebookId: notebook.id,
+        slug: "log",
+        title: "Activity Log",
+        content: `# Activity Log\n\n## [${today}] created | Notebook initialized`,
+        pageType: "LOG",
+        sourceRefs: [],
+      },
+    ],
+  });
+
+  // Create empty graph
+  await prisma.notebookGraph.create({
+    data: {
+      notebookId: notebook.id,
+      graphData: { nodes: [], edges: [] },
+      communities: {},
     },
   });
 

@@ -25,6 +25,7 @@ export interface DeepdiveShellProps {
     name?: string | null;
     email?: string | null;
     image?: string | null;
+    role?: string | null;
   };
   breadcrumb?: {
     label: string;

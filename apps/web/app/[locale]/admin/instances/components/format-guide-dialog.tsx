@@ -49,11 +49,37 @@ const sessionFields = [
   "sessions[].publicationTitles",
 ];
 
-function CopyMarkdownButton({ json, label }: { json: unknown; label: string }) {
+function CopyMarkdownButton({
+  json,
+  label,
+  fields,
+  notes,
+}: {
+  json: unknown;
+  label: string;
+  fields: string[];
+  notes: string[];
+}) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
-    const md = `# ${label} Import Format\n\n\`\`\`json\n${JSON.stringify(json, null, 2)}\n\`\`\``;
+    const fieldList = fields.map((f) => `\`${f}\``).join(", ");
+    const notesList = notes.map((n) => `- ${n}`).join("\n");
+    const md = [
+      `# ${label} Import Format`,
+      "",
+      "## Schema Notes",
+      "",
+      `**Fields:** ${fieldList}`,
+      "",
+      notesList,
+      "",
+      "## Example JSON",
+      "",
+      "```json",
+      JSON.stringify(json, null, 2),
+      "```",
+    ].join("\n");
     navigator.clipboard.writeText(md).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -81,7 +107,7 @@ export function FormatGuideDialog({
       <DialogTrigger asChild>
         <Button variant="outline">Format Guide</Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[92vh] w-[min(98vw,112rem)] max-w-none overflow-y-auto sm:w-[min(98vw,112rem)]">
+      <DialogContent className="max-h-[92vh] max-w-[calc(100%-2rem)] sm:max-w-[90vw] lg:max-w-[70vw] overflow-auto">
         <DialogHeader>
           <DialogTitle>Instance Import Format Guide</DialogTitle>
           <DialogDescription>
@@ -91,7 +117,7 @@ export function FormatGuideDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="publications" className="space-y-4">
+        <Tabs defaultValue="publications" className="min-w-0 space-y-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="publications">Publications</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
@@ -132,7 +158,16 @@ export function FormatGuideDialog({
             <div className="overflow-hidden rounded-lg border">
               <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
                 <span className="text-sm font-medium">Example JSON</span>
-                <CopyMarkdownButton json={publicationSample} label="Publications" />
+                <CopyMarkdownButton
+                  json={publicationSample}
+                  label="Publications"
+                  fields={publicationFields}
+                  notes={[
+                    "Minimal format is `{ venue, year, publications }`.",
+                    "`publications[].summary` maps to the Publication model.",
+                    "Blank optional URLs are allowed, but valid URLs are preferred.",
+                  ]}
+                />
               </div>
               <pre className="overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
                 {JSON.stringify(publicationSample, null, 2)}
@@ -176,7 +211,16 @@ export function FormatGuideDialog({
             <div className="overflow-hidden rounded-lg border">
               <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2">
                 <span className="text-sm font-medium">Example JSON</span>
-                <CopyMarkdownButton json={sessionSample} label="Sessions" />
+                <CopyMarkdownButton
+                  json={sessionSample}
+                  label="Sessions"
+                  fields={sessionFields}
+                  notes={[
+                    "Minimal format is `{ venue, year, sessions }`.",
+                    "`sessionFormat` accepts `IN_PERSON`, `VIRTUAL`, or `BOTH`.",
+                    "`hasRecording` defaults to `false` when omitted, and `publicationTitles` should match publication titles exactly.",
+                  ]}
+                />
               </div>
               <pre className="overflow-auto bg-slate-950 p-5 text-xs leading-6 text-slate-50">
                 {JSON.stringify(sessionSample, null, 2)}

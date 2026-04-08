@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { parsePdf } from "@/lib/services/mineru-client";
 import { storeImagesAndRewriteMarkdown } from "@/lib/services/source-service";
 import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
 import type { ProcessingContext, ProcessingResult } from "./types";
@@ -24,6 +23,7 @@ export async function processPdfDocument(
 
     let mineruResult;
     try {
+      const { parsePdf } = await import("@/lib/services/mineru-client");
       mineruResult = await parsePdf(tempPath);
     } finally {
       await unlink(tempPath).catch(() => {});
@@ -53,15 +53,14 @@ export async function processPdfDocument(
       },
     });
 
-    // Trigger PageIndex indexing in background (non-blocking)
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3001";
-    fetch(
-      `${baseUrl}/api/notebooks/${context.notebookId}/sources/${sourceId}/index`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      }
-    ).catch((err) => console.error("PageIndex indexing trigger failed:", err));
+    // Trigger wiki ingest (awaited to prevent premature termination)
+    try {
+      const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
+      const result = await ingestSourceToWiki(context.notebookId, sourceId);
+      console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`);
+    } catch (err) {
+      console.error("Wiki ingest failed:", err);
+    }
 
     return { success: true };
   } catch (error) {
