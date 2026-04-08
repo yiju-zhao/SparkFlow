@@ -13,14 +13,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.role = user.role;
       } else if (token.id) {
-        // Refresh role from DB on token refresh so admin promotion takes effect
-        // without requiring re-login
+        // Refresh role from DB and auto-promote from ADMIN_EMAILS
+        // so admin changes take effect without requiring re-login
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true },
+          select: { id: true, email: true, role: true },
         });
         if (dbUser) {
-          token.role = dbUser.role;
+          const adminEmails = (process.env.ADMIN_EMAILS || "")
+            .split(",")
+            .map((e) => e.trim().toLowerCase())
+            .filter(Boolean);
+          if (
+            adminEmails.includes(dbUser.email.toLowerCase()) &&
+            dbUser.role !== "ADMIN"
+          ) {
+            await prisma.user.update({
+              where: { id: dbUser.id },
+              data: { role: "ADMIN" },
+            });
+            token.role = "ADMIN";
+          } else {
+            token.role = dbUser.role;
+          }
         }
       }
       return token;
