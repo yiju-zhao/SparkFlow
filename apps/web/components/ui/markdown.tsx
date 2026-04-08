@@ -42,26 +42,40 @@ const HtmlTable = memo(function HtmlTable({ html }: { html: string }) {
 });
 
 /**
- * Wrap bare LaTeX environments in $$ delimiters so remark-math can parse them.
- * Handles: \begin{...}...\end{...}, \[...\], \(...\), and bare \frac, \mathcal etc.
+ * Wrap bare LaTeX in $/$$ delimiters so remark-math can parse them.
+ * Inspired by Open WebUI's katex-extension approach.
+ *
+ * Handles:
+ * - \begin{env}...\end{env} → $$\begin{env}...\end{env}$$
+ * - \[...\] → $$...$$
+ * - \(...\) → $...$
+ * - Bare LaTeX lines starting with known commands → $$...$$
  */
 function preprocessLatex(content: string): string {
-  // Wrap \begin{env}...\end{env} blocks in $$
+  // 1. \begin{env}...\end{env} blocks
   let result = content.replace(
-    /(?<!\$)\\\begin\{([^}]+)\}([\s\S]*?)\\\end\{\1\}(?!\$)/g,
-    (_, env, body) => `$$\n\\begin{${env}}${body}\\end{${env}}\n$$`
+    /(?<!\$)\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}(?!\$)/g,
+    (match) => `$$\n${match}\n$$`
   );
 
-  // Wrap \[...\] display math in $$
+  // 2. \[...\] display math
   result = result.replace(
     /(?<!\$)\\\[([\s\S]*?)\\\](?!\$)/g,
-    (_, body) => `$$${body}$$`
+    (_, body) => `$$\n${body.trim()}\n$$`
   );
 
-  // Wrap \(...\) inline math in $
+  // 3. \(...\) inline math
   result = result.replace(
-    /(?<!\$)\\\(([\s\S]*?)\\\)(?!\$)/g,
+    /(?<!\$)\\\((.*?)\\\)(?!\$)/g,
     (_, body) => `$${body}$`
+  );
+
+  // 4. Bare LaTeX blocks: lines that start with a LaTeX command and contain
+  //    math-only content (no plain text words). These are standalone equations
+  //    the LLM output without any delimiters.
+  result = result.replace(
+    /^(\\(?:mathcal|mathbb|mathbf|mathrm|frac|sum|prod|int|lim|sup|inf|max|min|left|right|operatorname)\b[^\n]*(?:\n(?![\n\w#\-*>])[^\n]+)*)$/gm,
+    (match) => `$$\n${match}\n$$`
   );
 
   return result;
