@@ -68,6 +68,15 @@ export async function createNotebook(name: string, description?: string) {
     ],
   });
 
+  // Create empty graph
+  await prisma.notebookGraph.create({
+    data: {
+      notebookId: notebook.id,
+      graphData: { nodes: [], edges: [] },
+      communities: {},
+    },
+  });
+
   revalidatePath("/deepdive");
   return notebook;
 }
