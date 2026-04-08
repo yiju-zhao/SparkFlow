@@ -21,12 +21,32 @@ export async function ingestSourceToWiki(
   const content = source.markdownContent || source.content;
   if (!content) throw new Error("Source has no content to ingest");
 
-  const result = await runGraphPipeline(notebookId, sourceId, content, source.title);
+  try {
+    // Set initial wiki status
+    const meta = (source.metadata as Record<string, unknown>) || {};
+    await prisma.source.update({
+      where: { id: sourceId },
+      data: { metadata: { ...meta, wikiStatus: "starting" } },
+    });
 
-  return {
-    pagesWritten: result.pagesWritten,
-    pages: [`${result.nodesAdded} nodes, ${result.edgesAdded} edges, ${result.communities} communities`],
-  };
+    const result = await runGraphPipeline(notebookId, sourceId, content, source.title);
+
+    return {
+      pagesWritten: result.pagesWritten,
+      pages: [`${result.nodesAdded} nodes, ${result.edgesAdded} edges, ${result.communities} communities`],
+    };
+  } catch (err) {
+    // Mark wiki status as failed
+    try {
+      const current = await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } });
+      const meta = (current?.metadata as Record<string, unknown>) || {};
+      await prisma.source.update({
+        where: { id: sourceId },
+        data: { metadata: { ...meta, wikiStatus: "failed", wikiError: String(err) } },
+      });
+    } catch { /* ignore metadata update failure */ }
+    throw err;
+  }
 }
 
 /**

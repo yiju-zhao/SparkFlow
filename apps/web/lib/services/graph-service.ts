@@ -419,7 +419,18 @@ export async function runGraphPipeline(
     ? (existingGraph.graphData as unknown as GraphData)
     : { nodes: [], edges: [] };
 
+  // Helper to update wiki ingest status on the source
+  const updateWikiStatus = async (wikiStatus: string) => {
+    const source = await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } });
+    const meta = (source?.metadata as Record<string, unknown>) || {};
+    await prisma.source.update({
+      where: { id: sourceId },
+      data: { metadata: { ...meta, wikiStatus } },
+    });
+  };
+
   // 1. Extract
+  await updateWikiStatus("extracting");
   const extraction = await extractGraph(
     sourceContent,
     sourceTitle,
@@ -436,9 +447,11 @@ export async function runGraphPipeline(
   }
 
   // 2. Merge
+  await updateWikiStatus("merging");
   const merged = mergeGraph(existing, extraction);
 
   // 3. Cluster
+  await updateWikiStatus("clustering");
   const { graphWithCommunities, communities } = await clusterGraph(merged);
 
   // 4. Store graph
@@ -449,6 +462,7 @@ export async function runGraphPipeline(
   });
 
   // 5. Delete old community pages and regenerate
+  await updateWikiStatus("generating");
   await prisma.wikiPage.deleteMany({
     where: { notebookId, slug: { startsWith: "community-" } },
   });
@@ -467,6 +481,8 @@ export async function runGraphPipeline(
       data: { content: logPage.content + logEntry },
     });
   }
+
+  await updateWikiStatus("done");
 
   return {
     nodesAdded: extraction.nodes.length,
