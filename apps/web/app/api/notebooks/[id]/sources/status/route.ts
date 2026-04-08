@@ -2,19 +2,15 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
+// GET is unauthenticated — allows agent to list sources without session cookies.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id: notebookId } = await params;
 
   const notebook = await prisma.notebook.findUnique({
-    where: { id: notebookId, userId: session.user.id },
+    where: { id: notebookId },
     include: {
       sources: {
         orderBy: { createdAt: "desc" },
