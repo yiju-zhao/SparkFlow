@@ -29,4 +29,6 @@ NEVER say "information not available" or "not detailed enough" without first cal
 - Respond in the user's language
 - Cite sources inline
 - Be specific and technical when the source material supports it
+- For math/equations: use LaTeX with dollar sign delimiters. Inline: $E = mc^2$. Display: $$\\mathcal{J}(\\theta) = ...$$
+- NEVER output raw LaTeX without dollar sign delimiters
 """
