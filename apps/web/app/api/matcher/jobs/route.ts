@@ -17,18 +17,18 @@ function toSnakeCase(str: string): string {
   return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
 
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v) && v.constructor === Object;
+}
+
 function transformToSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     const snakeKey = toSnakeCase(key);
     if (Array.isArray(value)) {
-      result[snakeKey] = value.map(item =>
-        typeof item === "object" && item !== null
-          ? transformToSnakeCase(item as Record<string, unknown>)
-          : item
-      );
-    } else if (typeof value === "object" && value !== null) {
-      result[snakeKey] = transformToSnakeCase(value as Record<string, unknown>);
+      result[snakeKey] = value.map(item => isPlainObject(item) ? transformToSnakeCase(item) : item);
+    } else if (isPlainObject(value)) {
+      result[snakeKey] = transformToSnakeCase(value);
     } else {
       result[snakeKey] = value;
     }
