@@ -23,10 +23,10 @@ const SessionDailyChart = dynamic(
     })),
   { loading: () => <ChartSkeleton />, ssr: false },
 );
-const SessionTimeHeatmap = dynamic(
+const SessionAffiliationChart = dynamic(
   () =>
-    import("./charts/session-time-heatmap").then((m) => ({
-      default: m.SessionTimeHeatmap,
+    import("./charts/session-affiliation-chart").then((m) => ({
+      default: m.SessionAffiliationChart,
     })),
   { loading: () => <ChartSkeleton />, ssr: false },
 );
@@ -68,42 +68,18 @@ function computeStats(sessions: CalendarSessionItem[]) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, { label, count }]) => ({ date, label, count }));
 
-  // Time heatmap (day x hour)
-  const heatmapEntries = new Map<string, number>();
-  const daySet = new Set<string>();
-  const hourSet = new Set<string>();
+  // Affiliation distribution
+  const affiliationCounts = new Map<string, number>();
   for (const s of sessions) {
-    if (!s.date || !s.startTime) continue;
-    const d = new Date(s.date);
-    const dayLabel = d.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-    const hourMatch = s.startTime.match(/^(\d{1,2})/);
-    if (!hourMatch) continue;
-    const hour = `${parseInt(hourMatch[1], 10).toString().padStart(2, "0")}:00`;
-    daySet.add(dayLabel);
-    hourSet.add(hour);
-    const key = `${dayLabel}|${hour}`;
-    heatmapEntries.set(key, (heatmapEntries.get(key) || 0) + 1);
-  }
-
-  const dayLabelsOrdered = dailyData.map((d) => d.label);
-  const days = dayLabelsOrdered.filter((d) => daySet.has(d));
-  const hours = Array.from(hourSet).sort();
-
-  const heatmapData: { day: string; hour: string; count: number }[] = [];
-  for (const day of days) {
-    for (const hour of hours) {
-      const count = heatmapEntries.get(`${day}|${hour}`) || 0;
-      if (count > 0) {
-        heatmapData.push({ day, hour, count });
-      }
+    for (const a of s.affiliation) {
+      if (a) affiliationCounts.set(a, (affiliationCounts.get(a) || 0) + 1);
     }
   }
+  const affiliationData = Array.from(affiliationCounts.entries())
+    .map(([affiliation, count]) => ({ affiliation, count }))
+    .sort((a, b) => b.count - a.count);
 
-  return { typeData, dailyData, heatmapData, days, hours };
+  return { typeData, dailyData, affiliationData };
 }
 
 export function SessionStatsSection({ sessions }: SessionStatsSectionProps) {
@@ -111,9 +87,9 @@ export function SessionStatsSection({ sessions }: SessionStatsSectionProps) {
 
   const hasTypes = stats.typeData.length > 1;
   const hasDays = stats.dailyData.length > 1;
-  const hasHeatmap = stats.heatmapData.length > 0;
+  const hasAffiliations = stats.affiliationData.length > 0;
 
-  if (!hasTypes && !hasDays && !hasHeatmap) return null;
+  if (!hasTypes && !hasDays && !hasAffiliations) return null;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -137,17 +113,13 @@ export function SessionStatsSection({ sessions }: SessionStatsSectionProps) {
           </div>
         </div>
       )}
-      {hasHeatmap && (
+      {hasAffiliations && (
         <div className="bg-card rounded-lg p-6">
           <h3 className="text-sm font-semibold text-foreground/80 mb-4">
-            Schedule Density
+            Top Affiliations
           </h3>
           <div className="h-70">
-            <SessionTimeHeatmap
-              data={stats.heatmapData}
-              days={stats.days}
-              hours={stats.hours}
-            />
+            <SessionAffiliationChart data={stats.affiliationData} />
           </div>
         </div>
       )}

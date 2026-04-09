@@ -154,6 +154,7 @@ export interface CalendarSessionItem {
   sessionUrl: string | null;
   topic: string[];
   technology: string[];
+  affiliation: string[];
 }
 
 export interface SessionDetail {
