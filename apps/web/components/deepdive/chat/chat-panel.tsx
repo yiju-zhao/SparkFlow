@@ -455,28 +455,17 @@ const prevIsLoadingRef = useRef<boolean>(false);
       }
       setStreamSessionId(targetSessionId ?? null);
 
-      // Fetch wiki content to inject into agent context
+      // Fetch wiki content in a single request
       let wikiContent = "";
       try {
-        // Fetch all wiki pages (community pages have the compiled knowledge)
-        const wikiRes = await fetch(`/api/notebooks/${notebookId}/wiki`);
+        const wikiRes = await fetch(`/api/notebooks/${notebookId}/wiki?withContent=true`);
         if (wikiRes.ok) {
           const { pages } = await wikiRes.json();
-          if (pages && pages.length > 0) {
-            // Fetch content for each non-LOG page (index + community pages)
-            const pageContents = await Promise.all(
-              pages
-                .filter((p: any) => p.pageType !== "LOG")
-                .slice(0, 10) // limit to 10 pages
-                .map(async (p: any) => {
-                  const res = await fetch(`/api/notebooks/${notebookId}/wiki/${p.slug}`);
-                  if (!res.ok) return null;
-                  const data = await res.json();
-                  return `## ${data.title}\n\n${data.content}`;
-                })
-            );
-            wikiContent = pageContents.filter(Boolean).join("\n\n---\n\n");
-          }
+          wikiContent = (pages || [])
+            .filter((p: any) => p.pageType !== "LOG" && p.content)
+            .slice(0, 10)
+            .map((p: any) => `## ${p.title}\n\n${p.content}`)
+            .join("\n\n---\n\n");
         }
       } catch {
         // Wiki fetch failed — agent will work without it

@@ -9,12 +9,16 @@ export async function GET(
 ) {
   const { id: notebookId } = await params;
 
+  // ?withContent=true returns full page content (for agent context injection)
+  const withContent = request.nextUrl.searchParams.get("withContent") === "true";
+
   const pages = await prisma.wikiPage.findMany({
     where: { notebookId },
     select: {
       id: true,
       slug: true,
       title: true,
+      content: withContent,
       pageType: true,
       sourceRefs: true,
       updatedAt: true,

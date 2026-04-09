@@ -246,108 +246,83 @@ export async function generateWikiPages(
   const openai = new OpenAI();
 
   const nodeMap = new Map(graphData.nodes.map((n) => [n.id, n]));
-  const writtenSlugs: string[] = [];
 
-  for (const [communityId, nodeIds] of Object.entries(communities)) {
-    if (nodeIds.length === 0) continue;
+  // Prepare all community data first
+  const communityEntries = Object.entries(communities).filter(([, ids]) => ids.length > 0);
 
+  const preparations = communityEntries.map(([communityId, nodeIds]) => {
     const communityNodes = nodeIds.map((id) => nodeMap.get(id)!).filter(Boolean);
     const communityEdges = graphData.edges.filter(
       (e) => nodeIds.includes(e.source) && nodeIds.includes(e.target)
     );
-
     const bridgeEdges = graphData.edges.filter(
       (e) =>
         (nodeIds.includes(e.source) && !nodeIds.includes(e.target)) ||
         (!nodeIds.includes(e.source) && nodeIds.includes(e.target))
     );
 
+    // Find god nodes by degree
     const degreeMap: Record<string, number> = {};
     for (const id of nodeIds) degreeMap[id] = 0;
     for (const e of communityEdges) {
       degreeMap[e.source] = (degreeMap[e.source] || 0) + 1;
       degreeMap[e.target] = (degreeMap[e.target] || 0) + 1;
     }
-    const godNodes = Object.entries(degreeMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([id]) => nodeMap.get(id)!)
-      .filter(Boolean);
+    const topNode = Object.entries(degreeMap).sort((a, b) => b[1] - a[1])[0];
+    const communityLabel = (topNode ? nodeMap.get(topNode[0])?.label : null) || communityNodes[0]?.label || `Community ${communityId}`;
 
-    const communityLabel = godNodes[0]?.label || communityNodes[0]?.label || `Community ${communityId}`;
-
-    const nodesText = communityNodes
-      .map((n) => `- **${n.label}** (${n.type}): ${n.summary}`)
-      .join("\n");
-
-    const edgesText = communityEdges
-      .map((e) => {
-        const src = nodeMap.get(e.source)?.label || e.source;
-        const tgt = nodeMap.get(e.target)?.label || e.target;
-        return `- ${src} --${e.relation}--> ${tgt} (${e.confidence}, ${e.weight})`;
-      })
-      .join("\n");
-
+    const nodesText = communityNodes.map((n) => `- **${n.label}** (${n.type}): ${n.summary}`).join("\n");
+    const edgesText = communityEdges.map((e) => {
+      const src = nodeMap.get(e.source)?.label || e.source;
+      const tgt = nodeMap.get(e.target)?.label || e.target;
+      return `- ${src} --${e.relation}--> ${tgt} (${e.confidence}, ${e.weight})`;
+    }).join("\n");
     const bridgeText = bridgeEdges.length > 0
-      ? bridgeEdges.slice(0, 5).map((e) => {
-          const src = nodeMap.get(e.source)?.label || e.source;
-          const tgt = nodeMap.get(e.target)?.label || e.target;
-          return `- ${src} --${e.relation}--> ${tgt}`;
-        }).join("\n")
+      ? bridgeEdges.slice(0, 5).map((e) => `- ${nodeMap.get(e.source)?.label || e.source} --${e.relation}--> ${nodeMap.get(e.target)?.label || e.target}`).join("\n")
       : "(none)";
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.3,
-      messages: [
-        {
-          role: "system",
-          content: `Write a wiki page for a knowledge graph community. Output markdown.
-Use [[node-id]] for wiki links between entities.
-Use [source:sourceId] for source citations.
-Include a "Relationships" section with confidence indicators (✓ extracted, ~ inferred, ? ambiguous).
-Include a "Connections to Other Topics" section for bridge edges.
-Keep it informative and concise.`,
-        },
-        {
-          role: "user",
-          content: `## Community: ${communityLabel}
+    return {
+      communityId, communityLabel, communityNodes, nodesText, edgesText, bridgeText,
+      sourceRefs: [...new Set(communityNodes.flatMap((n) => n.sourceRefs))],
+    };
+  });
 
-### Entities
-${nodesText}
+  // Parallel LLM calls for all communities
+  const completions = await Promise.all(
+    preparations.map((p) =>
+      openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.3,
+        messages: [
+          {
+            role: "system",
+            content: `Write a wiki page for a knowledge graph community. Output markdown.
+Use [[node-id]] for wiki links. Use [source:sourceId] for citations.
+Include "Relationships" with confidence (✓ extracted, ~ inferred, ? ambiguous).
+Include "Connections to Other Topics" for bridge edges. Be concise.`,
+          },
+          {
+            role: "user",
+            content: `## Community: ${p.communityLabel}\n\n### Entities\n${p.nodesText}\n\n### Internal Relationships\n${p.edgesText || "(none)"}\n\n### Bridge Connections\n${p.bridgeText}`,
+          },
+        ],
+      })
+    )
+  );
 
-### Internal Relationships
-${edgesText || "(none)"}
-
-### Bridge Connections
-${bridgeText}`,
-        },
-      ],
-    });
-
-    const pageContent = completion.choices[0]?.message?.content || "";
-    const slug = `community-${communityId}`;
-
-    const allSourceRefs = [...new Set(communityNodes.flatMap((n) => n.sourceRefs))];
-
-    await prisma.wikiPage.upsert({
-      where: { notebookId_slug: { notebookId, slug } },
-      create: {
-        notebookId,
-        slug,
-        title: communityLabel,
-        content: pageContent,
-        pageType: "CONCEPT",
-        sourceRefs: allSourceRefs,
-      },
-      update: {
-        title: communityLabel,
-        content: pageContent,
-        sourceRefs: allSourceRefs,
-      },
-    });
-    writtenSlugs.push(slug);
-  }
+  // Write all pages to DB
+  const writtenSlugs = await Promise.all(
+    preparations.map(async (p, i) => {
+      const slug = `community-${p.communityId}`;
+      const content = completions[i].choices[0]?.message?.content || "";
+      await prisma.wikiPage.upsert({
+        where: { notebookId_slug: { notebookId, slug } },
+        create: { notebookId, slug, title: p.communityLabel, content, pageType: "CONCEPT", sourceRefs: p.sourceRefs },
+        update: { title: p.communityLabel, content, sourceRefs: p.sourceRefs },
+      });
+      return slug;
+    })
+  );
 
   // Generate index page
   const indexLines = ["# Wiki Index\n"];
@@ -419,15 +394,12 @@ export async function runGraphPipeline(
     ? (existingGraph.graphData as unknown as GraphData)
     : { nodes: [], edges: [] };
 
-  // Helper to update wiki ingest status on the source
-  const updateWikiStatus = async (wikiStatus: string) => {
-    const source = await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } });
-    const meta = (source?.metadata as Record<string, unknown>) || {};
-    await prisma.source.update({
+  // Single status update helper — writes directly without re-reading metadata
+  const updateWikiStatus = (wikiStatus: string) =>
+    prisma.source.update({
       where: { id: sourceId },
-      data: { metadata: { ...meta, wikiStatus } },
+      data: { metadata: { wikiStatus } },
     });
-  };
 
   // 1. Extract
   await updateWikiStatus("extracting");
