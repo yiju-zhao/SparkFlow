@@ -281,7 +281,7 @@ export const Markdown = memo(function Markdown({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex, rehypeRaw]}
+        rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false, output: "html" }], rehypeRaw]}
         disallowedElements={DISALLOWED_RAW_TAGS}
         unwrapDisallowed
         components={components}
