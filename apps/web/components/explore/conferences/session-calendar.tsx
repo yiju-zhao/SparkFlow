@@ -94,17 +94,11 @@ function collectUnique(sessions: CalendarSessionItem[], field: "type" | "topic" 
 interface SessionCardProps {
   session: CalendarSessionItem;
   color: string;
-  /** Max duration in minutes across all sessions on this day, used for bar scale */
-  maxDuration: number;
 }
 
-function SessionCard({ session, color, maxDuration }: SessionCardProps) {
+function SessionCard({ session, color }: SessionCardProps) {
   const durationMin = computeDurationMinutes(session.startTime, session.endTime);
   const durationLabel = durationMin ? formatDuration(durationMin) : null;
-  // Bar width as % of the longest session, min 15% for visibility
-  const barPct = durationMin && maxDuration > 0
-    ? Math.max(15, (durationMin / maxDuration) * 100)
-    : 0;
 
   return (
     <div
@@ -132,16 +126,6 @@ function SessionCard({ session, color, maxDuration }: SessionCardProps) {
                 {durationLabel}
               </span>
             )}
-          </div>
-        )}
-
-        {/* Duration bar — visual representation of session length */}
-        {barPct > 0 && (
-          <div className="w-full h-1.5 rounded-full bg-muted/50 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${barPct}%`, backgroundColor: color, opacity: 0.6 }}
-            />
           </div>
         )}
 
@@ -208,16 +192,11 @@ interface TimelineGridProps {
  * Within each group, sessions are sorted by duration (longest first).
  */
 function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
-  const { groups, noTime, maxDuration } = useMemo(() => {
+  const { groups, noTime } = useMemo(() => {
     const map = new Map<string, { sortKey: number; sessions: CalendarSessionItem[] }>();
     const other: CalendarSessionItem[] = [];
-    let maxDur = 0;
 
     for (const s of sessions) {
-      // Track max duration across all sessions for bar scaling
-      const dur = computeDurationMinutes(s.startTime, s.endTime);
-      if (dur && dur > maxDur) maxDur = dur;
-
       if (!s.startTime) {
         other.push(s);
         continue;
@@ -249,7 +228,7 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
         }),
       }));
 
-    return { groups: sorted, noTime: other, maxDuration: maxDur };
+    return { groups: sorted, noTime: other };
   }, [sessions]);
 
   return (
@@ -258,26 +237,9 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
       <div className="absolute left-7 top-0 bottom-0 w-px bg-border" />
 
       <div className="space-y-1">
-        {groups.map((group, i) => {
-          // Calculate gap from previous group to show time gaps visually
-          const prevSortKey = i > 0 ? groups[i - 1].sortKey : group.sortKey;
-          const gapMinutes = group.sortKey - prevSortKey;
-          const showGap = i > 0 && gapMinutes > 30;
-
+        {groups.map((group) => {
           return (
             <div key={group.label}>
-              {/* Time gap indicator */}
-              {showGap && (
-                <div className="flex items-center gap-3 pl-4 py-2">
-                  <div className="w-6 text-center">
-                    <div className="h-3 w-px bg-border/50 mx-auto" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-                    {formatDuration(gapMinutes)} gap
-                  </span>
-                </div>
-              )}
-
               <div className="flex gap-4 group/slot">
                 {/* Time marker */}
                 <div className="w-14 shrink-0 flex flex-col items-end pt-3 relative">
@@ -300,7 +262,6 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
                       key={s.id}
                       session={s}
                       color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
-                      maxDuration={maxDuration}
                     />
                   ))}
                 </div>
@@ -328,7 +289,6 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
                   key={s.id}
                   session={s}
                   color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
-                  maxDuration={maxDuration}
                 />
               ))}
             </div>

@@ -923,6 +923,7 @@ export const getConferenceSessions = cache(
         sessionUrl: true,
         topic: true,
         technology: true,
+        affiliation: true,
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
