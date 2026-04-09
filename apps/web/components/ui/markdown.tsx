@@ -1,8 +1,10 @@
 import { memo, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
-import katex from "katex";
+import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 import { useCitationSafe } from "@/lib/context/citation-context";
 import "katex/dist/katex.min.css";
@@ -41,71 +43,51 @@ const HtmlTable = memo(function HtmlTable({ html }: { html: string }) {
 });
 
 /**
- * Render LaTeX math to HTML using KaTeX directly.
- * Inspired by Open WebUI's approach: tokenize all delimiter types,
- * render with katex.renderToString(), output raw HTML.
- *
- * This replaces remark-math + rehype-katex with a single preprocessor
- * that handles ALL delimiter types LLMs output.
+ * Normalize LaTeX delimiters to $/$$ that remark-math understands.
+ * Simple string replacements — no complex regex to avoid backtracking.
  */
-
-// Delimiter types to recognize (same as Open WebUI)
-const MATH_DELIMITERS: { left: string; right: string; display: boolean }[] = [
-  { left: "$$", right: "$$", display: true },
-  { left: "$", right: "$", display: false },
-  { left: "\\(", right: "\\)", display: false },
-  { left: "\\[", right: "\\]", display: true },
-];
-
-// \begin{env}...\end{env} patterns
-const BEGIN_END_REGEX = /\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g;
-
-// Bare LaTeX lines (no delimiters) starting with known commands
-const BARE_LATEX_REGEX = /^(\\(?:mathcal|mathbb|mathbf|mathrm|frac|sum|prod|int|lim|left|right|operatorname)\b[\s\S]*?)$/gm;
-
-function renderKatex(latex: string, displayMode: boolean): string {
-  try {
-    return katex.renderToString(latex.trim(), {
-      displayMode,
-      throwOnError: false,
-      trust: true,
-    });
-  } catch {
-    // If KaTeX can't render, return the raw LaTeX in a code block
-    return `<code>${latex}</code>`;
-  }
-}
-
 function preprocessLatex(content: string): string {
-  // 1. Handle \begin{env}...\end{env} — always display mode
-  let result = content.replace(BEGIN_END_REGEX, (match) =>
-    renderKatex(match, true)
-  );
+  let result = content;
 
-  // 2. Handle $$...$$ (display) — must come before single $
-  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, body) =>
-    renderKatex(body, true)
-  );
+  // 1. \begin{env}...\end{env} → wrap in $$
+  // Use a simple scan instead of regex to avoid backtracking
+  const beginRegex = /\\begin\{(\w+)\}/g;
+  let match;
+  while ((match = beginRegex.exec(result)) !== null) {
+    const env = match[1];
+    const endTag = `\\end{${env}}`;
+    const endIdx = result.indexOf(endTag, match.index + match[0].length);
+    if (endIdx === -1) continue;
+    const fullEnd = endIdx + endTag.length;
+    const before = result.slice(0, match.index);
+    const mathBlock = result.slice(match.index, fullEnd);
+    const after = result.slice(fullEnd);
+    // Only wrap if not already in $$
+    if (!before.trimEnd().endsWith("$$")) {
+      result = before + "\n$$\n" + mathBlock + "\n$$\n" + after;
+      beginRegex.lastIndex = before.length + mathBlock.length + 8; // skip past what we inserted
+    }
+  }
 
-  // 3. Handle \[...\] (display)
-  result = result.replace(/\\\[([\s\S]*?)\\\]/g, (_, body) =>
-    renderKatex(body, true)
-  );
+  // 2. \[...\] → $$...$$
+  result = result.split("\\[").reduce((acc, part, i) => {
+    if (i === 0) return part;
+    const closeIdx = part.indexOf("\\]");
+    if (closeIdx === -1) return acc + "\\[" + part;
+    const math = part.slice(0, closeIdx);
+    const rest = part.slice(closeIdx + 2);
+    return acc + "\n$$\n" + math + "\n$$\n" + rest;
+  }, "");
 
-  // 4. Handle \(...\) (inline)
-  result = result.replace(/\\\((.*?)\\\)/g, (_, body) =>
-    renderKatex(body, false)
-  );
-
-  // 5. Handle $...$ (inline) — careful not to match currency like "$5"
-  result = result.replace(/(?<!\$)\$(?!\$)(?!\d)((?:\\.|[^$\\])+?)\$(?!\$)/g, (_, body) =>
-    renderKatex(body, false)
-  );
-
-  // 6. Handle bare LaTeX lines
-  result = result.replace(BARE_LATEX_REGEX, (match) =>
-    renderKatex(match, true)
-  );
+  // 3. \(...\) → $...$
+  result = result.split("\\(").reduce((acc, part, i) => {
+    if (i === 0) return part;
+    const closeIdx = part.indexOf("\\)");
+    if (closeIdx === -1) return acc + "\\(" + part;
+    const math = part.slice(0, closeIdx);
+    const rest = part.slice(closeIdx + 2);
+    return acc + "$" + math + "$" + rest;
+  }, "");
 
   return result;
 }
@@ -299,8 +281,8 @@ export const Markdown = memo(function Markdown({
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 500px" }}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         disallowedElements={DISALLOWED_RAW_TAGS}
         unwrapDisallowed
         components={components}
