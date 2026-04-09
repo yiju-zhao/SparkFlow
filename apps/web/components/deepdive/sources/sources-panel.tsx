@@ -197,6 +197,28 @@ export function SourcesPanel({
   );
 }
 
+const WIKI_STATUS_LABELS: Record<string, string> = {
+  starting: "Wiki: starting...",
+  extracting: "Wiki: extracting graph...",
+  merging: "Wiki: merging...",
+  clustering: "Wiki: clustering...",
+  generating: "Wiki: generating pages...",
+};
+
+function WikiIngestStatus({ metadata }: { metadata: Record<string, unknown> | null }) {
+  const wikiStatus = metadata?.wikiStatus as string | undefined;
+  if (!wikiStatus || wikiStatus === "done") return null;
+  if (wikiStatus === "failed") {
+    return <p className="mt-1 text-[10px] text-red-500">Wiki ingest failed</p>;
+  }
+  return (
+    <div className="mt-1 flex items-center gap-1.5 text-[10px] text-blue-600 dark:text-blue-400">
+      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+      {WIKI_STATUS_LABELS[wikiStatus] || `Wiki: ${wikiStatus}`}
+    </div>
+  );
+}
+
 const SourceItem = memo(function SourceItem({
   source,
   onSelect,
@@ -257,28 +279,7 @@ const SourceItem = memo(function SourceItem({
         {source.status === "FAILED" && source.errorMessage && (
           <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
         )}
-        {/* Wiki ingest status */}
-        {(() => {
-          const meta = source.metadata as Record<string, unknown> | null;
-          const wikiStatus = meta?.wikiStatus as string | undefined;
-          if (!wikiStatus || wikiStatus === "done") return null;
-          if (wikiStatus === "failed") {
-            return <p className="mt-1 text-[10px] text-red-500">Wiki ingest failed</p>;
-          }
-          const labels: Record<string, string> = {
-            starting: "Wiki: starting...",
-            extracting: "Wiki: extracting graph...",
-            merging: "Wiki: merging...",
-            clustering: "Wiki: clustering...",
-            generating: "Wiki: generating pages...",
-          };
-          return (
-            <div className="mt-1 flex items-center gap-1.5 text-[10px] text-blue-600 dark:text-blue-400">
-              <Loader2 className="h-2.5 w-2.5 animate-spin" />
-              {labels[wikiStatus] || `Wiki: ${wikiStatus}`}
-            </div>
-          );
-        })()}
+        <WikiIngestStatus metadata={source.metadata as Record<string, unknown> | null} />
       </div>
     </div>
   );
