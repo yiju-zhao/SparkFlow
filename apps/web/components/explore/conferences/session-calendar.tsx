@@ -237,26 +237,9 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
       <div className="absolute left-7 top-0 bottom-0 w-px bg-border" />
 
       <div className="space-y-1">
-        {groups.map((group, i) => {
-          // Calculate gap from previous group to show time gaps visually
-          const prevSortKey = i > 0 ? groups[i - 1].sortKey : group.sortKey;
-          const gapMinutes = group.sortKey - prevSortKey;
-          const showGap = i > 0 && gapMinutes > 30;
-
+        {groups.map((group) => {
           return (
             <div key={group.label}>
-              {/* Time gap indicator */}
-              {showGap && (
-                <div className="flex items-center gap-3 pl-4 py-2">
-                  <div className="w-6 text-center">
-                    <div className="h-3 w-px bg-border/50 mx-auto" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-                    {formatDuration(gapMinutes)} gap
-                  </span>
-                </div>
-              )}
-
               <div className="flex gap-4 group/slot">
                 {/* Time marker */}
                 <div className="w-14 shrink-0 flex flex-col items-end pt-3 relative">
