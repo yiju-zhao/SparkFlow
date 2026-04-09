@@ -7,7 +7,6 @@ import rehypeRaw from "rehype-raw";
 import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 import { useCitationSafe } from "@/lib/context/citation-context";
-import "katex/dist/katex.min.css";
 
 interface MarkdownProps {
   children: string;
@@ -282,7 +281,7 @@ export const Markdown = memo(function Markdown({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeRaw, rehypeKatex]}
+        rehypePlugins={[rehypeKatex, rehypeRaw]}
         disallowedElements={DISALLOWED_RAW_TAGS}
         unwrapDisallowed
         components={components}
