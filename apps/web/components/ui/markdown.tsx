@@ -241,10 +241,15 @@ export const Markdown = memo(function Markdown({
     () => extractHtmlTables(children),
     [children],
   );
-  const processedContent = useMemo(
-    () => preprocessCitations(preprocessLatex(contentWithoutTables)),
-    [contentWithoutTables],
-  );
+  const processedContent = useMemo(() => {
+    const latexProcessed = preprocessLatex(contentWithoutTables);
+    if (contentWithoutTables.includes("\\begin") || contentWithoutTables.includes("\\mathcal") || contentWithoutTables.includes("\\frac")) {
+      console.log("[Markdown] LaTeX detected in input:", contentWithoutTables.slice(0, 200));
+      console.log("[Markdown] After preprocessLatex:", latexProcessed.slice(0, 200));
+      console.log("[Markdown] Has $$:", latexProcessed.includes("$$"));
+    }
+    return preprocessCitations(latexProcessed);
+  }, [contentWithoutTables]);
 
   const tableRef = useMemo(() => tables, [tables]);
 
