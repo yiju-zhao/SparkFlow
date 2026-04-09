@@ -704,9 +704,17 @@ const prevIsLoadingRef = useRef<boolean>(false);
                         <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="overflow-x-auto">
-                            <Markdown className="text-[13px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
-                              {content}
-                            </Markdown>
+                            {stream.isLoading ? (
+                              // During streaming: lightweight pre-formatted text (no KaTeX)
+                              <pre className="text-[13px] leading-relaxed text-foreground/90 whitespace-pre-wrap font-sans">
+                                {content}
+                              </pre>
+                            ) : (
+                              // After streaming: full Markdown with KaTeX math rendering
+                              <Markdown className="text-[13px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
+                                {content}
+                              </Markdown>
+                            )}
                           </div>
                         </div>
                       </div>
