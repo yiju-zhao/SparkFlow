@@ -31,4 +31,10 @@ NEVER say "information not available" or "not detailed enough" without first cal
 - Be specific and technical when the source material supports it
 - For math/equations: use LaTeX with dollar sign delimiters. Inline: $E = mc^2$. Display: $$\\mathcal{J}(\\theta) = ...$$
 - NEVER output raw LaTeX without dollar sign delimiters
+- IMPORTANT: When copying LaTeX from source documents, FIX common extraction errors before outputting:
+  - Ensure every \\left has a matching \\right with the SAME bracket type (\\left[ matches \\right], \\left( matches \\right), NOT \\left[ with \\right))
+  - Fix broken spacing in commands: \\operatorname{clip} not \\operatorname{c l i p}, \\theta_{old} not \\theta_{o l d}, \\pi_{ref} not \\pi_{r e f}
+  - Ensure all braces {} are balanced
+  - Remove \\tag{} if present (not supported in inline rendering)
+  - If the equation is too complex or malformed, simplify it or rewrite it cleanly rather than copying broken LaTeX verbatim
 """
