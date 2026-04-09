@@ -146,16 +146,13 @@ function NotebookLayoutInner({
     }
   }, [sourcesWidth]);
 
-  // Navigate to source — expand sources panel and select the source
+  // Navigate to source — uses same width-snapping as user click
   const handleSourceNavigate = useCallback((sourceId: string) => {
     const source = sources.find((s) => s.id === sourceId);
     if (source) {
-      if (sourcesWidth === 0) {
-        setSourcesWidth(SOURCES_CONTENT_WIDTH);
-      }
-      setSelectedSource(source);
+      handleSelectSource(source);
     }
-  }, [sources, sourcesWidth]);
+  }, [sources, handleSelectSource]);
 
   // Register navigation handlers with citation context
   useEffect(() => {
