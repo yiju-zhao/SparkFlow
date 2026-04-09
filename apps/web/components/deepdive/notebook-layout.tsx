@@ -83,7 +83,7 @@ function NotebookLayoutInner({
   // Citation navigation state (placeholder for future wiki-based navigation)
 
   // Citation navigation setup
-  const { setOnNavigate } = useCitation();
+  const { setOnNavigate, setOnNavigateSource } = useCitation();
 
   // Clamp width to valid range or collapse
   const clampWidth = useCallback((width: number): number => {
@@ -146,11 +146,26 @@ function NotebookLayoutInner({
     }
   }, [sourcesWidth]);
 
-  // Register navigation handler with citation context
+  // Navigate to source — expand sources panel and select the source
+  const handleSourceNavigate = useCallback((sourceId: string) => {
+    const source = sources.find((s) => s.id === sourceId);
+    if (source) {
+      if (sourcesWidth === 0) {
+        setSourcesWidth(SOURCES_CONTENT_WIDTH);
+      }
+      setSelectedSource(source);
+    }
+  }, [sources, sourcesWidth]);
+
+  // Register navigation handlers with citation context
   useEffect(() => {
     setOnNavigate(handleCitationNavigate);
-    return () => setOnNavigate(null);
-  }, [setOnNavigate, handleCitationNavigate]);
+    setOnNavigateSource(handleSourceNavigate);
+    return () => {
+      setOnNavigate(null);
+      setOnNavigateSource(null);
+    };
+  }, [setOnNavigate, setOnNavigateSource, handleCitationNavigate, handleSourceNavigate]);
 
   // Determine if panels are collapsed
   const sourcesCollapsed = sourcesWidth === 0;
