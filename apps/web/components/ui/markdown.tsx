@@ -1,12 +1,12 @@
 import { memo, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
+import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 import { useCitationSafe } from "@/lib/context/citation-context";
-import "katex/dist/katex.min.css";
 
 interface MarkdownProps {
   children: string;
@@ -40,6 +40,56 @@ const HtmlTable = memo(function HtmlTable({ html }: { html: string }) {
     </div>
   );
 });
+
+/**
+ * Normalize LaTeX delimiters to $/$$ that remark-math understands.
+ * Simple string replacements — no complex regex to avoid backtracking.
+ */
+function preprocessLatex(content: string): string {
+  let result = content;
+
+  // 1. \begin{env}...\end{env} → wrap in $$
+  // Use a simple scan instead of regex to avoid backtracking
+  const beginRegex = /\\begin\{(\w+)\}/g;
+  let match;
+  while ((match = beginRegex.exec(result)) !== null) {
+    const env = match[1];
+    const endTag = `\\end{${env}}`;
+    const endIdx = result.indexOf(endTag, match.index + match[0].length);
+    if (endIdx === -1) continue;
+    const fullEnd = endIdx + endTag.length;
+    const before = result.slice(0, match.index);
+    const mathBlock = result.slice(match.index, fullEnd);
+    const after = result.slice(fullEnd);
+    // Only wrap if not already in $$
+    if (!before.trimEnd().endsWith("$$")) {
+      result = before + "\n$$\n" + mathBlock + "\n$$\n" + after;
+      beginRegex.lastIndex = before.length + mathBlock.length + 8; // skip past what we inserted
+    }
+  }
+
+  // 2. \[...\] → $$...$$
+  result = result.split("\\[").reduce((acc, part, i) => {
+    if (i === 0) return part;
+    const closeIdx = part.indexOf("\\]");
+    if (closeIdx === -1) return acc + "\\[" + part;
+    const math = part.slice(0, closeIdx);
+    const rest = part.slice(closeIdx + 2);
+    return acc + "\n$$\n" + math + "\n$$\n" + rest;
+  }, "");
+
+  // 3. \(...\) → $...$
+  result = result.split("\\(").reduce((acc, part, i) => {
+    if (i === 0) return part;
+    const closeIdx = part.indexOf("\\)");
+    if (closeIdx === -1) return acc + "\\(" + part;
+    const math = part.slice(0, closeIdx);
+    const rest = part.slice(closeIdx + 2);
+    return acc + "$" + math + "$" + rest;
+  }, "");
+
+  return result;
+}
 
 function preprocessCitations(content: string): string {
   const chunkIndexMap = new Map<string, number>();
@@ -191,7 +241,7 @@ export const Markdown = memo(function Markdown({
     [children],
   );
   const processedContent = useMemo(
-    () => preprocessCitations(contentWithoutTables),
+    () => preprocessCitations(preprocessLatex(contentWithoutTables)),
     [contentWithoutTables],
   );
 

@@ -18,6 +18,7 @@ class AgentContext:
     """Runtime context for RAG agent tools and middleware."""
 
     notebook_id: str = ""
+    wiki_content: str = ""
     wiki_schema: dict[str, Any] = field(default_factory=dict)
     model_provider: str = os.getenv("DEFAULT_MODEL_PROVIDER", "openai")
     model_name: str = os.getenv("DEFAULT_MODEL_NAME", "gpt-4o")

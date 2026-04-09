@@ -41,7 +41,7 @@
     "graphology-communities-louvain": "^2.0.2",
     "graphology-types": "^0.24.8",
     "jszip": "^3.10.1",
-    "katex": "^0.16.27",
+    "katex": "^0.16.45",
     "lru-cache": "^11.2.5",
     "lucide-react": "^0.562.0",
     "markdown-to-jsx": "^9.5.7",

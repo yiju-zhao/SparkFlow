@@ -184,11 +184,11 @@
     scrollbar-color: transparent transparent;
   }
 
-  .is-scrolling {
+  [data-scrolling] {
     scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
   }
 
-  .dark .is-scrolling {
+  .dark [data-scrolling] {
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   }
 
@@ -206,11 +206,11 @@
     border-radius: 3px;
   }
 
-  .is-scrolling::-webkit-scrollbar-thumb {
+  [data-scrolling]::-webkit-scrollbar-thumb {
     background-color: rgba(0, 0, 0, 0.2);
   }
 
-  .dark .is-scrolling::-webkit-scrollbar-thumb {
+  .dark [data-scrolling]::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.2);
   }
 

@@ -45,7 +45,7 @@ export default async function LocaleLayout({
         {/* Auto-hide scrollbar: show only while scrolling, hide after 800ms idle */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=new WeakMap();document.addEventListener("scroll",function(e){var el=e.target;if(el===document)el=document.documentElement;if(!el||!el.classList)return;el.classList.add("is-scrolling");var id=t.get(el);if(id)clearTimeout(id);t.set(el,setTimeout(function(){el.classList.remove("is-scrolling")},800))},true)})()`,
+            __html: `(function(){var t=new WeakMap();document.addEventListener("scroll",function(e){var el=e.target;if(el===document)el=document.documentElement;if(!el||!el.dataset)return;el.dataset.scrolling="";var id=t.get(el);if(id)clearTimeout(id);t.set(el,setTimeout(function(){delete el.dataset.scrolling},800))},true)})()`,
           }}
         />
         <NextIntlClientProvider messages={messages}>
