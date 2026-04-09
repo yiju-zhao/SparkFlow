@@ -6,7 +6,7 @@ import {
   getConferenceStats,
   getConferenceSessions,
 } from "@/lib/explore/queries";
-import { ConferenceHero, SessionCalendar } from "@/components/explore/conferences";
+import { ConferenceHero, SessionCalendar, SessionStatsSection } from "@/components/explore/conferences";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SetAIContext } from "@/components/explore/set-ai-context";
@@ -17,9 +17,14 @@ interface PageProps {
 
 import { PublicationStatsSection } from "@/components/explore/conferences/publication-stats-section";
 
-async function SessionsCalendarSection({ conferenceId }: { conferenceId: string }) {
+async function SessionsSection({ conferenceId }: { conferenceId: string }) {
   const sessions = await getConferenceSessions(conferenceId);
-  return <SessionCalendar sessions={sessions} />;
+  return (
+    <div className="flex flex-col gap-10">
+      <SessionStatsSection sessions={sessions} />
+      <SessionCalendar sessions={sessions} />
+    </div>
+  );
 }
 
 export default async function ConferenceDetailPage({ params }: PageProps) {
@@ -79,7 +84,7 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
 
         <TabsContent value="sessions" className="mt-8">
           <Suspense fallback={<ContentSkeleton />}>
-            <SessionsCalendarSection conferenceId={id} />
+            <SessionsSection conferenceId={id} />
           </Suspense>
         </TabsContent>
       </Tabs>

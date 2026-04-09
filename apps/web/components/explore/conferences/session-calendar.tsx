@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { MapPin, User, X } from "lucide-react";
+import { MapPin, User, Clock, X, Tag } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -56,6 +56,23 @@ function getHourKey(startTime: string | null): string | null {
   return `${hour.toString().padStart(2, "0")}:00`;
 }
 
+function computeDuration(start: string | null, end: string | null): string | null {
+  if (!start || !end) return null;
+  const parseMinutes = (t: string) => {
+    const parts = t.split(":");
+    if (parts.length < 2) return null;
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  };
+  const s = parseMinutes(start);
+  const e = parseMinutes(end);
+  if (s === null || e === null || e <= s) return null;
+  const diff = e - s;
+  if (diff < 60) return `${diff}m`;
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 function collectUnique(sessions: CalendarSessionItem[], field: "type"): string[];
 function collectUnique(sessions: CalendarSessionItem[], field: "topic" | "technology"): string[];
 function collectUnique(sessions: CalendarSessionItem[], field: "type" | "topic" | "technology"): string[] {
@@ -78,39 +95,73 @@ interface SessionCardProps {
 }
 
 function SessionCard({ session, color }: SessionCardProps) {
+  const duration = computeDuration(session.startTime, session.endTime);
+
   return (
     <div
-      className="w-70 shrink-0 rounded-lg bg-card border border-border hover:bg-muted/30 transition-colors"
+      className="rounded-lg bg-card border border-border hover:bg-muted/30 hover:border-muted-foreground/20 transition-colors"
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
       <Link
         href={`/explore/sessions/${session.id}`}
-        className="block p-3 space-y-2"
+        className="block p-3.5 space-y-2.5"
       >
         <h4 className="font-medium text-sm leading-snug line-clamp-2">
           {session.title}
         </h4>
-        {(session.startTime || session.endTime) && (
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {session.startTime}
-            {session.endTime && ` – ${session.endTime}`}
-          </p>
+
+        {/* Time + Duration row */}
+        {(session.startTime || duration) && (
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground tabular-nums flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {session.startTime}
+              {session.endTime && ` – ${session.endTime}`}
+            </p>
+            {duration && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                {duration}
+              </span>
+            )}
+          </div>
         )}
+
         {session.location && (
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
+            <MapPin className="h-3 w-3 shrink-0" />
             <span className="truncate">{session.location}</span>
           </p>
         )}
+
         {session.speaker.length > 0 && (
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <User className="h-3 w-3" />
+            <User className="h-3 w-3 shrink-0" />
             <span className="truncate">
               {session.speaker.slice(0, 2).join(", ")}
               {session.speaker.length > 2 &&
                 ` +${session.speaker.length - 2}`}
             </span>
           </p>
+        )}
+
+        {/* Topic tags */}
+        {session.topic.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
+            {session.topic.slice(0, 2).map((t) => (
+              <span
+                key={t}
+                className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground truncate max-w-30"
+              >
+                {t}
+              </span>
+            ))}
+            {session.topic.length > 2 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{session.topic.length - 2}
+              </span>
+            )}
+          </div>
         )}
       </Link>
     </div>
@@ -277,21 +328,30 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
       ) : (
         <Tabs value={effectiveTab} onValueChange={setActiveTab}>
           <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-1 overflow-x-auto flex-nowrap">
-            {dateKeys.map((key) => (
-              <TabsTrigger
-                key={key}
-                value={key}
-                className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
-              >
-                {formatDateTab(new Date(key + "T00:00:00"))}
-              </TabsTrigger>
-            ))}
+            {dateKeys.map((key) => {
+              const count = dateGroups.get(key)?.length ?? 0;
+              return (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
+                >
+                  {formatDateTab(new Date(key + "T00:00:00"))}
+                  <span className="ml-1.5 tabular-nums opacity-70">
+                    ({count})
+                  </span>
+                </TabsTrigger>
+              );
+            })}
             {unscheduled.length > 0 && (
               <TabsTrigger
                 value="unscheduled"
                 className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
               >
                 Unscheduled
+                <span className="ml-1.5 tabular-nums opacity-70">
+                  ({unscheduled.length})
+                </span>
               </TabsTrigger>
             )}
           </TabsList>
@@ -344,29 +404,42 @@ function TimeSlotGrid({ sessions, typeColorMap }: TimeSlotGridProps) {
   }, [sessions]);
 
   return (
-    <div className="space-y-4">
-      {hourKeys.map((hour) => (
-        <div key={hour} className="flex gap-4">
-          <div className="w-16 shrink-0 pt-3 text-sm font-medium text-muted-foreground tabular-nums">
-            {hour}
+    <div className="space-y-6">
+      {hourKeys.map((hour) => {
+        const slotSessions = hourGroups.get(hour) ?? [];
+        return (
+          <div key={hour} className="flex gap-4">
+            <div className="w-16 shrink-0 pt-3">
+              <span className="text-sm font-medium text-muted-foreground tabular-nums">
+                {hour}
+              </span>
+              <span className="block text-[10px] text-muted-foreground/60 mt-0.5">
+                {slotSessions.length} session{slotSessions.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {slotSessions.map((s) => (
+                <SessionCard
+                  key={s.id}
+                  session={s}
+                  color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
+                />
+              ))}
+            </div>
           </div>
-          <div className="flex-1 flex gap-3 overflow-x-auto pb-2">
-            {(hourGroups.get(hour) ?? []).map((s) => (
-              <SessionCard
-                key={s.id}
-                session={s}
-                color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
+        );
+      })}
       {noTime.length > 0 && (
         <div className="flex gap-4">
-          <div className="w-16 shrink-0 pt-3 text-sm font-medium text-muted-foreground">
-            Other
+          <div className="w-16 shrink-0 pt-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              Other
+            </span>
+            <span className="block text-[10px] text-muted-foreground/60 mt-0.5">
+              {noTime.length} session{noTime.length !== 1 ? "s" : ""}
+            </span>
           </div>
-          <div className="flex-1 flex gap-3 overflow-x-auto pb-2">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {noTime.map((s) => (
               <SessionCard
                 key={s.id}
