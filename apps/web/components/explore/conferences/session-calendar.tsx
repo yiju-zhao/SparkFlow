@@ -48,28 +48,28 @@ function formatDateTab(date: Date): string {
   });
 }
 
-function getHourKey(startTime: string | null): string | null {
-  if (!startTime) return null;
-  const match = startTime.match(/^(\d{1,2})/);
-  if (!match) return null;
-  const hour = parseInt(match[1], 10);
-  return `${hour.toString().padStart(2, "0")}:00`;
+/** Parse "HH:MM" to total minutes from midnight */
+function parseMinutes(t: string): number | null {
+  const parts = t.split(":");
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
 }
 
-function computeDuration(start: string | null, end: string | null): string | null {
+function computeDurationMinutes(start: string | null, end: string | null): number | null {
   if (!start || !end) return null;
-  const parseMinutes = (t: string) => {
-    const parts = t.split(":");
-    if (parts.length < 2) return null;
-    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-  };
   const s = parseMinutes(start);
   const e = parseMinutes(end);
   if (s === null || e === null || e <= s) return null;
-  const diff = e - s;
-  if (diff < 60) return `${diff}m`;
-  const h = Math.floor(diff / 60);
-  const m = diff % 60;
+  return e - s;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
@@ -89,13 +89,22 @@ function collectUnique(sessions: CalendarSessionItem[], field: "type" | "topic" 
   return Array.from(set).sort();
 }
 
+// ── Session Card ──────────────────────────────────────────────
+
 interface SessionCardProps {
   session: CalendarSessionItem;
   color: string;
+  /** Max duration in minutes across all sessions on this day, used for bar scale */
+  maxDuration: number;
 }
 
-function SessionCard({ session, color }: SessionCardProps) {
-  const duration = computeDuration(session.startTime, session.endTime);
+function SessionCard({ session, color, maxDuration }: SessionCardProps) {
+  const durationMin = computeDurationMinutes(session.startTime, session.endTime);
+  const durationLabel = durationMin ? formatDuration(durationMin) : null;
+  // Bar width as % of the longest session, min 15% for visibility
+  const barPct = durationMin && maxDuration > 0
+    ? Math.max(15, (durationMin / maxDuration) * 100)
+    : 0;
 
   return (
     <div
@@ -104,25 +113,35 @@ function SessionCard({ session, color }: SessionCardProps) {
     >
       <Link
         href={`/explore/sessions/${session.id}`}
-        className="block p-3.5 space-y-2.5"
+        className="block p-3.5 space-y-2"
       >
         <h4 className="font-medium text-sm leading-snug line-clamp-2">
           {session.title}
         </h4>
 
-        {/* Time + Duration row */}
-        {(session.startTime || duration) && (
+        {/* Time + Duration */}
+        {(session.startTime || durationLabel) && (
           <div className="flex items-center gap-2">
             <p className="text-xs text-muted-foreground tabular-nums flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {session.startTime}
               {session.endTime && ` – ${session.endTime}`}
             </p>
-            {duration && (
+            {durationLabel && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                {duration}
+                {durationLabel}
               </span>
             )}
+          </div>
+        )}
+
+        {/* Duration bar — visual representation of session length */}
+        {barPct > 0 && (
+          <div className="w-full h-1.5 rounded-full bg-muted/50 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${barPct}%`, backgroundColor: color, opacity: 0.6 }}
+            />
           </div>
         )}
 
@@ -168,29 +187,179 @@ function SessionCard({ session, color }: SessionCardProps) {
   );
 }
 
+// ── Timeline Grid ─────────────────────────────────────────────
+
+interface TimelineGroup {
+  /** Display label, e.g. "09:00" or "09:30" */
+  label: string;
+  /** Sort key in minutes from midnight */
+  sortKey: number;
+  sessions: CalendarSessionItem[];
+}
+
+interface TimelineGridProps {
+  sessions: CalendarSessionItem[];
+  typeColorMap: Map<string, string>;
+}
+
+/**
+ * Groups sessions by their exact start time (not rounded to the hour).
+ * Sessions starting at 09:00 and 09:30 get separate groups.
+ * Within each group, sessions are sorted by duration (longest first).
+ */
+function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
+  const { groups, noTime, maxDuration } = useMemo(() => {
+    const map = new Map<string, { sortKey: number; sessions: CalendarSessionItem[] }>();
+    const other: CalendarSessionItem[] = [];
+    let maxDur = 0;
+
+    for (const s of sessions) {
+      // Track max duration across all sessions for bar scaling
+      const dur = computeDurationMinutes(s.startTime, s.endTime);
+      if (dur && dur > maxDur) maxDur = dur;
+
+      if (!s.startTime) {
+        other.push(s);
+        continue;
+      }
+      const mins = parseMinutes(s.startTime);
+      if (mins === null) {
+        other.push(s);
+        continue;
+      }
+      // Use exact start time as the group key
+      const key = s.startTime;
+      if (!map.has(key)) {
+        map.set(key, { sortKey: mins, sessions: [] });
+      }
+      map.get(key)!.sessions.push(s);
+    }
+
+    // Sort groups chronologically
+    const sorted: TimelineGroup[] = Array.from(map.entries())
+      .sort(([, a], [, b]) => a.sortKey - b.sortKey)
+      .map(([label, { sortKey, sessions: groupSessions }]) => ({
+        label,
+        sortKey,
+        // Within each group, sort by duration descending (longest first)
+        sessions: groupSessions.sort((a, b) => {
+          const da = computeDurationMinutes(a.startTime, a.endTime) ?? 0;
+          const db = computeDurationMinutes(b.startTime, b.endTime) ?? 0;
+          return db - da;
+        }),
+      }));
+
+    return { groups: sorted, noTime: other, maxDuration: maxDur };
+  }, [sessions]);
+
+  return (
+    <div className="relative">
+      {/* Timeline spine */}
+      <div className="absolute left-7 top-0 bottom-0 w-px bg-border" />
+
+      <div className="space-y-1">
+        {groups.map((group, i) => {
+          // Calculate gap from previous group to show time gaps visually
+          const prevSortKey = i > 0 ? groups[i - 1].sortKey : group.sortKey;
+          const gapMinutes = group.sortKey - prevSortKey;
+          const showGap = i > 0 && gapMinutes > 30;
+
+          return (
+            <div key={group.label}>
+              {/* Time gap indicator */}
+              {showGap && (
+                <div className="flex items-center gap-3 pl-4 py-2">
+                  <div className="w-6 text-center">
+                    <div className="h-3 w-px bg-border/50 mx-auto" />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+                    {formatDuration(gapMinutes)} gap
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-4 group/slot">
+                {/* Time marker */}
+                <div className="w-14 shrink-0 flex flex-col items-end pt-3 relative">
+                  {/* Dot on the timeline spine */}
+                  <div
+                    className="absolute right-[-13px] top-4 h-2 w-2 rounded-full bg-primary ring-2 ring-background z-10"
+                  />
+                  <span className="text-sm font-semibold tabular-nums text-foreground">
+                    {group.label}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    {group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* Session cards */}
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-4 pt-1">
+                  {group.sessions.map((s) => (
+                    <SessionCard
+                      key={s.id}
+                      session={s}
+                      color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
+                      maxDuration={maxDuration}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {noTime.length > 0 && (
+          <div className="flex gap-4">
+            <div className="w-14 shrink-0 flex flex-col items-end pt-3 relative">
+              <div
+                className="absolute right-[-13px] top-4 h-2 w-2 rounded-full bg-muted-foreground/30 ring-2 ring-background z-10"
+              />
+              <span className="text-sm font-medium text-muted-foreground">
+                TBD
+              </span>
+              <span className="text-[10px] text-muted-foreground/60 mt-0.5">
+                {noTime.length} session{noTime.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-4 pt-1">
+              {noTime.map((s) => (
+                <SessionCard
+                  key={s.id}
+                  session={s}
+                  color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
+                  maxDuration={maxDuration}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Calendar ─────────────────────────────────────────────
+
 interface SessionCalendarProps {
   sessions: CalendarSessionItem[];
 }
 
 export function SessionCalendar({ sessions }: SessionCalendarProps) {
-  // Color map from ALL sessions (stable regardless of filters)
   const typeColorMap = useMemo(() => buildTypeColorMap(sessions), [sessions]);
 
-  // Filter options derived from all sessions
   const filterOptions = useMemo(() => ({
     types: collectUnique(sessions, "type"),
     topics: collectUnique(sessions, "topic"),
     technologies: collectUnique(sessions, "technology"),
   }), [sessions]);
 
-  // Filter state
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
   const [techFilter, setTechFilter] = useState<string | null>(null);
 
   const hasActiveFilters = typeFilter || topicFilter || techFilter;
 
-  // Filtered sessions
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
       if (typeFilter && s.type !== typeFilter) return false;
@@ -200,7 +369,6 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     });
   }, [sessions, typeFilter, topicFilter, techFilter]);
 
-  // Group filtered sessions by date
   const { dateGroups, dateKeys, unscheduled } = useMemo(() => {
     const groups = new Map<string, CalendarSessionItem[]>();
     const noDate: CalendarSessionItem[] = [];
@@ -227,7 +395,6 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 
   const [activeTab, setActiveTab] = useState(allTabKeys[0] ?? "unscheduled");
 
-  // Reset tab if the current tab is no longer available after filtering
   const effectiveTab = allTabKeys.includes(activeTab)
     ? activeTab
     : allTabKeys[0] ?? "unscheduled";
@@ -358,7 +525,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 
           {dateKeys.map((key) => (
             <TabsContent key={key} value={key} className="mt-6">
-              <TimeSlotGrid
+              <TimelineGrid
                 sessions={dateGroups.get(key) ?? []}
                 typeColorMap={typeColorMap}
               />
@@ -367,88 +534,13 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 
           {unscheduled.length > 0 && (
             <TabsContent value="unscheduled" className="mt-6">
-              <TimeSlotGrid
+              <TimelineGrid
                 sessions={unscheduled}
                 typeColorMap={typeColorMap}
               />
             </TabsContent>
           )}
         </Tabs>
-      )}
-    </div>
-  );
-}
-
-interface TimeSlotGridProps {
-  sessions: CalendarSessionItem[];
-  typeColorMap: Map<string, string>;
-}
-
-function TimeSlotGrid({ sessions, typeColorMap }: TimeSlotGridProps) {
-  const { hourGroups, hourKeys, noTime } = useMemo(() => {
-    const groups = new Map<string, CalendarSessionItem[]>();
-    const other: CalendarSessionItem[] = [];
-
-    for (const s of sessions) {
-      const hourKey = getHourKey(s.startTime);
-      if (!hourKey) {
-        other.push(s);
-        continue;
-      }
-      if (!groups.has(hourKey)) groups.set(hourKey, []);
-      groups.get(hourKey)!.push(s);
-    }
-
-    const sortedKeys = Array.from(groups.keys()).sort();
-    return { hourGroups: groups, hourKeys: sortedKeys, noTime: other };
-  }, [sessions]);
-
-  return (
-    <div className="space-y-6">
-      {hourKeys.map((hour) => {
-        const slotSessions = hourGroups.get(hour) ?? [];
-        return (
-          <div key={hour} className="flex gap-4">
-            <div className="w-16 shrink-0 pt-3">
-              <span className="text-sm font-medium text-muted-foreground tabular-nums">
-                {hour}
-              </span>
-              <span className="block text-[10px] text-muted-foreground/60 mt-0.5">
-                {slotSessions.length} session{slotSessions.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {slotSessions.map((s) => (
-                <SessionCard
-                  key={s.id}
-                  session={s}
-                  color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })}
-      {noTime.length > 0 && (
-        <div className="flex gap-4">
-          <div className="w-16 shrink-0 pt-3">
-            <span className="text-sm font-medium text-muted-foreground">
-              Other
-            </span>
-            <span className="block text-[10px] text-muted-foreground/60 mt-0.5">
-              {noTime.length} session{noTime.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {noTime.map((s) => (
-              <SessionCard
-                key={s.id}
-                session={s}
-                color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
-              />
-            ))}
-          </div>
-        </div>
       )}
     </div>
   );
