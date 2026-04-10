@@ -21,6 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { deleteSource } from "@/lib/actions/sources";
 import { AddSourceDialog } from "@/components/deepdive/sources/add-source-dialog";
+import { IngestReport } from "./ingest-report";
 import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
 import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
@@ -113,15 +114,38 @@ export function SourcesPanel({
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {liveSources.map((source) => (
-              <SourceItem
-                key={source.id}
-                source={source}
-                onSelect={() => onSelectSource(source)}
-              />
-            ))}
-          </div>
+          <>
+            {liveSources
+              .filter((s) => {
+                const meta = s.metadata as Record<string, unknown> | null;
+                return meta?.extractionReport && meta?.wikiStatus === "done";
+              })
+              .slice(0, 1)
+              .map((s) => {
+                const meta = s.metadata as Record<string, unknown>;
+                return (
+                  <IngestReport
+                    key={`report-${s.id}`}
+                    sourceTitle={s.title}
+                    report={meta.extractionReport as any}
+                    onDismiss={() => {
+                      fetch(`/api/notebooks/${s.notebookId}/sources/${s.id}/dismiss-report`, {
+                        method: "POST",
+                      }).catch(() => {});
+                    }}
+                  />
+                );
+              })}
+            <div className="space-y-2">
+              {liveSources.map((source) => (
+                <SourceItem
+                  key={source.id}
+                  source={source}
+                  onSelect={() => onSelectSource(source)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 

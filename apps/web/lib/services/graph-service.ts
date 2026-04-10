@@ -454,7 +454,17 @@ export async function runGraphPipeline(
   sourceId: string,
   sourceContent: string,
   sourceTitle: string
-): Promise<{ nodesAdded: number; edgesAdded: number; communities: number; pagesWritten: number }> {
+): Promise<{
+  nodesAdded: number;
+  edgesAdded: number;
+  communities: number;
+  pagesWritten: number;
+  extractionReport: {
+    nodes: { id: string; label: string; type: string }[];
+    edges: { source: string; target: string; relation: string }[];
+    crossRefs: string[];
+  };
+}> {
   const existingGraph = await prisma.notebookGraph.findUnique({
     where: { notebookId },
   });
@@ -478,6 +488,35 @@ export async function runGraphPipeline(
     sourceId,
     existing.nodes.map((n) => `${n.id}: ${n.label}`)
   );
+
+  // Build extraction report with cross-references
+  const newNodeIds = new Set(extraction.nodes.map((n) => n.id));
+  const existingNodeIds = new Set(existing.nodes.map((n) => n.id));
+  const crossRefs: string[] = [];
+
+  // Nodes that already exist in the graph
+  for (const n of extraction.nodes) {
+    if (existingNodeIds.has(n.id)) {
+      crossRefs.push(`"${n.label}" already exists in the knowledge network`);
+    }
+  }
+
+  // Edges connecting new nodes to existing ones
+  for (const edge of extraction.edges) {
+    if (existingNodeIds.has(edge.source) && newNodeIds.has(edge.target)) {
+      const src = existing.nodes.find((n) => n.id === edge.source);
+      const tgt = extraction.nodes.find((n) => n.id === edge.target);
+      if (src && tgt) {
+        crossRefs.push(`"${tgt.label}" ${edge.relation} "${src.label}" (from previous sources)`);
+      }
+    }
+  }
+
+  const extractionReport = {
+    nodes: extraction.nodes.map((n) => ({ id: n.id, label: n.label, type: n.type })),
+    edges: extraction.edges.map((e) => ({ source: e.source, target: e.target, relation: e.relation })),
+    crossRefs,
+  };
 
   // Update source title
   if (extraction.normalizedTitle) {
@@ -530,5 +569,6 @@ export async function runGraphPipeline(
     edgesAdded: extraction.edges.length,
     communities: Object.keys(communities).length,
     pagesWritten: writtenSlugs.length,
+    extractionReport,
   };
 }
