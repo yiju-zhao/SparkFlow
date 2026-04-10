@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
+import { WikiPanel } from "@/components/deepdive/wiki/wiki-panel";
 import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
@@ -53,6 +54,7 @@ const EMPTY_WIKI_PAGES: WikiPageSummary[] = [];
 // Panel width constants
 const SOURCES_DEFAULT_WIDTH = 280;
 const SOURCES_CONTENT_WIDTH = 480;
+const WIKI_DEFAULT_WIDTH = 300;
 const STUDIO_DEFAULT_WIDTH = 320;
 const STUDIO_CONTENT_WIDTH = 480;
 const MIN_PANEL_WIDTH = 150;
@@ -77,6 +79,7 @@ function NotebookLayoutInner({
   graphData,
 }: NotebookLayoutProps) {
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
+  const [wikiWidth, setWikiWidth] = useState(WIKI_DEFAULT_WIDTH);
   const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -108,9 +111,21 @@ function NotebookLayoutInner({
     setStudioWidth(STUDIO_DEFAULT_WIDTH);
   }, []);
 
+  const handleWikiDrag = useCallback((delta: number) => {
+    setWikiWidth((prev) => clampWidth(prev - delta));
+  }, [clampWidth]);
+
+  const handleWikiDoubleClick = useCallback(() => {
+    setWikiWidth(WIKI_DEFAULT_WIDTH);
+  }, []);
+
   // Expand handlers for collapsed panels
   const handleSourcesExpand = useCallback((width: number) => {
     setSourcesWidth(Math.max(SOURCES_DEFAULT_WIDTH, width));
+  }, []);
+
+  const handleWikiExpand = useCallback((width: number) => {
+    setWikiWidth(Math.max(WIKI_DEFAULT_WIDTH, width));
   }, []);
 
   const handleStudioExpand = useCallback((width: number) => {
@@ -166,6 +181,7 @@ function NotebookLayoutInner({
 
   // Determine if panels are collapsed
   const sourcesCollapsed = sourcesWidth === 0;
+  const wikiCollapsed = wikiWidth === 0;
   const studioCollapsed = studioWidth === 0;
 
   return (
@@ -187,8 +203,6 @@ function NotebookLayoutInner({
               sources={sources}
               selectedSource={selectedSource}
               onSelectSource={handleSelectSource}
-              wikiPages={wikiPages}
-              graphData={graphData}
             />
           </motion.div>
           <ResizableDivider
@@ -219,6 +233,33 @@ function NotebookLayoutInner({
           initialMessages={initialMessages}
         />
       </motion.div>
+
+      {/* Wiki Panel - Collapsible */}
+      {wikiCollapsed ? (
+        <CollapsedGripStrip side="right" onExpand={handleWikiExpand} />
+      ) : (
+        <>
+          <ResizableDivider
+            direction="vertical"
+            onDrag={handleWikiDrag}
+            onDoubleClick={handleWikiDoubleClick}
+          />
+          <motion.div
+            className="h-full overflow-hidden"
+            style={{ width: wikiWidth }}
+            initial={false}
+            animate={{ width: wikiWidth }}
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+          >
+            <WikiPanel
+              notebookId={notebook.id}
+              initialPages={wikiPages}
+              sources={sources.map((s) => ({ id: s.id, title: s.title }))}
+              graphData={graphData}
+            />
+          </motion.div>
+        </>
+      )}
 
       {/* Studio Panel (Right) - Collapsible */}
       {studioCollapsed ? (
