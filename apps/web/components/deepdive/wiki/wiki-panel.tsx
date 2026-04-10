@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Pe
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { GraphView } from "./graph-view";
+import { HealthCheckButton } from "./health-check";
 
 interface WikiPage {
   id: string;
@@ -98,7 +99,7 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-6 pt-3 pb-3 flex items-center justify-between">
+      <div className="px-6 pt-3 pb-3 flex items-center justify-between relative">
         <div className="flex items-center gap-1">
           <button
             className={`px-2 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
@@ -121,9 +122,12 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
             Graph
           </button>
         </div>
-        <span className="text-[11px] text-muted-foreground">
-          {pages.filter((p) => p.pageType !== "INDEX" && p.pageType !== "LOG").length} pages
-        </span>
+        <div className="flex items-center gap-1">
+          <HealthCheckButton notebookId={notebookId} />
+          <span className="text-[11px] text-muted-foreground">
+            {pages.filter((p) => p.pageType !== "INDEX" && p.pageType !== "LOG").length} pages
+          </span>
+        </div>
       </div>
 
       {view === "graph" ? (
