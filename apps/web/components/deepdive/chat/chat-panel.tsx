@@ -349,27 +349,40 @@ const prevIsLoadingRef = useRef<boolean>(false);
       if (savingWikiId) return;
       setSavingWikiId(messageId);
       try {
-        const slug = `synthesis-${Date.now()}`;
-        const title = content
-          .slice(0, 60)
-          .replace(/[#*\n]/g, "")
-          .trim() + "...";
+        const slug = `article-${Date.now()}`;
+        const firstLine = content.split("\n").find((l) => l.trim().length > 0) || "";
+        const title = firstLine
+          .replace(/^#+\s*/, "")
+          .replace(/[*_~`]/g, "")
+          .slice(0, 80)
+          .trim() || "Chat Synthesis";
+
+        const sourceIds = sources
+          .filter((s) => s.status === "READY")
+          .map((s) => s.id);
+
         await fetch(`/api/notebooks/${notebookId}/wiki/${slug}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title,
             content,
-            pageType: "COMPARISON",
-            sourceRefs: [],
+            pageType: "ARTICLE",
+            sourceRefs: sourceIds,
           }),
         });
-        // Log the save
+
+        fetch(`/api/notebooks/${notebookId}/wiki/integrate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        }).catch(() => {});
+
         fetch(`/api/notebooks/${notebookId}/wiki/log`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            entry: `saved | Chat synthesis saved as [[${slug}]]`,
+            entry: `saved | Chat article saved as [[${slug}]] — "${title}"`,
           }),
         }).catch(() => {});
       } catch (error) {
@@ -378,7 +391,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
         setSavingWikiId(null);
       }
     },
-    [notebookId, savingWikiId],
+    [notebookId, savingWikiId, sources],
   );
 
   // Create new session in database

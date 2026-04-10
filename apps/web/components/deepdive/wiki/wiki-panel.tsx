@@ -2,7 +2,7 @@
 
 import { useState, useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, Users, ScrollText } from "lucide-react";
+import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Users, ScrollText } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
 import { GraphView } from "./graph-view";
 
@@ -33,6 +33,7 @@ const PAGE_TYPE_ICONS: Record<string, typeof FileText> = {
   CONCEPT: Lightbulb,
   SUMMARY: FileText,
   COMPARISON: GitCompare,
+  ARTICLE: MessageSquare,
   INDEX: BookOpen,
   LOG: ScrollText,
 };
@@ -42,6 +43,7 @@ const PAGE_TYPE_LABELS: Record<string, string> = {
   CONCEPT: "Concepts",
   SUMMARY: "Summaries",
   COMPARISON: "Comparisons",
+  ARTICLE: "Articles",
 };
 
 export function WikiPanel({ notebookId, initialPages = [], sources = [], graphData = null }: WikiPanelProps) {

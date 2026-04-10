@@ -349,7 +349,76 @@ Include "Connections to Other Topics" for bridge edges. Be concise.`,
 }
 
 // ============================================================
-// 5. Remove source — deterministic graph operations
+// 5. Integrate wiki page — lightweight graph update for a single page
+// ============================================================
+
+export async function integrateWikiPage(
+  notebookId: string,
+  pageSlug: string,
+  pageContent: string,
+  sourceRefs: string[]
+): Promise<{ nodesAdded: number; edgesAdded: number }> {
+  const { default: OpenAI } = await import("openai");
+  const openai = new OpenAI();
+
+  const existingGraph = await prisma.notebookGraph.findUnique({
+    where: { notebookId },
+  });
+
+  const existing: GraphData = existingGraph?.graphData
+    ? (existingGraph.graphData as unknown as GraphData)
+    : { nodes: [], edges: [] };
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.2,
+    messages: [
+      {
+        role: "system",
+        content: `Extract knowledge graph entities from this wiki article. Output JSON:
+{"nodes": [{"id": "slug-name", "label": "Display Name", "type": "entity|concept|method", "summary": "one-line"}], "edges": [{"source": "id-a", "target": "id-b", "relation": "uses|improves|alternative_to|component_of|extends", "confidence": "INFERRED", "weight": 0.7}]}
+Only extract key entities. Reuse existing node IDs when possible.
+Existing nodes: ${existing.nodes.slice(0, 50).map((n) => `${n.id}: ${n.label}`).join(", ")}`,
+      },
+      {
+        role: "user",
+        content: pageContent.slice(0, 10000),
+      },
+    ],
+    response_format: { type: "json_object" },
+  });
+
+  const text = completion.choices[0]?.message?.content;
+  if (!text) return { nodesAdded: 0, edgesAdded: 0 };
+
+  const result = JSON.parse(text);
+  const nodes: GraphNode[] = (result.nodes || []).map((n: any) => ({
+    ...n,
+    sourceRefs,
+  }));
+  const edges: GraphEdge[] = (result.edges || []).map((e: any) => ({
+    ...e,
+    sourceRef: pageSlug,
+  }));
+
+  if (nodes.length === 0 && edges.length === 0) {
+    return { nodesAdded: 0, edgesAdded: 0 };
+  }
+
+  const merged = mergeGraph(existing, { nodes, edges, normalizedTitle: "" });
+  const { graphWithCommunities, communities } = await clusterGraph(merged);
+
+  await prisma.notebookGraph.upsert({
+    where: { notebookId },
+    create: { notebookId, graphData: graphWithCommunities as any, communities: communities as any },
+    update: { graphData: graphWithCommunities as any, communities: communities as any },
+  });
+
+  return { nodesAdded: nodes.length, edgesAdded: edges.length };
+}
+
+// ============================================================
+// 6. Remove source — deterministic graph operations
 // ============================================================
 
 export function removeSourceFromGraph(
