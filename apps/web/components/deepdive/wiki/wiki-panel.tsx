@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, memo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Users, ScrollText } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Pencil, Users, ScrollText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { GraphView } from "./graph-view";
 
@@ -223,6 +224,11 @@ function WikiPageView({
   onBack: () => void;
   onNavigate: (slug: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const queryClient = useQueryClient();
+
   const { data: page, isLoading } = useQuery<WikiPage & { content: string }>({
     queryKey: ["wiki-page", notebookId, slug],
     queryFn: async () => {
@@ -231,6 +237,31 @@ function WikiPageView({
       return res.json();
     },
   });
+
+  const handleStartEdit = () => {
+    if (page?.content) {
+      setEditContent(page.content);
+      setIsEditing(true);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await fetch(`/api/notebooks/${notebookId}/wiki/${slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["wiki-page", notebookId, slug] });
+      await queryClient.invalidateQueries({ queryKey: ["wiki-pages", notebookId] });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save wiki page:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Resolve source IDs to titles for display
   const sourceTitles = useMemo(() => {
@@ -254,6 +285,21 @@ function WikiPageView({
           <h2 className="text-[13px] font-semibold truncate">
             {page?.title || slug}
           </h2>
+          {page && !isEditing && page.pageType !== "INDEX" && page.pageType !== "LOG" && (
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleStartEdit} title="Edit">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {isEditing && (
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setIsEditing(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" className="h-7 px-2 text-xs bg-accent-red hover:bg-accent-red-hover text-white" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          )}
         </div>
         {sourceTitles.length > 0 && (
           <div className="mt-1 ml-9 flex flex-wrap gap-1">
@@ -275,6 +321,12 @@ function WikiPageView({
           <div className="flex items-center justify-center py-8">
             <span className="text-sm text-muted-foreground">Loading...</span>
           </div>
+        ) : isEditing ? (
+          <textarea
+            className="w-full h-full min-h-64 resize-none bg-transparent text-sm font-mono leading-relaxed outline-none"
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+          />
         ) : page?.content ? (
           <WikiMarkdown content={page.content} sourceMap={sourceMap} onNavigate={onNavigate} />
         ) : (

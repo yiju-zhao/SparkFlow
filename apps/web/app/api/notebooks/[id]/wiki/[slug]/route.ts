@@ -78,3 +78,34 @@ export async function PUT(
 
   return NextResponse.json({ page });
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; slug: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id: notebookId, slug } = await params;
+  const body = await request.json();
+
+  const page = await prisma.wikiPage.findUnique({
+    where: { notebookId_slug: { notebookId, slug } },
+  });
+
+  if (!page) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const updated = await prisma.wikiPage.update({
+    where: { id: page.id },
+    data: {
+      ...(body.title !== undefined && { title: body.title }),
+      ...(body.content !== undefined && { content: body.content }),
+    },
+  });
+
+  return NextResponse.json(updated);
+}
