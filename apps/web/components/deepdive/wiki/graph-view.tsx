@@ -175,8 +175,8 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
             return "rgba(140,140,140,0.1)";
           }}
           linkWidth={(link: any) => Math.max(0.3, link.weight)}
-          linkDirectionalArrowLength={3.5}
-          linkDirectionalArrowRelPos={0.92}
+          linkDirectionalArrowLength={0}
+          linkDirectionalArrowRelPos={0}
           /* ── Force layout ── */
           d3AlphaDecay={0.05}
           d3VelocityDecay={0.4}
