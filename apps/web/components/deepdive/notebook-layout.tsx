@@ -54,9 +54,8 @@ const EMPTY_WIKI_PAGES: WikiPageSummary[] = [];
 // Panel width constants
 const SOURCES_DEFAULT_WIDTH = 280;
 const SOURCES_CONTENT_WIDTH = 480;
-const WIKI_DEFAULT_WIDTH = 300;
-const STUDIO_DEFAULT_WIDTH = 320;
-const STUDIO_CONTENT_WIDTH = 480;
+const RIGHT_DEFAULT_WIDTH = 360;
+const RIGHT_CONTENT_WIDTH = 480;
 const MIN_PANEL_WIDTH = 150;
 const MAX_PANEL_WIDTH = 800;
 const COLLAPSE_THRESHOLD = 100;
@@ -79,11 +78,10 @@ function NotebookLayoutInner({
   graphData,
 }: NotebookLayoutProps) {
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
-  const [wikiWidth, setWikiWidth] = useState(WIKI_DEFAULT_WIDTH);
-  const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
+  const [rightWidth, setRightWidth] = useState(RIGHT_DEFAULT_WIDTH);
+  const [rightTab, setRightTab] = useState<"wiki" | "notes">("wiki");
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  // Citation navigation state (placeholder for future wiki-based navigation)
 
   // Citation navigation setup
   const { setOnNavigate, setOnNavigateSource } = useCitation();
@@ -103,20 +101,12 @@ function NotebookLayoutInner({
     setSourcesWidth(SOURCES_DEFAULT_WIDTH);
   }, []);
 
-  const handleStudioDrag = useCallback((delta: number) => {
-    setStudioWidth((prev) => clampWidth(prev - delta));
+  const handleRightDrag = useCallback((delta: number) => {
+    setRightWidth((prev) => clampWidth(prev - delta));
   }, [clampWidth]);
 
-  const handleStudioDoubleClick = useCallback(() => {
-    setStudioWidth(STUDIO_DEFAULT_WIDTH);
-  }, []);
-
-  const handleWikiDrag = useCallback((delta: number) => {
-    setWikiWidth((prev) => clampWidth(prev - delta));
-  }, [clampWidth]);
-
-  const handleWikiDoubleClick = useCallback(() => {
-    setWikiWidth(WIKI_DEFAULT_WIDTH);
+  const handleRightDoubleClick = useCallback(() => {
+    setRightWidth(RIGHT_DEFAULT_WIDTH);
   }, []);
 
   // Expand handlers for collapsed panels
@@ -124,12 +114,8 @@ function NotebookLayoutInner({
     setSourcesWidth(Math.max(SOURCES_DEFAULT_WIDTH, width));
   }, []);
 
-  const handleWikiExpand = useCallback((width: number) => {
-    setWikiWidth(Math.max(WIKI_DEFAULT_WIDTH, width));
-  }, []);
-
-  const handleStudioExpand = useCallback((width: number) => {
-    setStudioWidth(Math.max(STUDIO_DEFAULT_WIDTH, width));
+  const handleRightExpand = useCallback((width: number) => {
+    setRightWidth(Math.max(RIGHT_DEFAULT_WIDTH, width));
   }, []);
 
   // Wrap setSelectedSource with width-snapping logic
@@ -146,9 +132,9 @@ function NotebookLayoutInner({
   const handleSelectNote = useCallback((note: Note | null) => {
     setSelectedNote(note);
     if (note) {
-      setStudioWidth(STUDIO_CONTENT_WIDTH);
+      setRightWidth(RIGHT_CONTENT_WIDTH);
     } else {
-      setStudioWidth(STUDIO_DEFAULT_WIDTH);
+      setRightWidth(RIGHT_DEFAULT_WIDTH);
     }
   }, []);
 
@@ -181,8 +167,7 @@ function NotebookLayoutInner({
 
   // Determine if panels are collapsed
   const sourcesCollapsed = sourcesWidth === 0;
-  const wikiCollapsed = wikiWidth === 0;
-  const studioCollapsed = studioWidth === 0;
+  const rightCollapsed = rightWidth === 0;
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -234,56 +219,65 @@ function NotebookLayoutInner({
         />
       </motion.div>
 
-      {/* Wiki Panel - Collapsible */}
-      {wikiCollapsed ? (
-        <CollapsedGripStrip side="right" onExpand={handleWikiExpand} />
+      {/* Right Panel (Wiki + Notes tabs) - Collapsible */}
+      {rightCollapsed ? (
+        <CollapsedGripStrip side="right" onExpand={handleRightExpand} />
       ) : (
         <>
           <ResizableDivider
             direction="vertical"
-            onDrag={handleWikiDrag}
-            onDoubleClick={handleWikiDoubleClick}
+            onDrag={handleRightDrag}
+            onDoubleClick={handleRightDoubleClick}
           />
           <motion.div
-            className="h-full overflow-hidden"
-            style={{ width: wikiWidth }}
+            className="flex h-full flex-col overflow-hidden"
+            style={{ width: rightWidth }}
             initial={false}
-            animate={{ width: wikiWidth }}
+            animate={{ width: rightWidth }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           >
-            <WikiPanel
-              notebookId={notebook.id}
-              initialPages={wikiPages}
-              sources={sources.map((s) => ({ id: s.id, title: s.title }))}
-              graphData={graphData}
-            />
-          </motion.div>
-        </>
-      )}
+            {/* Tab Bar */}
+            <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-1">
+              <button
+                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                  rightTab === "wiki"
+                    ? "text-foreground bg-accent/20"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setRightTab("wiki")}
+              >
+                Wiki
+              </button>
+              <button
+                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                  rightTab === "notes"
+                    ? "text-foreground bg-accent/20"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setRightTab("notes")}
+              >
+                Notes
+              </button>
+            </div>
 
-      {/* Studio Panel (Right) - Collapsible */}
-      {studioCollapsed ? (
-        <CollapsedGripStrip side="right" onExpand={handleStudioExpand} />
-      ) : (
-        <>
-          <ResizableDivider
-            direction="vertical"
-            onDrag={handleStudioDrag}
-            onDoubleClick={handleStudioDoubleClick}
-          />
-          <motion.div
-            className="h-full overflow-hidden"
-            style={{ width: studioWidth }}
-            initial={false}
-            animate={{ width: studioWidth }}
-            transition={{ type: "spring", stiffness: 400, damping: 35 }}
-          >
-            <StudioPanel
-              notebookId={notebook.id}
-              notes={notes}
-              selectedNote={selectedNote}
-              onSelectNote={handleSelectNote}
-            />
+            {/* Tab Content */}
+            <div className="flex-1 overflow-hidden">
+              {rightTab === "wiki" ? (
+                <WikiPanel
+                  notebookId={notebook.id}
+                  initialPages={wikiPages}
+                  sources={sources.map((s) => ({ id: s.id, title: s.title }))}
+                  graphData={graphData}
+                />
+              ) : (
+                <StudioPanel
+                  notebookId={notebook.id}
+                  notes={notes}
+                  selectedNote={selectedNote}
+                  onSelectNote={handleSelectNote}
+                />
+              )}
+            </div>
           </motion.div>
         </>
       )}
