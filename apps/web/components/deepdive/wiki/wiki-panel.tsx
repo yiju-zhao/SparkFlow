@@ -87,6 +87,28 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
 
   const indexPage = useMemo(() => pages.find((p) => p.slug === "index"), [pages]);
 
+  // Build entity ID → community slug lookup from graph data
+  // So clicking [[rope]] navigates to community-0 (where rope lives)
+  const entityToCommunity = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (graphData?.nodes) {
+      for (const node of graphData.nodes) {
+        if (node.community !== undefined) {
+          map[node.id] = `community-${node.community}`;
+        }
+      }
+    }
+    return map;
+  }, [graphData]);
+
+  // Resolve a slug: if it's a page slug, use it directly; if it's an entity ID, find its community page
+  const pageSlugs = useMemo(() => new Set(pages.map((p) => p.slug)), [pages]);
+
+  const resolveSlug = (slug: string): string => {
+    if (pageSlugs.has(slug)) return slug;
+    return entityToCommunity[slug] || slug;
+  };
+
   if (selectedSlug) {
     return (
       <WikiPageView
@@ -94,7 +116,7 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
         slug={selectedSlug}
         sourceMap={sourceMap}
         onBack={() => setSelectedSlug(null)}
-        onNavigate={(slug) => setSelectedSlug(slug)}
+        onNavigate={(slug) => setSelectedSlug(resolveSlug(slug))}
         onSourceClick={onSourceClick}
       />
     );
@@ -135,7 +157,7 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
 
       {view === "graph" ? (
         <div className="flex-1 px-2">
-          <GraphView graphData={graphData} onNodeClick={(slug) => setSelectedSlug(slug)} />
+          <GraphView graphData={graphData} onNodeClick={(slug) => setSelectedSlug(resolveSlug(slug))} />
         </div>
       ) : (
         <>
