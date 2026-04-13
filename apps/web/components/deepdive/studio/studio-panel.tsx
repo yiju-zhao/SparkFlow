@@ -56,6 +56,7 @@ export interface StudioPanelProps {
   notes: Note[];
   selectedNote: Note | null;
   onSelectNote: (note: Note | null) => void;
+  onWikiNavigate?: (slug: string) => void;
 }
 
 export function StudioPanel({
@@ -63,7 +64,13 @@ export function StudioPanel({
   notes,
   selectedNote,
   onSelectNote,
+  onWikiNavigate,
 }: StudioPanelProps) {
+  // Sort notes: pinned first, then by updatedAt desc (most recent first)
+  const sortedNotes = [...notes].sort((a, b) => {
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
@@ -79,6 +86,7 @@ export function StudioPanel({
           }}
           onEdit={() => setIsEditing(true)}
           onSaveEdit={() => setIsEditing(false)}
+          onWikiNavigate={onWikiNavigate}
         />
       ) : (
         <>
@@ -87,7 +95,7 @@ export function StudioPanel({
             <div className="flex items-center gap-3">
               <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
               <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
-                STUDIO
+                NOTES
               </h2>
             </div>
             <Button
@@ -103,7 +111,7 @@ export function StudioPanel({
 
           {/* Notes List */}
           <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
-            {notes.length === 0 ? (
+            {sortedNotes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <StickyNote className="h-8 w-8 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -115,7 +123,7 @@ export function StudioPanel({
               </div>
             ) : (
               <div className="space-y-2">
-                {notes.map((note) => (
+                {sortedNotes.map((note) => (
                   <NoteCard
                     key={note.id}
                     note={note}
@@ -243,6 +251,7 @@ interface NoteViewerProps {
   onBack: () => void;
   onEdit: () => void;
   onSaveEdit: () => void;
+  onWikiNavigate?: (slug: string) => void;
 }
 
 function NoteViewer({
@@ -251,6 +260,7 @@ function NoteViewer({
   onBack,
   onEdit,
   onSaveEdit,
+  onWikiNavigate,
 }: NoteViewerProps) {
   const [isPending, startTransition] = useTransition();
   const [editTitle, setEditTitle] = useState(note.title);
@@ -349,10 +359,39 @@ function NoteViewer({
                 ))}
               </div>
             )}
-            <div className="flex-1">
+            <div
+              className="flex-1"
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                const wikiEl = target.tagName === "WIKI-LINK" ? target : target.closest("wiki-link");
+                if (wikiEl) {
+                  const slug = wikiEl.getAttribute("data-slug");
+                  if (slug && onWikiNavigate) {
+                    e.preventDefault();
+                    onWikiNavigate(slug);
+                  }
+                }
+              }}
+            >
               <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
-                {note.content}
+                {note.content.replace(
+                  /\[\[([a-zA-Z0-9_-]+)\]\]/g,
+                  (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
+                )}
               </Markdown>
+              <style>{`
+                wiki-link {
+                  color: var(--color-accent-red, #CE0E2D);
+                  cursor: pointer;
+                  text-decoration: underline;
+                  text-decoration-style: dotted;
+                  text-underline-offset: 2px;
+                  font-weight: 500;
+                }
+                wiki-link:hover {
+                  text-decoration-style: solid;
+                }
+              `}</style>
             </div>
           </div>
         )}

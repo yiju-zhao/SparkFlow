@@ -33,6 +33,7 @@ interface ChatPanelProps {
   initialSessions?: ChatSession[];
   initialMessages?: PreloadedMessage[];
   onWikiNavigate?: (slug: string) => void;
+  onNoteAdded?: () => void;
 }
 
 interface ChatSession {
@@ -67,6 +68,7 @@ export function ChatPanel({
   initialSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
   onWikiNavigate,
+  onNoteAdded,
 }: ChatPanelProps) {
   if (!LANGGRAPH_API_URL) {
     throw new Error(
@@ -308,13 +310,14 @@ const prevIsLoadingRef = useRef<boolean>(false);
             ? firstLine.slice(0, 50) + "..."
             : firstLine || "Chat Note";
         await createNote(notebookId, { title, content, tags: ["from-chat"] });
+        onNoteAdded?.();
       } catch (error) {
         console.error("Failed to save note:", error);
       } finally {
         setSavingNoteId(null);
       }
     },
-    [notebookId, savingNoteId],
+    [notebookId, savingNoteId, onNoteAdded],
   );
 
   // Copy message content to clipboard
@@ -759,7 +762,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             ) : (
                               <StickyNote className="h-3.5 w-3.5" />
                             )}
-                            <span>SAVE TO STUDIO</span>
+                            <span>ADD TO NOTES</span>
                           </Button>
                           <Button
                             variant="ghost"
@@ -775,7 +778,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             ) : (
                               <BookOpen className="h-3.5 w-3.5" />
                             )}
-                            <span>SAVE TO WIKI</span>
+                            <span>ADD TO WIKI</span>
                           </Button>
                           <Button
                             variant="ghost"

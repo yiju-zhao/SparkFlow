@@ -225,6 +225,10 @@ function NotebookLayoutInner({
           initialSessions={initialChatSessions}
           initialMessages={initialMessages}
           onWikiNavigate={handleWikiNavigate}
+          onNoteAdded={() => {
+            setRightTab("notes");
+            if (rightWidth === 0) setRightWidth(RIGHT_DEFAULT_WIDTH);
+          }}
         />
       </motion.div>
 
@@ -287,6 +291,7 @@ function NotebookLayoutInner({
                   notes={notes}
                   selectedNote={selectedNote}
                   onSelectNote={handleSelectNote}
+                  onWikiNavigate={handleWikiNavigate}
                 />
               )}
             </div>
