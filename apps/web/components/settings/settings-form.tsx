@@ -43,10 +43,10 @@ interface SettingsFormProps {
 }
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
-  const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider || "google");
-  const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gemini-2.5-flash");
-  const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "google");
-  const [matcherModel, setMatcherModel] = useState(initialSettings?.matcherModelName || "gemini-2.5-flash");
+  const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider || "openai");
+  const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
+  const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "openai");
+  const [matcherModel, setMatcherModel] = useState(initialSettings?.matcherModelName || "gpt-4o-mini");
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -84,7 +84,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   // Reset model when provider changes
   useEffect(() => {
     if (!availableModels) return;
-    const currentModels = chatProvider === "google" ? availableModels.google : availableModels.openai;
+    const currentModels = chatProvider === "gemini" ? availableModels.google : availableModels.openai;
     if (!currentModels.includes(chatModel)) {
       setChatModel(currentModels[0]);
     }
@@ -92,7 +92,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
 
   useEffect(() => {
     if (!availableModels) return;
-    const currentModels = matcherProvider === "google" ? availableModels.google : availableModels.openai;
+    const currentModels = matcherProvider === "gemini" ? availableModels.google : availableModels.openai;
     if (!currentModels.includes(matcherModel)) {
       setMatcherModel(currentModels[0]);
     }
@@ -198,7 +198,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
 
   const getModelOptions = (provider: string) => {
     if (!availableModels) return [];
-    return provider === "google" ? availableModels.google : availableModels.openai;
+    return provider === "gemini" ? availableModels.google : availableModels.openai;
   };
 
   return (
@@ -223,7 +223,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="google">Google (Gemini)</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -268,7 +268,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="google">Google (Gemini)</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -19,8 +19,8 @@ function getAvailableModels() {
 
 function getDefaults() {
   return {
-    provider: process.env.DEFAULT_MODEL_PROVIDER || "google",
-    model: process.env.DEFAULT_MODEL_NAME || "gemini-2.5-flash",
+    provider: process.env.DEFAULT_MODEL_PROVIDER || "openai",
+    model: process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini",
   };
 }
 
@@ -156,10 +156,10 @@ export async function POST(request: Request) {
     update: updateData,
     create: {
       userId: session.user.id,
-      modelProvider: modelProvider || "google",
-      modelName: modelName || "gemini-2.5-flash",
-      matcherModelProvider: matcherModelProvider || "google",
-      matcherModelName: matcherModelName || "gemini-2.5-flash",
+      modelProvider: modelProvider || "openai",
+      modelName: modelName || "gpt-4o-mini",
+      matcherModelProvider: matcherModelProvider || "openai",
+      matcherModelName: matcherModelName || "gpt-4o-mini",
       ...(updateData.apiKeys ? { apiKeys: updateData.apiKeys as string } : {}),
     },
   });

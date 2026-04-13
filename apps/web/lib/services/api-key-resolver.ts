@@ -23,15 +23,16 @@ export async function resolveApiKey(
   userId: string,
   providerId: string,
 ): Promise<ResolvedKey> {
-  const settings = await prisma.userSettings.findUnique({
-    where: { userId },
-    select: { apiKeys: true, user: { select: { role: true } } },
+  // Fetch user settings and role (role from User, not UserSettings)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, settings: { select: { apiKeys: true } } },
   });
 
   // Try user's own key first
-  if (settings?.apiKeys) {
+  if (user?.settings?.apiKeys) {
     try {
-      const decrypted = decrypt(settings.apiKeys);
+      const decrypted = decrypt(user.settings.apiKeys);
       const keys: StoredApiKeys = JSON.parse(decrypted);
       const providerKey = keys[providerId];
       if (providerKey?.apiKey) {
@@ -47,7 +48,7 @@ export async function resolveApiKey(
   }
 
   // Admin fallback to system env key
-  if (settings?.user?.role === "ADMIN") {
+  if (user?.role === "ADMIN") {
     const systemKey = SYSTEM_KEY_MAP[providerId];
     if (systemKey) {
       const provider = PROVIDER_MAP.get(providerId);

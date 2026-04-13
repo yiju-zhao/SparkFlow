@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Use user settings or defaults
-    const modelProvider = userSettings?.matcherModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "google";
-    const modelName = userSettings?.matcherModelName || process.env.DEFAULT_MODEL_NAME || "gemini-2.5-flash";
+    const modelProvider = userSettings?.matcherModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "openai";
+    const modelName = userSettings?.matcherModelName || process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini";
 
     // Fetch target data from database
     let targetData: Record<string, unknown>[] = [];

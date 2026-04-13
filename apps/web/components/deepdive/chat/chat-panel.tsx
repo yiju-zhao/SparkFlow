@@ -126,7 +126,7 @@ export function ChatPanel({
 
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [modelSettings, setModelSettings] = useState<ModelSettings>({
-    modelProvider: "google",
+    modelProvider: "openai",
     modelName: "gemini-2.5-flash",
   });
   const [resolvedKey, setResolvedKey] = useState<{ apiKey: string; baseUrl?: string } | null>(null);
