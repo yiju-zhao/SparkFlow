@@ -7,6 +7,7 @@ import {
   MessageCircle,
   Search,
   ArrowRight,
+  ArrowLeft,
   Upload,
   Link,
   Loader2,
@@ -18,11 +19,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -97,8 +97,8 @@ export function AddSourceDialog({
 
   // File upload state
   const [isPending, startTransition] = useTransition();
-  const [url, setUrl] = useState("");
-  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlsText, setUrlsText] = useState("");
+  const [showWebsites, setShowWebsites] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
@@ -322,42 +322,51 @@ export function AddSourceDialog({
     }
   };
 
-  const handleUrlSubmit = () => {
-    if (!url.trim()) return;
+  const handleWebsitesInsert = () => {
+    const urls = urlsText
+      .split(/[\s\n]+/)
+      .map((u) => u.trim())
+      .filter((u) => u && (u.startsWith("http://") || u.startsWith("https://")));
+    if (urls.length === 0) return;
 
     startTransition(async () => {
-      const tempId = `optimistic-${Date.now()}`;
-      const optimistic: Source = {
-        id: tempId,
-        notebookId,
-        title: url.trim(),
-        sourceType: "WEBPAGE",
-        url: url.trim(),
-        status: "PROCESSING",
-        content: null,
-        markdownContent: null,
-        fileKey: null,
-        errorMessage: null,
-        metadata: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      for (const singleUrl of urls) {
+        const tempId = `optimistic-${Date.now()}-${singleUrl}`;
+        const optimistic: Source = {
+          id: tempId,
+          notebookId,
+          title: singleUrl,
+          sourceType: "WEBPAGE",
+          url: singleUrl,
+          status: "PROCESSING",
+          content: null,
+          markdownContent: null,
+          fileKey: null,
+          errorMessage: null,
+          metadata: {},
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
 
-      queryClient.setQueryData<Source[] | undefined>(
-        ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])],
-      );
-      onOpenChange(false);
+        queryClient.setQueryData<Source[] | undefined>(
+          ["notebook-sources", notebookId],
+          (current) => [optimistic, ...(current || [])],
+        );
 
-      try {
-        await addWebpageSource(notebookId, url.trim());
-      } finally {
-        await queryClient.invalidateQueries({
-          queryKey: ["notebook-sources", notebookId],
-        });
-        setUrl("");
-        setShowUrlInput(false);
+        try {
+          await addWebpageSource(notebookId, singleUrl);
+        } catch (err) {
+          console.error(`[AddSource] Failed to add ${singleUrl}:`, err);
+        }
       }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["notebook-sources", notebookId],
+      });
+
+      onOpenChange(false);
+      setUrlsText("");
+      setShowWebsites(false);
     });
   };
 
@@ -376,136 +385,200 @@ export function AddSourceDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden">
-        {/* Search Section */}
-        <div className="p-6 pb-4">
-          {/* Search Bar */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSearch();
-            }}
-            className="flex items-center gap-3 rounded-xl border-2 border-border px-4 py-3"
-          >
-            <Search className="h-5 w-5 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              placeholder="Search for new sources..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              disabled={isPending}
-            />
-            <button
-              type="submit"
-              disabled={!query.trim() || isPending || isSearching}
-              className="h-9 w-9 rounded-full bg-foreground text-background flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
-            >
-              {isSearching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowRight className="h-4 w-4" />
-              )}
-            </button>
-          </form>
-
-          {/* Controls Row */}
-          <div className="flex items-center gap-2 mt-3">
-            {/* Source Type Dropdown */}
-            <Popover open={isSourceTypeOpen} onOpenChange={setIsSourceTypeOpen}>
-              <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-full text-xs font-medium hover:bg-accent/50 transition-colors">
-                  <currentSourceOption.icon className="h-3.5 w-3.5" />
-                  {currentSourceOption.label}
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-1" align="start">
-                {SOURCE_TYPE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left transition-colors ${
-                      sourceType === option.value
-                        ? "bg-accent/50"
-                        : "hover:bg-accent/30"
-                    }`}
-                    onClick={() => handleSourceTypeChange(option.value)}
-                  >
-                    <option.icon className="h-5 w-5 shrink-0" />
-                    <div>
-                      <div className="text-sm font-semibold">{option.label}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {option.description}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-
-            {/* Domain filter (web only) */}
-            {sourceType === "web" && (
-              <>
-                {showDomainInput ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleAddDomain();
-                    }}
-                    className="flex items-center"
-                  >
-                    <input
-                      type="text"
-                      placeholder="e.g. arxiv.org"
-                      value={domainInput}
-                      onChange={(e) => setDomainInput(e.target.value)}
-                      onBlur={() => {
-                        if (!domainInput.trim()) setShowDomainInput(false);
-                      }}
-                      autoFocus
-                      className="px-3 py-1.5 border border-dashed border-border rounded-full text-xs bg-transparent outline-none w-32"
-                    />
-                  </form>
-                ) : (
-                  <button
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                    onClick={() => setShowDomainInput(true)}
-                  >
-                    <span className="text-sm leading-none">+</span>
-                    Add domains...
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Domain chips */}
-          {domains.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {domains.map((domain) => (
-                <span
-                  key={domain}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent/30 text-accent-foreground rounded-full text-xs"
-                >
-                  {domain}
-                  <button
-                    onClick={() => handleRemoveDomain(domain)}
-                    className="hover:text-destructive transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
+      <DialogContent className="sm:max-w-[560px] p-0 gap-0" showCloseButton={false}>
+        <DialogTitle className="sr-only">Add Source</DialogTitle>
+        {showWebsites ? (
+          /* Websites sub-view — full takeover, no search bar */
+          <div className="px-6 py-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-3">
+              <button
+                className="h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
+                onClick={() => {
+                  setShowWebsites(false);
+                  setUrlsText("");
+                }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <h3 className="text-base font-semibold">Website URLs</h3>
             </div>
-          )}
-        </div>
 
-        {/* Divider */}
-        <div className="border-t border-border mx-6" />
+            <p className="text-sm text-muted-foreground mb-3">
+              Paste website URLs below to add as sources.
+            </p>
 
-        {/* Content Area: Results or Drop Zone */}
-        {view === "idle" && !showUrlInput ? (
+            {/* Textarea */}
+            <textarea
+              placeholder="Paste any links"
+              value={urlsText}
+              onChange={(e) => setUrlsText(e.target.value)}
+              disabled={isPending}
+              autoFocus
+              className="w-full min-h-40 p-4 border-2 border-border rounded-xl text-sm bg-transparent outline-none resize-y placeholder:text-muted-foreground focus:border-primary transition-colors"
+            />
+
+            {/* Hints */}
+            <ul className="mt-3 space-y-1 text-xs text-muted-foreground list-disc pl-4">
+              <li>To add multiple URLs, separate with a space or new line.</li>
+              <li>Only the visible text on the website will be imported.</li>
+              <li>Paid articles are not supported.</li>
+            </ul>
+
+            {/* Insert Button */}
+            <div className="flex justify-end mt-4">
+              <Button
+                disabled={isPending || !urlsText.trim()}
+                onClick={handleWebsitesInsert}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Inserting...
+                  </>
+                ) : (
+                  "Insert"
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : (
           <>
+            {/* Search Section */}
+            <div className="p-6 pb-4">
+              {/* Close Button Row */}
+              <div className="flex justify-end -mt-2 -mr-2 mb-2">
+                <DialogClose className="h-7 w-7 rounded-full hover:bg-muted flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </DialogClose>
+              </div>
+              {/* Search Bar */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSearch();
+                }}
+                className="flex items-center gap-3 rounded-xl border-2 border-border px-4 py-3"
+              >
+                <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search for new sources..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  disabled={isPending}
+                />
+                <button
+                  type="submit"
+                  disabled={!query.trim() || isPending || isSearching}
+                  className="h-9 w-9 rounded-full bg-foreground text-background flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
+                >
+                  {isSearching ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4" />
+                  )}
+                </button>
+              </form>
+
+              {/* Controls Row */}
+              <div className="flex items-center gap-2 mt-3">
+                {/* Source Type Dropdown */}
+                <Popover open={isSourceTypeOpen} onOpenChange={setIsSourceTypeOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-full text-xs font-medium hover:bg-accent/50 transition-colors">
+                      <currentSourceOption.icon className="h-3.5 w-3.5" />
+                      {currentSourceOption.label}
+                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-1" align="start">
+                    {SOURCE_TYPE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left transition-colors ${
+                          sourceType === option.value
+                            ? "bg-accent/50"
+                            : "hover:bg-accent/30"
+                        }`}
+                        onClick={() => handleSourceTypeChange(option.value)}
+                      >
+                        <option.icon className="h-5 w-5 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold">{option.label}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {option.description}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+
+                {/* Domain filter (web only) */}
+                {sourceType === "web" && (
+                  <>
+                    {showDomainInput ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAddDomain();
+                        }}
+                        className="flex items-center"
+                      >
+                        <input
+                          type="text"
+                          placeholder="e.g. arxiv.org"
+                          value={domainInput}
+                          onChange={(e) => setDomainInput(e.target.value)}
+                          onBlur={() => {
+                            if (!domainInput.trim()) setShowDomainInput(false);
+                          }}
+                          autoFocus
+                          className="px-3 py-1.5 border border-dashed border-border rounded-full text-xs bg-transparent outline-none w-32"
+                        />
+                      </form>
+                    ) : (
+                      <button
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                        onClick={() => setShowDomainInput(true)}
+                      >
+                        <span className="text-sm leading-none">+</span>
+                        Add domains...
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Domain chips */}
+              {domains.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {domains.map((domain) => (
+                    <span
+                      key={domain}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent/30 text-accent-foreground rounded-full text-xs"
+                    >
+                      {domain}
+                      <button
+                        onClick={() => handleRemoveDomain(domain)}
+                        className="hover:text-destructive transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-border mx-6" />
+
+            {view === "idle" ? (
+            <>
             {/* Drop Zone */}
             <div
               className="mx-6 my-4 p-8 border-2 border-dashed border-border rounded-xl text-center cursor-pointer hover:border-foreground/30 transition-colors"
@@ -537,56 +610,13 @@ export function AddSourceDialog({
               </button>
               <button
                 className="flex-1 flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors"
-                onClick={() => setShowUrlInput(true)}
+                onClick={() => setShowWebsites(true)}
               >
                 <Link className="h-4 w-4" />
-                Paste URL
+                Websites
               </button>
             </div>
           </>
-        ) : view === "idle" && showUrlInput ? (
-          <div className="px-6 py-4">
-            <div className="flex items-center gap-2">
-              <Input
-                type="url"
-                placeholder="https://example.com/article"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleUrlSubmit();
-                  }
-                }}
-                disabled={isPending}
-                autoFocus
-              />
-              <Button
-                size="sm"
-                disabled={isPending || !url.trim()}
-                onClick={handleUrlSubmit}
-              >
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Add"
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setShowUrlInput(false);
-                  setUrl("");
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Enter a webpage URL or document link (PDF, DOCX, TXT, MD)
-            </p>
-          </div>
         ) : (
           <div className="px-6 py-4 max-h-80 overflow-y-auto">
             {isSearching && results.length === 0 && (
@@ -683,6 +713,8 @@ export function AddSourceDialog({
               </button>
             )}
           </div>
+            )}
+          </>
         )}
       </DialogContent>
     </Dialog>
