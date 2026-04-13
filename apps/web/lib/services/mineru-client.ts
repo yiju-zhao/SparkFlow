@@ -56,14 +56,25 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
   formData.append("return_md", "true");
   formData.append("return_images", "true");
 
+  // Local MinerU /file_parse is synchronous — PDF parsing can take minutes.
+  // Use a 10-minute timeout and no retries (retrying a long parse is wasteful).
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
+
   let response: Response;
   try {
-    response = await fetchWithRetry(`${MINERU_LOCAL_URL}/file_parse`, {
+    response = await fetch(`${MINERU_LOCAL_URL}/file_parse`, {
       method: "POST",
       body: formData,
+      signal: controller.signal,
     });
   } catch (err) {
+    if (controller.signal.aborted) {
+      throw new Error("MinerU local parse timed out after 10 minutes — the PDF may be too large or the server too slow");
+    }
     throw new Error(describeFetchError(err, "MinerU local connection failed"));
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!response.ok) {
