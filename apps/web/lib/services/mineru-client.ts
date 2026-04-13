@@ -87,17 +87,41 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
 }
 
 function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
-  const markdown = (result.markdown as string) || "";
+  // MinerU /file_parse response format:
+  // { "backend": "pipeline", "version": "2.6.8", "results": { "filename": { "md_content": "..." } } }
+  let markdown = "";
   const images: MineruResult["images"] = [];
 
-  if (result.images && Array.isArray(result.images)) {
-    for (const img of result.images) {
-      images.push({
-        name: img.name || "image.png",
-        data: Buffer.from(img.data, "base64"),
-        mimeType: img.content_type || "image/png",
-      });
+  // Try new format first: results.{filename}.md_content
+  const results = result.results as Record<string, Record<string, unknown>> | undefined;
+  if (results) {
+    const firstKey = Object.keys(results)[0];
+    if (firstKey) {
+      const fileResult = results[firstKey];
+      markdown = (fileResult.md_content as string) || "";
+
+      // Extract images if returned
+      if (fileResult.images && Array.isArray(fileResult.images)) {
+        for (const img of fileResult.images as any[]) {
+          if (img.data) {
+            images.push({
+              name: img.name || "image.png",
+              data: Buffer.from(img.data, "base64"),
+              mimeType: img.content_type || "image/png",
+            });
+          }
+        }
+      }
     }
+  }
+
+  // Fallback: old format with top-level markdown field
+  if (!markdown) {
+    markdown = (result.markdown as string) || (result.md_content as string) || "";
+  }
+
+  if (!markdown) {
+    throw new Error(`MinerU returned empty markdown. Response keys: ${Object.keys(result).join(", ")}`);
   }
 
   return { markdown, images };
