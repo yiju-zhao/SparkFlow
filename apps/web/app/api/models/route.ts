@@ -10,8 +10,8 @@ export async function GET() {
     .split(",")
     .map((m) => m.trim());
 
-  const defaultProvider = process.env.DEFAULT_MODEL_PROVIDER || "google";
-  const defaultModel = process.env.DEFAULT_MODEL_NAME || "gemini-2.5-flash";
+  const defaultProvider = process.env.DEFAULT_MODEL_PROVIDER || "openai";
+  const defaultModel = process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini";
 
   return NextResponse.json({
     openai: openaiModels,

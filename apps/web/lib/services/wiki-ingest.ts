@@ -9,7 +9,8 @@ import prisma from "@/lib/prisma";
 
 export async function ingestSourceToWiki(
   notebookId: string,
-  sourceId: string
+  sourceId: string,
+  userId?: string
 ): Promise<{ pagesWritten: number; pages: string[] }> {
   const source = await prisma.source.findUnique({
     where: { id: sourceId },
@@ -29,7 +30,7 @@ export async function ingestSourceToWiki(
       data: { metadata: { ...meta, wikiStatus: "starting" } },
     });
 
-    const result = await runGraphPipeline(notebookId, sourceId, content, source.title);
+    const result = await runGraphPipeline(notebookId, sourceId, content, source.title, userId);
 
     // Store extraction report in source metadata for UI display
     const currentMeta = (await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } }))?.metadata as Record<string, unknown> || {};

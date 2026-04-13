@@ -9,7 +9,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, Check, Eye, EyeOff, Trash2, Key } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
+const PROVIDERS_LIST = [
+  { id: "openai", label: "OpenAI" },
+  { id: "gemini", label: "Gemini" },
+  { id: "deepseek", label: "DeepSeek" },
+  { id: "glm", label: "GLM (Zhipu)" },
+  { id: "minimax", label: "Minimax" },
+  { id: "kimi", label: "Kimi (Moonshot)" },
+  { id: "custom", label: "Custom" },
+];
 
 interface UserSettings {
   modelProvider: string;
@@ -32,13 +43,19 @@ interface SettingsFormProps {
 }
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
-  const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider || "google");
-  const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gemini-2.5-flash");
-  const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "google");
-  const [matcherModel, setMatcherModel] = useState(initialSettings?.matcherModelName || "gemini-2.5-flash");
+  const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider || "openai");
+  const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
+  const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "openai");
+  const [matcherModel, setMatcherModel] = useState(initialSettings?.matcherModelName || "gpt-4o-mini");
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<string | null>(null);
+  const [keyInput, setKeyInput] = useState("");
+  const [baseUrlInput, setBaseUrlInput] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, { hasKey: boolean; maskedKey: string }>>({});
+  const [keySaving, setKeySaving] = useState(false);
 
   // Fetch available models from environment configuration
   useEffect(() => {
@@ -67,7 +84,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   // Reset model when provider changes
   useEffect(() => {
     if (!availableModels) return;
-    const currentModels = chatProvider === "google" ? availableModels.google : availableModels.openai;
+    const currentModels = chatProvider === "gemini" ? availableModels.google : availableModels.openai;
     if (!currentModels.includes(chatModel)) {
       setChatModel(currentModels[0]);
     }
@@ -75,11 +92,26 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
 
   useEffect(() => {
     if (!availableModels) return;
-    const currentModels = matcherProvider === "google" ? availableModels.google : availableModels.openai;
+    const currentModels = matcherProvider === "gemini" ? availableModels.google : availableModels.openai;
     if (!currentModels.includes(matcherModel)) {
       setMatcherModel(currentModels[0]);
     }
   }, [matcherProvider, matcherModel, availableModels]);
+
+  useEffect(() => {
+    const fetchKeyStatus = async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (res.ok) {
+          const data = await res.json();
+          setApiKeyStatus(data.apiKeyStatus || {});
+        }
+      } catch (error) {
+        console.error("Failed to fetch key status:", error);
+      }
+    };
+    fetchKeyStatus();
+  }, []);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -106,9 +138,67 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     }
   };
 
+  const handleSaveKey = async (providerId: string) => {
+    if (!keyInput.trim()) return;
+    setKeySaving(true);
+    try {
+      const payload: Record<string, any> = {
+        apiKeys: {
+          [providerId]: {
+            apiKey: keyInput.trim(),
+            ...(providerId === "custom" && baseUrlInput.trim()
+              ? { baseUrl: baseUrlInput.trim() }
+              : {}),
+          },
+        },
+      };
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to save key");
+
+      const settingsRes = await fetch("/api/settings");
+      if (settingsRes.ok) {
+        const data = await settingsRes.json();
+        setApiKeyStatus(data.apiKeyStatus || {});
+      }
+      setEditingProvider(null);
+      setKeyInput("");
+      setBaseUrlInput("");
+    } catch (error) {
+      console.error("Failed to save API key:", error);
+    } finally {
+      setKeySaving(false);
+    }
+  };
+
+  const handleRemoveKey = async (providerId: string) => {
+    setKeySaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKeys: { [providerId]: null } }),
+      });
+      if (!res.ok) throw new Error("Failed to remove key");
+
+      setApiKeyStatus((prev) => {
+        const next = { ...prev };
+        delete next[providerId];
+        return next;
+      });
+    } catch (error) {
+      console.error("Failed to remove API key:", error);
+    } finally {
+      setKeySaving(false);
+    }
+  };
+
   const getModelOptions = (provider: string) => {
     if (!availableModels) return [];
-    return provider === "google" ? availableModels.google : availableModels.openai;
+    return provider === "gemini" ? availableModels.google : availableModels.openai;
   };
 
   return (
@@ -133,7 +223,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="google">Google (Gemini)</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -178,7 +268,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="google">Google (Gemini)</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -203,6 +293,120 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </div>
       </div>
 
+      {/* API Keys Section */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-medium">API Keys</h3>
+          <p className="text-sm text-muted-foreground">
+            Set your own API keys to use LLM features. Keys are encrypted at rest.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {PROVIDERS_LIST.map((provider) => {
+            const status = apiKeyStatus[provider.id];
+            const isEditing = editingProvider === provider.id;
+
+            return (
+              <div key={provider.id} className="flex items-center gap-3 py-2">
+                <div className="w-32 shrink-0">
+                  <span className="text-sm font-medium">{provider.label}</span>
+                </div>
+
+                {isEditing ? (
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type={showKey ? "text" : "password"}
+                          placeholder="Enter API key"
+                          value={keyInput}
+                          onChange={(e) => setKeyInput(e.target.value)}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowKey(!showKey)}
+                        >
+                          {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveKey(provider.id)}
+                        disabled={keySaving || !keyInput.trim()}
+                      >
+                        {keySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingProvider(null);
+                          setKeyInput("");
+                          setBaseUrlInput("");
+                          setShowKey(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    {provider.id === "custom" && (
+                      <Input
+                        type="url"
+                        placeholder="Base URL (e.g. https://api.example.com/v1)"
+                        value={baseUrlInput}
+                        onChange={(e) => setBaseUrlInput(e.target.value)}
+                      />
+                    )}
+                  </div>
+                ) : status?.hasKey ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                      {status.maskedKey}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingProvider(provider.id);
+                        setKeyInput("");
+                        setShowKey(false);
+                      }}
+                    >
+                      Update
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveKey(provider.id)}
+                      disabled={keySaving}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingProvider(provider.id);
+                      setKeyInput("");
+                      setShowKey(false);
+                    }}
+                  >
+                    <Key className="mr-1.5 h-3.5 w-3.5" />
+                    Set Key
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Save Button */}
       <div className="flex items-center gap-3 pt-4 border-t">
         <Button onClick={handleSave} disabled={isLoading || !availableModels}>
@@ -222,16 +426,13 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </Button>
       </div>
 
-      {/* Note for Google models */}
-      {(chatProvider === "google" || matcherProvider === "google") && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 p-4">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
-            <strong>Note:</strong> To use Google Gemini models, the server administrator must configure a{" "}
-            <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900 rounded">GOOGLE_API_KEY</code>{" "}
-            in the agent backend.
-          </p>
-        </div>
-      )}
+      {/* Note about API keys */}
+      <div className="rounded-md border border-border bg-muted/50 p-4">
+        <p className="text-sm text-muted-foreground">
+          <strong>Note:</strong> You must set an API key for your selected provider to use chat and wiki features.
+          Admin users can fall back to system-configured keys for testing.
+        </p>
+      </div>
     </div>
   );
 }

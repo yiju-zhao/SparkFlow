@@ -32,6 +32,8 @@ interface ChatPanelProps {
   sources?: Source[];
   initialSessions?: ChatSession[];
   initialMessages?: PreloadedMessage[];
+  onWikiNavigate?: (slug: string) => void;
+  onNoteAdded?: () => void;
 }
 
 interface ChatSession {
@@ -65,6 +67,8 @@ export function ChatPanel({
   sources = EMPTY_SOURCES,
   initialSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
+  onWikiNavigate,
+  onNoteAdded,
 }: ChatPanelProps) {
   if (!LANGGRAPH_API_URL) {
     throw new Error(
@@ -122,9 +126,10 @@ export function ChatPanel({
 
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [modelSettings, setModelSettings] = useState<ModelSettings>({
-    modelProvider: "google",
+    modelProvider: "openai",
     modelName: "gemini-2.5-flash",
   });
+  const [resolvedKey, setResolvedKey] = useState<{ apiKey: string; baseUrl?: string } | null>(null);
 const messagesContainerRef = useRef<HTMLDivElement>(null);
 const textareaRef = useRef<HTMLTextAreaElement>(null);
 const prevIsLoadingRef = useRef<boolean>(false);
@@ -140,6 +145,18 @@ const prevIsLoadingRef = useRef<boolean>(false);
             modelProvider: data.modelProvider || "openai",
             modelName: data.modelName || "gpt-4o-mini",
           });
+          // Fetch resolved API key for the active provider
+          try {
+            const keyRes = await fetch(`/api/settings/resolve-key?provider=${data.modelProvider}`);
+            if (keyRes.ok) {
+              const keyData = await keyRes.json();
+              setResolvedKey(keyData);
+            } else {
+              setResolvedKey(null);
+            }
+          } catch {
+            setResolvedKey(null);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch model settings:", error);
@@ -306,13 +323,14 @@ const prevIsLoadingRef = useRef<boolean>(false);
             ? firstLine.slice(0, 50) + "..."
             : firstLine || "Chat Note";
         await createNote(notebookId, { title, content, tags: ["from-chat"] });
+        onNoteAdded?.();
       } catch (error) {
         console.error("Failed to save note:", error);
       } finally {
         setSavingNoteId(null);
       }
     },
-    [notebookId, savingNoteId],
+    [notebookId, savingNoteId, onNoteAdded],
   );
 
   // Copy message content to clipboard
@@ -494,6 +512,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
             wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
+            api_key: resolvedKey?.apiKey || "",
+            base_url: resolvedKey?.baseUrl || "",
           },
         },
       );
@@ -705,10 +725,39 @@ const prevIsLoadingRef = useRef<boolean>(false);
                       <div className="flex gap-4">
                         <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="overflow-x-auto">
+                          <div
+                            className="overflow-x-auto"
+                            onClick={(e) => {
+                              const target = e.target as HTMLElement;
+                              const wikiEl = target.tagName === "WIKI-LINK" ? target : target.closest("wiki-link");
+                              if (wikiEl) {
+                                const slug = wikiEl.getAttribute("data-slug");
+                                if (slug && onWikiNavigate) {
+                                  e.preventDefault();
+                                  onWikiNavigate(slug);
+                                }
+                              }
+                            }}
+                          >
                             <Markdown className="text-[13px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
-                              {content}
+                              {content.replace(
+                                /\[\[([a-zA-Z0-9_-]+)\]\]/g,
+                                (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
+                              )}
                             </Markdown>
+                            <style>{`
+                              wiki-link {
+                                color: var(--color-accent-red, #CE0E2D);
+                                cursor: pointer;
+                                text-decoration: underline;
+                                text-decoration-style: dotted;
+                                text-underline-offset: 2px;
+                                font-weight: 500;
+                              }
+                              wiki-link:hover {
+                                text-decoration-style: solid;
+                              }
+                            `}</style>
                           </div>
                         </div>
                       </div>
@@ -728,7 +777,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             ) : (
                               <StickyNote className="h-3.5 w-3.5" />
                             )}
-                            <span>SAVE TO STUDIO</span>
+                            <span>ADD TO NOTES</span>
                           </Button>
                           <Button
                             variant="ghost"
@@ -744,7 +793,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             ) : (
                               <BookOpen className="h-3.5 w-3.5" />
                             )}
-                            <span>SAVE TO WIKI</span>
+                            <span>ADD TO WIKI</span>
                           </Button>
                           <Button
                             variant="ghost"
@@ -803,6 +852,13 @@ const prevIsLoadingRef = useRef<boolean>(false);
       />
 
       {/* Input */}
+      {!resolvedKey && !stream.isLoading && (
+        <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2">
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            Set your API key in <a href="/settings" className="underline">Settings</a> to use the chat.
+          </p>
+        </div>
+      )}
       <div
         className="flex items-start px-6 py-3 gap-3"
         style={{ minHeight: inputHeight }}

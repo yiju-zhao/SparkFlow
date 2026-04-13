@@ -55,11 +55,13 @@ model UserSettings {
   id                  String   @id @default(cuid())
   userId              String   @unique
   // Chat/RAG agent model
-  modelProvider       String   @default("google")
-  modelName           String   @default("gemini-2.5-flash")
+  modelProvider       String   @default("openai")
+  modelName           String   @default("gpt-4o-mini")
   // Matcher agent model
-  matcherModelProvider String  @default("google")
-  matcherModelName    String   @default("gemini-2.5-flash")
+  matcherModelProvider String  @default("openai")
+  matcherModelName    String   @default("gpt-4o-mini")
+  // BYOK — encrypted JSON blob of API keys per provider
+  apiKeys             String?  @db.Text
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
