@@ -32,6 +32,7 @@ interface ChatPanelProps {
   sources?: Source[];
   initialSessions?: ChatSession[];
   initialMessages?: PreloadedMessage[];
+  onWikiNavigate?: (slug: string) => void;
 }
 
 interface ChatSession {
@@ -65,6 +66,7 @@ export function ChatPanel({
   sources = EMPTY_SOURCES,
   initialSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
+  onWikiNavigate,
 }: ChatPanelProps) {
   if (!LANGGRAPH_API_URL) {
     throw new Error(
@@ -705,10 +707,39 @@ const prevIsLoadingRef = useRef<boolean>(false);
                       <div className="flex gap-4">
                         <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="overflow-x-auto">
+                          <div
+                            className="overflow-x-auto"
+                            onClick={(e) => {
+                              const target = e.target as HTMLElement;
+                              const wikiEl = target.tagName === "WIKI-LINK" ? target : target.closest("wiki-link");
+                              if (wikiEl) {
+                                const slug = wikiEl.getAttribute("data-slug");
+                                if (slug && onWikiNavigate) {
+                                  e.preventDefault();
+                                  onWikiNavigate(slug);
+                                }
+                              }
+                            }}
+                          >
                             <Markdown className="text-[13px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
-                              {content}
+                              {content.replace(
+                                /\[\[([a-zA-Z0-9_-]+)\]\]/g,
+                                (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
+                              )}
                             </Markdown>
+                            <style>{`
+                              wiki-link {
+                                color: var(--color-accent-red, #CE0E2D);
+                                cursor: pointer;
+                                text-decoration: underline;
+                                text-decoration-style: dotted;
+                                text-underline-offset: 2px;
+                                font-weight: 500;
+                              }
+                              wiki-link:hover {
+                                text-decoration-style: solid;
+                              }
+                            `}</style>
                           </div>
                         </div>
                       </div>

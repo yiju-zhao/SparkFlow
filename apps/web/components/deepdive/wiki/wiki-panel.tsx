@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef, memo } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Pencil, Users, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,9 @@ interface WikiPanelProps {
   sources?: SourceInfo[];
   graphData?: { nodes: any[]; edges: any[] } | null;
   onSourceClick?: (sourceId: string) => void;
+  /** Set externally (e.g. from chat wiki links) to navigate to a page */
+  navigateToSlug?: string | null;
+  onNavigateComplete?: () => void;
 }
 
 const PAGE_TYPE_ICONS: Record<string, typeof FileText> = {
@@ -50,7 +53,7 @@ const PAGE_TYPE_LABELS: Record<string, string> = {
   ARTICLE: "Articles",
 };
 
-export function WikiPanel({ notebookId, initialPages = [], sources = [], graphData = null, onSourceClick }: WikiPanelProps) {
+export function WikiPanel({ notebookId, initialPages = [], sources = [], graphData = null, onSourceClick, navigateToSlug, onNavigateComplete }: WikiPanelProps) {
   // Build source ID → title map for resolving [source:id] references
   const sourceMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -120,6 +123,15 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
     if (pageSlugs.has(slug)) return slug;
     return entityToCommunity[slug] || slug;
   };
+
+  // Handle external navigation (e.g. from chat [[wiki-link]] clicks)
+  useEffect(() => {
+    if (navigateToSlug) {
+      setSelectedSlug(resolveSlug(navigateToSlug));
+      onNavigateComplete?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigateToSlug]);
 
   if (selectedSlug) {
     return (

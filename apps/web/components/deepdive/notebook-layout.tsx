@@ -82,6 +82,7 @@ function NotebookLayoutInner({
   const [rightTab, setRightTab] = useState<"wiki" | "notes">("wiki");
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [wikiNavigateSlug, setWikiNavigateSlug] = useState<string | null>(null);
 
   // Citation navigation setup
   const { setOnNavigate, setOnNavigateSource } = useCitation();
@@ -146,6 +147,13 @@ function NotebookLayoutInner({
       setSourcesWidth(SOURCES_CONTENT_WIDTH);
     }
   }, [sourcesWidth]);
+
+  // Navigate to wiki page from chat [[wiki-link]] click
+  const handleWikiNavigate = useCallback((slug: string) => {
+    setRightTab("wiki");
+    if (rightWidth === 0) setRightWidth(RIGHT_DEFAULT_WIDTH);
+    setWikiNavigateSlug(slug);
+  }, [rightWidth]);
 
   // Navigate to source — uses same width-snapping as user click
   const handleSourceNavigate = useCallback((sourceId: string) => {
@@ -216,6 +224,7 @@ function NotebookLayoutInner({
           sources={sources}
           initialSessions={initialChatSessions}
           initialMessages={initialMessages}
+          onWikiNavigate={handleWikiNavigate}
         />
       </motion.div>
 
@@ -269,6 +278,8 @@ function NotebookLayoutInner({
                   sources={sources.map((s) => ({ id: s.id, title: s.title }))}
                   graphData={graphData}
                   onSourceClick={handleSourceNavigate}
+                  navigateToSlug={wikiNavigateSlug}
+                  onNavigateComplete={() => setWikiNavigateSlug(null)}
                 />
               ) : (
                 <StudioPanel
