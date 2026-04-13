@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { encrypt, decrypt } from "@/lib/crypto";
+import { maskApiKey } from "@/lib/services/api-key-resolver";
+import type { StoredApiKeys, ApiKeyStatus } from "@/lib/types/providers";
 
-// Helper to get available models from env
 function getAvailableModels() {
   const openaiModels = (process.env.OPENAI_MODELS || "gpt-4o-mini,gpt-4.1,gpt-5.2")
     .split(",")
@@ -15,7 +17,6 @@ function getAvailableModels() {
   return { openai: openaiModels, google: googleModels };
 }
 
-// Helper to get defaults from env
 function getDefaults() {
   return {
     provider: process.env.DEFAULT_MODEL_PROVIDER || "google",
@@ -23,7 +24,7 @@ function getDefaults() {
   };
 }
 
-// GET /api/settings - Fetch user settings
+// GET /api/settings
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -37,22 +38,38 @@ export async function GET() {
       modelName: true,
       matcherModelProvider: true,
       matcherModelName: true,
+      apiKeys: true,
     },
   });
 
-  // Return user settings or environment defaults
-  const defaults = getDefaults();
-  return NextResponse.json(
-    settings || {
-      modelProvider: defaults.provider,
-      modelName: defaults.model,
-      matcherModelProvider: defaults.provider,
-      matcherModelName: defaults.model,
+  // Build API key status (never return actual keys)
+  let apiKeyStatus: ApiKeyStatus = {};
+  if (settings?.apiKeys) {
+    try {
+      const decrypted = decrypt(settings.apiKeys);
+      const keys: StoredApiKeys = JSON.parse(decrypted);
+      for (const [providerId, entry] of Object.entries(keys)) {
+        apiKeyStatus[providerId] = {
+          hasKey: true,
+          maskedKey: maskApiKey(entry.apiKey),
+        };
+      }
+    } catch {
+      // Decryption failed — treat as no keys
     }
-  );
+  }
+
+  const defaults = getDefaults();
+  return NextResponse.json({
+    modelProvider: settings?.modelProvider || defaults.provider,
+    modelName: settings?.modelName || defaults.model,
+    matcherModelProvider: settings?.matcherModelProvider || defaults.provider,
+    matcherModelName: settings?.matcherModelName || defaults.model,
+    apiKeyStatus,
+  });
 }
 
-// POST /api/settings - Upsert user settings
+// POST /api/settings
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -65,31 +82,16 @@ export async function POST(request: Request) {
     modelName,
     matcherModelProvider,
     matcherModelName,
+    apiKeys: apiKeysUpdate,
   } = body;
 
-  // Validate providers
-  const validProviders = ["openai", "google"];
-  if (modelProvider && !validProviders.includes(modelProvider)) {
-    return NextResponse.json(
-      { error: "Invalid model provider" },
-      { status: 400 }
-    );
-  }
-  if (matcherModelProvider && !validProviders.includes(matcherModelProvider)) {
-    return NextResponse.json(
-      { error: "Invalid matcher model provider" },
-      { status: 400 }
-    );
-  }
-
-  // Validate models against available models from env
   const availableModels = getAvailableModels();
 
   if (modelProvider && modelName) {
     const validModels = availableModels[modelProvider as keyof typeof availableModels];
-    if (!validModels?.includes(modelName)) {
+    if (validModels && !validModels.includes(modelName)) {
       return NextResponse.json(
-        { error: `Invalid model name. Available models for ${modelProvider}: ${validModels.join(", ")}` },
+        { error: `Invalid model name. Available: ${validModels.join(", ")}` },
         { status: 400 }
       );
     }
@@ -97,20 +99,57 @@ export async function POST(request: Request) {
 
   if (matcherModelProvider && matcherModelName) {
     const validModels = availableModels[matcherModelProvider as keyof typeof availableModels];
-    if (!validModels?.includes(matcherModelName)) {
+    if (validModels && !validModels.includes(matcherModelName)) {
       return NextResponse.json(
-        { error: `Invalid matcher model name. Available models for ${matcherModelProvider}: ${validModels.join(", ")}` },
+        { error: `Invalid matcher model name. Available: ${validModels.join(", ")}` },
         { status: 400 }
       );
     }
   }
 
-  // Build update data with only provided fields
-  const updateData: Record<string, string> = {};
+  // Build update data
+  const updateData: Record<string, string | null> = {};
   if (modelProvider) updateData.modelProvider = modelProvider;
   if (modelName) updateData.modelName = modelName;
   if (matcherModelProvider) updateData.matcherModelProvider = matcherModelProvider;
   if (matcherModelName) updateData.matcherModelName = matcherModelName;
+
+  // Handle API keys update
+  if (apiKeysUpdate && typeof apiKeysUpdate === "object") {
+    const existing = await prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+      select: { apiKeys: true },
+    });
+
+    let currentKeys: StoredApiKeys = {};
+    if (existing?.apiKeys) {
+      try {
+        currentKeys = JSON.parse(decrypt(existing.apiKeys));
+      } catch {
+        // Corrupted — start fresh
+      }
+    }
+
+    for (const [providerId, value] of Object.entries(apiKeysUpdate)) {
+      if (value === null) {
+        delete currentKeys[providerId];
+      } else if (typeof value === "object" && value !== null) {
+        const entry = value as { apiKey?: string; baseUrl?: string };
+        if (entry.apiKey) {
+          currentKeys[providerId] = {
+            apiKey: entry.apiKey,
+            ...(entry.baseUrl ? { baseUrl: entry.baseUrl } : {}),
+          };
+        }
+      }
+    }
+
+    if (Object.keys(currentKeys).length > 0) {
+      updateData.apiKeys = encrypt(JSON.stringify(currentKeys));
+    } else {
+      updateData.apiKeys = null;
+    }
+  }
 
   const settings = await prisma.userSettings.upsert({
     where: { userId: session.user.id },
@@ -121,6 +160,7 @@ export async function POST(request: Request) {
       modelName: modelName || "gemini-2.5-flash",
       matcherModelProvider: matcherModelProvider || "google",
       matcherModelName: matcherModelName || "gemini-2.5-flash",
+      ...(updateData.apiKeys ? { apiKeys: updateData.apiKeys as string } : {}),
     },
   });
 
