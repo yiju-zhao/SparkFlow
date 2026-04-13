@@ -268,6 +268,7 @@ function NotebookLayoutInner({
                   initialPages={wikiPages}
                   sources={sources.map((s) => ({ id: s.id, title: s.title }))}
                   graphData={graphData}
+                  onSourceClick={handleSourceNavigate}
                 />
               ) : (
                 <StudioPanel

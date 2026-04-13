@@ -28,6 +28,7 @@ interface WikiPanelProps {
   initialPages?: WikiPage[];
   sources?: SourceInfo[];
   graphData?: { nodes: any[]; edges: any[] } | null;
+  onSourceClick?: (sourceId: string) => void;
 }
 
 const PAGE_TYPE_ICONS: Record<string, typeof FileText> = {
@@ -48,7 +49,7 @@ const PAGE_TYPE_LABELS: Record<string, string> = {
   ARTICLE: "Articles",
 };
 
-export function WikiPanel({ notebookId, initialPages = [], sources = [], graphData = null }: WikiPanelProps) {
+export function WikiPanel({ notebookId, initialPages = [], sources = [], graphData = null, onSourceClick }: WikiPanelProps) {
   // Build source ID → title map for resolving [source:id] references
   const sourceMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -69,7 +70,8 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
       return json.pages || [];
     },
     initialData: initialPages,
-    refetchInterval: false,
+    // Auto-refresh every 5s so new pages appear after wiki ingest completes
+    refetchInterval: 5000,
   });
 
   const grouped = useMemo(() => {
@@ -93,6 +95,7 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
         sourceMap={sourceMap}
         onBack={() => setSelectedSlug(null)}
         onNavigate={(slug) => setSelectedSlug(slug)}
+        onSourceClick={onSourceClick}
       />
     );
   }
@@ -221,25 +224,28 @@ function WikiPageView({
   sourceMap,
   onBack,
   onNavigate,
+  onSourceClick,
 }: {
   notebookId: string;
   slug: string;
   sourceMap: Record<string, string>;
   onBack: () => void;
   onNavigate: (slug: string) => void;
+  onSourceClick?: (sourceId: string) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: page, isLoading } = useQuery<WikiPage & { content: string }>({
+  const { data: page, isLoading, isError } = useQuery<WikiPage & { content: string }>({
     queryKey: ["wiki-page", notebookId, slug],
     queryFn: async () => {
       const res = await fetch(`/api/notebooks/${notebookId}/wiki/${slug}`);
-      if (!res.ok) throw new Error("Failed to fetch wiki page");
+      if (!res.ok) throw new Error("Page not found");
       return res.json();
     },
+    retry: false,
   });
 
   const handleStartEdit = () => {
@@ -308,13 +314,14 @@ function WikiPageView({
         {sourceTitles.length > 0 && (
           <div className="mt-1 ml-9 flex flex-wrap gap-1">
             {sourceTitles.map(({ id, title }) => (
-              <span
+              <button
                 key={id}
-                className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-muted-foreground"
+                className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent/20 hover:text-foreground transition-colors cursor-pointer"
                 title={`Source: ${title}`}
+                onClick={() => onSourceClick?.(id)}
               >
                 {title.length > 30 ? title.slice(0, 30) + "..." : title}
-              </span>
+              </button>
             ))}
           </div>
         )}
@@ -325,6 +332,12 @@ function WikiPageView({
           <div className="flex items-center justify-center py-8">
             <span className="text-sm text-muted-foreground">Loading...</span>
           </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-sm text-muted-foreground">Page &quot;{slug}&quot; not found</p>
+            <p className="text-xs text-muted-foreground mt-1">This entity exists in the graph but doesn&apos;t have its own page yet</p>
+            <Button variant="ghost" size="sm" className="mt-3 text-xs" onClick={onBack}>Go back</Button>
+          </div>
         ) : isEditing ? (
           <textarea
             className="w-full h-full min-h-64 resize-none bg-transparent text-sm font-mono leading-relaxed outline-none"
@@ -332,7 +345,7 @@ function WikiPageView({
             onChange={(e) => setEditContent(e.target.value)}
           />
         ) : page?.content ? (
-          <WikiMarkdown content={page.content} sourceMap={sourceMap} onNavigate={onNavigate} />
+          <WikiMarkdown content={page.content} sourceMap={sourceMap} onNavigate={onNavigate} onSourceClick={onSourceClick} />
         ) : (
           <p className="text-sm text-muted-foreground">No content</p>
         )}
@@ -345,10 +358,12 @@ function WikiMarkdown({
   content,
   sourceMap,
   onNavigate,
+  onSourceClick,
 }: {
   content: string;
   sourceMap: Record<string, string>;
   onNavigate: (slug: string) => void;
+  onSourceClick?: (sourceId: string) => void;
 }) {
   // Replace [[slug]] with clickable wiki links
   let processed = content.replace(
@@ -356,14 +371,14 @@ function WikiMarkdown({
     (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
   );
 
-  // Replace [source:id] with source titles
+  // Replace [source:id] with clickable source refs
   processed = processed.replace(
     /\[source:([a-zA-Z0-9_-]+)\]/g,
     (_, id) => {
       const title = sourceMap[id];
       return title
-        ? `<source-ref title="${title}">📄 ${title.length > 25 ? title.slice(0, 25) + "…" : title}</source-ref>`
-        : `<source-ref>📄 ${id.slice(0, 8)}…</source-ref>`;
+        ? `<source-ref data-source-id="${id}" title="${title}">📄 ${title.length > 25 ? title.slice(0, 25) + "…" : title}</source-ref>`
+        : `<source-ref data-source-id="${id}">📄 ${id.slice(0, 8)}…</source-ref>`;
     }
   );
 
@@ -372,12 +387,22 @@ function WikiMarkdown({
       className="prose prose-sm dark:prose-invert max-w-none"
       onClick={(e) => {
         const target = e.target as HTMLElement;
+        // Handle wiki link clicks
         if (target.tagName === "WIKI-LINK" || target.closest("wiki-link")) {
           const el = target.tagName === "WIKI-LINK" ? target : target.closest("wiki-link")!;
           const slug = el.getAttribute("data-slug");
           if (slug) {
             e.preventDefault();
             onNavigate(slug);
+          }
+        }
+        // Handle source ref clicks
+        if (target.tagName === "SOURCE-REF" || target.closest("source-ref")) {
+          const el = target.tagName === "SOURCE-REF" ? target : target.closest("source-ref")!;
+          const sourceId = el.getAttribute("data-source-id");
+          if (sourceId && onSourceClick) {
+            e.preventDefault();
+            onSourceClick(sourceId);
           }
         }
       }}
@@ -401,6 +426,7 @@ function WikiMarkdown({
           background: var(--color-accent, #f3f4f6);
           border-radius: 4px;
           padding: 1px 4px;
+          cursor: pointer;
           opacity: 0.8;
         }
       `}</style>
