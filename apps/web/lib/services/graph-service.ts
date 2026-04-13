@@ -50,10 +50,21 @@ export async function extractGraph(
   sourceContent: string,
   sourceTitle: string,
   sourceId: string,
-  existingNodeLabels: string[]
+  existingNodeLabels: string[],
+  userId?: string
 ): Promise<ExtractionResult> {
   const { default: OpenAI } = await import("openai");
-  const openai = new OpenAI();
+  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
+  if (userId) {
+    try {
+      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
+      const resolved = await resolveApiKey(userId, "openai");
+      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
+    } catch {
+      // Fall through to default (will fail for non-admin if no env key)
+    }
+  }
+  const openai = new OpenAI(openaiConfig);
 
   const truncated =
     sourceContent.length > 50000
@@ -240,10 +251,21 @@ export async function clusterGraph(graphData: GraphData): Promise<{
 export async function generateWikiPages(
   notebookId: string,
   graphData: GraphData,
-  communities: CommunityMap
+  communities: CommunityMap,
+  userId?: string
 ): Promise<string[]> {
   const { default: OpenAI } = await import("openai");
-  const openai = new OpenAI();
+  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
+  if (userId) {
+    try {
+      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
+      const resolved = await resolveApiKey(userId, "openai");
+      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
+    } catch {
+      // Fall through
+    }
+  }
+  const openai = new OpenAI(openaiConfig);
 
   const nodeMap = new Map(graphData.nodes.map((n) => [n.id, n]));
 
@@ -356,10 +378,21 @@ export async function integrateWikiPage(
   notebookId: string,
   pageSlug: string,
   pageContent: string,
-  sourceRefs: string[]
+  sourceRefs: string[],
+  userId?: string
 ): Promise<{ nodesAdded: number; edgesAdded: number }> {
   const { default: OpenAI } = await import("openai");
-  const openai = new OpenAI();
+  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
+  if (userId) {
+    try {
+      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
+      const resolved = await resolveApiKey(userId, "openai");
+      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
+    } catch {
+      // Fall through
+    }
+  }
+  const openai = new OpenAI(openaiConfig);
 
   const existingGraph = await prisma.notebookGraph.findUnique({
     where: { notebookId },
@@ -453,7 +486,8 @@ export async function runGraphPipeline(
   notebookId: string,
   sourceId: string,
   sourceContent: string,
-  sourceTitle: string
+  sourceTitle: string,
+  userId?: string
 ): Promise<{
   nodesAdded: number;
   edgesAdded: number;
@@ -486,7 +520,8 @@ export async function runGraphPipeline(
     sourceContent,
     sourceTitle,
     sourceId,
-    existing.nodes.map((n) => `${n.id}: ${n.label}`)
+    existing.nodes.map((n) => `${n.id}: ${n.label}`),
+    userId
   );
 
   // Build extraction report with cross-references
@@ -546,7 +581,7 @@ export async function runGraphPipeline(
   await prisma.wikiPage.deleteMany({
     where: { notebookId, slug: { startsWith: "community-" } },
   });
-  const writtenSlugs = await generateWikiPages(notebookId, graphWithCommunities, communities);
+  const writtenSlugs = await generateWikiPages(notebookId, graphWithCommunities, communities, userId);
 
   // 6. Log
   const today = new Date().toISOString().split("T")[0];

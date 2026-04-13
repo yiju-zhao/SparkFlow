@@ -70,6 +70,7 @@ export async function addWebpageSource(
   const context: ProcessingContext = {
     sourceId: source.id,
     notebookId,
+    userId: session.user.id,
   };
 
   processWebpage(url, title, context)
@@ -128,6 +129,7 @@ export async function uploadDocumentSource(
   const context: ProcessingContext = {
     sourceId: source.id,
     notebookId,
+    userId: session.user.id,
   };
 
   const processDocument = async () => {
@@ -200,6 +202,7 @@ export async function addPublicationSource(
   const context: ProcessingContext = {
     sourceId: source.id,
     notebookId,
+    userId: session.user.id,
   };
 
   (async () => {
@@ -275,6 +278,7 @@ export async function addWechatSource(
   const context: ProcessingContext = {
     sourceId: source.id,
     notebookId,
+    userId: session.user.id,
   };
 
   (async () => {
@@ -317,7 +321,7 @@ export async function addWechatSource(
       // Trigger wiki ingest
       try {
         const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
-        await ingestSourceToWiki(notebookId, source.id);
+        await ingestSourceToWiki(notebookId, source.id, session.user.id);
       } catch (wikiErr) {
         console.error("[addWechatSource] Wiki ingest failed:", wikiErr);
       }

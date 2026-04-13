@@ -34,7 +34,7 @@ export async function processTextDocument(
     // Trigger wiki ingest (awaited to prevent premature termination)
     try {
       const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
-      const result = await ingestSourceToWiki(context.notebookId, sourceId);
+      const result = await ingestSourceToWiki(context.notebookId, sourceId, context.userId);
       console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`);
     } catch (err) {
       console.error("Wiki ingest failed:", err);
