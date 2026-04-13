@@ -129,6 +129,7 @@ export function ChatPanel({
     modelProvider: "google",
     modelName: "gemini-2.5-flash",
   });
+  const [resolvedKey, setResolvedKey] = useState<{ apiKey: string; baseUrl?: string } | null>(null);
 const messagesContainerRef = useRef<HTMLDivElement>(null);
 const textareaRef = useRef<HTMLTextAreaElement>(null);
 const prevIsLoadingRef = useRef<boolean>(false);
@@ -144,6 +145,18 @@ const prevIsLoadingRef = useRef<boolean>(false);
             modelProvider: data.modelProvider || "openai",
             modelName: data.modelName || "gpt-4o-mini",
           });
+          // Fetch resolved API key for the active provider
+          try {
+            const keyRes = await fetch(`/api/settings/resolve-key?provider=${data.modelProvider}`);
+            if (keyRes.ok) {
+              const keyData = await keyRes.json();
+              setResolvedKey(keyData);
+            } else {
+              setResolvedKey(null);
+            }
+          } catch {
+            setResolvedKey(null);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch model settings:", error);
@@ -499,6 +512,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
             wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
+            api_key: resolvedKey?.apiKey || "",
+            base_url: resolvedKey?.baseUrl || "",
           },
         },
       );
@@ -837,6 +852,13 @@ const prevIsLoadingRef = useRef<boolean>(false);
       />
 
       {/* Input */}
+      {!resolvedKey && !stream.isLoading && (
+        <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2">
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            Set your API key in <a href="/settings" className="underline">Settings</a> to use the chat.
+          </p>
+        </div>
+      )}
       <div
         className="flex items-start px-6 py-3 gap-3"
         style={{ minHeight: inputHeight }}
