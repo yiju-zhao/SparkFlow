@@ -49,13 +49,16 @@ export async function parsePdf(
 
 async function parsePdfLocal(filePath: string): Promise<MineruResult> {
   const fileBuffer = await readFile(filePath);
+  const fileName = filePath.split("/").pop()!;
   const formData = new FormData();
-  formData.append("file", new Blob([fileBuffer]), filePath.split("/").pop()!);
+  formData.append("files", new Blob([fileBuffer], { type: "application/pdf" }), fileName);
   formData.append("parse_method", "auto");
+  formData.append("return_md", "true");
+  formData.append("return_images", "true");
 
   let response: Response;
   try {
-    response = await fetchWithRetry(`${MINERU_LOCAL_URL}/api/v1/extract`, {
+    response = await fetchWithRetry(`${MINERU_LOCAL_URL}/file_parse`, {
       method: "POST",
       body: formData,
     });
@@ -64,7 +67,8 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
   }
 
   if (!response.ok) {
-    throw new Error(`MinerU local parse failed: ${response.status} ${response.statusText}`);
+    const errorBody = await response.text().catch(() => "");
+    throw new Error(`MinerU local parse failed: ${response.status} ${response.statusText} ${errorBody}`);
   }
 
   const result = await response.json();

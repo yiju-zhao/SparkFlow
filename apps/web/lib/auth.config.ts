@@ -31,26 +31,33 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const userRole = auth?.user?.role;
 
+      // Strip locale prefix to normalize path matching
+      // e.g. /en/deepdive → /deepdive, /zh/login → /login, /en → /
+      const path = nextUrl.pathname.replace(/^\/(en|zh)/, "") || "/";
+
       // Admin route protection
-      const isAdminRoute = nextUrl.pathname.startsWith("/admin");
-      if (isAdminRoute && (!isLoggedIn || userRole !== "ADMIN")) {
+      if (path.startsWith("/admin") && (!isLoggedIn || userRole !== "ADMIN")) {
         return Response.redirect(new URL("/access-denied", nextUrl));
       }
 
       const isAuthPage =
-        nextUrl.pathname.startsWith("/login") ||
-        nextUrl.pathname.startsWith("/signup");
+        path.startsWith("/login") || path.startsWith("/signup");
       const isPublicPage =
-        nextUrl.pathname === "/" ||
+        path === "/" ||
         nextUrl.pathname.startsWith("/api/auth") ||
         nextUrl.pathname === "/api/signup";
 
+      // Redirect logged-in users away from auth pages
       if (isLoggedIn && isAuthPage) {
-        return Response.redirect(new URL("/deepdive", nextUrl));
+        // Extract locale from original path, default to "en"
+        const locale = nextUrl.pathname.match(/^\/(en|zh)/)?.[1] || "en";
+        return Response.redirect(new URL(`/${locale}/deepdive`, nextUrl));
       }
 
+      // Redirect unauthenticated users to landing page
       if (!isLoggedIn && !isAuthPage && !isPublicPage) {
-        return Response.redirect(new URL("/login", nextUrl));
+        const locale = nextUrl.pathname.match(/^\/(en|zh)/)?.[1] || "en";
+        return Response.redirect(new URL(`/${locale}`, nextUrl));
       }
 
       return true;
