@@ -60,6 +60,8 @@ model UserSettings {
   // Matcher agent model
   matcherModelProvider String  @default("google")
   matcherModelName    String   @default("gemini-2.5-flash")
+  // BYOK — encrypted JSON blob of API keys per provider
+  apiKeys             String?  @db.Text
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
