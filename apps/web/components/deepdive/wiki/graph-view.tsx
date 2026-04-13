@@ -164,6 +164,11 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
           nodeLabel={(node: any) => `${node.label} (${node.type})\n${node.summary}`}
           onNodeClick={handleNodeClick}
           /* ── Links ── */
+          linkLabel={(link: any) => {
+            const src = typeof link.source === "object" ? link.source.label : link.source;
+            const tgt = typeof link.target === "object" ? link.target.label : link.target;
+            return `${src} → ${link.relation.replace(/_/g, " ")} → ${tgt}`;
+          }}
           linkColor={(link: any) => {
             if (link.confidence === "EXTRACTED") return "rgba(140,140,140,0.45)";
             if (link.confidence === "INFERRED") return "rgba(140,140,140,0.2)";
