@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useRef } from "react";
+import { useMemo, useCallback, useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
@@ -33,6 +33,33 @@ const COMMUNITY_COLORS = [
 
 export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
   const fgRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 400, height: 500 });
+
+  // Track container size with ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setDimensions({
+          width: Math.floor(entry.contentRect.width),
+          height: Math.floor(entry.contentRect.height),
+        });
+      }
+    });
+
+    observer.observe(el);
+    // Set initial size
+    setDimensions({
+      width: Math.floor(el.clientWidth),
+      height: Math.floor(el.clientHeight),
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const data = useMemo(() => {
     if (!graphData || graphData.nodes.length === 0) {
@@ -82,43 +109,45 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
   }
 
   return (
-    <div className="h-full w-full">
-      <ForceGraph2D
-        ref={fgRef}
-        graphData={data}
-        nodeLabel={(node: any) => `${node.label} (${node.type})\n${node.summary}`}
-        nodeColor={(node: any) => COMMUNITY_COLORS[node.community % COMMUNITY_COLORS.length]}
-        nodeVal={(node: any) => node.val}
-        nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-          const label = node.label;
-          const fontSize = 12 / globalScale;
-          const color = COMMUNITY_COLORS[node.community % COMMUNITY_COLORS.length];
+    <div ref={containerRef} className="h-full w-full">
+      {dimensions.width > 0 && dimensions.height > 0 && (
+        <ForceGraph2D
+          ref={fgRef}
+          graphData={data}
+          nodeLabel={(node: any) => `${node.label} (${node.type})\n${node.summary}`}
+          nodeColor={(node: any) => COMMUNITY_COLORS[node.community % COMMUNITY_COLORS.length]}
+          nodeVal={(node: any) => node.val}
+          nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+            const label = node.label;
+            const fontSize = 12 / globalScale;
+            const color = COMMUNITY_COLORS[node.community % COMMUNITY_COLORS.length];
 
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI);
-          ctx.fillStyle = color;
-          ctx.fill();
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
 
-          ctx.font = `${fontSize}px Sans-Serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = color;
-          ctx.fillText(label, node.x, node.y + 8);
-        }}
-        linkColor={(link: any) => {
-          if (link.confidence === "EXTRACTED") return "rgba(100,100,100,0.6)";
-          if (link.confidence === "INFERRED") return "rgba(100,100,100,0.3)";
-          return "rgba(100,100,100,0.15)";
-        }}
-        linkWidth={(link: any) => link.weight * 2}
-        linkDirectionalArrowLength={3}
-        linkDirectionalArrowRelPos={1}
-        onNodeClick={handleNodeClick}
-        cooldownTicks={100}
-        width={400}
-        height={500}
-        backgroundColor="transparent"
-      />
+            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = color;
+            ctx.fillText(label, node.x, node.y + 8);
+          }}
+          linkColor={(link: any) => {
+            if (link.confidence === "EXTRACTED") return "rgba(100,100,100,0.6)";
+            if (link.confidence === "INFERRED") return "rgba(100,100,100,0.3)";
+            return "rgba(100,100,100,0.15)";
+          }}
+          linkWidth={(link: any) => link.weight * 2}
+          linkDirectionalArrowLength={3}
+          linkDirectionalArrowRelPos={1}
+          onNodeClick={handleNodeClick}
+          cooldownTicks={100}
+          width={dimensions.width}
+          height={dimensions.height}
+          backgroundColor="transparent"
+        />
+      )}
     </div>
   );
 }
