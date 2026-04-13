@@ -34,7 +34,7 @@ const COMMUNITY_COLORS = [
 export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
   const fgRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 400, height: 500 });
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // Track container size with ResizeObserver
   useEffect(() => {
@@ -52,7 +52,6 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
     });
 
     observer.observe(el);
-    // Set initial size
     setDimensions({
       width: Math.floor(el.clientWidth),
       height: Math.floor(el.clientHeight),
@@ -60,6 +59,27 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
 
     return () => observer.disconnect();
   }, []);
+
+  // Zoom to fit after graph settles
+  useEffect(() => {
+    if (fgRef.current && dimensions.width > 0) {
+      const timer = setTimeout(() => {
+        fgRef.current?.zoomToFit(400, 40);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [dimensions.width, graphData]);
+
+  // Compute node degrees for sizing
+  const degreeMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (!graphData) return map;
+    for (const e of graphData.edges) {
+      map[e.source] = (map[e.source] || 0) + 1;
+      map[e.target] = (map[e.target] || 0) + 1;
+    }
+    return map;
+  }, [graphData]);
 
   const data = useMemo(() => {
     if (!graphData || graphData.nodes.length === 0) {
@@ -72,7 +92,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
       type: n.type,
       summary: n.summary,
       community: n.community ?? 0,
-      val: 3,
+      val: 2 + (degreeMap[n.id] || 0),
     }));
 
     const nodeIds = new Set(nodes.map((n) => n.id));
@@ -88,7 +108,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
       }));
 
     return { nodes, links };
-  }, [graphData]);
+  }, [graphData, degreeMap]);
 
   const handleNodeClick = useCallback(
     (node: any) => {
@@ -101,7 +121,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
 
   if (!graphData || graphData.nodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+      <div ref={containerRef} className="flex flex-col items-center justify-center h-full py-8 text-center">
         <p className="text-sm text-muted-foreground">No graph data yet</p>
         <p className="text-xs text-muted-foreground">Add sources to build the knowledge graph</p>
       </div>
@@ -119,33 +139,51 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
           nodeVal={(node: any) => node.val}
           nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
             const label = node.label;
-            const fontSize = 12 / globalScale;
+            const degree = degreeMap[node.id] || 0;
             const color = COMMUNITY_COLORS[node.community % COMMUNITY_COLORS.length];
 
+            // Node radius scales with degree
+            const baseRadius = 4 + Math.min(degree * 1.5, 8);
+
+            // Draw node circle
             ctx.beginPath();
-            ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI);
+            ctx.arc(node.x, node.y, baseRadius, 0, 2 * Math.PI);
             ctx.fillStyle = color;
             ctx.fill();
 
-            ctx.font = `${fontSize}px Sans-Serif`;
+            // Label: clamp font size for readability at all zoom levels
+            const rawFontSize = 11 / globalScale;
+            const fontSize = Math.max(3, Math.min(rawFontSize, 14));
+
+            // Truncate long labels
+            const maxChars = globalScale > 1.5 ? 30 : 16;
+            const displayLabel = label.length > maxChars ? label.slice(0, maxChars) + "…" : label;
+
+            ctx.font = `500 ${fontSize}px -apple-system, sans-serif`;
             ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
+            ctx.textBaseline = "top";
             ctx.fillStyle = color;
-            ctx.fillText(label, node.x, node.y + 8);
+            ctx.fillText(displayLabel, node.x, node.y + baseRadius + 2);
           }}
           linkColor={(link: any) => {
-            if (link.confidence === "EXTRACTED") return "rgba(100,100,100,0.6)";
-            if (link.confidence === "INFERRED") return "rgba(100,100,100,0.3)";
-            return "rgba(100,100,100,0.15)";
+            if (link.confidence === "EXTRACTED") return "rgba(120,120,120,0.5)";
+            if (link.confidence === "INFERRED") return "rgba(120,120,120,0.25)";
+            return "rgba(120,120,120,0.12)";
           }}
-          linkWidth={(link: any) => link.weight * 2}
-          linkDirectionalArrowLength={3}
-          linkDirectionalArrowRelPos={1}
+          linkWidth={(link: any) => Math.max(0.5, link.weight * 1.5)}
+          linkDirectionalArrowLength={4}
+          linkDirectionalArrowRelPos={0.95}
           onNodeClick={handleNodeClick}
-          cooldownTicks={100}
+          cooldownTicks={150}
+          d3AlphaDecay={0.02}
+          d3VelocityDecay={0.3}
           width={dimensions.width}
           height={dimensions.height}
           backgroundColor="transparent"
+          minZoom={0.3}
+          maxZoom={8}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
         />
       )}
     </div>

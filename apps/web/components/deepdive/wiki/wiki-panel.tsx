@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo, memo } from "react";
+import { useState, useMemo, useCallback, useRef, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Pencil, Users, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
+import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { GraphView } from "./graph-view";
 import { HealthCheckButton } from "./health-check";
 
@@ -59,7 +60,18 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
     return map;
   }, [sources]);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
-  const [view, setView] = useState<"pages" | "graph">("pages");
+  // Top panel height as percentage (0-100), graph gets the rest
+  const [topPercent, setTopPercent] = useState(55);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleDividerDrag = useCallback((delta: number) => {
+    const container = splitContainerRef.current;
+    if (!container) return;
+    const totalHeight = container.clientHeight;
+    if (totalHeight === 0) return;
+    const deltaPercent = (delta / totalHeight) * 100;
+    setTopPercent((prev) => Math.min(85, Math.max(15, prev + deltaPercent)));
+  }, []);
 
   const { data: pages = initialPages } = useQuery<WikiPage[]>({
     queryKey: ["wiki-pages", notebookId],
@@ -123,90 +135,76 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="px-6 pt-3 pb-3 flex items-center justify-between relative">
-        <div className="flex items-center gap-1">
-          <button
-            className={`px-2 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
-              view === "pages"
-                ? "text-foreground bg-accent/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setView("pages")}
-          >
-            Pages
-          </button>
-          <button
-            className={`px-2 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
-              view === "graph"
-                ? "text-foreground bg-accent/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setView("graph")}
-          >
-            Graph
-          </button>
+    <div ref={splitContainerRef} className="flex h-full flex-col">
+      {/* === TOP: Pages List === */}
+      <div className="flex flex-col overflow-hidden" style={{ height: `${topPercent}%` }}>
+        <div className="px-6 pt-3 pb-2 flex items-center justify-between relative shrink-0">
+          <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">Pages</span>
+          <div className="flex items-center gap-1">
+            <HealthCheckButton notebookId={notebookId} />
+            <span className="text-[11px] text-muted-foreground">
+              {pages.filter((p) => p.pageType !== "INDEX" && p.pageType !== "LOG").length}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <HealthCheckButton notebookId={notebookId} />
-          <span className="text-[11px] text-muted-foreground">
-            {pages.filter((p) => p.pageType !== "INDEX" && p.pageType !== "LOG").length} pages
-          </span>
+
+        <div className="flex-1 overflow-y-auto px-6 pb-2">
+          {indexPage && (
+            <button
+              className="w-full text-left rounded-[4px] px-4 py-2 mb-2 text-[13px] font-medium bg-surface-elevated hover:bg-surface-hover transition-colors border border-divider dark:border-0"
+              onClick={() => setSelectedSlug("index")}
+            >
+              <BookOpen className="inline h-3.5 w-3.5 mr-2 text-muted-foreground" />
+              Wiki Index
+            </button>
+          )}
+
+          {Object.keys(grouped).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <BookOpen className="h-6 w-6 text-muted-foreground/50" />
+              <p className="mt-2 text-xs text-muted-foreground">Add sources to build knowledge</p>
+            </div>
+          ) : (
+            Object.entries(PAGE_TYPE_LABELS).map(([type, label]) => {
+              const items = grouped[type];
+              if (!items || items.length === 0) return null;
+              return (
+                <div key={type} className="mb-3">
+                  <h3 className="text-[10px] font-semibold tracking-[2px] text-muted-foreground uppercase mb-1.5">
+                    {label}
+                  </h3>
+                  <div className="space-y-1">
+                    {items.map((page) => (
+                      <WikiPageItem
+                        key={page.id}
+                        page={page}
+                        onSelect={() => setSelectedSlug(page.slug)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {view === "graph" ? (
-        <div className="flex-1 px-2">
+      {/* === DIVIDER === */}
+      <ResizableDivider
+        direction="horizontal"
+        onDrag={handleDividerDrag}
+        onDoubleClick={() => setTopPercent(55)}
+      />
+
+      {/* === BOTTOM: Graph === */}
+      <div className="flex flex-col overflow-hidden" style={{ height: `${100 - topPercent}%` }}>
+        <div className="px-6 pt-1 pb-1 shrink-0">
+          <span className="text-[10px] font-semibold tracking-[2px] uppercase font-mono text-muted-foreground">Graph</span>
+        </div>
+        <div className="flex-1">
           <GraphView graphData={graphData} onNodeClick={(slug) => setSelectedSlug(resolveSlug(slug))} />
         </div>
-      ) : (
-        <>
-          {indexPage && (
-            <div className="px-6 pb-2">
-              <button
-                className="w-full text-left rounded-[4px] px-4 py-2 text-[13px] font-medium bg-surface-elevated hover:bg-surface-hover transition-colors border border-divider dark:border-0"
-                onClick={() => setSelectedSlug("index")}
-              >
-                <BookOpen className="inline h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                Wiki Index
-              </button>
-            </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
-            {Object.keys(grouped).length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <BookOpen className="h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground">Wiki is empty</p>
-                <p className="text-xs text-muted-foreground">
-                  Add sources to start building knowledge
-                </p>
-              </div>
-            ) : (
-              Object.entries(PAGE_TYPE_LABELS).map(([type, label]) => {
-                const items = grouped[type];
-                if (!items || items.length === 0) return null;
-                return (
-                  <div key={type} className="mb-4">
-                    <h3 className="text-[11px] font-semibold tracking-[2px] text-muted-foreground uppercase mb-2">
-                      {label}
-                    </h3>
-                    <div className="space-y-1.5">
-                      {items.map((page) => (
-                        <WikiPageItem
-                          key={page.id}
-                          page={page}
-                          onSelect={() => setSelectedSlug(page.slug)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
