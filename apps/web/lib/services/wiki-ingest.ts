@@ -31,6 +31,19 @@ export async function ingestSourceToWiki(
 
     const result = await runGraphPipeline(notebookId, sourceId, content, source.title);
 
+    // Store extraction report in source metadata for UI display
+    const currentMeta = (await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } }))?.metadata as Record<string, unknown> || {};
+    await prisma.source.update({
+      where: { id: sourceId },
+      data: {
+        metadata: {
+          ...currentMeta,
+          wikiStatus: "done",
+          extractionReport: result.extractionReport,
+        },
+      },
+    });
+
     return {
       pagesWritten: result.pagesWritten,
       pages: [`${result.nodesAdded} nodes, ${result.edgesAdded} edges, ${result.communities} communities`],

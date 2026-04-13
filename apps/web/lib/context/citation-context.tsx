@@ -9,16 +9,17 @@ import {
 } from "react";
 
 interface CitationContextValue {
-  // Navigate to a chunk (called when citation is clicked)
   navigateToChunk: (chunkId: string) => void;
-  // Set navigation handler (called by NotebookLayout)
+  navigateToSource: (sourceId: string) => void;
   setOnNavigate: (handler: ((chunkId: string) => void) | null) => void;
+  setOnNavigateSource: (handler: ((sourceId: string) => void) | null) => void;
 }
 
 const CitationContext = createContext<CitationContextValue | null>(null);
 
 export function CitationProvider({ children }: { children: ReactNode }) {
   const onNavigateRef = useRef<((chunkId: string) => void) | null>(null);
+  const onNavigateSourceRef = useRef<((sourceId: string) => void) | null>(null);
 
   const setOnNavigate = useCallback(
     (handler: ((chunkId: string) => void) | null) => {
@@ -27,19 +28,24 @@ export function CitationProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const setOnNavigateSource = useCallback(
+    (handler: ((sourceId: string) => void) | null) => {
+      onNavigateSourceRef.current = handler;
+    },
+    [],
+  );
+
   const navigateToChunk = useCallback((chunkId: string) => {
-    const handler = onNavigateRef.current;
-    if (handler) {
-      handler(chunkId);
-    }
+    onNavigateRef.current?.(chunkId);
+  }, []);
+
+  const navigateToSource = useCallback((sourceId: string) => {
+    onNavigateSourceRef.current?.(sourceId);
   }, []);
 
   return (
     <CitationContext.Provider
-      value={{
-        navigateToChunk,
-        setOnNavigate,
-      }}
+      value={{ navigateToChunk, navigateToSource, setOnNavigate, setOnNavigateSource }}
     >
       {children}
     </CitationContext.Provider>

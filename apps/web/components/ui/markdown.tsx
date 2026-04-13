@@ -15,6 +15,7 @@ interface MarkdownProps {
 
 const HTML_TABLE_REGEX = /<table[\s\S]*?<\/table>/gi;
 const CITATION_REGEX = /\[ref:([a-zA-Z0-9_-]+)\]/g;
+const SOURCE_CITATION_REGEX = /\[\[source:([a-zA-Z0-9_-]+)\]\]/g;
 const DISALLOWED_RAW_TAGS = ["think", "answer"];
 
 function extractHtmlTables(content: string): {
@@ -92,32 +93,55 @@ function preprocessLatex(content: string): string {
 }
 
 function preprocessCitations(content: string): string {
-  const chunkIndexMap = new Map<string, number>();
+  const idIndexMap = new Map<string, number>();
   let nextIndex = 1;
 
-  return content.replace(CITATION_REGEX, (_, chunkId) => {
-    let index = chunkIndexMap.get(chunkId);
+  const getIndex = (id: string) => {
+    let index = idIndexMap.get(id);
     if (index === undefined) {
       index = nextIndex++;
-      chunkIndexMap.set(chunkId, index);
+      idIndexMap.set(id, index);
     }
-    return `<citation-ref data-chunk="${chunkId}" data-index="${index}"></citation-ref>`;
+    return index;
+  };
+
+  // Handle [ref:chunkId] (legacy chunk citations)
+  let result = content.replace(CITATION_REGEX, (_, chunkId) => {
+    return `<citation-ref data-chunk="${chunkId}" data-index="${getIndex(chunkId)}"></citation-ref>`;
   });
+
+  // Handle [[source:sourceId]] (wiki source citations)
+  result = result.replace(SOURCE_CITATION_REGEX, (_, sourceId) => {
+    return `<citation-ref data-chunk="${sourceId}" data-index="${getIndex(sourceId)}" data-type="source"></citation-ref>`;
+  });
+
+  // Handle [source:sourceId] (single-bracket variant)
+  result = result.replace(/\[source:([a-zA-Z0-9_-]+)\]/g, (_, sourceId) => {
+    return `<citation-ref data-chunk="${sourceId}" data-index="${getIndex(sourceId)}" data-type="source"></citation-ref>`;
+  });
+
+  return result;
 }
 
 const CitationLink = memo(function CitationLink({
   "data-chunk": chunkId,
   "data-index": index,
+  "data-type": type,
 }: {
   "data-chunk": string;
   "data-index": string;
+  "data-type"?: string;
 }) {
   const citationContext = useCitationSafe();
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    citationContext?.navigateToChunk(chunkId);
+    if (type === "source") {
+      citationContext?.navigateToSource?.(chunkId);
+    } else {
+      citationContext?.navigateToChunk(chunkId);
+    }
   };
 
   return (
@@ -252,10 +276,12 @@ export const Markdown = memo(function Markdown({
     "citation-ref": ({
       "data-chunk": chunkId,
       "data-index": index,
+      "data-type": type,
     }: {
       "data-chunk": string;
       "data-index": string;
-    }) => <CitationLink data-chunk={chunkId} data-index={index} />,
+      "data-type"?: string;
+    }) => <CitationLink data-chunk={chunkId} data-index={index} data-type={type} />,
     "html-table-placeholder": ({
       "data-index": dataIndex,
     }: {
@@ -276,7 +302,7 @@ export const Markdown = memo(function Markdown({
 
   return (
     <div
-      className={cn("wrap-break-word", className)}
+      className={cn("wrap-break-word [&_.katex-display]:overflow-x-auto [&_.katex-display]:max-w-full", className)}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 500px" }}
     >
       <ReactMarkdown

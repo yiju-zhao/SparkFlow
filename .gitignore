@@ -62,5 +62,7 @@ designs/
 
 .sisyphus/
 
+design/
 ### gsd
 # .planning/ - uncommented to track planning docs in git
+.superpowers/

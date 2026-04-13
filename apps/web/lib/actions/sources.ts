@@ -155,6 +155,193 @@ export async function uploadDocumentSource(
   return source;
 }
 
+export async function addPublicationSource(
+  notebookId: string,
+  publicationId: string,
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const notebook = await prisma.notebook.findFirst({
+    where: { id: notebookId, userId: session.user.id },
+  });
+  if (!notebook) {
+    throw new Error("Notebook not found");
+  }
+
+  // Fetch publication
+  const publication = await prisma.publication.findUnique({
+    where: { id: publicationId },
+  });
+  if (!publication) {
+    throw new Error("Publication not found");
+  }
+
+  if (!publication.pdfUrl) {
+    throw new Error("Publication has no PDF URL");
+  }
+
+  // Create source with PROCESSING status
+  const source = await prisma.source.create({
+    data: {
+      notebookId,
+      title: publication.title,
+      sourceType: "DOCUMENT",
+      url: publication.pdfUrl,
+      status: "PROCESSING",
+    },
+  });
+
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  // Download PDF and process in background
+  const context: ProcessingContext = {
+    sourceId: source.id,
+    notebookId,
+  };
+
+  (async () => {
+    try {
+      const response = await fetch(publication.pdfUrl!);
+      if (!response.ok) throw new Error(`Failed to download PDF: ${response.status}`);
+      const blob = await response.blob();
+      const file = new File([blob], `${publication.title}.pdf`, {
+        type: "application/pdf",
+      });
+      await processPdfDocument(file, context);
+    } catch (err) {
+      console.error("[addPublicationSource] Failed:", err);
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          status: "FAILED",
+          errorMessage: err instanceof Error ? err.message : "Processing failed",
+        },
+      });
+    } finally {
+      try {
+        revalidatePath(`/deepdive/${notebookId}`);
+      } catch {
+        // Ignore revalidation errors in background context
+      }
+    }
+  })();
+
+  return source;
+}
+
+export async function addWechatSource(
+  notebookId: string,
+  articleId: number,
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const notebook = await prisma.notebook.findFirst({
+    where: { id: notebookId, userId: session.user.id },
+  });
+  if (!notebook) {
+    throw new Error("Notebook not found");
+  }
+
+  // Fetch article from WeChat DB
+  const { getWechatArticleById, getWechatArticleImages } = await import(
+    "@/lib/services/wechat-client"
+  );
+
+  const article = await getWechatArticleById(articleId);
+  if (!article) {
+    throw new Error("WeChat article not found");
+  }
+
+  // Create source with PROCESSING status
+  const source = await prisma.source.create({
+    data: {
+      notebookId,
+      title: article.title,
+      sourceType: "WEBPAGE",
+      url: article.original_url,
+      status: "PROCESSING",
+    },
+  });
+
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  // Process in background: convert HTML to markdown, store images
+  const context: ProcessingContext = {
+    sourceId: source.id,
+    notebookId,
+  };
+
+  (async () => {
+    try {
+      // Simple HTML to text conversion (content_text is already available)
+      const markdownContent = article.content_text || article.content_html;
+
+      // Fetch and store images
+      const images = await getWechatArticleImages(articleId);
+      for (const img of images) {
+        if (img.data) {
+          await prisma.sourceImage.create({
+            data: {
+              sourceId: source.id,
+              originalName: img.original_url.split("/").pop() || "image",
+              mimeType: img.mime_type || "image/jpeg",
+              width: 0,
+              height: 0,
+              data: Buffer.from(img.data) as unknown as Uint8Array<ArrayBuffer>,
+            },
+          });
+        }
+      }
+
+      // Update source with content
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          content: markdownContent,
+          markdownContent: markdownContent,
+          status: "READY",
+          metadata: {
+            author: article.author,
+            publishDate: article.publish_time?.toISOString(),
+            sourceName: article.source_name,
+          },
+        },
+      });
+
+      // Trigger wiki ingest
+      try {
+        const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
+        await ingestSourceToWiki(notebookId, source.id);
+      } catch (wikiErr) {
+        console.error("[addWechatSource] Wiki ingest failed:", wikiErr);
+      }
+    } catch (err) {
+      console.error("[addWechatSource] Failed:", err);
+      await prisma.source.update({
+        where: { id: source.id },
+        data: {
+          status: "FAILED",
+          errorMessage: err instanceof Error ? err.message : "Processing failed",
+        },
+      });
+    } finally {
+      try {
+        revalidatePath(`/deepdive/${notebookId}`);
+      } catch {
+        // Ignore revalidation errors in background context
+      }
+    }
+  })();
+
+  return source;
+}
+
 export async function deleteSource(sourceId: string) {
   const session = await auth();
   if (!session?.user?.id) {

@@ -14,33 +14,18 @@ import {
   FileText,
   Plus,
   Loader2,
-  Upload,
-  Link,
   ArrowLeft,
   X,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-import {
-  addWebpageSource,
-  uploadDocumentSource,
-  deleteSource,
-} from "@/lib/actions/sources";
+import { deleteSource } from "@/lib/actions/sources";
+import { AddSourceDialog } from "@/components/deepdive/sources/add-source-dialog";
+import { IngestReport } from "./ingest-report";
 import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
 import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
 import type { TocHeading } from "@/lib/utils/toc-extractor";
-import { WikiPanel } from "@/components/deepdive/wiki/wiki-panel";
-
 // Extended Source type with the new content field (until Prisma client is regenerated)
 type Source = PrismaSource & {
   content?: string | null;
@@ -51,22 +36,11 @@ interface SourceMetadata {
   [key: string]: unknown;
 }
 
-interface WikiPageSummary {
-  id: string;
-  slug: string;
-  title: string;
-  pageType: string;
-  sourceRefs: string[];
-  updatedAt: string;
-}
-
 interface SourcesPanelProps {
   notebookId: string;
   sources: Source[];
   selectedSource: Source | null;
   onSelectSource: (source: Source | null) => void;
-  wikiPages?: WikiPageSummary[];
-  graphData?: any;
 }
 
 export function SourcesPanel({
@@ -74,10 +48,7 @@ export function SourcesPanel({
   sources,
   selectedSource,
   onSelectSource,
-  wikiPages = [],
-  graphData,
 }: SourcesPanelProps) {
-  const [activeTab, setActiveTab] = useState<"sources" | "wiki">("sources");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: liveSources = sources } = useQuery<Source[]>({
     queryKey: ["notebook-sources", notebookId],
@@ -116,83 +87,74 @@ export function SourcesPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Tab Bar */}
+      {/* Header */}
       <div className="px-6 pt-3 pb-1 flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <button
-            className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
-              activeTab === "sources"
-                ? "text-foreground bg-accent/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setActiveTab("sources")}
-          >
-            Sources
-          </button>
-          <button
-            className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
-              activeTab === "wiki"
-                ? "text-foreground bg-accent/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setActiveTab("wiki")}
-          >
-            Wiki
-          </button>
-        </div>
-        {activeTab === "sources" && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
-            onClick={() => setIsDialogOpen(true)}
-            title="Add Source"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+        <span className="px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">
+          Sources
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
+          onClick={() => setIsDialogOpen(true)}
+          title="Add Source"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Sources List */}
+      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+        {liveSources.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <FileText className="h-8 w-8 text-muted-foreground/50" />
+            <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
+            <p className="text-xs text-muted-foreground">
+              Add documents or webpages
+            </p>
+          </div>
+        ) : (
+          <>
+            {liveSources
+              .filter((s) => {
+                const meta = s.metadata as Record<string, unknown> | null;
+                return meta?.extractionReport && meta?.wikiStatus === "done";
+              })
+              .slice(0, 1)
+              .map((s) => {
+                const meta = s.metadata as Record<string, unknown>;
+                return (
+                  <IngestReport
+                    key={`report-${s.id}`}
+                    sourceTitle={s.title}
+                    report={meta.extractionReport as any}
+                    onDismiss={() => {
+                      fetch(`/api/notebooks/${s.notebookId}/sources/${s.id}/dismiss-report`, {
+                        method: "POST",
+                      }).catch(() => {});
+                    }}
+                  />
+                );
+              })}
+            <div className="space-y-2">
+              {liveSources.map((source) => (
+                <SourceItem
+                  key={source.id}
+                  source={source}
+                  onSelect={() => onSelectSource(source)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      {activeTab === "sources" ? (
-        <>
-          {/* Sources List */}
-          <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
-            {liveSources.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <FileText className="h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
-                <p className="text-xs text-muted-foreground">
-                  Add documents or webpages
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {liveSources.map((source) => (
-                  <SourceItem
-                    key={source.id}
-                    source={source}
-                    onSelect={() => onSelectSource(source)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Add Source Dialog */}
-          <AddSourceDialog
-            notebookId={notebookId}
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-          />
-        </>
-      ) : (
-        <WikiPanel
-          notebookId={notebookId}
-          initialPages={wikiPages}
-          sources={liveSources.map((s) => ({ id: s.id, title: s.title }))}
-          graphData={graphData}
-        />
-      )}
+      {/* Add Source Dialog */}
+      <AddSourceDialog
+        notebookId={notebookId}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+      />
     </div>
   );
 }
@@ -494,463 +456,3 @@ function SourceContentView({
   );
 }
 
-interface AddSourceDialogProps {
-  notebookId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-function AddSourceDialog({
-  notebookId,
-  open,
-  onOpenChange,
-}: AddSourceDialogProps) {
-  const [isPending, startTransition] = useTransition();
-  const [url, setUrl] = useState("");
-  const [documentUrl, setDocumentUrl] = useState("");
-  const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const queryClient = useQueryClient();
-
-  const handleWebpageSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!url.trim()) return;
-
-    const tempId = `optimistic-${Date.now()}`;
-    const optimistic: Source = {
-      id: tempId,
-      notebookId,
-      title: url.trim(),
-      sourceType: "WEBPAGE",
-      url: url.trim(),
-      status: "PROCESSING",
-      content: null,
-      markdownContent: null,
-      fileKey: null,
-      errorMessage: null,
-      metadata: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    startTransition(async () => {
-      queryClient.setQueryData<Source[] | undefined>(
-        ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])],
-      );
-      onOpenChange(false);
-
-      try {
-        const created = await addWebpageSource(notebookId, url.trim());
-        queryClient.setQueryData<Source[] | undefined>(
-          ["notebook-sources", notebookId],
-          (current) =>
-            (current || []).map((item) =>
-              item.id === tempId
-                ? {
-                  ...created,
-                  createdAt: new Date(created.createdAt),
-                  updatedAt: new Date(created.updatedAt),
-                }
-                : item,
-            ),
-        );
-      } finally {
-        await queryClient.invalidateQueries({
-          queryKey: ["notebook-sources", notebookId],
-        });
-        setUrl("");
-      }
-    });
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUpload = () => {
-    if (!selectedFile) return;
-
-    startTransition(async () => {
-      const tempId = `optimistic-${Date.now()}`;
-      const optimistic: Source = {
-        id: tempId,
-        notebookId,
-        title: selectedFile.name,
-        sourceType: "DOCUMENT",
-        url: null,
-        status: "PROCESSING",
-        content: null,
-        markdownContent: null,
-          fileKey: null,
-        errorMessage: null,
-        metadata: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      queryClient.setQueryData<Source[] | undefined>(
-        ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])],
-      );
-      onOpenChange(false);
-
-      try {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        const created = await uploadDocumentSource(notebookId, formData);
-        queryClient.setQueryData<Source[] | undefined>(
-          ["notebook-sources", notebookId],
-          (current) =>
-            (current || []).map((item) =>
-              item.id === tempId
-                ? {
-                  ...created,
-                  createdAt: new Date(created.createdAt),
-                  updatedAt: new Date(created.updatedAt),
-                }
-                : item,
-            ),
-        );
-      } finally {
-        await queryClient.invalidateQueries({
-          queryKey: ["notebook-sources", notebookId],
-        });
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-      }
-    });
-  };
-
-  const handleUrlUpload = async () => {
-    if (!documentUrl.trim()) return;
-
-    const tempId = `optimistic-${Date.now()}`;
-    // Extract filename from URL for display
-    let displayName = "Document";
-    try {
-      const urlPath = new URL(documentUrl).pathname;
-      const lastSegment = urlPath.split("/").pop();
-      if (lastSegment) {
-        displayName = decodeURIComponent(lastSegment);
-      }
-    } catch {
-      displayName = documentUrl.slice(0, 50);
-    }
-
-    const optimistic: Source = {
-      id: tempId,
-      notebookId,
-      title: displayName,
-      sourceType: "DOCUMENT",
-      url: documentUrl.trim(),
-      status: "PROCESSING",
-      content: null,
-      markdownContent: null,
-      fileKey: null,
-      errorMessage: null,
-      metadata: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    startTransition(async () => {
-      queryClient.setQueryData<Source[] | undefined>(
-        ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])],
-      );
-      onOpenChange(false);
-
-      try {
-        const apiUrl = `/api/download?url=${encodeURIComponent(documentUrl)}`;
-
-        const response = await fetch(apiUrl);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        const contentType =
-          response.headers.get("content-type") ||
-          blob.type ||
-          "application/octet-stream";
-        const headerFilename =
-          response.headers.get("x-filename") || displayName;
-        let filename = headerFilename;
-
-        if (!/\.[a-z0-9]+$/i.test(filename)) {
-          if (contentType.includes("pdf")) {
-            filename = `${filename}.pdf`;
-          } else if (
-            contentType.includes("word") ||
-            contentType.includes("docx")
-          ) {
-            filename = `${filename}.docx`;
-          } else if (contentType.includes("text/markdown")) {
-            filename = `${filename}.md`;
-          } else if (contentType.includes("text/plain")) {
-            filename = `${filename}.txt`;
-          }
-        }
-
-        const file = new File([blob], filename, { type: contentType });
-
-        // Upload using existing document upload action
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const created = await uploadDocumentSource(notebookId, formData);
-
-        queryClient.setQueryData<Source[] | undefined>(
-          ["notebook-sources", notebookId],
-          (current) =>
-            (current || []).map((item) =>
-              item.id === tempId
-                ? {
-                  ...created,
-                  createdAt: new Date(created.createdAt),
-                  updatedAt: new Date(created.updatedAt),
-                }
-                : item,
-            ),
-        );
-      } catch (error) {
-        console.error("[SourcesPanel] URL upload failed:", error);
-        // Update optimistic item to show error
-        queryClient.setQueryData<Source[] | undefined>(
-          ["notebook-sources", notebookId],
-          (current) =>
-            (current || []).map((item) =>
-              item.id === tempId
-                ? {
-                  ...item,
-                  status: "FAILED",
-                  errorMessage:
-                    error instanceof Error
-                      ? error.message
-                      : "Download failed",
-                }
-                : item,
-            ),
-        );
-      } finally {
-        await queryClient.invalidateQueries({
-          queryKey: ["notebook-sources", notebookId],
-        });
-        setDocumentUrl("");
-      }
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add Source</DialogTitle>
-        </DialogHeader>
-
-        <Tabs defaultValue="webpage" className="mt-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="webpage" className="gap-2">
-              <Link className="h-4 w-4" />
-              Webpage
-            </TabsTrigger>
-            <TabsTrigger value="document" className="gap-2">
-              <Upload className="h-4 w-4" />
-              Document
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="webpage" className="mt-4">
-            <form onSubmit={handleWebpageSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="url" className="mb-2 block text-sm font-medium">
-                  URL
-                </label>
-                <Input
-                  id="url"
-                  type="url"
-                  placeholder="https://example.com/article"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  disabled={isPending}
-                />
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-accent-red hover:bg-accent-red-hover"
-                  disabled={isPending || !url.trim()}
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    "Add Webpage"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="document" className="mt-4">
-            <div className="space-y-4">
-              {/* Upload Mode Toggle */}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={uploadMode === "file" ? "default" : "outline"}
-                  size="sm"
-                  className={
-                    uploadMode === "file"
-                      ? "bg-accent-red hover:bg-accent-red-hover"
-                      : ""
-                  }
-                  onClick={() => setUploadMode("file")}
-                >
-                  <Upload className="mr-2 h-3.5 w-3.5" />
-                  File Upload
-                </Button>
-                <Button
-                  type="button"
-                  variant={uploadMode === "url" ? "default" : "outline"}
-                  size="sm"
-                  className={
-                    uploadMode === "url"
-                      ? "bg-accent-red hover:bg-accent-red-hover"
-                      : ""
-                  }
-                  onClick={() => setUploadMode("url")}
-                >
-                  <Link className="mr-2 h-3.5 w-3.5" />
-                  URL Upload
-                </Button>
-              </div>
-
-              {uploadMode === "file" ? (
-                <>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">
-                      File
-                    </label>
-                    <div
-                      className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-accent-red/50"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {selectedFile
-                          ? selectedFile.name
-                          : "Click to select a file"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        PDF, DOCX, TXT, MD
-                      </p>
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.docx,.txt,.md"
-                      onChange={handleFileSelect}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onOpenChange(false)}
-                      disabled={isPending}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      className="bg-accent-red hover:bg-accent-red-hover"
-                      disabled={isPending || !selectedFile}
-                      onClick={handleUpload}
-                    >
-                      {isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        "Upload"
-                      )}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label
-                      htmlFor="documentUrl"
-                      className="mb-2 block text-sm font-medium"
-                    >
-                      Document URL
-                    </label>
-                    <Input
-                      id="documentUrl"
-                      type="url"
-                      placeholder="https://example.com/document.pdf"
-                      value={documentUrl}
-                      onChange={(e) => setDocumentUrl(e.target.value)}
-                      disabled={isPending}
-                    />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Supported formats: PDF, DOCX, TXT, MD
-                    </p>
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onOpenChange(false)}
-                      disabled={isPending}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      className="bg-accent-red hover:bg-accent-red-hover"
-                      disabled={isPending || !documentUrl.trim()}
-                      onClick={handleUrlUpload}
-                    >
-                      {isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Downloading...
-                        </>
-                      ) : (
-                        "Download & Process"
-                      )}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
-  );
-}

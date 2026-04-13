@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
+import { WikiPanel } from "@/components/deepdive/wiki/wiki-panel";
 import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
@@ -53,8 +54,8 @@ const EMPTY_WIKI_PAGES: WikiPageSummary[] = [];
 // Panel width constants
 const SOURCES_DEFAULT_WIDTH = 280;
 const SOURCES_CONTENT_WIDTH = 480;
-const STUDIO_DEFAULT_WIDTH = 320;
-const STUDIO_CONTENT_WIDTH = 480;
+const RIGHT_DEFAULT_WIDTH = 360;
+const RIGHT_CONTENT_WIDTH = 480;
 const MIN_PANEL_WIDTH = 150;
 const MAX_PANEL_WIDTH = 800;
 const COLLAPSE_THRESHOLD = 100;
@@ -77,13 +78,13 @@ function NotebookLayoutInner({
   graphData,
 }: NotebookLayoutProps) {
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
-  const [studioWidth, setStudioWidth] = useState(STUDIO_DEFAULT_WIDTH);
+  const [rightWidth, setRightWidth] = useState(RIGHT_DEFAULT_WIDTH);
+  const [rightTab, setRightTab] = useState<"wiki" | "notes">("wiki");
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  // Citation navigation state (placeholder for future wiki-based navigation)
 
   // Citation navigation setup
-  const { setOnNavigate } = useCitation();
+  const { setOnNavigate, setOnNavigateSource } = useCitation();
 
   // Clamp width to valid range or collapse
   const clampWidth = useCallback((width: number): number => {
@@ -100,12 +101,12 @@ function NotebookLayoutInner({
     setSourcesWidth(SOURCES_DEFAULT_WIDTH);
   }, []);
 
-  const handleStudioDrag = useCallback((delta: number) => {
-    setStudioWidth((prev) => clampWidth(prev - delta));
+  const handleRightDrag = useCallback((delta: number) => {
+    setRightWidth((prev) => clampWidth(prev - delta));
   }, [clampWidth]);
 
-  const handleStudioDoubleClick = useCallback(() => {
-    setStudioWidth(STUDIO_DEFAULT_WIDTH);
+  const handleRightDoubleClick = useCallback(() => {
+    setRightWidth(RIGHT_DEFAULT_WIDTH);
   }, []);
 
   // Expand handlers for collapsed panels
@@ -113,8 +114,8 @@ function NotebookLayoutInner({
     setSourcesWidth(Math.max(SOURCES_DEFAULT_WIDTH, width));
   }, []);
 
-  const handleStudioExpand = useCallback((width: number) => {
-    setStudioWidth(Math.max(STUDIO_DEFAULT_WIDTH, width));
+  const handleRightExpand = useCallback((width: number) => {
+    setRightWidth(Math.max(RIGHT_DEFAULT_WIDTH, width));
   }, []);
 
   // Wrap setSelectedSource with width-snapping logic
@@ -131,9 +132,9 @@ function NotebookLayoutInner({
   const handleSelectNote = useCallback((note: Note | null) => {
     setSelectedNote(note);
     if (note) {
-      setStudioWidth(STUDIO_CONTENT_WIDTH);
+      setRightWidth(RIGHT_CONTENT_WIDTH);
     } else {
-      setStudioWidth(STUDIO_DEFAULT_WIDTH);
+      setRightWidth(RIGHT_DEFAULT_WIDTH);
     }
   }, []);
 
@@ -146,15 +147,27 @@ function NotebookLayoutInner({
     }
   }, [sourcesWidth]);
 
-  // Register navigation handler with citation context
+  // Navigate to source — uses same width-snapping as user click
+  const handleSourceNavigate = useCallback((sourceId: string) => {
+    const source = sources.find((s) => s.id === sourceId);
+    if (source) {
+      handleSelectSource(source);
+    }
+  }, [sources, handleSelectSource]);
+
+  // Register navigation handlers with citation context
   useEffect(() => {
     setOnNavigate(handleCitationNavigate);
-    return () => setOnNavigate(null);
-  }, [setOnNavigate, handleCitationNavigate]);
+    setOnNavigateSource(handleSourceNavigate);
+    return () => {
+      setOnNavigate(null);
+      setOnNavigateSource(null);
+    };
+  }, [setOnNavigate, setOnNavigateSource, handleCitationNavigate, handleSourceNavigate]);
 
   // Determine if panels are collapsed
   const sourcesCollapsed = sourcesWidth === 0;
-  const studioCollapsed = studioWidth === 0;
+  const rightCollapsed = rightWidth === 0;
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -175,8 +188,6 @@ function NotebookLayoutInner({
               sources={sources}
               selectedSource={selectedSource}
               onSelectSource={handleSelectSource}
-              wikiPages={wikiPages}
-              graphData={graphData}
             />
           </motion.div>
           <ResizableDivider
@@ -208,29 +219,65 @@ function NotebookLayoutInner({
         />
       </motion.div>
 
-      {/* Studio Panel (Right) - Collapsible */}
-      {studioCollapsed ? (
-        <CollapsedGripStrip side="right" onExpand={handleStudioExpand} />
+      {/* Right Panel (Wiki + Notes tabs) - Collapsible */}
+      {rightCollapsed ? (
+        <CollapsedGripStrip side="right" onExpand={handleRightExpand} />
       ) : (
         <>
           <ResizableDivider
             direction="vertical"
-            onDrag={handleStudioDrag}
-            onDoubleClick={handleStudioDoubleClick}
+            onDrag={handleRightDrag}
+            onDoubleClick={handleRightDoubleClick}
           />
           <motion.div
-            className="h-full overflow-hidden"
-            style={{ width: studioWidth }}
+            className="flex h-full flex-col overflow-hidden"
+            style={{ width: rightWidth }}
             initial={false}
-            animate={{ width: studioWidth }}
+            animate={{ width: rightWidth }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           >
-            <StudioPanel
-              notebookId={notebook.id}
-              notes={notes}
-              selectedNote={selectedNote}
-              onSelectNote={handleSelectNote}
-            />
+            {/* Tab Bar */}
+            <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-1">
+              <button
+                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                  rightTab === "wiki"
+                    ? "text-foreground bg-accent/20"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setRightTab("wiki")}
+              >
+                Wiki
+              </button>
+              <button
+                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                  rightTab === "notes"
+                    ? "text-foreground bg-accent/20"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setRightTab("notes")}
+              >
+                Notes
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            <div className="flex-1 overflow-hidden">
+              {rightTab === "wiki" ? (
+                <WikiPanel
+                  notebookId={notebook.id}
+                  initialPages={wikiPages}
+                  sources={sources.map((s) => ({ id: s.id, title: s.title }))}
+                  graphData={graphData}
+                />
+              ) : (
+                <StudioPanel
+                  notebookId={notebook.id}
+                  notes={notes}
+                  selectedNote={selectedNote}
+                  onSelectNote={handleSelectNote}
+                />
+              )}
+            </div>
           </motion.div>
         </>
       )}

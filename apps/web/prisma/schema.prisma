@@ -116,6 +116,7 @@ enum WikiPageType {
   COMPARISON
   INDEX
   LOG
+  ARTICLE
 }
 
 model Source {
