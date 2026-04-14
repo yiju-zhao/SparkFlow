@@ -239,7 +239,7 @@
     "publications": {
       "title": "Publications",
       "subtitle": "Search and discover research publications",
-      "breadcrumb": "~/research-hub/publications",
+      "breadcrumb": "~/research-hub/conferences/publications",
       "found": "{count} publications found"
     },
     "sessions": {
@@ -315,6 +315,23 @@
           "errorSelectTarget": "Please select what to match against",
           "errorNoQueries": "No queries to match"
         }
+      }
+    },
+    "socialMedia": {
+      "title": "Social Media",
+      "wechat": {
+        "title": "WeChat Articles",
+        "subtitle": "Browse articles from WeChat public accounts",
+        "breadcrumb": "~/research-hub/social-media/wechat",
+        "found": "{count} articles found",
+        "source": "Source",
+        "dateRange": "Date Range",
+        "searchPlaceholder": "Search title or author...",
+        "openOriginal": "Original URL",
+        "addToNotebook": "Add to Notebook",
+        "allSources": "All Sources",
+        "noArticles": "No articles found",
+        "noArticlesDesc": "Try adjusting your filters or check back later"
       }
     }
   },

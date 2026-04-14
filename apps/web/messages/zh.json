@@ -239,7 +239,7 @@
     "publications": {
       "title": "论文",
       "subtitle": "搜索和发现研究论文",
-      "breadcrumb": "~/研究中心/论文",
+      "breadcrumb": "~/研究中心/会议/论文",
       "found": "找到 {count} 篇论文"
     },
     "sessions": {
@@ -315,6 +315,23 @@
           "errorSelectTarget": "请选择匹配目标",
           "errorNoQueries": "没有要匹配的查询"
         }
+      }
+    },
+    "socialMedia": {
+      "title": "社交媒体",
+      "wechat": {
+        "title": "微信文章",
+        "subtitle": "浏览微信公众号文章",
+        "breadcrumb": "~/研究中心/社交媒体/微信文章",
+        "found": "找到 {count} 篇文章",
+        "source": "公众号",
+        "dateRange": "日期范围",
+        "searchPlaceholder": "搜索标题或作者...",
+        "openOriginal": "查看原文",
+        "addToNotebook": "添加到笔记本",
+        "allSources": "全部公众号",
+        "noArticles": "未找到文章",
+        "noArticlesDesc": "请尝试调整筛选条件或稍后再试"
       }
     }
   },
