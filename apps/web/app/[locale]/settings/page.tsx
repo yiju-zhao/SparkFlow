@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { BackButton } from "./back-button";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -16,17 +17,20 @@ export default async function SettingsPage() {
     select: {
       modelProvider: true,
       modelName: true,
+      wikiModelProvider: true,
+      wikiModelName: true,
       matcherModelProvider: true,
       matcherModelName: true,
     },
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="bg-background">
+      <div className="mx-auto max-w-2xl px-6 py-12 pb-24">
         <div className="space-y-8">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+            <BackButton />
+            <h1 className="text-2xl font-semibold tracking-tight mt-3">Settings</h1>
             <p className="text-muted-foreground mt-1">
               Configure your AI model preferences
             </p>
@@ -43,6 +47,8 @@ export default async function SettingsPage() {
                   ? {
                       modelProvider: settings.modelProvider,
                       modelName: settings.modelName,
+                      wikiModelProvider: settings.wikiModelProvider,
+                      wikiModelName: settings.wikiModelName,
                       matcherModelProvider: settings.matcherModelProvider,
                       matcherModelName: settings.matcherModelName,
                     }

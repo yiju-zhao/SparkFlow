@@ -3,26 +3,10 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { maskApiKey } from "@/lib/services/api-key-resolver";
+import modelsConfig from "@/config/models.json";
 import type { StoredApiKeys, ApiKeyStatus } from "@/lib/types/providers";
 
-function getAvailableModels() {
-  const openaiModels = (process.env.OPENAI_MODELS || "gpt-4o-mini,gpt-4.1,gpt-5.2")
-    .split(",")
-    .map((m) => m.trim());
-
-  const googleModels = (process.env.GOOGLE_MODELS || "gemini-2.5-flash,gemini-2.5-pro,gemini-1.5-flash")
-    .split(",")
-    .map((m) => m.trim());
-
-  return { openai: openaiModels, google: googleModels };
-}
-
-function getDefaults() {
-  return {
-    provider: process.env.DEFAULT_MODEL_PROVIDER || "openai",
-    model: process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini",
-  };
-}
+const { defaults } = modelsConfig;
 
 // GET /api/settings
 export async function GET() {
@@ -36,6 +20,8 @@ export async function GET() {
     select: {
       modelProvider: true,
       modelName: true,
+      wikiModelProvider: true,
+      wikiModelName: true,
       matcherModelProvider: true,
       matcherModelName: true,
       apiKeys: true,
@@ -59,12 +45,13 @@ export async function GET() {
     }
   }
 
-  const defaults = getDefaults();
   return NextResponse.json({
     modelProvider: settings?.modelProvider || defaults.provider,
-    modelName: settings?.modelName || defaults.model,
+    modelName: settings?.modelName || defaults.chatModel,
+    wikiModelProvider: settings?.wikiModelProvider || defaults.provider,
+    wikiModelName: settings?.wikiModelName || defaults.wikiModel,
     matcherModelProvider: settings?.matcherModelProvider || defaults.provider,
-    matcherModelName: settings?.matcherModelName || defaults.model,
+    matcherModelName: settings?.matcherModelName || defaults.matcherModel,
     apiKeyStatus,
   });
 }
@@ -80,37 +67,19 @@ export async function POST(request: Request) {
   const {
     modelProvider,
     modelName,
+    wikiModelProvider,
+    wikiModelName,
     matcherModelProvider,
     matcherModelName,
     apiKeys: apiKeysUpdate,
   } = body;
 
-  const availableModels = getAvailableModels();
-
-  if (modelProvider && modelName) {
-    const validModels = availableModels[modelProvider as keyof typeof availableModels];
-    if (validModels && !validModels.includes(modelName)) {
-      return NextResponse.json(
-        { error: `Invalid model name. Available: ${validModels.join(", ")}` },
-        { status: 400 }
-      );
-    }
-  }
-
-  if (matcherModelProvider && matcherModelName) {
-    const validModels = availableModels[matcherModelProvider as keyof typeof availableModels];
-    if (validModels && !validModels.includes(matcherModelName)) {
-      return NextResponse.json(
-        { error: `Invalid matcher model name. Available: ${validModels.join(", ")}` },
-        { status: 400 }
-      );
-    }
-  }
-
-  // Build update data
+  // Build update data — accept any provider/model (validated client-side against config)
   const updateData: Record<string, string | null> = {};
   if (modelProvider) updateData.modelProvider = modelProvider;
   if (modelName) updateData.modelName = modelName;
+  if (wikiModelProvider) updateData.wikiModelProvider = wikiModelProvider;
+  if (wikiModelName) updateData.wikiModelName = wikiModelName;
   if (matcherModelProvider) updateData.matcherModelProvider = matcherModelProvider;
   if (matcherModelName) updateData.matcherModelName = matcherModelName;
 
@@ -156,10 +125,12 @@ export async function POST(request: Request) {
     update: updateData,
     create: {
       userId: session.user.id,
-      modelProvider: modelProvider || "openai",
-      modelName: modelName || "gpt-4o-mini",
-      matcherModelProvider: matcherModelProvider || "openai",
-      matcherModelName: matcherModelName || "gpt-4o-mini",
+      modelProvider: modelProvider || defaults.provider,
+      modelName: modelName || defaults.chatModel,
+      wikiModelProvider: wikiModelProvider || defaults.provider,
+      wikiModelName: wikiModelName || defaults.wikiModel,
+      matcherModelProvider: matcherModelProvider || defaults.provider,
+      matcherModelName: matcherModelName || defaults.matcherModel,
       ...(updateData.apiKeys ? { apiKeys: updateData.apiKeys as string } : {}),
     },
   });
@@ -167,6 +138,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     modelProvider: settings.modelProvider,
     modelName: settings.modelName,
+    wikiModelProvider: settings.wikiModelProvider,
+    wikiModelName: settings.wikiModelName,
     matcherModelProvider: settings.matcherModelProvider,
     matcherModelName: settings.matcherModelName,
   });

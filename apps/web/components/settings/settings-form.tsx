@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,10 +9,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Check, Eye, EyeOff, Trash2, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Loader2, Check, Eye, EyeOff, Trash2, Key } from "lucide-react";
 
-const PROVIDERS_LIST = [
+interface ModelsConfig {
+  providers: Record<string, { label: string; models: string[] }>;
+  defaults: {
+    provider: string;
+    chatModel: string;
+    wikiModel: string;
+    matcherModel: string;
+  };
+}
+
+interface UserSettings {
+  modelProvider: string;
+  modelName: string;
+  wikiModelProvider: string;
+  wikiModelName: string;
+  matcherModelProvider: string;
+  matcherModelName: string;
+  apiKeyStatus?: Record<string, { hasKey: boolean; maskedKey: string }>;
+}
+
+const API_KEY_PROVIDERS = [
   { id: "openai", label: "OpenAI" },
   { id: "gemini", label: "Gemini" },
   { id: "deepseek", label: "DeepSeek" },
@@ -22,96 +42,94 @@ const PROVIDERS_LIST = [
   { id: "custom", label: "Custom" },
 ];
 
-interface UserSettings {
-  modelProvider: string;
-  modelName: string;
-  matcherModelProvider: string;
-  matcherModelName: string;
-}
-
-interface AvailableModels {
-  openai: string[];
-  google: string[];
-  defaults: {
-    provider: string;
-    model: string;
-  };
-}
-
 interface SettingsFormProps {
   initialSettings?: UserSettings;
 }
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
+  const [config, setConfig] = useState<ModelsConfig | null>(null);
+
+  // Deepdive settings
   const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider || "openai");
   const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
+  const [wikiProvider, setWikiProvider] = useState(initialSettings?.wikiModelProvider || "openai");
+  const [wikiModel, setWikiModel] = useState(initialSettings?.wikiModelName || "gpt-4o-mini");
+
+  // Research Hub settings
   const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "openai");
   const [matcherModel, setMatcherModel] = useState(initialSettings?.matcherModelName || "gpt-4o-mini");
-  const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+
+  // API Keys
+  const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, { hasKey: boolean; maskedKey: string }>>({});
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
   const [showKey, setShowKey] = useState(false);
-  const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, { hasKey: boolean; maskedKey: string }>>({});
   const [keySaving, setKeySaving] = useState(false);
 
-  // Fetch available models from environment configuration
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const res = await fetch("/api/models");
-        if (res.ok) {
-          const data = await res.json();
-          setAvailableModels(data);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
-          // If no initial settings, use defaults from env
+  // Fetch config + key status
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const [modelsRes, settingsRes] = await Promise.all([
+          fetch("/api/models"),
+          fetch("/api/settings"),
+        ]);
+        if (modelsRes.ok) {
+          const data: ModelsConfig = await modelsRes.json();
+          setConfig(data);
           if (!initialSettings) {
             setChatProvider(data.defaults.provider);
-            setChatModel(data.defaults.model);
+            setChatModel(data.defaults.chatModel);
+            setWikiProvider(data.defaults.provider);
+            setWikiModel(data.defaults.wikiModel);
             setMatcherProvider(data.defaults.provider);
-            setMatcherModel(data.defaults.model);
+            setMatcherModel(data.defaults.matcherModel);
+          }
+        }
+        if (settingsRes.ok) {
+          const data = await settingsRes.json();
+          setApiKeyStatus(data.apiKeyStatus || {});
+          if (data.wikiModelProvider) {
+            setWikiProvider(data.wikiModelProvider);
+            setWikiModel(data.wikiModelName);
           }
         }
       } catch (error) {
-        console.error("Failed to fetch available models:", error);
+        console.error("Failed to fetch settings:", error);
       }
     };
-    fetchModels();
+    init();
   }, [initialSettings]);
+
+  // Provider options from config
+  const providerOptions = useMemo(() => {
+    if (!config) return [];
+    return Object.entries(config.providers).map(([id, { label }]) => ({ id, label }));
+  }, [config]);
+
+  const getModels = (providerId: string): string[] => {
+    return config?.providers[providerId]?.models || [];
+  };
 
   // Reset model when provider changes
   useEffect(() => {
-    if (!availableModels) return;
-    const currentModels = chatProvider === "gemini" ? availableModels.google : availableModels.openai;
-    if (!currentModels.includes(chatModel)) {
-      setChatModel(currentModels[0]);
-    }
-  }, [chatProvider, chatModel, availableModels]);
+    const models = getModels(chatProvider);
+    if (models.length > 0 && !models.includes(chatModel)) setChatModel(models[0]);
+  }, [chatProvider, config]);
 
   useEffect(() => {
-    if (!availableModels) return;
-    const currentModels = matcherProvider === "gemini" ? availableModels.google : availableModels.openai;
-    if (!currentModels.includes(matcherModel)) {
-      setMatcherModel(currentModels[0]);
-    }
-  }, [matcherProvider, matcherModel, availableModels]);
+    const models = getModels(wikiProvider);
+    if (models.length > 0 && !models.includes(wikiModel)) setWikiModel(models[0]);
+  }, [wikiProvider, config]);
 
   useEffect(() => {
-    const fetchKeyStatus = async () => {
-      try {
-        const res = await fetch("/api/settings");
-        if (res.ok) {
-          const data = await res.json();
-          setApiKeyStatus(data.apiKeyStatus || {});
-        }
-      } catch (error) {
-        console.error("Failed to fetch key status:", error);
-      }
-    };
-    fetchKeyStatus();
-  }, []);
+    const models = getModels(matcherProvider);
+    if (models.length > 0 && !models.includes(matcherModel)) setMatcherModel(models[0]);
+  }, [matcherProvider, config]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -122,13 +140,13 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         body: JSON.stringify({
           modelProvider: chatProvider,
           modelName: chatModel,
+          wikiModelProvider: wikiProvider,
+          wikiModelName: wikiModel,
           matcherModelProvider: matcherProvider,
           matcherModelName: matcherModel,
         }),
       });
-
       if (!res.ok) throw new Error("Failed to save settings");
-
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (error) {
@@ -142,23 +160,19 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     if (!keyInput.trim()) return;
     setKeySaving(true);
     try {
-      const payload: Record<string, any> = {
-        apiKeys: {
-          [providerId]: {
-            apiKey: keyInput.trim(),
-            ...(providerId === "custom" && baseUrlInput.trim()
-              ? { baseUrl: baseUrlInput.trim() }
-              : {}),
-          },
-        },
-      };
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          apiKeys: {
+            [providerId]: {
+              apiKey: keyInput.trim(),
+              ...(providerId === "custom" && baseUrlInput.trim() ? { baseUrl: baseUrlInput.trim() } : {}),
+            },
+          },
+        }),
       });
       if (!res.ok) throw new Error("Failed to save key");
-
       const settingsRes = await fetch("/api/settings");
       if (settingsRes.ok) {
         const data = await settingsRes.json();
@@ -183,7 +197,6 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         body: JSON.stringify({ apiKeys: { [providerId]: null } }),
       });
       if (!res.ok) throw new Error("Failed to remove key");
-
       setApiKeyStatus((prev) => {
         const next = { ...prev };
         delete next[providerId];
@@ -196,114 +209,127 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     }
   };
 
-  const getModelOptions = (provider: string) => {
-    if (!availableModels) return [];
-    return provider === "gemini" ? availableModels.google : availableModels.openai;
-  };
+  // Reusable model selector
+  const ModelSelector = ({
+    label,
+    description,
+    provider,
+    model,
+    onProviderChange,
+    onModelChange,
+  }: {
+    label: string;
+    description: string;
+    provider: string;
+    model: string;
+    onProviderChange: (v: string) => void;
+    onModelChange: (v: string) => void;
+  }) => (
+    <div className="space-y-3">
+      <div>
+        <h4 className="text-sm font-medium">{label}</h4>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select value={provider} onValueChange={onProviderChange}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Provider" />
+          </SelectTrigger>
+          <SelectContent>
+            {providerOptions.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={model} onValueChange={onModelChange} disabled={!config}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={config ? "Model" : "Loading..."} />
+          </SelectTrigger>
+          <SelectContent>
+            {getModels(provider).map((m) => (
+              <SelectItem key={m} value={m}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-8">
-      {/* Chat/RAG Agent Model */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-medium">Chat Model</h3>
-          <p className="text-sm text-muted-foreground">
-            Model used for conversations in notebooks (Deepdive)
-          </p>
+      {/* ─── Deepdive Section ─── */}
+      <div className="space-y-5">
+        <div className="border-b pb-2">
+          <h3 className="text-base font-semibold">Deepdive</h3>
+          <p className="text-xs text-muted-foreground">Models for notebook chat and wiki generation</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Provider
-            </label>
-            <Select value={chatProvider} onValueChange={setChatProvider}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="gemini">Gemini</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <ModelSelector
+          label="Chat Model"
+          description="Used for conversations and RAG queries"
+          provider={chatProvider}
+          model={chatModel}
+          onProviderChange={setChatProvider}
+          onModelChange={setChatModel}
+        />
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Model
-            </label>
-            <Select value={chatModel} onValueChange={setChatModel} disabled={!availableModels}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={availableModels ? "Select model" : "Loading..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {getModelOptions(chatProvider).map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <ModelSelector
+          label="Wiki Model"
+          description="Used for knowledge graph extraction and wiki page generation"
+          provider={wikiProvider}
+          model={wikiModel}
+          onProviderChange={setWikiProvider}
+          onModelChange={setWikiModel}
+        />
       </div>
 
-      {/* Matcher Agent Model */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-medium">Matcher Model</h3>
-          <p className="text-sm text-muted-foreground">
-            Model used for matching queries to conference sessions/publications (Explore)
-          </p>
+      {/* ─── Research Hub Section ─── */}
+      <div className="space-y-5">
+        <div className="border-b pb-2">
+          <h3 className="text-base font-semibold">Research Hub</h3>
+          <p className="text-xs text-muted-foreground">Models for conference/publication matching</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Provider
-            </label>
-            <Select value={matcherProvider} onValueChange={setMatcherProvider}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="gemini">Gemini</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Model
-            </label>
-            <Select value={matcherModel} onValueChange={setMatcherModel} disabled={!availableModels}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={availableModels ? "Select model" : "Loading..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {getModelOptions(matcherProvider).map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <ModelSelector
+          label="Matcher Model"
+          description="Used for matching queries to sessions and publications"
+          provider={matcherProvider}
+          model={matcherModel}
+          onProviderChange={setMatcherProvider}
+          onModelChange={setMatcherModel}
+        />
       </div>
 
-      {/* API Keys Section */}
+      {/* Save Button */}
+      <div className="flex items-center gap-3 pt-2">
+        <Button onClick={handleSave} disabled={isLoading || !config}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : isSaved ? (
+            <>
+              <Check className="mr-2 h-4 w-4" />
+              Saved
+            </>
+          ) : (
+            "Save Settings"
+          )}
+        </Button>
+      </div>
+
+      {/* ─── API Keys Section ─── */}
       <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-medium">API Keys</h3>
-          <p className="text-sm text-muted-foreground">
+        <div className="border-b pb-2">
+          <h3 className="text-base font-semibold">API Keys</h3>
+          <p className="text-xs text-muted-foreground">
             Set your own API keys to use LLM features. Keys are encrypted at rest.
           </p>
         </div>
 
-        <div className="space-y-3">
-          {PROVIDERS_LIST.map((provider) => {
+        <div className="space-y-2">
+          {API_KEY_PROVIDERS.map((provider) => {
             const status = apiKeyStatus[provider.id];
             const isEditing = editingProvider === provider.id;
 
@@ -332,23 +358,10 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
                           {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleSaveKey(provider.id)}
-                        disabled={keySaving || !keyInput.trim()}
-                      >
+                      <Button size="sm" onClick={() => handleSaveKey(provider.id)} disabled={keySaving || !keyInput.trim()}>
                         {keySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingProvider(null);
-                          setKeyInput("");
-                          setBaseUrlInput("");
-                          setShowKey(false);
-                        }}
-                      >
+                      <Button size="sm" variant="ghost" onClick={() => { setEditingProvider(null); setKeyInput(""); setBaseUrlInput(""); setShowKey(false); }}>
                         Cancel
                       </Button>
                     </div>
@@ -366,37 +379,15 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
                     <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                       {status.maskedKey}
                     </code>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingProvider(provider.id);
-                        setKeyInput("");
-                        setShowKey(false);
-                      }}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => { setEditingProvider(provider.id); setKeyInput(""); setShowKey(false); }}>
                       Update
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleRemoveKey(provider.id)}
-                      disabled={keySaving}
-                    >
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemoveKey(provider.id)} disabled={keySaving}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditingProvider(provider.id);
-                      setKeyInput("");
-                      setShowKey(false);
-                    }}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => { setEditingProvider(provider.id); setKeyInput(""); setShowKey(false); }}>
                     <Key className="mr-1.5 h-3.5 w-3.5" />
                     Set Key
                   </Button>
@@ -405,33 +396,6 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
             );
           })}
         </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex items-center gap-3 pt-4 border-t">
-        <Button onClick={handleSave} disabled={isLoading || !availableModels}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : isSaved ? (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              Saved
-            </>
-          ) : (
-            "Save Settings"
-          )}
-        </Button>
-      </div>
-
-      {/* Note about API keys */}
-      <div className="rounded-md border border-border bg-muted/50 p-4">
-        <p className="text-sm text-muted-foreground">
-          <strong>Note:</strong> You must set an API key for your selected provider to use chat and wiki features.
-          Admin users can fall back to system-configured keys for testing.
-        </p>
       </div>
     </div>
   );

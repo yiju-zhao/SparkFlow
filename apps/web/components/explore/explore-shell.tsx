@@ -19,15 +19,45 @@ export interface ExploreShellProps {
   };
 }
 
-const useExploreNavLinks = () => {
+export interface NavLinkItem {
+  label: string;
+  href: string;
+}
+
+export interface NavLinkGroup {
+  label: string;
+  href: string;
+  children: NavLinkItem[];
+}
+
+export type NavLink = NavLinkItem | NavLinkGroup;
+
+export function isNavGroup(link: NavLink): link is NavLinkGroup {
+  return "children" in link;
+}
+
+const useExploreNavLinks = (): NavLink[] => {
   const t = useTranslations("explore");
   const locale = useLocale();
 
   return [
     { label: t("overview"), href: `/${locale}/explore` },
-    { label: t("conferences.title"), href: `/${locale}/explore/conferences` },
-    { label: t("publications.title"), href: `/${locale}/explore/publications` },
-    { label: t("sessions.title"), href: `/${locale}/explore/sessions` },
+    {
+      label: t("conferences.title"),
+      href: `/${locale}/explore/conferences`,
+      children: [
+        { label: t("overview"), href: `/${locale}/explore/conferences` },
+        { label: t("publications.title"), href: `/${locale}/explore/conferences/publications` },
+        { label: t("sessions.title"), href: `/${locale}/explore/conferences/sessions` },
+      ],
+    },
+    {
+      label: t("socialMedia.title"),
+      href: `/${locale}/explore/social-media/wechat`,
+      children: [
+        { label: t("socialMedia.wechat.title"), href: `/${locale}/explore/social-media/wechat` },
+      ],
+    },
     { label: t("toolbox.title"), href: `/${locale}/explore/toolbox` },
   ];
 };

@@ -1,0 +1,94 @@
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { getWechatArticle } from "@/lib/wechat/queries";
+import { WechatArticleContent } from "@/components/explore/social-media/wechat-article-content";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ExternalLink } from "lucide-react";
+
+interface PageProps {
+  params: Promise<{ locale: string; id: string }>;
+}
+
+export default async function WechatArticleDetailPage({ params }: PageProps) {
+  const { locale, id } = await params;
+  setRequestLocale(locale);
+
+  const articleId = parseInt(id, 10);
+  if (isNaN(articleId)) notFound();
+
+  const article = await getWechatArticle(articleId);
+  if (!article) notFound();
+
+  const t = await getTranslations("explore.socialMedia.wechat");
+
+  const publishDate = article.publish_time
+    ? new Date(article.publish_time).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
+  return (
+    <div className="flex flex-col gap-6 max-w-3xl">
+      {/* Breadcrumb */}
+      <p className="text-sm text-muted-foreground">
+        {t("breadcrumb")}/{article.source_name}
+      </p>
+
+      {/* Title */}
+      <h1 className="text-3xl font-bold tracking-tight leading-tight">
+        {article.title}
+      </h1>
+
+      {/* Meta row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Badge variant="secondary">{article.source_name}</Badge>
+        {article.author && (
+          <span className="text-sm text-muted-foreground">{article.author}</span>
+        )}
+        {publishDate && (
+          <>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-sm text-muted-foreground">{publishDate}</span>
+          </>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2">
+        {article.original_url && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={article.original_url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              {t("openOriginal")}
+            </a>
+          </Button>
+        )}
+      </div>
+
+      {/* Article content card */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        {/* Cover image */}
+        {article.cover_url && (
+          <img
+            src={article.cover_url}
+            alt=""
+            className="w-full max-h-80 object-cover"
+          />
+        )}
+
+        {/* Article body */}
+        <div className="p-6 md:p-10">
+          <WechatArticleContent
+            html={article.content_html}
+            fallbackText={article.content_text}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

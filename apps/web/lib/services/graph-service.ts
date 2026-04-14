@@ -4,6 +4,35 @@
  */
 
 import prisma from "@/lib/prisma";
+import modelsConfig from "@/config/models.json";
+
+// Resolve wiki model + API key for a user
+async function resolveWikiClient(userId?: string) {
+  const { default: OpenAI } = await import("openai");
+  let model = modelsConfig.defaults.wikiModel;
+  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
+
+  if (userId) {
+    // Fetch user's wiki model preference
+    const settings = await prisma.userSettings.findUnique({
+      where: { userId },
+      select: { wikiModelProvider: true, wikiModelName: true },
+    });
+    if (settings?.wikiModelName) model = settings.wikiModelName;
+    const provider = settings?.wikiModelProvider || modelsConfig.defaults.provider;
+
+    // Resolve API key
+    try {
+      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
+      const resolved = await resolveApiKey(userId, provider);
+      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
+    } catch {
+      // Fall through to default
+    }
+  }
+
+  return { client: new OpenAI(openaiConfig), model };
+}
 
 // ============================================================
 // Types
@@ -53,18 +82,7 @@ export async function extractGraph(
   existingNodeLabels: string[],
   userId?: string
 ): Promise<ExtractionResult> {
-  const { default: OpenAI } = await import("openai");
-  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
-  if (userId) {
-    try {
-      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
-      const resolved = await resolveApiKey(userId, "openai");
-      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
-    } catch {
-      // Fall through to default (will fail for non-admin if no env key)
-    }
-  }
-  const openai = new OpenAI(openaiConfig);
+  const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
   const truncated =
     sourceContent.length > 50000
@@ -77,7 +95,7 @@ export async function extractGraph(
       : "";
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: wikiModel,
     temperature: 0.2,
     messages: [
       {
@@ -254,18 +272,7 @@ export async function generateWikiPages(
   communities: CommunityMap,
   userId?: string
 ): Promise<string[]> {
-  const { default: OpenAI } = await import("openai");
-  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
-  if (userId) {
-    try {
-      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
-      const resolved = await resolveApiKey(userId, "openai");
-      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
-    } catch {
-      // Fall through
-    }
-  }
-  const openai = new OpenAI(openaiConfig);
+  const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
   const nodeMap = new Map(graphData.nodes.map((n) => [n.id, n]));
 
@@ -313,15 +320,16 @@ export async function generateWikiPages(
   const completions = await Promise.all(
     preparations.map((p) =>
       openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: wikiModel,
         temperature: 0.3,
         messages: [
           {
             role: "system",
             content: `Write a wiki page for a knowledge graph community. Output markdown.
-Use [[node-id]] for wiki links. Use [source:sourceId] for citations.
+Use [[node-id]] for wiki links to other entities.
 Include "Relationships" with confidence (✓ extracted, ~ inferred, ? ambiguous).
-Include "Connections to Other Topics" for bridge edges. Be concise.`,
+Include "Connections to Other Topics" for bridge edges. Be concise.
+Do NOT include a References section — source attribution is handled separately.`,
           },
           {
             role: "user",
@@ -381,18 +389,7 @@ export async function integrateWikiPage(
   sourceRefs: string[],
   userId?: string
 ): Promise<{ nodesAdded: number; edgesAdded: number }> {
-  const { default: OpenAI } = await import("openai");
-  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
-  if (userId) {
-    try {
-      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
-      const resolved = await resolveApiKey(userId, "openai");
-      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
-    } catch {
-      // Fall through
-    }
-  }
-  const openai = new OpenAI(openaiConfig);
+  const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
   const existingGraph = await prisma.notebookGraph.findUnique({
     where: { notebookId },
@@ -403,7 +400,7 @@ export async function integrateWikiPage(
     : { nodes: [], edges: [] };
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: wikiModel,
     temperature: 0.2,
     messages: [
       {

@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { type NavLink, type NavLinkGroup, isNavGroup } from "@/components/explore/explore-shell";
 
 const locales = {
   en: { name: "English", flag: "🇺🇸" },
@@ -28,7 +29,7 @@ interface LandingHeaderProps {
     image?: string | null;
     role?: string | null;
   } | null;
-  navLinks?: { label: string; href: string }[];
+  navLinks?: NavLink[];
   isScrolled?: boolean;
   onScrollContainer?: boolean;
   variant?: "landing" | "explore";
@@ -117,6 +118,44 @@ export function LandingHeader({
         {/* Desktop Nav */}
         <nav className={cn("hidden items-center justify-center gap-1 md:flex", islandClasses)}>
           {links.map((link) => {
+            if (isNavGroup(link)) {
+              const group = link as NavLinkGroup;
+              const isGroupActive = pathname.startsWith(group.href);
+              return (
+                <DropdownMenu key={group.href}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={cn(
+                        "rounded-md px-3 py-2 text-sm transition-colors hover:text-foreground inline-flex items-center gap-1",
+                        isGroupActive
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {group.label}
+                      <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-50">
+                        <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center">
+                    {group.children.map((child) => {
+                      const isChildActive = pathname === child.href;
+                      return (
+                        <DropdownMenuItem key={child.href} asChild>
+                          <Link
+                            href={child.href}
+                            className={cn(isChildActive && "font-medium")}
+                          >
+                            {child.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }
             const isActive = pathname === link.href;
             return (
               <Link
@@ -124,9 +163,7 @@ export function LandingHeader({
                 href={link.href}
                 className={cn(
                   "rounded-md px-3 py-2 text-sm transition-colors hover:text-foreground",
-                  isActive
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground"
+                  isActive ? "text-foreground font-medium" : "text-muted-foreground"
                 )}
               >
                 {link.label}
@@ -214,6 +251,31 @@ export function LandingHeader({
         <div className="border-b border-border bg-background/95 backdrop-blur-lg md:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-4">
             {links.map((link) => {
+              if (isNavGroup(link)) {
+                const group = link as NavLinkGroup;
+                return (
+                  <div key={group.href} className="flex flex-col">
+                    <span className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      {group.label}
+                    </span>
+                    {group.children.map((child) => {
+                      const isChildActive = pathname === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn(
+                            "rounded-md px-6 py-2 text-left text-sm transition-colors hover:text-foreground",
+                            isChildActive ? "text-foreground font-medium" : "text-muted-foreground"
+                          )}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              }
               const isActive = pathname === link.href;
               return (
                 <Link
@@ -221,9 +283,7 @@ export function LandingHeader({
                   href={link.href}
                   className={cn(
                     "rounded-md px-3 py-2 text-left text-sm transition-colors hover:text-foreground",
-                    isActive
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground"
+                    isActive ? "text-foreground font-medium" : "text-muted-foreground"
                   )}
                 >
                   {link.label}

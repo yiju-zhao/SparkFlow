@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Pencil, Users, ScrollText } from "lucide-react";
+import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Pencil, Users, ScrollText, ChevronRight, ChevronDown, Wrench, Database, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
@@ -45,13 +45,95 @@ const PAGE_TYPE_ICONS: Record<string, typeof FileText> = {
   LOG: ScrollText,
 };
 
-const PAGE_TYPE_LABELS: Record<string, string> = {
-  ENTITY: "Entities",
-  CONCEPT: "Concepts",
-  SUMMARY: "Summaries",
-  COMPARISON: "Comparisons",
-  ARTICLE: "Articles",
+const ENTITY_TYPE_ICONS: Record<string, typeof FileText> = {
+  entity: Users,
+  concept: Lightbulb,
+  method: Wrench,
+  person: User,
+  dataset: Database,
+  tool: Wrench,
 };
+
+const CONFIDENCE_LABELS: Record<string, string> = {
+  EXTRACTED: "✓",
+  INFERRED: "~",
+  AMBIGUOUS: "?",
+};
+
+interface CommunityInfo {
+  id: number;
+  slug: string;
+  title: string;
+  page?: WikiPage;
+  nodes: { id: string; label: string; type: string; summary: string; sourceRefs: string[] }[];
+  edges: { source: string; target: string; relation: string; confidence: string; weight: number }[];
+  sourceCount: number;
+}
+
+function buildCommunities(
+  pages: WikiPage[],
+  graphData: { nodes: any[]; edges: any[] } | null,
+): CommunityInfo[] {
+  if (!graphData?.nodes || !graphData?.edges) {
+    // No graph — fall back to pages as communities without entity/edge detail
+    return pages
+      .filter((p) => p.pageType !== "INDEX" && p.pageType !== "LOG")
+      .map((p, i) => ({
+        id: i,
+        slug: p.slug,
+        title: p.title,
+        page: p,
+        nodes: [],
+        edges: [],
+        sourceCount: p.sourceRefs.length,
+      }));
+  }
+
+  // Group nodes by community
+  const communityNodes = new Map<number, typeof graphData.nodes>();
+  for (const node of graphData.nodes) {
+    if (node.community === undefined) continue;
+    if (!communityNodes.has(node.community)) communityNodes.set(node.community, []);
+    communityNodes.get(node.community)!.push(node);
+  }
+
+  // Build community info
+  const communities: CommunityInfo[] = [];
+  for (const [communityId, nodes] of communityNodes.entries()) {
+    const slug = `community-${communityId}`;
+    const page = pages.find((p) => p.slug === slug);
+    const nodeIds = new Set(nodes.map((n: any) => n.id));
+
+    // Internal edges only
+    const edges = graphData.edges.filter(
+      (e: any) => nodeIds.has(e.source) && nodeIds.has(e.target)
+    );
+
+    // Source count from page or from nodes
+    const sourceRefs = new Set<string>();
+    for (const n of nodes) {
+      if (n.sourceRefs) for (const ref of n.sourceRefs) sourceRefs.add(ref);
+    }
+
+    communities.push({
+      id: communityId,
+      slug,
+      title: page?.title || nodes.sort((a: any, b: any) => {
+        const aDeg = graphData.edges.filter((e: any) => e.source === a.id || e.target === a.id).length;
+        const bDeg = graphData.edges.filter((e: any) => e.source === b.id || e.target === b.id).length;
+        return bDeg - aDeg;
+      })[0]?.label || `Community ${communityId}`,
+      page,
+      nodes: nodes.map((n: any) => ({ id: n.id, label: n.label, type: n.type, summary: n.summary, sourceRefs: n.sourceRefs || [] })),
+      edges: edges.map((e: any) => ({ source: e.source, target: e.target, relation: e.relation, confidence: e.confidence, weight: e.weight })),
+      sourceCount: page?.sourceRefs.length || sourceRefs.size,
+    });
+  }
+
+  // Sort by source count descending
+  communities.sort((a, b) => b.sourceCount - a.sourceCount || a.title.localeCompare(b.title));
+  return communities;
+}
 
 export function WikiPanel({ notebookId, initialPages = [], sources = [], graphData = null, onSourceClick, navigateToSlug, onNavigateComplete }: WikiPanelProps) {
   // Build source ID → title map for resolving [source:id] references
@@ -89,18 +171,9 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
     refetchInterval: 5000,
   });
 
-  const grouped = useMemo(() => {
-    const groups: Record<string, WikiPage[]> = {};
-    for (const page of pages) {
-      if (page.pageType === "INDEX" || page.pageType === "LOG") continue;
-      const type = page.pageType;
-      if (!groups[type]) groups[type] = [];
-      groups[type].push(page);
-    }
-    return groups;
-  }, [pages]);
-
-  const indexPage = useMemo(() => pages.find((p) => p.slug === "index"), [pages]);
+  // Build community tree from pages + graph data
+  const communities = useMemo(() => buildCommunities(pages, graphData), [pages, graphData]);
+  const totalEntities = useMemo(() => graphData?.nodes?.length || 0, [graphData]);
 
   // Build entity ID → community slug lookup from graph data
   // So clicking [[rope]] navigates to community-0 (where rope lives)
@@ -151,52 +224,33 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
       {/* === TOP: Pages List === */}
       <div className="flex flex-col overflow-hidden" style={{ height: `${topPercent}%` }}>
         <div className="px-6 pt-3 pb-2 flex items-center justify-between relative shrink-0">
-          <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">Pages</span>
+          <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">Knowledge Base</span>
           <div className="flex items-center gap-1">
             <HealthCheckButton notebookId={notebookId} />
             <span className="text-[11px] text-muted-foreground">
-              {pages.filter((p) => p.pageType !== "INDEX" && p.pageType !== "LOG").length}
+              {communities.length} topics · {totalEntities} entities
             </span>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 pb-2">
-          {indexPage && (
-            <button
-              className="w-full text-left rounded-[4px] px-4 py-2 mb-2 text-[13px] font-medium bg-surface-elevated hover:bg-surface-hover transition-colors border border-divider dark:border-0"
-              onClick={() => setSelectedSlug("index")}
-            >
-              <BookOpen className="inline h-3.5 w-3.5 mr-2 text-muted-foreground" />
-              Wiki Index
-            </button>
-          )}
-
-          {Object.keys(grouped).length === 0 ? (
+          {communities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-center">
-              <BookOpen className="h-6 w-6 text-muted-foreground/50" />
-              <p className="mt-2 text-xs text-muted-foreground">Add sources to build knowledge</p>
+              <Lightbulb className="h-6 w-6 text-muted-foreground/50" />
+              <p className="mt-2 text-xs text-muted-foreground">Add sources to discover knowledge</p>
             </div>
           ) : (
-            Object.entries(PAGE_TYPE_LABELS).map(([type, label]) => {
-              const items = grouped[type];
-              if (!items || items.length === 0) return null;
-              return (
-                <div key={type} className="mb-3">
-                  <h3 className="text-[10px] font-semibold tracking-[2px] text-muted-foreground uppercase mb-1.5">
-                    {label}
-                  </h3>
-                  <div className="space-y-1">
-                    {items.map((page) => (
-                      <WikiPageItem
-                        key={page.id}
-                        page={page}
-                        onSelect={() => setSelectedSlug(page.slug)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })
+            <div className="space-y-1">
+              {communities.map((community) => (
+                <CommunityItem
+                  key={community.slug}
+                  community={community}
+                  graphData={graphData}
+                  onSelectPage={() => setSelectedSlug(community.slug)}
+                  onSelectEntity={(nodeId) => setSelectedSlug(resolveSlug(nodeId))}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -221,32 +275,118 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
   );
 }
 
-const WikiPageItem = memo(function WikiPageItem({
-  page,
-  onSelect,
+const CommunityItem = memo(function CommunityItem({
+  community,
+  graphData,
+  onSelectPage,
+  onSelectEntity,
 }: {
-  page: WikiPage;
-  onSelect: () => void;
+  community: CommunityInfo;
+  graphData: { nodes: any[]; edges: any[] } | null;
+  onSelectPage: () => void;
+  onSelectEntity: (nodeId: string) => void;
 }) {
-  const Icon = PAGE_TYPE_ICONS[page.pageType] || FileText;
+  const [expanded, setExpanded] = useState(false);
+
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (graphData?.nodes) {
+      for (const n of graphData.nodes) map.set(n.id, n.label);
+    }
+    return map;
+  }, [graphData]);
+
+  const meta = [
+    `${community.nodes.length} entities`,
+    `${community.edges.length} relations`,
+    community.sourceCount > 0 ? `${community.sourceCount} sources` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
-    <button
-      className="w-full text-left group rounded-[4px] px-3 py-2 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border border-divider dark:border-0"
-      onClick={onSelect}
-    >
-      <div className="flex items-center gap-2">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-        <span className="truncate text-[13px] font-medium leading-tight">
-          {page.title}
-        </span>
+    <div className="rounded-[4px] border border-divider dark:border-0 bg-surface-elevated overflow-hidden">
+      {/* Community header */}
+      <div className="flex items-center gap-1">
+        <button
+          className="shrink-0 h-8 w-8 flex items-center justify-center hover:bg-surface-hover transition-colors rounded-[4px]"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded
+            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          }
+        </button>
+        <button
+          className="flex-1 min-w-0 text-left py-2 pr-3 hover:text-accent-red transition-colors"
+          onClick={onSelectPage}
+        >
+          <span className="truncate text-[13px] font-medium leading-tight block">
+            {community.title}
+          </span>
+          <span className="text-[10px] text-muted-foreground">{meta}</span>
+        </button>
       </div>
-      {page.sourceRefs.length > 0 && (
-        <span className="text-[10px] text-muted-foreground ml-5.5">
-          {page.sourceRefs.length} source{page.sourceRefs.length > 1 ? "s" : ""}
-        </span>
+
+      {/* Expanded: entities + relationships */}
+      {expanded && (
+        <div className="px-3 pb-3 pt-1 border-t border-divider/50">
+          {/* Entities */}
+          {community.nodes.length > 0 && (
+            <div className="mb-2">
+              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">Entities</span>
+              <div className="mt-1 space-y-0.5">
+                {community.nodes.map((node) => {
+                  const Icon = ENTITY_TYPE_ICONS[node.type] || FileText;
+                  return (
+                    <button
+                      key={node.id}
+                      className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-[4px] hover:bg-surface-hover transition-colors"
+                      onClick={() => onSelectEntity(node.id)}
+                    >
+                      <Icon className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="text-[12px] font-medium block truncate">{node.label}</span>
+                        {node.summary && (
+                          <span className="text-[10px] text-muted-foreground line-clamp-1">{node.summary}</span>
+                        )}
+                      </div>
+                      <span className="text-[9px] text-muted-foreground shrink-0 mt-0.5">{node.type}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Relationships */}
+          {community.edges.length > 0 && (
+            <div>
+              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">Relationships</span>
+              <div className="mt-1 space-y-0.5">
+                {community.edges.map((edge, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground"
+                  >
+                    <span className="font-medium text-foreground truncate shrink-0 max-w-20">
+                      {nodeMap.get(edge.source) || edge.source}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted shrink-0">
+                      {edge.relation.replace(/_/g, " ")}
+                    </span>
+                    <span className="font-medium text-foreground truncate shrink-0 max-w-20">
+                      {nodeMap.get(edge.target) || edge.target}
+                    </span>
+                    <span className="text-[9px] shrink-0" title={edge.confidence}>
+                      {CONFIDENCE_LABELS[edge.confidence] || ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
-    </button>
+    </div>
   );
 });
 
@@ -344,18 +484,9 @@ function WikiPageView({
           )}
         </div>
         {sourceTitles.length > 0 && (
-          <div className="mt-1 ml-9 flex flex-wrap gap-1">
-            {sourceTitles.map(({ id, title }) => (
-              <button
-                key={id}
-                className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent/20 hover:text-foreground transition-colors cursor-pointer"
-                title={`Source: ${title}`}
-                onClick={() => onSourceClick?.(id)}
-              >
-                {title.length > 30 ? title.slice(0, 30) + "..." : title}
-              </button>
-            ))}
-          </div>
+          <p className="mt-0.5 ml-9 text-[10px] text-muted-foreground">
+            {sourceTitles.length} source{sourceTitles.length > 1 ? "s" : ""}
+          </p>
         )}
       </div>
 
@@ -377,7 +508,28 @@ function WikiPageView({
             onChange={(e) => setEditContent(e.target.value)}
           />
         ) : page?.content ? (
-          <WikiMarkdown content={page.content} sourceMap={sourceMap} onNavigate={onNavigate} onSourceClick={onSourceClick} />
+          <>
+            <WikiMarkdown content={page.content} sourceMap={sourceMap} onNavigate={onNavigate} onSourceClick={onSourceClick} />
+            {sourceTitles.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-divider">
+                <h4 className="text-[10px] font-semibold tracking-[2px] uppercase text-muted-foreground mb-2">
+                  Related Sources
+                </h4>
+                <div className="space-y-1">
+                  {sourceTitles.map(({ id, title }) => (
+                    <button
+                      key={id}
+                      className="flex items-center gap-2 w-full text-left rounded-[4px] px-3 py-2 text-[12px] bg-surface-elevated hover:bg-surface-hover transition-colors border border-divider dark:border-0"
+                      onClick={() => onSourceClick?.(id)}
+                    >
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate">{title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">No content</p>
         )}
@@ -403,16 +555,10 @@ function WikiMarkdown({
     (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
   );
 
-  // Replace [source:id] with clickable source refs
-  processed = processed.replace(
-    /\[source:([a-zA-Z0-9_-]+)\]/g,
-    (_, id) => {
-      const title = sourceMap[id];
-      return title
-        ? `<source-ref data-source-id="${id}" title="${title}">📄 ${title.length > 25 ? title.slice(0, 25) + "…" : title}</source-ref>`
-        : `<source-ref data-source-id="${id}">📄 ${id.slice(0, 8)}…</source-ref>`;
-    }
-  );
+  // Strip LLM-generated [source:id] references — accurate sources shown in "Related Sources" section instead
+  processed = processed.replace(/\[source:[a-zA-Z0-9_-]+\]/g, "");
+  // Also strip any "References" section the LLM may have appended
+  processed = processed.replace(/\n##?\s*References?\s*\n[\s\S]*$/i, "").trimEnd();
 
   return (
     <div
