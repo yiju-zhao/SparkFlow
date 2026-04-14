@@ -62,6 +62,7 @@ designs/
 
 .sisyphus/
 
+docs/
 design/
 ### gsd
 # .planning/ - uncommented to track planning docs in git

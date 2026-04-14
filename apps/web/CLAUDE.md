@@ -23,12 +23,27 @@ apps/web/
 │   └── globals.css         # Global styles
 ├── components/             # Shared UI components (not routable)
 │   ├── ui/                 # shadcn/ui primitives
+│   ├── providers/          # Global context providers (theme, auth, CopilotKit)
 │   ├── landing/            # Landing page components
+│   ├── settings/           # Settings form (model selection, API key management)
 │   ├── deepdive/           # Deepdive feature components
+│   │   ├── chat/           # Chat panel (CopilotKit integration)
+│   │   ├── studio/         # Studio/canvas panel
+│   │   ├── wiki/           # Wiki panel, graph-view (force-directed), health-check
+│   │   └── sources/        # Source upload and management
 │   └── explore/            # Explore feature components
+│       ├── toolbox/matcher/ # Query matching UI
+│       └── shared/         # Pagination, filters, stats
 ├── lib/                    # Utilities and clients
 │   ├── auth.ts             # NextAuth configuration
 │   ├── prisma.ts           # Prisma client singleton
+│   ├── crypto.ts           # BYOK key encryption/decryption
+│   ├── types/providers.ts  # LLM provider definitions
+│   ├── services/           # Backend services
+│   │   ├── api-key-resolver.ts  # BYOK key resolution (user → admin fallback)
+│   │   ├── wiki-ingest.ts       # Wiki knowledge graph extraction pipeline
+│   │   ├── graph-service.ts     # Graph operations + Louvain clustering
+│   │   └── wiki-health.ts       # Wiki health monitoring
 │   └── hooks/              # Shared React hooks
 └── hooks/                  # Global React hooks
 ```
@@ -39,6 +54,13 @@ apps/web/
 - **Dynamic routes `[]`:** `[id]` - URL params via `params` prop
 - **Special files:** `page.tsx` (route), `layout.tsx` (wrapper), `loading.tsx` (suspense), `error.tsx` (error boundary)
 - **Colocation:** Components inside route folders are safe - only `page.tsx`/`route.ts` are public
+
+### Deepdive Notebook Layout
+
+The deepdive workspace (`/deepdive/[id]`) is a multi-panel layout:
+- **Left**: Sources panel (upload, manage documents)
+- **Center**: Chat panel (CopilotKit with LangGraph RAG agent)
+- **Right**: Tabbed panel with Wiki (knowledge graph + pages) and Notes
 
 ### When to Use Private Folders
 
@@ -90,6 +112,13 @@ npx prisma db push       # Sync schema to DB (dev)
   - `h-[300px]` → `h-75`
   - `max-h-[420px]` → `max-h-105`
   - `min-h-[300px]` → `min-h-75`
+
+## Wiki Components
+
+- `wiki-panel.tsx` — Main wiki viewer, renders page list + single page content
+- `graph-view.tsx` — Force-directed graph using `react-force-graph-2d` + `graphology`; responds to panel resize via ResizeObserver
+- `health-check.tsx` — Displays orphan/missing/stale entity counts
+- Wiki pages support `[[wiki-links]]` syntax — rendered as clickable links in chat responses
 
 ## Commit Messages
 
