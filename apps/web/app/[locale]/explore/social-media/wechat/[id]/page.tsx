@@ -75,9 +75,8 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
         {/* Cover image */}
         {article.cover_url && (
           <img
-            src={article.cover_url}
+            src={`/api/wechat/proxy-image?url=${encodeURIComponent(article.cover_url)}`}
             alt=""
-            referrerPolicy="no-referrer"
             className="w-full max-h-80 object-cover"
           />
         )}
