@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { notFound } from "next/navigation";
@@ -43,7 +44,9 @@ export default async function LocaleLayout({
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
         {/* Auto-hide scrollbar: show only while scrolling, hide after 800ms idle */}
-        <script
+        <Script
+          id="scrollbar-autohide"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){var t=new WeakMap();document.addEventListener("scroll",function(e){var el=e.target;if(el===document)el=document.documentElement;if(!el||!el.dataset)return;el.dataset.scrolling="";var id=t.get(el);if(id)clearTimeout(id);t.set(el,setTimeout(function(){delete el.dataset.scrolling},800))},true)})()`,
           }}
