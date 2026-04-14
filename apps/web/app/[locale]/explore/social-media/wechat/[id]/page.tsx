@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { getWechatArticle } from "@/lib/wechat/queries";
 import { WechatArticleContent } from "@/components/explore/social-media/wechat-article-content";
+import { AddToNotebookDialog } from "@/components/explore/social-media/add-to-notebook-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
@@ -68,6 +69,13 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
             </a>
           </Button>
         )}
+        <AddToNotebookDialog
+          article={{
+            title: article.title,
+            originalUrl: article.original_url,
+            contentText: article.content_text,
+          }}
+        />
       </div>
 
       {/* Article content card */}
@@ -75,9 +83,8 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
         {/* Cover image */}
         {article.cover_url && (
           <img
-            src={article.cover_url}
+            src={`/api/wechat/proxy-image?url=${encodeURIComponent(article.cover_url)}`}
             alt=""
-            referrerPolicy="no-referrer"
             className="w-full max-h-80 object-cover"
           />
         )}

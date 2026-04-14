@@ -25,9 +25,8 @@ export function WechatArticleCard({ article }: WechatArticleCardProps) {
       <div className="relative h-40 w-full bg-muted overflow-hidden">
         {article.cover_url ? (
           <img
-            src={article.cover_url}
+            src={`/api/wechat/proxy-image?url=${encodeURIComponent(article.cover_url)}`}
             alt=""
-            referrerPolicy="no-referrer"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         ) : (

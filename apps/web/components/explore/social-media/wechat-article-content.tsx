@@ -15,12 +15,11 @@ export function WechatArticleContent({ html, fallbackText }: WechatArticleConten
     if (!containerRef.current) return;
     const images = containerRef.current.querySelectorAll("img");
     images.forEach((img) => {
-      // Strip referrer so external image proxies don't reject the request
-      img.referrerPolicy = "no-referrer";
-      // Load lazy images that use data-src
-      const dataSrc = img.getAttribute("data-src");
-      if (dataSrc && !img.getAttribute("src")) {
-        img.src = dataSrc;
+      // Resolve the actual image URL (prefer data-src for lazy images)
+      const originalSrc = img.getAttribute("data-src") || img.getAttribute("src") || "";
+      if (originalSrc) {
+        // Route all images through our proxy to handle referrer/user-agent issues
+        img.src = `/api/wechat/proxy-image?url=${encodeURIComponent(originalSrc)}`;
       }
       // Hide broken images gracefully
       img.onerror = () => {
