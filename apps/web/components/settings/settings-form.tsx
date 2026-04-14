@@ -24,11 +24,13 @@ interface ModelsConfig {
     provider: string;
     chatModel: string;
     wikiModel: string;
+    searchModel: string;
     matcherModel: string;
   };
   recommendations?: {
     chat?: string;
     wiki?: string;
+    search?: string;
     matcher?: string;
   };
 }
@@ -38,6 +40,8 @@ interface UserSettings {
   modelName: string;
   wikiModelProvider: string;
   wikiModelName: string;
+  searchModelProvider: string;
+  searchModelName: string;
   matcherModelProvider: string;
   matcherModelName: string;
   apiKeyStatus?: Record<string, { hasKey: boolean; maskedKey: string }>;
@@ -65,6 +69,8 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
   const [wikiProvider, setWikiProvider] = useState(initialSettings?.wikiModelProvider || "openai");
   const [wikiModel, setWikiModel] = useState(initialSettings?.wikiModelName || "gpt-4o-mini");
+  const [searchProvider, setSearchProvider] = useState(initialSettings?.searchModelProvider || "openai");
+  const [searchModel, setSearchModel] = useState(initialSettings?.searchModelName || "gpt-4o-mini");
 
   // Research Hub settings
   const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "openai");
@@ -97,6 +103,8 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
             setChatModel(data.defaults.chatModel);
             setWikiProvider(data.defaults.provider);
             setWikiModel(data.defaults.wikiModel);
+            setSearchProvider(data.defaults.provider);
+            setSearchModel(data.defaults.searchModel);
             setMatcherProvider(data.defaults.provider);
             setMatcherModel(data.defaults.matcherModel);
           }
@@ -107,6 +115,10 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           if (data.wikiModelProvider) {
             setWikiProvider(data.wikiModelProvider);
             setWikiModel(data.wikiModelName);
+          }
+          if (data.searchModelProvider) {
+            setSearchProvider(data.searchModelProvider);
+            setSearchModel(data.searchModelName);
           }
         }
       } catch (error) {
@@ -142,6 +154,11 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   }, [wikiProvider, config]);
 
   useEffect(() => {
+    const ids = getModelIds(searchProvider);
+    if (ids.length > 0 && !ids.includes(searchModel)) setSearchModel(ids[0]);
+  }, [searchProvider, config]);
+
+  useEffect(() => {
     const ids = getModelIds(matcherProvider);
     if (ids.length > 0 && !ids.includes(matcherModel)) setMatcherModel(ids[0]);
   }, [matcherProvider, config]);
@@ -157,6 +174,8 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           modelName: chatModel,
           wikiModelProvider: wikiProvider,
           wikiModelName: wikiModel,
+          searchModelProvider: searchProvider,
+          searchModelName: searchModel,
           matcherModelProvider: matcherProvider,
           matcherModelName: matcherModel,
         }),
@@ -309,6 +328,16 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           model={wikiModel}
           onProviderChange={setWikiProvider}
           onModelChange={setWikiModel}
+        />
+
+        <ModelSelector
+          label="Search Model"
+          description="Used by the source search agent when adding sources"
+          recommendation={config?.recommendations?.search}
+          provider={searchProvider}
+          model={searchModel}
+          onProviderChange={setSearchProvider}
+          onModelChange={setSearchModel}
         />
       </div>
 

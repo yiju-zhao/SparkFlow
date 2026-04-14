@@ -22,6 +22,8 @@ export async function GET() {
       modelName: true,
       wikiModelProvider: true,
       wikiModelName: true,
+      searchModelProvider: true,
+      searchModelName: true,
       matcherModelProvider: true,
       matcherModelName: true,
       apiKeys: true,
@@ -50,6 +52,8 @@ export async function GET() {
     modelName: settings?.modelName || defaults.chatModel,
     wikiModelProvider: settings?.wikiModelProvider || defaults.provider,
     wikiModelName: settings?.wikiModelName || defaults.wikiModel,
+    searchModelProvider: settings?.searchModelProvider || defaults.provider,
+    searchModelName: settings?.searchModelName || defaults.searchModel,
     matcherModelProvider: settings?.matcherModelProvider || defaults.provider,
     matcherModelName: settings?.matcherModelName || defaults.matcherModel,
     apiKeyStatus,
@@ -69,6 +73,8 @@ export async function POST(request: Request) {
     modelName,
     wikiModelProvider,
     wikiModelName,
+    searchModelProvider,
+    searchModelName,
     matcherModelProvider,
     matcherModelName,
     apiKeys: apiKeysUpdate,
@@ -80,6 +86,8 @@ export async function POST(request: Request) {
   if (modelName) updateData.modelName = modelName;
   if (wikiModelProvider) updateData.wikiModelProvider = wikiModelProvider;
   if (wikiModelName) updateData.wikiModelName = wikiModelName;
+  if (searchModelProvider) updateData.searchModelProvider = searchModelProvider;
+  if (searchModelName) updateData.searchModelName = searchModelName;
   if (matcherModelProvider) updateData.matcherModelProvider = matcherModelProvider;
   if (matcherModelName) updateData.matcherModelName = matcherModelName;
 
@@ -129,6 +137,8 @@ export async function POST(request: Request) {
       modelName: modelName || defaults.chatModel,
       wikiModelProvider: wikiModelProvider || defaults.provider,
       wikiModelName: wikiModelName || defaults.wikiModel,
+      searchModelProvider: searchModelProvider || defaults.provider,
+      searchModelName: searchModelName || defaults.searchModel,
       matcherModelProvider: matcherModelProvider || defaults.provider,
       matcherModelName: matcherModelName || defaults.matcherModel,
       ...(updateData.apiKeys ? { apiKeys: updateData.apiKeys as string } : {}),
@@ -140,6 +150,8 @@ export async function POST(request: Request) {
     modelName: settings.modelName,
     wikiModelProvider: settings.wikiModelProvider,
     wikiModelName: settings.wikiModelName,
+    searchModelProvider: settings.searchModelProvider,
+    searchModelName: settings.searchModelName,
     matcherModelProvider: settings.matcherModelProvider,
     matcherModelName: settings.matcherModelName,
   });

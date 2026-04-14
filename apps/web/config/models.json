@@ -67,11 +67,13 @@
     "provider": "gemini",
     "chatModel": "gemini-2.5-flash",
     "wikiModel": "gemini-2.5-flash",
+    "searchModel": "gemini-2.5-flash",
     "matcherModel": "gemini-2.5-flash"
   },
   "recommendations": {
     "chat": "Fast models work best: Gemini 2.5 Flash, GPT-4.1 Mini, DeepSeek Chat. For complex research, try Gemini 3.1 Pro or GPT-5.4.",
     "wiki": "Wiki extraction benefits from strong reasoning. Gemini 3.1 Pro, GPT-5.4, GLM-5.1, or DeepSeek Reasoner produce richer knowledge graphs. Flash models are fine for most content.",
+    "search": "The search agent finds sources for your notebook. A capable model with tool-use works best: Gemini 2.5 Flash, GPT-4.1, or DeepSeek Chat.",
     "matcher": "Matcher compares queries against many items. Use a fast, affordable model: Gemini 2.5 Flash, DeepSeek Chat, or GPT-4.1 Nano."
   }
 }
