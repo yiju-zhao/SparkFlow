@@ -34,6 +34,7 @@ export interface WechatArticleDetail {
 }
 
 export async function getWechatSources(): Promise<WechatSource[]> {
+  if (!wechatPool) return [];
   const result = await wechatPool.query(
     `SELECT id, slug, name, description
      FROM wechat_articles.sources
@@ -45,6 +46,7 @@ export async function getWechatSources(): Promise<WechatSource[]> {
 export async function getWechatArticles(
   filters: WechatArticleFilters
 ): Promise<{ articles: WechatArticleSummary[]; total: number }> {
+  if (!wechatPool) return { articles: [], total: 0 };
   const conditions: string[] = [];
   const values: unknown[] = [];
   let paramIndex = 1;
@@ -94,6 +96,7 @@ export async function getWechatArticles(
 export async function getWechatArticle(
   id: number
 ): Promise<WechatArticleDetail | null> {
+  if (!wechatPool) return null;
   const articleResult = await wechatPool.query(
     `SELECT a.id, a.title, a.author, a.publish_time, a.original_url,
             a.cover_url, a.content_html, a.content_text,
@@ -123,6 +126,7 @@ export async function getWechatArticle(
 export async function getWechatImage(
   id: number
 ): Promise<{ data: Buffer; mime_type: string } | null> {
+  if (!wechatPool) return null;
   const result = await wechatPool.query(
     `SELECT data, mime_type FROM wechat_articles.images WHERE id = $1`,
     [id]

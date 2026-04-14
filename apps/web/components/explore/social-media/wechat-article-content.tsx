@@ -15,12 +15,17 @@ export function WechatArticleContent({ html, fallbackText }: WechatArticleConten
     if (!containerRef.current) return;
     const images = containerRef.current.querySelectorAll("img");
     images.forEach((img) => {
-      const src = img.getAttribute("src") || img.getAttribute("data-src") || "";
-      if (src.includes("mmbiz.qpic.cn") || src.includes("mmbiz.qlogo.cn")) {
-        img.onerror = () => {
-          img.style.display = "none";
-        };
+      // Strip referrer so external image proxies don't reject the request
+      img.referrerPolicy = "no-referrer";
+      // Load lazy images that use data-src
+      const dataSrc = img.getAttribute("data-src");
+      if (dataSrc && !img.getAttribute("src")) {
+        img.src = dataSrc;
       }
+      // Hide broken images gracefully
+      img.onerror = () => {
+        img.style.display = "none";
+      };
     });
   }, [html]);
 

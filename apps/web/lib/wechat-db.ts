@@ -4,20 +4,18 @@ const globalForWechat = globalThis as unknown as {
   wechatPool: Pool | undefined;
 };
 
-function createPool() {
+function createPool(): Pool | null {
   const connectionString = process.env.WECHAT_DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("WECHAT_DATABASE_URL is not set");
-  }
+  if (!connectionString) return null;
   return new Pool({
     connectionString,
     max: 5,
   });
 }
 
-export const wechatPool =
+export const wechatPool: Pool | null =
   globalForWechat.wechatPool ?? createPool();
 
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production" && wechatPool) {
   globalForWechat.wechatPool = wechatPool;
 }

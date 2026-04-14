@@ -92,11 +92,13 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
       {!assistantOpen && (
         <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />
       )}
-      <ResearchAssistantPanel
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
-        contextData={context ?? undefined}
-      />
+      {assistantOpen && (
+        <ResearchAssistantPanel
+          open={assistantOpen}
+          onOpenChange={setAssistantOpen}
+          contextData={context ?? undefined}
+        />
+      )}
     </div>
   );
 }

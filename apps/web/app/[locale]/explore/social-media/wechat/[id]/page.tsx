@@ -33,7 +33,7 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
     : null;
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
+    <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
         {t("breadcrumb")}/{article.source_name}
@@ -77,6 +77,7 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
           <img
             src={article.cover_url}
             alt=""
+            referrerPolicy="no-referrer"
             className="w-full max-h-80 object-cover"
           />
         )}
