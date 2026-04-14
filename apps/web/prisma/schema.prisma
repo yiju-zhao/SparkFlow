@@ -60,6 +60,9 @@ model UserSettings {
   // Deepdive — Wiki generation model
   wikiModelProvider   String   @default("openai")
   wikiModelName       String   @default("gpt-4o-mini")
+  // Deepdive — Source search agent model
+  searchModelProvider  String   @default("openai")
+  searchModelName      String   @default("gpt-4o-mini")
   // Research Hub — Matcher agent model
   matcherModelProvider String  @default("openai")
   matcherModelName    String   @default("gpt-4o-mini")

@@ -12,13 +12,26 @@ import {
 import { Input } from "@/components/ui/input";
 import { Loader2, Check, Eye, EyeOff, Trash2, Key } from "lucide-react";
 
+interface ModelInfo {
+  id: string;
+  label: string;
+  desc: string;
+}
+
 interface ModelsConfig {
-  providers: Record<string, { label: string; models: string[] }>;
+  providers: Record<string, { label: string; models: ModelInfo[] }>;
   defaults: {
     provider: string;
     chatModel: string;
     wikiModel: string;
+    searchModel: string;
     matcherModel: string;
+  };
+  recommendations?: {
+    chat?: string;
+    wiki?: string;
+    search?: string;
+    matcher?: string;
   };
 }
 
@@ -27,6 +40,8 @@ interface UserSettings {
   modelName: string;
   wikiModelProvider: string;
   wikiModelName: string;
+  searchModelProvider: string;
+  searchModelName: string;
   matcherModelProvider: string;
   matcherModelName: string;
   apiKeyStatus?: Record<string, { hasKey: boolean; maskedKey: string }>;
@@ -54,6 +69,8 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
   const [wikiProvider, setWikiProvider] = useState(initialSettings?.wikiModelProvider || "openai");
   const [wikiModel, setWikiModel] = useState(initialSettings?.wikiModelName || "gpt-4o-mini");
+  const [searchProvider, setSearchProvider] = useState(initialSettings?.searchModelProvider || "openai");
+  const [searchModel, setSearchModel] = useState(initialSettings?.searchModelName || "gpt-4o-mini");
 
   // Research Hub settings
   const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "openai");
@@ -86,6 +103,8 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
             setChatModel(data.defaults.chatModel);
             setWikiProvider(data.defaults.provider);
             setWikiModel(data.defaults.wikiModel);
+            setSearchProvider(data.defaults.provider);
+            setSearchModel(data.defaults.searchModel);
             setMatcherProvider(data.defaults.provider);
             setMatcherModel(data.defaults.matcherModel);
           }
@@ -96,6 +115,10 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           if (data.wikiModelProvider) {
             setWikiProvider(data.wikiModelProvider);
             setWikiModel(data.wikiModelName);
+          }
+          if (data.searchModelProvider) {
+            setSearchProvider(data.searchModelProvider);
+            setSearchModel(data.searchModelName);
           }
         }
       } catch (error) {
@@ -111,24 +134,33 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     return Object.entries(config.providers).map(([id, { label }]) => ({ id, label }));
   }, [config]);
 
-  const getModels = (providerId: string): string[] => {
+  const getModels = (providerId: string): ModelInfo[] => {
     return config?.providers[providerId]?.models || [];
+  };
+
+  const getModelIds = (providerId: string): string[] => {
+    return getModels(providerId).map((m) => m.id);
   };
 
   // Reset model when provider changes
   useEffect(() => {
-    const models = getModels(chatProvider);
-    if (models.length > 0 && !models.includes(chatModel)) setChatModel(models[0]);
+    const ids = getModelIds(chatProvider);
+    if (ids.length > 0 && !ids.includes(chatModel)) setChatModel(ids[0]);
   }, [chatProvider, config]);
 
   useEffect(() => {
-    const models = getModels(wikiProvider);
-    if (models.length > 0 && !models.includes(wikiModel)) setWikiModel(models[0]);
+    const ids = getModelIds(wikiProvider);
+    if (ids.length > 0 && !ids.includes(wikiModel)) setWikiModel(ids[0]);
   }, [wikiProvider, config]);
 
   useEffect(() => {
-    const models = getModels(matcherProvider);
-    if (models.length > 0 && !models.includes(matcherModel)) setMatcherModel(models[0]);
+    const ids = getModelIds(searchProvider);
+    if (ids.length > 0 && !ids.includes(searchModel)) setSearchModel(ids[0]);
+  }, [searchProvider, config]);
+
+  useEffect(() => {
+    const ids = getModelIds(matcherProvider);
+    if (ids.length > 0 && !ids.includes(matcherModel)) setMatcherModel(ids[0]);
   }, [matcherProvider, config]);
 
   const handleSave = async () => {
@@ -142,6 +174,8 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           modelName: chatModel,
           wikiModelProvider: wikiProvider,
           wikiModelName: wikiModel,
+          searchModelProvider: searchProvider,
+          searchModelName: searchModel,
           matcherModelProvider: matcherProvider,
           matcherModelName: matcherModel,
         }),
@@ -213,6 +247,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   const ModelSelector = ({
     label,
     description,
+    recommendation,
     provider,
     model,
     onProviderChange,
@@ -220,6 +255,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   }: {
     label: string;
     description: string;
+    recommendation?: string;
     provider: string;
     model: string;
     onProviderChange: (v: string) => void;
@@ -243,15 +279,25 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </Select>
         <Select value={model} onValueChange={onModelChange} disabled={!config}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={config ? "Model" : "Loading..."} />
+            <SelectValue placeholder={config ? "Model" : "Loading..."}>
+              {getModels(provider).find((m) => m.id === model)?.label || model}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {getModels(provider).map((m) => (
-              <SelectItem key={m} value={m}>{m}</SelectItem>
+              <SelectItem key={m.id} value={m.id}>
+                <div className="flex items-baseline gap-2">
+                  <span>{m.label}</span>
+                  <span className="text-xs text-muted-foreground">{m.desc}</span>
+                </div>
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
+      {recommendation && (
+        <p className="text-xs text-muted-foreground/70 italic">{recommendation}</p>
+      )}
     </div>
   );
 
@@ -267,6 +313,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         <ModelSelector
           label="Chat Model"
           description="Used for conversations and RAG queries"
+          recommendation={config?.recommendations?.chat}
           provider={chatProvider}
           model={chatModel}
           onProviderChange={setChatProvider}
@@ -276,10 +323,21 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         <ModelSelector
           label="Wiki Model"
           description="Used for knowledge graph extraction and wiki page generation"
+          recommendation={config?.recommendations?.wiki}
           provider={wikiProvider}
           model={wikiModel}
           onProviderChange={setWikiProvider}
           onModelChange={setWikiModel}
+        />
+
+        <ModelSelector
+          label="Search Model"
+          description="Used by the source search agent when adding sources"
+          recommendation={config?.recommendations?.search}
+          provider={searchProvider}
+          model={searchModel}
+          onProviderChange={setSearchProvider}
+          onModelChange={setSearchModel}
         />
       </div>
 
@@ -293,6 +351,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         <ModelSelector
           label="Matcher Model"
           description="Used for matching queries to sessions and publications"
+          recommendation={config?.recommendations?.matcher}
           provider={matcherProvider}
           model={matcherModel}
           onProviderChange={setMatcherProvider}

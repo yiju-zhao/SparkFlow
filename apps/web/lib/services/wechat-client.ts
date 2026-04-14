@@ -1,14 +1,4 @@
-import pg from "pg";
-
-const pool = new pg.Pool({
-  host: process.env.WECHAT_DB_HOST,
-  port: parseInt(process.env.WECHAT_DB_PORT || "5432"),
-  user: process.env.WECHAT_DB_USER,
-  password: process.env.WECHAT_DB_PASSWORD,
-  database: process.env.WECHAT_DB_NAME,
-  max: 5,
-  idleTimeoutMillis: 30000,
-});
+import { wechatPool } from "@/lib/wechat-db";
 
 export interface WechatArticle {
   id: number;
@@ -35,7 +25,8 @@ export async function searchWechatArticles(
   query: string,
   limit = 10,
 ): Promise<WechatArticle[]> {
-  const result = await pool.query<WechatArticle>(
+  if (!wechatPool) return [];
+  const result = await wechatPool!.query<WechatArticle>(
     `SELECT a.id, a.title, a.author, a.publish_time, a.original_url,
             a.cover_url, a.content_html, a.content_text, s.name as source_name
      FROM wechat_articles.articles a
@@ -51,7 +42,8 @@ export async function searchWechatArticles(
 export async function getWechatArticleById(
   articleId: number,
 ): Promise<WechatArticle | null> {
-  const result = await pool.query<WechatArticle>(
+  if (!wechatPool) return null;
+  const result = await wechatPool!.query<WechatArticle>(
     `SELECT a.id, a.title, a.author, a.publish_time, a.original_url,
             a.cover_url, a.content_html, a.content_text, s.name as source_name
      FROM wechat_articles.articles a
@@ -65,7 +57,8 @@ export async function getWechatArticleById(
 export async function getWechatArticleImages(
   articleId: number,
 ): Promise<WechatImage[]> {
-  const result = await pool.query<WechatImage>(
+  if (!wechatPool) return [];
+  const result = await wechatPool!.query<WechatImage>(
     `SELECT id, article_id, image_type, original_url, mime_type, data
      FROM wechat_articles.images
      WHERE article_id = $1

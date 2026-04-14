@@ -19,6 +19,8 @@ export default async function SettingsPage() {
       modelName: true,
       wikiModelProvider: true,
       wikiModelName: true,
+      searchModelProvider: true,
+      searchModelName: true,
       matcherModelProvider: true,
       matcherModelName: true,
     },
@@ -49,6 +51,8 @@ export default async function SettingsPage() {
                       modelName: settings.modelName,
                       wikiModelProvider: settings.wikiModelProvider,
                       wikiModelName: settings.wikiModelName,
+                      searchModelProvider: settings.searchModelProvider,
+                      searchModelName: settings.searchModelName,
                       matcherModelProvider: settings.matcherModelProvider,
                       matcherModelName: settings.matcherModelName,
                     }

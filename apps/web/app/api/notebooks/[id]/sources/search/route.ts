@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
 import type { SearchRequest, SearchResult, SearchStatusResponse } from "@/lib/types/search";
 import { searchWechatArticles } from "@/lib/services/wechat-client";
+import modelsConfig from "@/config/models.json";
 
 // In-memory task store (sufficient for single-server)
 export const searchTasks = new Map<
@@ -37,6 +38,14 @@ export async function POST(
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
   }
 
+  // Fetch user's search model preference
+  const userSettings = await prisma.userSettings.findUnique({
+    where: { userId: session.user.id },
+    select: { searchModelProvider: true, searchModelName: true },
+  });
+  const searchModelProvider = userSettings?.searchModelProvider || modelsConfig.defaults.provider;
+  const searchModelName = userSettings?.searchModelName || modelsConfig.defaults.searchModel;
+
   const taskId = uuidv4();
   searchTasks.set(taskId, {
     status: "searching",
@@ -45,7 +54,7 @@ export async function POST(
   });
 
   // Fire search in background
-  performSearch(taskId, query, sourceType, domains).catch((err) => {
+  performSearch(taskId, query, sourceType, domains, searchModelProvider, searchModelName).catch((err) => {
     console.error(`[Search] Task ${taskId} failed:`, err);
     const task = searchTasks.get(taskId);
     if (task) {
@@ -62,6 +71,8 @@ async function performSearch(
   query: string,
   sourceType: string,
   domains?: string[],
+  modelProvider?: string,
+  modelName?: string,
 ) {
   const task = searchTasks.get(taskId);
   if (!task) return;
@@ -90,7 +101,13 @@ async function performSearch(
               },
             ],
           },
-          config: { configurable: { search_mode: true } },
+          config: {
+            configurable: {
+              search_mode: true,
+              model_provider: modelProvider,
+              model_name: modelName,
+            },
+          },
         }),
       });
 
