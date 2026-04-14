@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { getWechatArticle } from "@/lib/wechat/queries";
 import { WechatArticleContent } from "@/components/explore/social-media/wechat-article-content";
+import { AddToNotebookDialog } from "@/components/explore/social-media/add-to-notebook-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
@@ -68,6 +69,13 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
             </a>
           </Button>
         )}
+        <AddToNotebookDialog
+          article={{
+            title: article.title,
+            originalUrl: article.original_url,
+            contentText: article.content_text,
+          }}
+        />
       </div>
 
       {/* Article content card */}

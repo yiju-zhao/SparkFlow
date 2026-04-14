@@ -31,3 +31,41 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
   return NextResponse.json(sources);
 }
+
+// POST /api/notebooks/[id]/sources - Add a source to a notebook
+export async function POST(req: NextRequest, context: RouteContext) {
+  const { id: notebookId } = await context.params;
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const notebook = await prisma.notebook.findFirst({
+    where: { id: notebookId, userId: session.user.id },
+  });
+
+  if (!notebook) {
+    return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
+  }
+
+  const { title, sourceType, url, content } = await req.json();
+
+  if (!title?.trim()) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+
+  const source = await prisma.source.create({
+    data: {
+      notebookId,
+      title: title.trim(),
+      sourceType: sourceType || "WEBPAGE",
+      url: url || null,
+      content: content || null,
+      markdownContent: content || null,
+      status: content ? "READY" : "PROCESSING",
+    },
+  });
+
+  return NextResponse.json(source, { status: 201 });
+}
