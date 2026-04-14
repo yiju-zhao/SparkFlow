@@ -260,12 +260,14 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </Select>
         <Select value={model} onValueChange={onModelChange} disabled={!config}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={config ? "Model" : "Loading..."} />
+            <SelectValue placeholder={config ? "Model" : "Loading..."}>
+              {getModels(provider).find((m) => m.id === model)?.label || model}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {getModels(provider).map((m) => (
               <SelectItem key={m.id} value={m.id}>
-                <div className="flex flex-col">
+                <div className="flex items-baseline gap-2">
                   <span>{m.label}</span>
                   <span className="text-xs text-muted-foreground">{m.desc}</span>
                 </div>
