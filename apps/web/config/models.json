@@ -3,56 +3,58 @@
     "openai": {
       "label": "OpenAI",
       "models": [
-        "gpt-4o-mini",
-        "gpt-4o",
-        "gpt-4.1",
-        "gpt-4.1-mini",
-        "gpt-5.2",
-        "gpt-5.4"
+        { "id": "gpt-4.1-mini", "label": "GPT-4.1 Mini", "desc": "Fast & affordable, great for chat" },
+        { "id": "gpt-4.1", "label": "GPT-4.1", "desc": "Best balance of quality and speed" },
+        { "id": "gpt-4o-mini", "label": "GPT-4o Mini", "desc": "Lightweight, low cost" },
+        { "id": "gpt-4o", "label": "GPT-4o", "desc": "Strong multimodal reasoning" }
       ]
     },
     "gemini": {
       "label": "Gemini",
       "models": [
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
-        "gemini-1.5-flash"
+        { "id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash", "desc": "Fastest, best value for money" },
+        { "id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro", "desc": "Strongest reasoning, slower" },
+        { "id": "gemini-2.0-flash", "label": "Gemini 2.0 Flash", "desc": "Previous gen, stable" }
       ]
     },
     "deepseek": {
       "label": "DeepSeek",
       "models": [
-        "deepseek-chat",
-        "deepseek-reasoner"
+        { "id": "deepseek-chat", "label": "DeepSeek Chat (V3)", "desc": "Strong general-purpose, very low cost" },
+        { "id": "deepseek-reasoner", "label": "DeepSeek Reasoner (R1)", "desc": "Chain-of-thought reasoning, slower" }
       ]
     },
     "glm": {
       "label": "GLM (Zhipu)",
       "models": [
-        "glm-4-plus",
-        "glm-4-flash"
+        { "id": "glm-4-plus", "label": "GLM-4 Plus", "desc": "Best Zhipu model, strong Chinese" },
+        { "id": "glm-4-flash", "label": "GLM-4 Flash", "desc": "Fast and free tier available" }
       ]
     },
     "minimax": {
       "label": "Minimax",
       "models": [
-        "MiniMax-Text-01",
-        "abab6.5s-chat"
+        { "id": "MiniMax-Text-01", "label": "MiniMax Text 01", "desc": "Long context (1M tokens), competitive quality" }
       ]
     },
     "kimi": {
       "label": "Kimi (Moonshot)",
       "models": [
-        "moonshot-v1-8k",
-        "moonshot-v1-32k",
-        "moonshot-v1-128k"
+        { "id": "moonshot-v1-128k", "label": "Moonshot 128K", "desc": "Long context, good for large documents" },
+        { "id": "moonshot-v1-32k", "label": "Moonshot 32K", "desc": "Balanced context and speed" },
+        { "id": "moonshot-v1-8k", "label": "Moonshot 8K", "desc": "Fast, short context" }
       ]
     }
   },
   "defaults": {
-    "provider": "openai",
-    "chatModel": "gpt-4o-mini",
-    "wikiModel": "gpt-4o-mini",
-    "matcherModel": "gpt-4o-mini"
+    "provider": "gemini",
+    "chatModel": "gemini-2.5-flash",
+    "wikiModel": "gemini-2.5-flash",
+    "matcherModel": "gemini-2.5-flash"
+  },
+  "recommendations": {
+    "chat": "For chat, fast models work best (Gemini 2.5 Flash, GPT-4.1 Mini, DeepSeek Chat). They keep responses snappy while maintaining quality.",
+    "wiki": "Wiki extraction benefits from stronger reasoning. Gemini 2.5 Pro or GPT-4.1 produce richer knowledge graphs, but Flash/Mini models are fine for most content.",
+    "matcher": "Matcher needs to compare queries against many items. Use a fast, affordable model like Gemini 2.5 Flash or DeepSeek Chat."
   }
 }
