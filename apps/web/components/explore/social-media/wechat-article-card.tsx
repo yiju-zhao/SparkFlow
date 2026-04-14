@@ -27,6 +27,7 @@ export function WechatArticleCard({ article }: WechatArticleCardProps) {
           <img
             src={article.cover_url}
             alt=""
+            referrerPolicy="no-referrer"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         ) : (

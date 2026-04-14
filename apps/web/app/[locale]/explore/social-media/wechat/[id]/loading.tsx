@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WechatDetailLoading() {
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
+    <div className="flex flex-col gap-6">
       <Skeleton className="h-4 w-80" />
       <Skeleton className="h-9 w-full max-w-xl" />
       <div className="flex gap-3">
