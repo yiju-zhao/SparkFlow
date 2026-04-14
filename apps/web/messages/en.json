@@ -245,7 +245,7 @@
     "sessions": {
       "title": "Sessions",
       "subtitle": "Explore conference sessions and presentations",
-      "breadcrumb": "~/research-hub/sessions",
+      "breadcrumb": "~/research-hub/conferences/sessions",
       "found": "{count} sessions found"
     },
     "toolbox": {

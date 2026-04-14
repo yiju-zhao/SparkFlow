@@ -245,7 +245,7 @@
     "sessions": {
       "title": "会议场次",
       "subtitle": "探索会议报告和演示",
-      "breadcrumb": "~/研究中心/会议场次",
+      "breadcrumb": "~/研究中心/会议/会议场次",
       "found": "找到 {count} 个会议场次"
     },
     "toolbox": {
