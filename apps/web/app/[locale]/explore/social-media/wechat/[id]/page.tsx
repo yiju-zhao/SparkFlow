@@ -33,6 +33,13 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
       })
     : null;
 
+  const coverImage = article.images.find((img) => img.image_type === "cover");
+  const coverSrc = coverImage
+    ? `/api/wechat/images/${coverImage.id}`
+    : article.cover_url
+      ? `/api/wechat/proxy-image?url=${encodeURIComponent(article.cover_url)}`
+      : null;
+
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
@@ -74,6 +81,8 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
             title: article.title,
             originalUrl: article.original_url,
             contentText: article.content_text,
+            contentHtml: article.content_html,
+            images: article.images,
           }}
         />
       </div>
@@ -81,9 +90,9 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
       {/* Article content card */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {/* Cover image */}
-        {article.cover_url && (
+        {coverSrc && (
           <img
-            src={`/api/wechat/proxy-image?url=${encodeURIComponent(article.cover_url)}`}
+            src={coverSrc}
             alt=""
             className="w-full max-h-80 object-cover"
           />
@@ -94,6 +103,7 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
           <WechatArticleContent
             html={article.content_html}
             fallbackText={article.content_text}
+            images={article.images}
           />
         </div>
       </div>

@@ -30,7 +30,7 @@ export interface WechatArticleDetail {
   source_name: string;
   source_id: number;
   source_slug: string;
-  images: { id: number; image_type: string; image_index: number }[];
+  images: { id: number; image_type: string; image_index: number; original_url: string }[];
 }
 
 export async function getWechatSources(): Promise<WechatSource[]> {
@@ -110,7 +110,7 @@ export async function getWechatArticle(
   if (articleResult.rows.length === 0) return null;
 
   const imageResult = await wechatPool.query(
-    `SELECT id, image_type, image_index
+    `SELECT id, image_type, image_index, original_url
      FROM wechat_articles.images
      WHERE article_id = $1
      ORDER BY image_index`,
