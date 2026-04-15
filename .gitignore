@@ -9,12 +9,19 @@
 .claude/
 .serena/
 .agent/
+.gemini/
+.agents/
+.sisyphus/
+.superpowers/
+superpowers/
 
-# Documentation and tasks
+# Documentation, planning, and tasks
 docs/
 tasks/
 plan/
 todo.md
+designs/
+design/
 
 # Dependencies
 node_modules/
@@ -33,6 +40,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.ruff_cache/
 
 # IDE
 .idea/
@@ -55,15 +63,5 @@ coverage/
 *.local
 .cache/
 
-.gemini/
-.agents/
-designs/
-.ruff_cache/
-
-.sisyphus/
-
-docs/
-design/
-### gsd
-# .planning/ - uncommented to track planning docs in git
-.superpowers/
+# Prisma backups
+*.prisma.bak

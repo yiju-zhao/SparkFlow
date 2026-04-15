@@ -137,4 +137,5 @@ See `.env.example` in each app.
 1. Plan before coding — write to `tasks/todo.md`, get approval first
 2. Keep changes minimal — only touch relevant code
 3. No temporary fixes — find root causes
-4. **After completing work, use `/claude-md-improver` to update CLAUDE.md files with current state, patterns, and learnings at the appropriate target level (root, package, or feature)**
+4. **Never commit or force-push files/directories listed in `.gitignore`** — this includes `docs/`, `tasks/`, `designs/`, `.claude/`, `.superpowers/`, and any `*.bak` files. If a previously tracked file needs to be ignored, use `git rm --cached` to untrack it first.
+5. **After completing work, use `/claude-md-improver` to update CLAUDE.md files with current state, patterns, and learnings at the appropriate target level (root, package, or feature)**
