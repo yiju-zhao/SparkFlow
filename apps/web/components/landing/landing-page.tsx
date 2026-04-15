@@ -1,14 +1,31 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { LandingHeader } from "./landing-header";
 import { HeroSection } from "./hero-section";
-import { HowItWorksSection } from "./how-it-works-section";
-import { CoreFeaturesSection } from "./core-features-section";
-import { SecondaryFeaturesSection } from "./secondary-features-section";
-import { SocialProofSection } from "./social-proof-section";
-import { FaqSection } from "./faq-section";
-import { CtaSection } from "./cta-section";
 import { LandingFooter } from "./landing-footer";
+
+// Lazy-load below-the-fold sections to reduce initial bundle size
+const HowItWorksSection = dynamic(() =>
+  import("./how-it-works-section").then((m) => ({ default: m.HowItWorksSection }))
+);
+const CoreFeaturesSection = dynamic(() =>
+  import("./core-features-section").then((m) => ({ default: m.CoreFeaturesSection }))
+);
+const SecondaryFeaturesSection = dynamic(() =>
+  import("./secondary-features-section").then((m) => ({
+    default: m.SecondaryFeaturesSection,
+  }))
+);
+const SocialProofSection = dynamic(() =>
+  import("./social-proof-section").then((m) => ({ default: m.SocialProofSection }))
+);
+const FaqSection = dynamic(() =>
+  import("./faq-section").then((m) => ({ default: m.FaqSection }))
+);
+const CtaSection = dynamic(() =>
+  import("./cta-section").then((m) => ({ default: m.CtaSection }))
+);
 
 interface LandingPageProps {
   user: {

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "50mb",
     },
-    // Optimize barrel file imports for faster cold starts
+    // Optimize barrel file imports for faster cold starts and smaller bundles
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",
@@ -18,11 +18,23 @@ const nextConfig: NextConfig = {
       "date-fns",
       "@copilotkit/react-core",
       "@copilotkit/react-ui",
+      "@copilotkit/runtime",
+      "@radix-ui/react-avatar",
+      "@radix-ui/react-checkbox",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",
-      "@radix-ui/react-tabs",
-      "@radix-ui/react-select",
+      "@radix-ui/react-label",
       "@radix-ui/react-popover",
+      "@radix-ui/react-select",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-tabs",
+      "@tanstack/react-query",
+      "@langchain/core",
+      "@langchain/langgraph-sdk",
+      "react-markdown",
+      "katex",
+      "zod",
+      "uuid",
     ],
   },
   // Prevent Turbopack from bundling native/heavy server-only packages

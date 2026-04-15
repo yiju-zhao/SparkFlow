@@ -1,17 +1,26 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   UserNav
 } from "@/components/user-nav";
-import { SourcesPanel } from "@/components/deepdive/sources/sources-panel";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
-import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
+
+// Lazy-load side panels — they're collapsible and can load after the main chat panel
+const SourcesPanel = dynamic(
+  () => import("@/components/deepdive/sources/sources-panel").then((m) => ({ default: m.SourcesPanel })),
+  { ssr: false }
+);
+const StudioPanel = dynamic(
+  () => import("@/components/deepdive/studio/studio-panel").then((m) => ({ default: m.StudioPanel })),
+  { ssr: false }
+);
 
 import type { Source, Note, Notebook } from "@prisma/client";
 
