@@ -356,6 +356,15 @@
       "matcherDescription": "Model used for semantic matching and similarity",
       "saved": "Settings saved successfully",
       "saveError": "Failed to save settings"
+    },
+    "wechatSources": {
+      "title": "WeChat Sources",
+      "subtitle": "Select which public accounts to include when searching for WeChat article sources",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "loading": "Loading sources...",
+      "noSources": "No WeChat sources available",
+      "saved": "WeChat source preferences saved"
     }
   },
   "admin": {
