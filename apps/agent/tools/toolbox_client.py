@@ -16,7 +16,9 @@ def _validate_toolbox_url(url: str) -> str:
     """Require the configured Toolbox URL to point at the MCP endpoint."""
     if url.rstrip("/").endswith("/mcp"):
         return url
-    raise ValueError("TOOLBOX_SERVER_URL must point to the Toolbox MCP endpoint, e.g. http://host:5000/mcp")
+    raise ValueError(
+        "TOOLBOX_SERVER_URL must point to the Toolbox MCP endpoint, e.g. http://host:5000/mcp"
+    )
 
 
 def _coerce_toolbox_result(result: Any) -> Any:
@@ -54,7 +56,11 @@ async def call_toolbox_tool(name: str, arguments: dict[str, Any] | None = None) 
     args = arguments or {}
     toolbox_url = _validate_toolbox_url(DEFAULT_TOOLBOX_URL)
     try:
-        async with streamable_http_client(toolbox_url) as (read_stream, write_stream, _):
+        async with streamable_http_client(toolbox_url) as (
+            read_stream,
+            write_stream,
+            _,
+        ):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
                 result = await session.call_tool(name, args)

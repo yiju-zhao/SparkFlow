@@ -52,7 +52,9 @@ async def create_job(
     if not target_data:
         raise HTTPException(status_code=400, detail="No target data provided")
 
-    logger.info(f"Creating job with {len(queries)} queries and {len(target_data)} target items")
+    logger.info(
+        f"Creating job with {len(queries)} queries and {len(target_data)} target items"
+    )
 
     # Create job record
     job_id = job_store.create_job(
@@ -175,7 +177,10 @@ async def cancel_job(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    if job["status"] not in [MatchJobStatus.PENDING.value, MatchJobStatus.PROCESSING.value]:
+    if job["status"] not in [
+        MatchJobStatus.PENDING.value,
+        MatchJobStatus.PROCESSING.value,
+    ]:
         raise HTTPException(status_code=400, detail="Job cannot be cancelled")
 
     job_store.update_job(job_id, status=MatchJobStatus.CANCELLED.value)
@@ -197,7 +202,9 @@ async def download_results(
 
     result_data = job_store.get_result_data(job_id)
     if not result_data:
-        raise HTTPException(status_code=404, detail="Result data not available (may have been cleared)")
+        raise HTTPException(
+            status_code=404, detail="Result data not available (may have been cleared)"
+        )
 
     filename = f"match-results-{job_id}.xlsx"
 

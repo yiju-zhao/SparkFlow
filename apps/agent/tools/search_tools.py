@@ -42,13 +42,15 @@ def search_web(query: str, domains: list[str] | None = None) -> str:
         response = client.search(**kwargs)
         results = []
         for r in response.get("results", []):
-            results.append({
-                "id": r.get("url", ""),
-                "title": r.get("title", "Untitled"),
-                "snippet": r.get("content", "")[:300],
-                "url": r.get("url", ""),
-                "published_date": r.get("published_date", ""),
-            })
+            results.append(
+                {
+                    "id": r.get("url", ""),
+                    "title": r.get("title", "Untitled"),
+                    "snippet": r.get("content", "")[:300],
+                    "url": r.get("url", ""),
+                    "published_date": r.get("published_date", ""),
+                }
+            )
         return json.dumps(results, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -74,17 +76,19 @@ def search_publications(query: str, limit: int = 20) -> str:
         # Format for the agent
         results = []
         for pub in data:
-            results.append({
-                "id": pub.get("id", ""),
-                "title": pub.get("title", ""),
-                "snippet": pub.get("abstract", ""),
-                "meta": " · ".join(
-                    filter(None, [pub.get("venue"), str(pub.get("year", ""))])
-                ),
-                "url": pub.get("pdfUrl", ""),
-                "authors": pub.get("authors", []),
-                "rank": pub.get("rank", 0),
-            })
+            results.append(
+                {
+                    "id": pub.get("id", ""),
+                    "title": pub.get("title", ""),
+                    "snippet": pub.get("abstract", ""),
+                    "meta": " · ".join(
+                        filter(None, [pub.get("venue"), str(pub.get("year", ""))])
+                    ),
+                    "url": pub.get("pdfUrl", ""),
+                    "authors": pub.get("authors", []),
+                    "rank": pub.get("rank", 0),
+                }
+            )
         return json.dumps(results, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -112,16 +116,21 @@ def search_wechat(query: str, limit: int = 20) -> str:
             publish_time = article.get("publish_time", "")
             if publish_time:
                 publish_time = publish_time[:10]  # Just the date part
-            results.append({
-                "id": str(article.get("id", "")),
-                "title": article.get("title", ""),
-                "snippet": article.get("content_text", ""),
-                "meta": " · ".join(
-                    filter(None, ["WeChat", article.get("source_name", ""), publish_time])
-                ),
-                "url": article.get("original_url", ""),
-                "rank": article.get("rank", 0),
-            })
+            results.append(
+                {
+                    "id": str(article.get("id", "")),
+                    "title": article.get("title", ""),
+                    "snippet": article.get("content_text", ""),
+                    "meta": " · ".join(
+                        filter(
+                            None,
+                            ["WeChat", article.get("source_name", ""), publish_time],
+                        )
+                    ),
+                    "url": article.get("original_url", ""),
+                    "rank": article.get("rank", 0),
+                }
+            )
         return json.dumps(results, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)})

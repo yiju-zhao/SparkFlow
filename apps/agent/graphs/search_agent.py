@@ -52,9 +52,7 @@ async def agent_node(
     provider = runtime.context.model_provider or os.getenv(
         "DEFAULT_MODEL_PROVIDER", "openai"
     )
-    model_name = runtime.context.model_name or os.getenv(
-        "DEFAULT_MODEL_NAME", "gpt-4o"
-    )
+    model_name = runtime.context.model_name or os.getenv("DEFAULT_MODEL_NAME", "gpt-4o")
     model = _get_model(provider, model_name)
 
     # Once max iterations reached, don't bind tools — force the LLM to return final JSON
@@ -72,7 +70,9 @@ async def agent_node(
     # Inject domain filter hint for web searches
     if source_type == "web" and runtime.context.domains:
         domain_list = ", ".join(runtime.context.domains)
-        system_prompt += f"\n\nDOMAIN FILTER: Restrict web search to these domains: {domain_list}"
+        system_prompt += (
+            f"\n\nDOMAIN FILTER: Restrict web search to these domains: {domain_list}"
+        )
 
     response = await bound_model.ainvoke(
         [SystemMessage(content=system_prompt)] + list(state["messages"]),
@@ -86,7 +86,9 @@ async def agent_node(
     return {"messages": [response], "iteration": new_iteration}
 
 
-async def tool_node(state: SearchState, runtime: Runtime[SearchAgentContext]) -> dict[str, Any]:
+async def tool_node(
+    state: SearchState, runtime: Runtime[SearchAgentContext]
+) -> dict[str, Any]:
     """Execute tool calls from the LLM response."""
     source_type = runtime.context.source_type
     tools = SEARCH_TOOLS_BY_TYPE.get(source_type, [])
@@ -117,9 +119,7 @@ async def tool_node(state: SearchState, runtime: Runtime[SearchAgentContext]) ->
         except Exception as e:
             observation = json.dumps({"error": str(e)})
 
-        results.append(
-            ToolMessage(content=str(observation), tool_call_id=call["id"])
-        )
+        results.append(ToolMessage(content=str(observation), tool_call_id=call["id"]))
 
     return {"messages": results}
 

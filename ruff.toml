@@ -1,0 +1,9 @@
+[format]
+line-length = 100
+quote-style = "double"
+
+[lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+exclude = [".venv", "node_modules", "__pycache__"]

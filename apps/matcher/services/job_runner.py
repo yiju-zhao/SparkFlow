@@ -141,8 +141,12 @@ class JobRunner:
                 bu = query_record.get("bu", "Unknown")
                 optimization = optimization_by_bu.get(bu)
                 if optimization:
-                    query_record["optimized_query_native"] = optimization["optimized_query_native"]
-                    query_record["optimized_query_en"] = optimization["optimized_query_en"]
+                    query_record["optimized_query_native"] = optimization[
+                        "optimized_query_native"
+                    ]
+                    query_record["optimized_query_en"] = optimization[
+                        "optimized_query_en"
+                    ]
                     query_record["optimization_focuses"] = optimization["focuses"]
                     query_record["optimizer_used_llm"] = optimization["used_llm"]
                 enriched_queries.append(query_record)
@@ -188,9 +192,13 @@ class JobRunner:
                 matches_df.insert(0, "rank", range(1, len(matches_df) + 1))
 
                 # Rename recommendation_reason column if present
-                reason_cols = [c for c in matches_df.columns if "recommendation_reason" in c]
+                reason_cols = [
+                    c for c in matches_df.columns if "recommendation_reason" in c
+                ]
                 if reason_cols:
-                    matches_df = matches_df.rename(columns={reason_cols[0]: "recommendation_reason"})
+                    matches_df = matches_df.rename(
+                        columns={reason_cols[0]: "recommendation_reason"}
+                    )
 
                 results_by_query[bu] = matches_df
                 total_matches += len(matches_df)
@@ -208,13 +216,21 @@ class JobRunner:
                 id_col = "id" if "id" in bu_df.columns else None
                 if id_col:
                     rank_map = dict(zip(bu_df[id_col], bu_df["rank"]))
-                    master_df[bu] = master_df["id"].map(rank_map) if "id" in master_df.columns else ""
+                    master_df[bu] = (
+                        master_df["id"].map(rank_map)
+                        if "id" in master_df.columns
+                        else ""
+                    )
                 else:
                     # Fallback: use title for matching
                     title_col = "title" if "title" in bu_df.columns else None
                     if title_col:
                         rank_map = dict(zip(bu_df[title_col], bu_df["rank"]))
-                        master_df[bu] = master_df["title"].map(rank_map) if "title" in master_df.columns else ""
+                        master_df[bu] = (
+                            master_df["title"].map(rank_map)
+                            if "title" in master_df.columns
+                            else ""
+                        )
                     else:
                         master_df[bu] = ""
 
@@ -231,12 +247,21 @@ class JobRunner:
                     if "recommendation_reason" not in bu_df.columns:
                         continue
                     if "id" in bu_df.columns:
-                        reason_maps[bu] = dict(zip(bu_df["id"], bu_df["recommendation_reason"]))
+                        reason_maps[bu] = dict(
+                            zip(bu_df["id"], bu_df["recommendation_reason"])
+                        )
                     elif "title" in bu_df.columns:
-                        reason_maps[bu] = dict(zip(bu_df["title"], bu_df["recommendation_reason"]))
+                        reason_maps[bu] = dict(
+                            zip(bu_df["title"], bu_df["recommendation_reason"])
+                        )
 
-                id_key = "id" if "id" in master_df.columns else ("title" if "title" in master_df.columns else None)
+                id_key = (
+                    "id"
+                    if "id" in master_df.columns
+                    else ("title" if "title" in master_df.columns else None)
+                )
                 if id_key and reason_maps:
+
                     def get_aggregated_reasons(row, _maps=reason_maps, _key=id_key):
                         parts = []
                         key = row[_key]
@@ -246,15 +271,21 @@ class JobRunner:
                                 parts.append(f"[{bu}]\n{reason}")
                         return "\n\n".join(parts)
 
-                    master_df["recommendation_reasons"] = master_df.apply(get_aggregated_reasons, axis=1)
+                    master_df["recommendation_reasons"] = master_df.apply(
+                        get_aggregated_reasons, axis=1
+                    )
 
             # Drop database PK columns before writing to Excel
             master_df = master_df.drop(columns=["id"], errors="ignore")
             for bu in results_by_query:
-                results_by_query[bu] = results_by_query[bu].drop(columns=["id"], errors="ignore")
+                results_by_query[bu] = results_by_query[bu].drop(
+                    columns=["id"], errors="ignore"
+                )
 
             # Create result Excel
-            self.job_store.update_job(job_id, progress=85, error_message="Creating result file...")
+            self.job_store.update_job(
+                job_id, progress=85, error_message="Creating result file..."
+            )
             result_bytes = self.excel_processor.create_result_excel(
                 results_by_query=results_by_query,
                 master_df=master_df,
@@ -271,11 +302,14 @@ class JobRunner:
                 error_message=None,
             )
 
-            logger.info(f"Job {job_id} completed: {total_matches} total matches from {total_bus} BUs")
+            logger.info(
+                f"Job {job_id} completed: {total_matches} total matches from {total_bus} BUs"
+            )
 
             # Cleanup temp index
             try:
                 import shutil
+
                 shutil.rmtree(index_dir, ignore_errors=True)
             except Exception:
                 pass

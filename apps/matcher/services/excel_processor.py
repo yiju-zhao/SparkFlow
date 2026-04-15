@@ -48,7 +48,9 @@ class ExcelProcessor:
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            logger.warning(f"Translation failed for text '{text[:50]}...': {e}. Using original.")
+            logger.warning(
+                f"Translation failed for text '{text[:50]}...': {e}. Using original."
+            )
             return text
 
     def create_result_excel(
@@ -71,13 +73,17 @@ class ExcelProcessor:
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             # Tab 1: Master aggregated view (if provided)
             if master_df is not None:
-                self._sanitize_df(master_df).to_excel(writer, sheet_name="Master_Aggregated", index=False)
+                self._sanitize_df(master_df).to_excel(
+                    writer, sheet_name="Master_Aggregated", index=False
+                )
 
             # Tabs for each query's results
             for query_name, df in results_by_query.items():
                 # Sanitize sheet name (max 31 chars, no special chars)
                 safe_name = self._sanitize_sheet_name(query_name)
-                self._sanitize_df(df).to_excel(writer, sheet_name=safe_name, index=False)
+                self._sanitize_df(df).to_excel(
+                    writer, sheet_name=safe_name, index=False
+                )
 
         output.seek(0)
         return output.getvalue()
@@ -88,16 +94,18 @@ class ExcelProcessor:
         df = df.copy()
         for col in df.select_dtypes(include=["object"]).columns:
             df[col] = df[col].apply(
-                lambda v: _ILLEGAL_EXCEL_CHARS_RE.sub("", v) if isinstance(v, str) else v
+                lambda v: (
+                    _ILLEGAL_EXCEL_CHARS_RE.sub("", v) if isinstance(v, str) else v
+                )
             )
         return df
 
     def _sanitize_sheet_name(self, name: str) -> str:
         """Sanitize sheet name for Excel (max 31 chars, no invalid chars)."""
         # Remove invalid characters
-        invalid_chars = ['\\', '/', '*', '?', ':', '[', ']']
+        invalid_chars = ["\\", "/", "*", "?", ":", "[", "]"]
         for char in invalid_chars:
-            name = name.replace(char, '_')
+            name = name.replace(char, "_")
         # Truncate to 31 chars
         return name[:31]
 
