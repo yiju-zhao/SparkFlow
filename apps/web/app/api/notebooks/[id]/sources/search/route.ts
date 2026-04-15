@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
 import type { SearchRequest, SearchResult, SearchStatusResponse } from "@/lib/types/search";
-import { searchWechatArticles } from "@/lib/services/wechat-client";
+import { getWikiContextForSearch } from "@/lib/services/wiki-context";
 import modelsConfig from "@/config/models.json";
 
 // In-memory task store (sufficient for single-server)
@@ -35,11 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Fetch user's search model preference
   const userSettings = await prisma.userSettings.findUnique({
     where: { userId: session.user.id },
-    select: {
-      searchModelProvider: true,
-      searchModelName: true,
-      wechatExcludedSourceIds: true,
-    },
+    select: { searchModelProvider: true, searchModelName: true },
   });
   const searchModelProvider = userSettings?.searchModelProvider || modelsConfig.defaults.provider;
   const searchModelName = userSettings?.searchModelName || modelsConfig.defaults.searchModel;
@@ -51,17 +47,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     notebookId,
   });
 
-  const wechatExcludedSourceIds = userSettings?.wechatExcludedSourceIds || [];
-
   // Fire search in background
   performSearch(
     taskId,
+    notebookId,
     query,
     sourceType,
     domains,
     searchModelProvider,
     searchModelName,
-    wechatExcludedSourceIds,
   ).catch((err) => {
     console.error(`[Search] Task ${taskId} failed:`, err);
     const task = searchTasks.get(taskId);
@@ -76,115 +70,73 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 async function performSearch(
   taskId: string,
+  notebookId: string,
   query: string,
   sourceType: string,
   domains?: string[],
   modelProvider?: string,
   modelName?: string,
-  wechatExcludedSourceIds: number[] = [],
 ) {
   const task = searchTasks.get(taskId);
   if (!task) return;
 
   try {
+    // Fetch wiki context for the notebook (domain awareness)
+    const wikiContext = await getWikiContextForSearch(notebookId);
+
+    // Call the search agent for all source types
+    const agentUrl = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
+    const response = await fetch(`${agentUrl}/runs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        assistant_id: "search",
+        input: {
+          messages: [{ role: "user", content: query }],
+          iteration: 0,
+        },
+        config: {
+          configurable: {
+            source_type: sourceType,
+            domains: domains || [],
+            wiki_context: wikiContext,
+            model_provider: modelProvider,
+            model_name: modelName,
+          },
+        },
+      }),
+    });
+
     let results: SearchResult[] = [];
 
-    if (sourceType === "web") {
-      // Call LangGraph agent for web search
-      const agentUrl = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
-      const response = await fetch(`${agentUrl}/runs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assistant_id: "agent",
-          input: {
-            messages: [
-              {
-                role: "user",
-                content: JSON.stringify({
-                  action: "search",
-                  query,
-                  sourceType: "web",
-                  domains: domains || [],
-                }),
-              },
-            ],
-          },
-          config: {
-            configurable: {
-              search_mode: true,
-              model_provider: modelProvider,
-              model_name: modelName,
-            },
-          },
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const lastMessage = data?.output?.messages?.slice(-1)?.[0];
-        if (lastMessage?.content) {
-          try {
-            const parsed = JSON.parse(lastMessage.content);
-            if (Array.isArray(parsed)) {
-              results = parsed.map((r: any) => ({
-                id: r.url || r.id || uuidv4(),
-                title: r.title || "Untitled",
-                snippet: r.content || r.snippet || "",
-                meta:
-                  new URL(r.url || "").hostname +
-                  (r.published_date ? ` · ${r.published_date}` : ""),
-                url: r.url,
-                sourceType: "web" as const,
-              }));
-            }
-          } catch {
-            // Agent returned non-JSON, skip
+    if (response.ok) {
+      const data = await response.json();
+      // The agent's last message should be a JSON array of results
+      const lastMessage = data?.output?.messages?.slice(-1)?.[0];
+      const content =
+        typeof lastMessage === "string" ? lastMessage : lastMessage?.content;
+      if (content) {
+        try {
+          // Strip markdown code fences if the LLM wrapped them
+          const cleaned = content
+            .replace(/^```(?:json)?\s*/i, "")
+            .replace(/\s*```$/i, "")
+            .trim();
+          const parsed = JSON.parse(cleaned);
+          if (Array.isArray(parsed)) {
+            results = parsed.map((r: any) => ({
+              id: r.id || r.url || "",
+              title: r.title || "Untitled",
+              snippet: r.snippet || "",
+              meta: r.meta || "",
+              url: r.url || undefined,
+              sourceType: sourceType as SearchResult["sourceType"],
+            }));
           }
+        } catch {
+          // Agent returned non-JSON, leave results empty
         }
       }
-    } else if (sourceType === "publication") {
-      // Search SparkFlow publications via Prisma
-      const publications = await prisma.publication.findMany({
-        where: {
-          OR: [
-            { title: { contains: query, mode: "insensitive" } },
-            { abstract: { contains: query, mode: "insensitive" } },
-          ],
-        },
-        take: 10,
-        orderBy: { createdAt: "desc" },
-        include: { instance: { include: { venue: true } } },
-      });
-
-      results = publications.map((pub) => ({
-        id: pub.id,
-        title: pub.title,
-        snippet: pub.abstract?.slice(0, 200) || "",
-        meta: [pub.instance?.venue?.name, pub.authors?.slice(0, 3).join(", ")]
-          .filter(Boolean)
-          .join(" · "),
-        url: pub.pdfUrl || undefined,
-        sourceType: "publication" as const,
-      }));
-    } else if (sourceType === "wechat") {
-      // Search WeChat articles via external DB
-      const articles = await searchWechatArticles(query, 10, wechatExcludedSourceIds);
-
-      results = articles.map((article) => ({
-        id: String(article.id),
-        title: article.title,
-        snippet: article.content_text?.slice(0, 200) || "",
-        meta: [
-          "WeChat",
-          article.source_name || article.author,
-          article.publish_time ? new Date(article.publish_time).toLocaleDateString() : null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        url: article.original_url || undefined,
-        sourceType: "wechat" as const,
-      }));
     }
 
     task.results = results;
