@@ -100,6 +100,20 @@ export function ResearchAssistantPanel({
   // Get thread management to reset thread ID on close
   const { setThreadId } = useThreads();
 
+  // Start each panel session with a fresh LangGraph thread to avoid
+  // "Message not found" errors from stale checkpoint state.
+  const hasInitRef = useRef(false);
+  useEffect(() => {
+    if (open && !hasInitRef.current) {
+      hasInitRef.current = true;
+      reset();
+      setThreadId(uuidv4());
+    }
+    if (!open) {
+      hasInitRef.current = false;
+    }
+  }, [open, reset, setThreadId]);
+
   // Handler to close panel and reset state
   const handleClose = () => {
     // Reset messages first

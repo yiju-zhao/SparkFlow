@@ -283,14 +283,16 @@ export async function addWechatSource(
 
   (async () => {
     try {
-      // Simple HTML to text conversion (content_text is already available)
-      const markdownContent = article.content_text || article.content_html;
-
-      // Fetch and store images
+      // Fetch and store images, building URL mappings for content rewriting
       const images = await getWechatArticleImages(articleId);
+      // Maps: wechat DB image id → local /api/images/{sourceImageId}
+      const wechatIdToLocal = new Map<number, string>();
+      // Maps: original CDN URL → local /api/images/{sourceImageId}
+      const originalUrlToLocal = new Map<string, string>();
+
       for (const img of images) {
         if (img.data) {
-          await prisma.sourceImage.create({
+          const savedImage = await prisma.sourceImage.create({
             data: {
               sourceId: source.id,
               originalName: img.original_url.split("/").pop() || "image",
@@ -300,8 +302,51 @@ export async function addWechatSource(
               data: Buffer.from(img.data) as unknown as Uint8Array<ArrayBuffer>,
             },
           });
+          const localUrl = `/api/images/${savedImage.id}`;
+          wechatIdToLocal.set(img.id, localUrl);
+          if (img.original_url) {
+            originalUrlToLocal.set(img.original_url, localUrl);
+          }
         }
       }
+
+      // Convert HTML to markdown using TurndownService with image URL rewriting
+      const TurndownService = (await import("turndown")).default;
+      const td = new TurndownService({ headingStyle: "atx" });
+
+      td.addRule("wechatImages", {
+        filter: "img",
+        replacement: (_content, node) => {
+          const el = node as HTMLElement;
+          const src = el.getAttribute("data-src") || el.getAttribute("src") || "";
+          const alt = el.getAttribute("alt") || "";
+          if (!src) return "";
+
+          // Case 1: Scraper-rewritten paths like /api/images/{wechatDbId}
+          const scraperMatch = src.match(/^\/api\/images\/(\d+)$/);
+          if (scraperMatch) {
+            const wechatDbId = parseInt(scraperMatch[1], 10);
+            const localUrl = wechatIdToLocal.get(wechatDbId);
+            if (localUrl) return `\n\n![${alt}](${localUrl})\n\n`;
+          }
+
+          // Case 2: Match by original WeChat CDN URL
+          const localUrl = originalUrlToLocal.get(src);
+          if (localUrl) return `\n\n![${alt}](${localUrl})\n\n`;
+
+          // Case 3: Keep original URL as fallback (external images)
+          return `\n\n![${alt}](${src})\n\n`;
+        },
+      });
+
+      const htmlContent = article.content_html;
+      const markdownContent = htmlContent
+        ? td.turndown(htmlContent)
+        : (article.content_text || "");
+
+      // Extract TOC from markdown headings
+      const { extractTocFromMarkdown } = await import("@/lib/utils/toc-extractor");
+      const toc = extractTocFromMarkdown(markdownContent);
 
       // Update source with content
       await prisma.source.update({
@@ -314,6 +359,9 @@ export async function addWechatSource(
             author: article.author,
             publishDate: article.publish_time?.toISOString(),
             sourceName: article.source_name,
+            markdownLength: markdownContent.length,
+            imageCount: images.filter((i) => i.data).length,
+            toc,
           },
         },
       });
