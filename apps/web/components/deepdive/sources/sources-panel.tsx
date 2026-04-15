@@ -63,10 +63,12 @@ export function SourcesPanel({
     initialData: sources,
     refetchInterval: (query) => {
       const list = query.state.data || sources;
-      const hasProcessing = list.some(
-        (sourceItem) =>
-          sourceItem.status === "PROCESSING" || sourceItem.status === "UPLOADING",
-      );
+      const hasProcessing = list.some((sourceItem) => {
+        if (sourceItem.status === "PROCESSING" || sourceItem.status === "UPLOADING") return true;
+        const meta = sourceItem.metadata as Record<string, unknown> | null;
+        const ws = meta?.wikiStatus as string | undefined;
+        return ws && ws !== "done" && ws !== "failed";
+      });
       return hasProcessing ? 5000 : false;
     },
     refetchOnReconnect: true,
