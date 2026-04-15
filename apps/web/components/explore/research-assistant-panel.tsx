@@ -14,9 +14,9 @@ import {
   useCopilotReadable,
   useThreads,
 } from "@copilotkit/react-core";
-import { useRenderActivityMessage } from "@copilotkitnext/react";
 import { v4 as uuidv4 } from "uuid";
 import type { ActivityMessage, Message } from "@copilotkit/shared";
+import { McpActivityRenderer } from "./mcp-activity-renderer";
 import { Button } from "@/components/ui/button";
 import { X, Send, Sparkles } from "lucide-react";
 import { useContextSuggestions } from "@/lib/hooks/use-context-suggestions";
@@ -43,12 +43,7 @@ function ActivityMessageView({
 }: {
   message: ActivityMessage;
 }) {
-  const { renderActivityMessage } = useRenderActivityMessage();
-  const activityUi = renderActivityMessage(message as never);
-
-  if (!activityUi) return null;
-
-  return <div className="w-full">{activityUi}</div>;
+  return <McpActivityRenderer message={message} />;
 }
 
 export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
