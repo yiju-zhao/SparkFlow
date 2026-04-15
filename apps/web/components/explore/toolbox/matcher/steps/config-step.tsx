@@ -49,7 +49,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
 
   const [instanceId, setInstanceId] = useState(initialConfig?.instanceId ?? "");
   const [targetType, setTargetType] = useState<"SESSION" | "PUBLICATION" | "">(
-    initialConfig?.targetType ?? ""
+    initialConfig?.targetType ?? "",
   );
   const [topKStr, setTopKStr] = useState(String(initialConfig?.topK ?? 50));
   const [searchKStr, setSearchKStr] = useState(String(initialConfig?.searchK ?? 350));
@@ -58,9 +58,10 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
   const parsedTopK = parseInt(topKStr);
   const parsedSearchK = parseInt(searchKStr);
   const topKError = !topKStr || isNaN(parsedTopK) || parsedTopK < 1 ? "Must be ≥ 1" : null;
-  const searchKError = !searchKStr || isNaN(parsedSearchK) || parsedSearchK < (isNaN(parsedTopK) ? 1 : parsedTopK)
-    ? `Must be ≥ ${isNaN(parsedTopK) ? "Top K" : parsedTopK}`
-    : null;
+  const searchKError =
+    !searchKStr || isNaN(parsedSearchK) || parsedSearchK < (isNaN(parsedTopK) ? 1 : parsedTopK)
+      ? `Must be ≥ ${isNaN(parsedTopK) ? "Top K" : parsedTopK}`
+      : null;
 
   useEffect(() => {
     async function loadInstances() {
@@ -103,7 +104,16 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
       return;
     }
 
-    onStart({ instanceId, targetType: targetType as "SESSION" | "PUBLICATION", topK: parsedTopK, searchK: parsedSearchK, includeReasons }, queries);
+    onStart(
+      {
+        instanceId,
+        targetType: targetType as "SESSION" | "PUBLICATION",
+        topK: parsedTopK,
+        searchK: parsedSearchK,
+        includeReasons,
+      },
+      queries,
+    );
   };
 
   return (
@@ -111,7 +121,10 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
       <div>
         <h3 className="text-lg font-medium">{t("title")}</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          {t("description", { count: queries.length, noun: queries.length === 1 ? t("queryNounSingular") : t("queryNounPlural") })}
+          {t("description", {
+            count: queries.length,
+            noun: queries.length === 1 ? t("queryNounSingular") : t("queryNounPlural"),
+          })}
         </p>
       </div>
 
@@ -121,9 +134,7 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
         </div>
       ) : (
         <div className="space-y-4">
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           <div className="space-y-2">
             <Label htmlFor="instance">{t("conference")}</Label>
@@ -210,7 +221,10 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
         <Button variant="outline" onClick={onBack}>
           {t("back")}
         </Button>
-        <Button onClick={handleStart} disabled={!instanceId || !targetType || isLoading || queries.length === 0}>
+        <Button
+          onClick={handleStart}
+          disabled={!instanceId || !targetType || isLoading || queries.length === 0}
+        >
           {t("startMatching")}
         </Button>
       </div>

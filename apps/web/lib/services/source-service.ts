@@ -16,7 +16,7 @@ import type { Source } from "@prisma/client";
 export async function storeImagesAndRewriteMarkdown(
   sourceId: string,
   markdown: string,
-  images: { name: string; fullPath?: string; data: Buffer; mimeType: string }[]
+  images: { name: string; fullPath?: string; data: Buffer; mimeType: string }[],
 ): Promise<string> {
   let rewrittenMarkdown = markdown;
 
@@ -42,11 +42,7 @@ export async function storeImagesAndRewriteMarkdown(
 }
 
 class SourceService {
-  async addWebpageSource(
-    notebookId: string,
-    url: string,
-    title?: string,
-  ): Promise<Source> {
+  async addWebpageSource(notebookId: string, url: string, title?: string): Promise<Source> {
     const source = await prisma.source.create({
       data: {
         notebookId,
@@ -64,18 +60,12 @@ class SourceService {
       notebookId,
     };
 
-    this.processInBackground(
-      () => processWebpage(url, title, context),
-      notebookId,
-    );
+    this.processInBackground(() => processWebpage(url, title, context), notebookId);
 
     return source;
   }
 
-  async uploadDocumentSource(
-    notebookId: string,
-    file: File,
-  ): Promise<Source> {
+  async uploadDocumentSource(notebookId: string, file: File): Promise<Source> {
     const source = await prisma.source.create({
       data: {
         notebookId,
@@ -93,19 +83,12 @@ class SourceService {
     };
 
     const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
-    this.processInBackground(
-      () => this.processDocument(file, fileExtension, context),
-      notebookId,
-    );
+    this.processInBackground(() => this.processDocument(file, fileExtension, context), notebookId);
 
     return source;
   }
 
-  private async processDocument(
-    file: File,
-    fileExtension: string,
-    context: ProcessingContext,
-  ) {
+  private async processDocument(file: File, fileExtension: string, context: ProcessingContext) {
     if (fileExtension === "txt" || fileExtension === "md") {
       return processTextDocument(file, context);
     } else if (fileExtension === "pdf") {
@@ -117,10 +100,7 @@ class SourceService {
     }
   }
 
-  private processInBackground(
-    processFn: () => Promise<unknown>,
-    notebookId: string,
-  ): void {
+  private processInBackground(processFn: () => Promise<unknown>, notebookId: string): void {
     processFn()
       .catch(console.error)
       .finally(() => {

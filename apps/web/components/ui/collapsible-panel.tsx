@@ -15,8 +15,7 @@ interface CollapsiblePanelContextValue {
   isAnimationComplete: boolean;
 }
 
-const CollapsiblePanelContext =
-  createContext<CollapsiblePanelContextValue | null>(null);
+const CollapsiblePanelContext = createContext<CollapsiblePanelContextValue | null>(null);
 
 export function useCollapsiblePanel() {
   return useContext(CollapsiblePanelContext);
@@ -59,9 +58,10 @@ export function CollapsiblePanel({
   }, [width, isOpen]);
 
   // Determine border based on side (static classes for Tailwind content detection)
-  const borderClasses = side === "left"
-    ? "border-r-2 dark:border-r border-divider"
-    : "border-l-2 dark:border-l border-divider";
+  const borderClasses =
+    side === "left"
+      ? "border-r-2 dark:border-r border-divider"
+      : "border-l-2 dark:border-l border-divider";
 
   // Calculate current animated width
   const animatedWidth = isOpen ? width : 0;

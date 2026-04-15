@@ -4,7 +4,7 @@ import type { ProcessingContext, ProcessingResult } from "./types";
 
 export async function processTextDocument(
   file: File,
-  context: ProcessingContext
+  context: ProcessingContext,
 ): Promise<ProcessingResult> {
   const { sourceId } = context;
 

@@ -33,9 +33,7 @@ export default async function SettingsPage() {
           <div>
             <BackButton />
             <h1 className="text-2xl font-semibold tracking-tight mt-3">Settings</h1>
-            <p className="text-muted-foreground mt-1">
-              Configure your AI model preferences
-            </p>
+            <p className="text-muted-foreground mt-1">Configure your AI model preferences</p>
           </div>
 
           <div className="rounded-lg border bg-card p-6 shadow-sm">

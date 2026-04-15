@@ -11,7 +11,9 @@ class HubAgentConfig:
 
     model_provider: str = os.getenv("HUB_MODEL_PROVIDER", "openai")
     model_name: str = os.getenv("HUB_MODEL_NAME", "gpt-5.4")
-    toolbox_server_url: str = os.getenv("TOOLBOX_SERVER_URL", "http://localhost:5000/mcp")
+    toolbox_server_url: str = os.getenv(
+        "TOOLBOX_SERVER_URL", "http://localhost:5000/mcp"
+    )
     render_server_url: str = os.getenv("MCP_SERVER_URL", "http://localhost:3108/mcp")
     max_backend_iterations: int = int(os.getenv("HUB_MAX_BACKEND_ITERATIONS", "6"))
 

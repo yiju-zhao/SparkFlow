@@ -4,7 +4,8 @@
     ],
     "graphs": {
         "agent": "./graphs/rag_agent.py:agent",
-        "hub": "./graphs/hub_agent.py:agent"
+        "hub": "./graphs/hub_agent.py:agent",
+        "search": "./graphs/search_agent.py:agent"
     },
     "env": ".env",
     "image_distro": "wolfi"

@@ -41,7 +41,7 @@ class JobStore:
         query_count: int,
         target_data: list[dict] = None,
         model_provider: str = None,  # For query optimizer only
-        model_name: str = None,      # For query optimizer only
+        model_name: str = None,  # For query optimizer only
     ) -> str:
         """Create a new job and return its ID."""
         job_id = str(uuid.uuid4())

@@ -22,33 +22,20 @@ import { Textarea } from "@/components/ui/textarea";
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
   return (
-    <div
-      className="mt-2 text-[10px] text-muted-foreground"
-      suppressHydrationWarning
-    >
+    <div className="mt-2 text-[10px] text-muted-foreground" suppressHydrationWarning>
       {timeString}
     </div>
   );
 }
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  createNote,
-  updateNote,
-  deleteNote,
-  togglePinNote,
-} from "@/lib/actions/notes";
+import { createNote, updateNote, deleteNote, togglePinNote } from "@/lib/actions/notes";
 import type { Note } from "@prisma/client";
 
 export interface StudioPanelProps {
@@ -114,12 +101,8 @@ export function StudioPanel({
             {sortedNotes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <StickyNote className="h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  No notes yet
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Save insights from your research
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">No notes yet</p>
+                <p className="text-xs text-muted-foreground">Save insights from your research</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -173,16 +156,14 @@ function NoteCard({ note, onSelect, selected }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-divider ${isPending ? "opacity-50" : ""
-        } hover:bg-surface-hover`}
+      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-divider ${
+        isPending ? "opacity-50" : ""
+      } hover:bg-surface-hover`}
     >
-
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            {note.isPinned && (
-              <Pin className="h-3 w-3 shrink-0 text-accent-red" />
-            )}
+            {note.isPinned && <Pin className="h-3 w-3 shrink-0 text-accent-red" />}
             <h3 className="line-clamp-1 text-[13px] font-medium leading-tight">{note.title}</h3>
           </div>
           <div className="mt-1 h-[28px] overflow-hidden text-[12px] text-muted-foreground/70">
@@ -224,11 +205,7 @@ function NoteCard({ note, onSelect, selected }: NoteCardProps) {
       {note.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {note.tags.slice(0, 3).map((tag, index) => (
-            <Badge
-              key={index}
-              variant="secondary"
-              className="h-4 px-1.5 text-[10px]"
-            >
+            <Badge key={index} variant="secondary" className="h-4 px-1.5 text-[10px]">
               {tag}
             </Badge>
           ))}
@@ -280,12 +257,7 @@ function NoteViewer({
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-divider px-4 py-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onBack}
-        >
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-1">
@@ -312,12 +284,7 @@ function NoteViewer({
               </Button>
             </>
           ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={onEdit}
-            >
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onEdit}>
               <Pencil className="mr-1 h-3.5 w-3.5" />
               Edit
             </Button>
@@ -363,7 +330,8 @@ function NoteViewer({
               className="flex-1"
               onClick={(e) => {
                 const target = e.target as HTMLElement;
-                const wikiEl = target.tagName === "WIKI-LINK" ? target : target.closest("wiki-link");
+                const wikiEl =
+                  target.tagName === "WIKI-LINK" ? target : target.closest("wiki-link");
                 if (wikiEl) {
                   const slug = wikiEl.getAttribute("data-slug");
                   if (slug && onWikiNavigate) {
@@ -376,7 +344,8 @@ function NoteViewer({
               <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
                 {note.content.replace(
                   /\[\[([a-zA-Z0-9_-]+)\]\]/g,
-                  (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
+                  (_, slug) =>
+                    `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`,
                 )}
               </Markdown>
               <style>{`
@@ -406,11 +375,7 @@ interface CreateNoteDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function CreateNoteDialog({
-  notebookId,
-  open,
-  onOpenChange,
-}: CreateNoteDialogProps) {
+function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");

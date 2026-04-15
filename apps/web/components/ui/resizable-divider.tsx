@@ -33,12 +33,10 @@ export function ResizableDivider({
     (e: React.MouseEvent) => {
       e.preventDefault();
       setIsDragging(true);
-      startPositionRef.current =
-        direction === "horizontal" ? e.clientY : e.clientX;
+      startPositionRef.current = direction === "horizontal" ? e.clientY : e.clientX;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        const currentPosition =
-          direction === "horizontal" ? moveEvent.clientY : moveEvent.clientX;
+        const currentPosition = direction === "horizontal" ? moveEvent.clientY : moveEvent.clientX;
         const delta = currentPosition - startPositionRef.current;
         startPositionRef.current = currentPosition;
         onDrag?.(delta);
@@ -55,10 +53,9 @@ export function ResizableDivider({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
       document.body.style.userSelect = "none";
-      document.body.style.cursor =
-        direction === "vertical" ? "col-resize" : "row-resize";
+      document.body.style.cursor = direction === "vertical" ? "col-resize" : "row-resize";
     },
-    [direction, onDrag]
+    [direction, onDrag],
   );
 
   const handleDoubleClick = useCallback(() => {

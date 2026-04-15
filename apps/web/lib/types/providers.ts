@@ -6,12 +6,37 @@ export interface ProviderConfig {
 }
 
 export const PROVIDERS: ProviderConfig[] = [
-  { id: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1", sdkType: "openai-compatible" },
+  {
+    id: "openai",
+    label: "OpenAI",
+    baseUrl: "https://api.openai.com/v1",
+    sdkType: "openai-compatible",
+  },
   { id: "gemini", label: "Gemini", sdkType: "google" },
-  { id: "deepseek", label: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", sdkType: "openai-compatible" },
-  { id: "glm", label: "GLM (Zhipu)", baseUrl: "https://open.bigmodel.cn/api/paas/v4", sdkType: "openai-compatible" },
-  { id: "minimax", label: "Minimax", baseUrl: "https://api.minimax.chat/v1", sdkType: "openai-compatible" },
-  { id: "kimi", label: "Kimi (Moonshot)", baseUrl: "https://api.moonshot.cn/v1", sdkType: "openai-compatible" },
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    baseUrl: "https://api.deepseek.com/v1",
+    sdkType: "openai-compatible",
+  },
+  {
+    id: "glm",
+    label: "GLM (Zhipu)",
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    sdkType: "openai-compatible",
+  },
+  {
+    id: "minimax",
+    label: "Minimax",
+    baseUrl: "https://api.minimax.chat/v1",
+    sdkType: "openai-compatible",
+  },
+  {
+    id: "kimi",
+    label: "Kimi (Moonshot)",
+    baseUrl: "https://api.moonshot.cn/v1",
+    sdkType: "openai-compatible",
+  },
   { id: "custom", label: "Custom", sdkType: "openai-compatible" },
 ];
 

@@ -45,7 +45,11 @@ export function WechatFilterBar({ sources }: WechatFilterBarProps) {
     });
   };
 
-  const hasFilters = searchParams.has("source") || searchParams.has("dateFrom") || searchParams.has("dateTo") || searchParams.has("search");
+  const hasFilters =
+    searchParams.has("source") ||
+    searchParams.has("dateFrom") ||
+    searchParams.has("dateTo") ||
+    searchParams.has("search");
 
   return (
     <div className={`flex flex-wrap items-center gap-3 ${isPending ? "opacity-70" : ""}`}>

@@ -58,20 +58,39 @@ export function HealthCheckButton({ notebookId }: { notebookId: string }) {
         <div className="absolute left-0 right-0 top-full z-50 mx-3 mt-1 rounded-lg border border-border bg-background shadow-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold">Health Check</h3>
-            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setIsOpen(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0"
+              onClick={() => setIsOpen(false)}
+            >
               &times;
             </Button>
           </div>
 
           <div className="grid grid-cols-4 gap-2 mb-3 text-center">
-            <div><div className="text-lg font-bold">{report.stats.totalPages}</div><div className="text-[10px] text-muted-foreground">Pages</div></div>
-            <div><div className="text-lg font-bold">{report.stats.totalNodes}</div><div className="text-[10px] text-muted-foreground">Nodes</div></div>
-            <div><div className="text-lg font-bold">{report.stats.totalEdges}</div><div className="text-[10px] text-muted-foreground">Edges</div></div>
-            <div><div className="text-lg font-bold">{report.stats.orphanNodes}</div><div className="text-[10px] text-muted-foreground">Orphans</div></div>
+            <div>
+              <div className="text-lg font-bold">{report.stats.totalPages}</div>
+              <div className="text-[10px] text-muted-foreground">Pages</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold">{report.stats.totalNodes}</div>
+              <div className="text-[10px] text-muted-foreground">Nodes</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold">{report.stats.totalEdges}</div>
+              <div className="text-[10px] text-muted-foreground">Edges</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold">{report.stats.orphanNodes}</div>
+              <div className="text-[10px] text-muted-foreground">Orphans</div>
+            </div>
           </div>
 
           {report.issues.length === 0 ? (
-            <p className="text-xs text-green-600 dark:text-green-400 text-center py-2">No issues found</p>
+            <p className="text-xs text-green-600 dark:text-green-400 text-center py-2">
+              No issues found
+            </p>
           ) : (
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {report.issues.map((issue, i) => (

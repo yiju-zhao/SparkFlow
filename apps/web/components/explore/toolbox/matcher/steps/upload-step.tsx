@@ -6,11 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { FileDropzone } from "../file-dropzone";
 import { Button } from "@/components/ui/button";
 import { Loader2, HelpCircle } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -19,10 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  QueryPreviewTable,
-  type QueryPreviewTableHandle,
-} from "../query-preview-table";
+import { QueryPreviewTable, type QueryPreviewTableHandle } from "../query-preview-table";
 import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface UploadStepProps {
@@ -91,9 +84,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium">{t("title")}</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("description")}
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
         </div>
 
         <Popover>
@@ -129,15 +120,17 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
                   </TableRow>
                   <TableRow>
                     <TableCell className="text-xs text-muted-foreground">B</TableCell>
-                    <TableCell className="text-xs font-mono font-medium">{t("queryColumn")}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{t("queryDesc")}</TableCell>
+                    <TableCell className="text-xs font-mono font-medium">
+                      {t("queryColumn")}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {t("queryDesc")}
+                    </TableCell>
                     <TableCell className="text-xs">{t("yes")}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
-              <p className="text-xs text-muted-foreground">
-                {t("note")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("note")}</p>
             </div>
           </PopoverContent>
         </Popover>
@@ -154,19 +147,12 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
             </Button>
           </div>
           <div className="border rounded-lg overflow-hidden max-h-125 overflow-y-auto">
-            <QueryPreviewTable
-              ref={previewRef}
-              queries={queries}
-              onQueriesChange={setQueries}
-            />
+            <QueryPreviewTable ref={previewRef} queries={queries} onQueriesChange={setQueries} />
           </div>
         </div>
       ) : (
         <>
-          <FileDropzone
-            onFileSelect={handleFileSelect}
-            disabled={isParsing}
-          />
+          <FileDropzone onFileSelect={handleFileSelect} disabled={isParsing} />
           {isParsing && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -176,18 +162,13 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
         </>
       )}
 
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onCancel}>
           {t("cancel")}
         </Button>
-        <Button
-          onClick={handleContinue}
-          disabled={!showPreview || isParsing}
-        >
+        <Button onClick={handleContinue} disabled={!showPreview || isParsing}>
           {t("continue")}
         </Button>
       </div>

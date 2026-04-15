@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Key not found" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 }

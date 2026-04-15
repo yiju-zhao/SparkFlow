@@ -37,15 +37,11 @@ export function StatusToggles({ className }: StatusTogglesProps) {
   };
 
   return (
-    <div
-      className={`flex items-center gap-2 ${className} ${isPending ? "opacity-70" : ""}`}
-    >
+    <div className={`flex items-center gap-2 ${className} ${isPending ? "opacity-70" : ""}`}>
       <Checkbox
         id="showExcluded"
         checked={showExcluded}
-        onCheckedChange={(checked: CheckedState) =>
-          updateToggle(checked === true)
-        }
+        onCheckedChange={(checked: CheckedState) => updateToggle(checked === true)}
       />
       <Label
         htmlFor="showExcluded"

@@ -38,9 +38,7 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
       </Link>
       <StatsCard
         title={t("yearsCovered")}
-        value={
-          stats.yearsRange ? stats.yearsRange.max - stats.yearsRange.min + 1 : 0
-        }
+        value={stats.yearsRange ? stats.yearsRange.max - stats.yearsRange.min + 1 : 0}
         icon={<TrendingUp className="h-5 w-5" />}
       />
     </div>

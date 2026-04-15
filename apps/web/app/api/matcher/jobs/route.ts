@@ -9,8 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const MATCHER_API_URL =
-  process.env.MATCHER_API_URL || "http://localhost:2025";
+const MATCHER_API_URL = process.env.MATCHER_API_URL || "http://localhost:2025";
 
 // Convert camelCase to snake_case for matcher service
 function toSnakeCase(str: string): string {
@@ -26,7 +25,9 @@ function transformToSnakeCase(obj: Record<string, unknown>): Record<string, unkn
   for (const [key, value] of Object.entries(obj)) {
     const snakeKey = toSnakeCase(key);
     if (Array.isArray(value)) {
-      result[snakeKey] = value.map(item => isPlainObject(item) ? transformToSnakeCase(item) : item);
+      result[snakeKey] = value.map((item) =>
+        isPlainObject(item) ? transformToSnakeCase(item) : item,
+      );
     } else if (isPlainObject(value)) {
       result[snakeKey] = transformToSnakeCase(value);
     } else {
@@ -44,7 +45,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { instanceId, targetType, queries, topK = 50, searchK = 350, includeReasons = true } = body;
+    const {
+      instanceId,
+      targetType,
+      queries,
+      topK = 50,
+      searchK = 350,
+      includeReasons = true,
+    } = body;
 
     console.log("[Matcher Jobs] Config:", {
       instanceId,
@@ -52,7 +60,7 @@ export async function POST(request: NextRequest) {
       queryCount: queries?.length,
       topK,
       searchK,
-      includeReasons
+      includeReasons,
     });
 
     // Fetch user's matcher model settings
@@ -65,12 +73,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Use user settings or defaults
-    const modelProvider = userSettings?.matcherModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "openai";
-    const modelName = userSettings?.matcherModelName || process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini";
+    const modelProvider =
+      userSettings?.matcherModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "openai";
+    const modelName =
+      userSettings?.matcherModelName || process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini";
 
     // Fetch target data from database
     let targetData: Record<string, unknown>[] = [];
-    
+
     if (targetType === "SESSION") {
       const sessions = await prisma.conferenceSession.findMany({
         where: { instanceId },
@@ -189,10 +199,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(matchJob);
   } catch (error) {
     console.error("Create job error:", error);
-    return NextResponse.json(
-      { error: "Failed to create job" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to create job" }, { status: 500 });
   }
 }
 
@@ -226,9 +233,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(jobs);
   } catch (error) {
     console.error("Get jobs error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch jobs" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch jobs" }, { status: 500 });
   }
 }

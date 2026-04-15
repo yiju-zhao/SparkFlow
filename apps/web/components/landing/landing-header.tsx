@@ -82,7 +82,7 @@ export function LandingHeader({
     "pointer-events-auto transition-all duration-300 transform rounded-full px-4 py-2 -mx-4",
     isIslandMode
       ? "bg-background/80 backdrop-blur-lg shadow-lg translate-y-2"
-      : "bg-transparent translate-y-0"
+      : "bg-transparent translate-y-0",
   );
 
   return (
@@ -92,11 +92,7 @@ export function LandingHeader({
         // Position & Shape
         isIslandMode ? "pointer-events-none" : "top-0",
         // Background & Borders
-        scrolled
-          ? "bg-transparent"
-          : variant === "explore"
-            ? "bg-background"
-            : "bg-transparent"
+        scrolled ? "bg-transparent" : variant === "explore" ? "bg-background" : "bg-transparent",
       )}
     >
       <div
@@ -127,14 +123,19 @@ export function LandingHeader({
                     <button
                       className={cn(
                         "rounded-md px-3 py-2 text-sm transition-colors hover:text-foreground inline-flex items-center gap-1",
-                        isGroupActive
-                          ? "text-foreground font-medium"
-                          : "text-muted-foreground"
+                        isGroupActive ? "text-foreground font-medium" : "text-muted-foreground",
                       )}
                     >
                       {group.label}
                       <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-50">
-                        <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path
+                          d="M2 4l3 3 3-3"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     </button>
                   </DropdownMenuTrigger>
@@ -143,10 +144,7 @@ export function LandingHeader({
                       const isChildActive = pathname === child.href;
                       return (
                         <DropdownMenuItem key={child.href} asChild>
-                          <Link
-                            href={child.href}
-                            className={cn(isChildActive && "font-medium")}
-                          >
+                          <Link href={child.href} className={cn(isChildActive && "font-medium")}>
                             {child.label}
                           </Link>
                         </DropdownMenuItem>
@@ -163,7 +161,7 @@ export function LandingHeader({
                 href={link.href}
                 className={cn(
                   "rounded-md px-3 py-2 text-sm transition-colors hover:text-foreground",
-                  isActive ? "text-foreground font-medium" : "text-muted-foreground"
+                  isActive ? "text-foreground font-medium" : "text-muted-foreground",
                 )}
               >
                 {link.label}
@@ -173,7 +171,12 @@ export function LandingHeader({
         </nav>
 
         {/* Desktop Actions */}
-        <div className={cn("hidden items-center justify-end gap-2 md:flex justify-self-end", islandClasses)}>
+        <div
+          className={cn(
+            "hidden items-center justify-end gap-2 md:flex justify-self-end",
+            islandClasses,
+          )}
+        >
           {/* Language Switcher */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -237,11 +240,7 @@ export function LandingHeader({
             className="h-8 w-8"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            {mobileMenuOpen ? (
-              <X className="h-4 w-4" />
-            ) : (
-              <Menu className="h-4 w-4" />
-            )}
+            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
         </div>
       </div>
@@ -266,7 +265,7 @@ export function LandingHeader({
                           href={child.href}
                           className={cn(
                             "rounded-md px-6 py-2 text-left text-sm transition-colors hover:text-foreground",
-                            isChildActive ? "text-foreground font-medium" : "text-muted-foreground"
+                            isChildActive ? "text-foreground font-medium" : "text-muted-foreground",
                           )}
                         >
                           {child.label}
@@ -283,7 +282,7 @@ export function LandingHeader({
                   href={link.href}
                   className={cn(
                     "rounded-md px-3 py-2 text-left text-sm transition-colors hover:text-foreground",
-                    isActive ? "text-foreground font-medium" : "text-muted-foreground"
+                    isActive ? "text-foreground font-medium" : "text-muted-foreground",
                   )}
                 >
                   {link.label}

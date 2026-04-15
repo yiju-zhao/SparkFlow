@@ -82,7 +82,9 @@ function extractPayload(content: McpActivityContent): Record<string, unknown> {
           const parsed = JSON.parse(block.text);
           if (parsed?.structuredContent) return parsed.structuredContent;
           if (parsed && typeof parsed === "object") return parsed;
-        } catch { /* not JSON */ }
+        } catch {
+          /* not JSON */
+        }
       }
     }
   }
@@ -156,12 +158,8 @@ function StatCard({ data }: { data: StatCardData }) {
           {data.title}
         </div>
       )}
-      <div className="text-4xl font-bold leading-none mb-2">
-        {formatNumber(data.value)}
-      </div>
-      {data.subtitle && (
-        <div className="text-xs text-muted-foreground">{data.subtitle}</div>
-      )}
+      <div className="text-4xl font-bold leading-none mb-2">{formatNumber(data.value)}</div>
+      {data.subtitle && <div className="text-xs text-muted-foreground">{data.subtitle}</div>}
     </div>
   );
 }
@@ -171,8 +169,7 @@ function DataTable({ data }: { data: TableData }) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const rows = data.rows ?? [];
-  const columns =
-    data.columns ?? (rows.length > 0 ? Object.keys(rows[0]) : []);
+  const columns = data.columns ?? (rows.length > 0 ? Object.keys(rows[0]) : []);
 
   const sorted = [...rows].sort((a, b) => {
     if (sortCol === null) return 0;
@@ -203,18 +200,12 @@ function DataTable({ data }: { data: TableData }) {
   };
 
   if (rows.length === 0) {
-    return (
-      <div className="text-center py-6 text-muted-foreground text-sm">
-        No data to display
-      </div>
-    );
+    return <div className="text-center py-6 text-muted-foreground text-sm">No data to display</div>;
   }
 
   return (
     <div>
-      {data.title && (
-        <div className="text-base font-semibold mb-3">{data.title}</div>
-      )}
+      {data.title && <div className="text-base font-semibold mb-3">{data.title}</div>}
       <div className="overflow-x-auto -mx-1">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -277,15 +268,9 @@ function BarChart({ data }: { data: ChartData }) {
 
   return (
     <div>
-      {data.title && (
-        <div className="text-base font-semibold mb-1 text-center">
-          {data.title}
-        </div>
-      )}
+      {data.title && <div className="text-base font-semibold mb-1 text-center">{data.title}</div>}
       {data.subtitle && (
-        <div className="text-xs text-muted-foreground mb-3 text-center">
-          {data.subtitle}
-        </div>
+        <div className="text-xs text-muted-foreground mb-3 text-center">{data.subtitle}</div>
       )}
       <div className="space-y-2">
         {labels.map((label, i) => {
@@ -299,9 +284,7 @@ function BarChart({ data }: { data: ChartData }) {
             >
               <div className="flex items-center justify-between text-xs mb-0.5">
                 <span className="truncate mr-2">{label}</span>
-                <span className="font-medium shrink-0">
-                  {formatNumber(values[i])}
-                </span>
+                <span className="font-medium shrink-0">{formatNumber(values[i])}</span>
               </div>
               <div className="h-5 w-full rounded bg-muted overflow-hidden">
                 <div
@@ -325,26 +308,17 @@ function PieChart({ data }: { data: ChartData }) {
 
   return (
     <div>
-      {data.title && (
-        <div className="text-base font-semibold mb-3 text-center">
-          {data.title}
-        </div>
-      )}
+      {data.title && <div className="text-base font-semibold mb-3 text-center">{data.title}</div>}
       <div className="space-y-1.5">
         {labels.map((label, i) => {
           const pct = ((values[i] / total) * 100).toFixed(1);
           const color = colors[i % colors.length];
           return (
             <div key={i} className="flex items-center gap-2 text-xs">
-              <span
-                className="w-3 h-3 rounded-sm shrink-0"
-                style={{ backgroundColor: color }}
-              />
+              <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: color }} />
               <span className="truncate flex-1">{label}</span>
               <span className="font-medium">{formatNumber(values[i])}</span>
-              <span className="text-muted-foreground w-12 text-right">
-                {pct}%
-              </span>
+              <span className="text-muted-foreground w-12 text-right">{pct}%</span>
             </div>
           );
         })}
@@ -368,11 +342,11 @@ function SelectValue({ data }: { data: SelectValueData }) {
     setSubmitted(true);
     const opt = data.options?.find((o) => (o.value ?? o.label) === selected);
     const msg =
-      fillTemplate(
-        data.continuePromptTemplate,
-        { value: selected, label: opt?.label ?? selected, field: data.field ?? "value" },
-      ) ||
-      `Continue the previous request using ${data.field ?? "value"} = "${selected}".`;
+      fillTemplate(data.continuePromptTemplate, {
+        value: selected,
+        label: opt?.label ?? selected,
+        field: data.field ?? "value",
+      }) || `Continue the previous request using ${data.field ?? "value"} = "${selected}".`;
     emitWorkflowSubmit(msg);
   };
 
@@ -467,9 +441,7 @@ function ConfirmAction({ data }: { data: ConfirmActionData }) {
   return (
     <div className="rounded-2xl border border-border p-4 bg-gradient-to-b from-blue-500/5 to-transparent">
       <div className="text-base font-semibold mb-2">{data.title ?? "Confirm"}</div>
-      {data.summary && (
-        <div className="text-sm leading-relaxed mb-2.5">{data.summary}</div>
-      )}
+      {data.summary && <div className="text-sm leading-relaxed mb-2.5">{data.summary}</div>}
       {data.details && data.details.length > 0 && (
         <ul className="text-xs text-muted-foreground list-disc pl-4 mb-3 space-y-0.5">
           {data.details.map((d, i) => (
@@ -495,9 +467,7 @@ function ConfirmAction({ data }: { data: ConfirmActionData }) {
           {data.cancelLabel ?? "Cancel"}
         </button>
       </div>
-      {responded && (
-        <div className="text-xs text-muted-foreground mt-2">Response sent.</div>
-      )}
+      {responded && <div className="text-xs text-muted-foreground mt-2">Response sent.</div>}
     </div>
   );
 }
@@ -518,11 +488,7 @@ const RENDERERS: Record<string, (payload: Record<string, unknown>) => ReactNode>
 // Public component
 // ------------------------------------------------------------------
 
-export function McpActivityRenderer({
-  message,
-}: {
-  message: ActivityMessage;
-}) {
+export function McpActivityRenderer({ message }: { message: ActivityMessage }) {
   const content = message.content as unknown as McpActivityContent | undefined;
   if (!content?.resourceUri || !content?.result) return null;
 

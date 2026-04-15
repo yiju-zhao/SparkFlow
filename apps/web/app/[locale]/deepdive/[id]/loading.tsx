@@ -32,10 +32,7 @@ export default function NotebookLoading() {
             </div>
             <div className="flex-1 space-y-2 p-2">
               {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 rounded-lg px-3 py-2"
-                >
+                <div key={i} className="flex items-start gap-3 rounded-lg px-3 py-2">
                   <Skeleton className="mt-0.5 h-4 w-4" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-3/4" />
@@ -81,10 +78,7 @@ export default function NotebookLoading() {
             </div>
             <div className="flex-1 space-y-3 p-3">
               {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg border border-border p-3 space-y-2"
-                >
+                <div key={i} className="rounded-lg border border-border p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-4 w-4 rounded-full" />

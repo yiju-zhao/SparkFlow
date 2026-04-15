@@ -8,10 +8,7 @@ export interface ResolvedKey {
   baseUrl?: string;
 }
 
-export async function resolveApiKey(
-  userId: string,
-  providerId: string,
-): Promise<ResolvedKey> {
+export async function resolveApiKey(userId: string, providerId: string): Promise<ResolvedKey> {
   const settings = await prisma.userSettings.findUnique({
     where: { userId },
     select: { apiKeys: true },
@@ -35,7 +32,7 @@ export async function resolveApiKey(
   }
 
   throw new Error(
-    `API key not configured for ${PROVIDER_MAP.get(providerId)?.label || providerId}. Please set your API key in Settings.`
+    `API key not configured for ${PROVIDER_MAP.get(providerId)?.label || providerId}. Please set your API key in Settings.`,
   );
 }
 

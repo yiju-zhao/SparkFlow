@@ -11,10 +11,7 @@ interface AffiliationBarChartProps {
   className?: string;
 }
 
-export function AffiliationBarChart({
-  data,
-  className,
-}: AffiliationBarChartProps) {
+export function AffiliationBarChart({ data, className }: AffiliationBarChartProps) {
   const option = useMemo<EChartsOption>(() => {
     if (!data || data.length === 0) return {};
 
@@ -22,9 +19,7 @@ export function AffiliationBarChart({
     const sortedData = [...data].sort((a, b) => a.count - b.count).slice(-15);
 
     const names = sortedData.map((d) =>
-      d.affiliation.length > 30
-        ? `${d.affiliation.substring(0, 30)}...`
-        : d.affiliation,
+      d.affiliation.length > 30 ? `${d.affiliation.substring(0, 30)}...` : d.affiliation,
     );
     const values = sortedData.map((d) => d.count);
 
@@ -92,10 +87,5 @@ export function AffiliationBarChart({
     );
   }
 
-  return (
-    <div
-      ref={chartRef}
-      className={cn("w-full h-full min-h-75", className)}
-    />
-  );
+  return <div ref={chartRef} className={cn("w-full h-full min-h-75", className)} />;
 }

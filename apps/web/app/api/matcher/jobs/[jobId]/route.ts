@@ -11,8 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import path from "path";
 
-const MATCHER_API_URL =
-  process.env.MATCHER_API_URL || "http://localhost:2025";
+const MATCHER_API_URL = process.env.MATCHER_API_URL || "http://localhost:2025";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 
@@ -103,9 +102,7 @@ export async function GET(
 
           // Update database with latest progress
           const isStarting =
-            job.status === "PENDING" &&
-            matcherJob.status &&
-            matcherJob.status !== "PENDING";
+            job.status === "PENDING" && matcherJob.status && matcherJob.status !== "PENDING";
           const updatedJob = await prisma.matchJob.update({
             where: { id: jobId },
             data: {
@@ -170,10 +167,7 @@ export async function GET(
     return NextResponse.json(job);
   } catch (error) {
     console.error("Get job error:", error);
-    return NextResponse.json(
-      { error: "Failed to get job" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to get job" }, { status: 500 });
   }
 }
 
@@ -216,9 +210,6 @@ export async function DELETE(
     return NextResponse.json({ message: "Job deleted" });
   } catch (error) {
     console.error("Delete job error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete job" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to delete job" }, { status: 500 });
   }
 }

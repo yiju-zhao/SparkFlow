@@ -7,7 +7,7 @@ export function ScrollbarAutoHide() {
     const timeouts = new WeakMap<Element, ReturnType<typeof setTimeout>>();
     const handler = (e: Event) => {
       let el = e.target as Element | null;
-      if (el === document as unknown) el = document.documentElement;
+      if (el === (document as unknown)) el = document.documentElement;
       if (!el || !(el instanceof HTMLElement)) return;
       el.dataset.scrolling = "";
       const prev = timeouts.get(el);

@@ -75,7 +75,10 @@ function formatDuration(minutes: number): string {
 
 function collectUnique(sessions: CalendarSessionItem[], field: "type"): string[];
 function collectUnique(sessions: CalendarSessionItem[], field: "topic" | "technology"): string[];
-function collectUnique(sessions: CalendarSessionItem[], field: "type" | "topic" | "technology"): string[] {
+function collectUnique(
+  sessions: CalendarSessionItem[],
+  field: "type" | "topic" | "technology",
+): string[] {
   const set = new Set<string>();
   for (const s of sessions) {
     if (field === "type") {
@@ -105,13 +108,8 @@ function SessionCard({ session, color }: SessionCardProps) {
       className="rounded-lg bg-card border border-border hover:bg-muted/30 hover:border-muted-foreground/20 transition-colors"
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
-      <Link
-        href={`/explore/sessions/${session.id}`}
-        className="block p-3.5 space-y-2"
-      >
-        <h4 className="font-medium text-sm leading-snug line-clamp-2">
-          {session.title}
-        </h4>
+      <Link href={`/explore/sessions/${session.id}`} className="block p-3.5 space-y-2">
+        <h4 className="font-medium text-sm leading-snug line-clamp-2">{session.title}</h4>
 
         {/* Time + Duration */}
         {(session.startTime || durationLabel) && (
@@ -141,8 +139,7 @@ function SessionCard({ session, color }: SessionCardProps) {
             <User className="h-3 w-3 shrink-0" />
             <span className="truncate">
               {session.speaker.slice(0, 2).join(", ")}
-              {session.speaker.length > 2 &&
-                ` +${session.speaker.length - 2}`}
+              {session.speaker.length > 2 && ` +${session.speaker.length - 2}`}
             </span>
           </p>
         )}
@@ -160,9 +157,7 @@ function SessionCard({ session, color }: SessionCardProps) {
               </span>
             ))}
             {session.topic.length > 2 && (
-              <span className="text-[10px] text-muted-foreground">
-                +{session.topic.length - 2}
-              </span>
+              <span className="text-[10px] text-muted-foreground">+{session.topic.length - 2}</span>
             )}
           </div>
         )}
@@ -244,9 +239,7 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
                 {/* Time marker */}
                 <div className="w-14 shrink-0 flex flex-col items-end pt-3 relative">
                   {/* Dot on the timeline spine */}
-                  <div
-                    className="absolute right-[-13px] top-4 h-2 w-2 rounded-full bg-primary ring-2 ring-background z-10"
-                  />
+                  <div className="absolute right-[-13px] top-4 h-2 w-2 rounded-full bg-primary ring-2 ring-background z-10" />
                   <span className="text-sm font-semibold tabular-nums text-foreground">
                     {group.label}
                   </span>
@@ -261,7 +254,7 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
                     <SessionCard
                       key={s.id}
                       session={s}
-                      color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
+                      color={s.type ? (typeColorMap.get(s.type) ?? "#71717a") : "#71717a"}
                     />
                   ))}
                 </div>
@@ -273,12 +266,8 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
         {noTime.length > 0 && (
           <div className="flex gap-4">
             <div className="w-14 shrink-0 flex flex-col items-end pt-3 relative">
-              <div
-                className="absolute right-[-13px] top-4 h-2 w-2 rounded-full bg-muted-foreground/30 ring-2 ring-background z-10"
-              />
-              <span className="text-sm font-medium text-muted-foreground">
-                TBD
-              </span>
+              <div className="absolute right-[-13px] top-4 h-2 w-2 rounded-full bg-muted-foreground/30 ring-2 ring-background z-10" />
+              <span className="text-sm font-medium text-muted-foreground">TBD</span>
               <span className="text-[10px] text-muted-foreground/60 mt-0.5">
                 {noTime.length} session{noTime.length !== 1 ? "s" : ""}
               </span>
@@ -288,7 +277,7 @@ function TimelineGrid({ sessions, typeColorMap }: TimelineGridProps) {
                 <SessionCard
                   key={s.id}
                   session={s}
-                  color={s.type ? typeColorMap.get(s.type) ?? "#71717a" : "#71717a"}
+                  color={s.type ? (typeColorMap.get(s.type) ?? "#71717a") : "#71717a"}
                 />
               ))}
             </div>
@@ -308,11 +297,14 @@ interface SessionCalendarProps {
 export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const typeColorMap = useMemo(() => buildTypeColorMap(sessions), [sessions]);
 
-  const filterOptions = useMemo(() => ({
-    types: collectUnique(sessions, "type"),
-    topics: collectUnique(sessions, "topic"),
-    technologies: collectUnique(sessions, "technology"),
-  }), [sessions]);
+  const filterOptions = useMemo(
+    () => ({
+      types: collectUnique(sessions, "type"),
+      topics: collectUnique(sessions, "topic"),
+      technologies: collectUnique(sessions, "technology"),
+    }),
+    [sessions],
+  );
 
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
@@ -348,23 +340,16 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     return { dateGroups: groups, dateKeys: sortedKeys, unscheduled: noDate };
   }, [filteredSessions]);
 
-  const allTabKeys = [
-    ...dateKeys,
-    ...(unscheduled.length > 0 ? ["unscheduled"] : []),
-  ];
+  const allTabKeys = [...dateKeys, ...(unscheduled.length > 0 ? ["unscheduled"] : [])];
 
   const [activeTab, setActiveTab] = useState(allTabKeys[0] ?? "unscheduled");
 
   const effectiveTab = allTabKeys.includes(activeTab)
     ? activeTab
-    : allTabKeys[0] ?? "unscheduled";
+    : (allTabKeys[0] ?? "unscheduled");
 
   if (sessions.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-8 text-center">
-        No sessions available.
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground py-8 text-center">No sessions available.</p>;
   }
 
   const clearFilters = () => {
@@ -388,7 +373,9 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
               {filterOptions.types.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -404,7 +391,9 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
             <SelectContent>
               <SelectItem value="all">All Topics</SelectItem>
               {filterOptions.topics.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -420,7 +409,9 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
             <SelectContent>
               <SelectItem value="all">All Technologies</SelectItem>
               {filterOptions.technologies.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -464,9 +455,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                   className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
                 >
                   {formatDateTab(new Date(key + "T00:00:00"))}
-                  <span className="ml-1.5 tabular-nums opacity-70">
-                    ({count})
-                  </span>
+                  <span className="ml-1.5 tabular-nums opacity-70">({count})</span>
                 </TabsTrigger>
               );
             })}
@@ -476,28 +465,20 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                 className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
               >
                 Unscheduled
-                <span className="ml-1.5 tabular-nums opacity-70">
-                  ({unscheduled.length})
-                </span>
+                <span className="ml-1.5 tabular-nums opacity-70">({unscheduled.length})</span>
               </TabsTrigger>
             )}
           </TabsList>
 
           {dateKeys.map((key) => (
             <TabsContent key={key} value={key} className="mt-6">
-              <TimelineGrid
-                sessions={dateGroups.get(key) ?? []}
-                typeColorMap={typeColorMap}
-              />
+              <TimelineGrid sessions={dateGroups.get(key) ?? []} typeColorMap={typeColorMap} />
             </TabsContent>
           ))}
 
           {unscheduled.length > 0 && (
             <TabsContent value="unscheduled" className="mt-6">
-              <TimelineGrid
-                sessions={unscheduled}
-                typeColorMap={typeColorMap}
-              />
+              <TimelineGrid sessions={unscheduled} typeColorMap={typeColorMap} />
             </TabsContent>
           )}
         </Tabs>

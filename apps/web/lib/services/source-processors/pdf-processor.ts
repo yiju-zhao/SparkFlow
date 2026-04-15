@@ -5,7 +5,7 @@ import type { ProcessingContext, ProcessingResult } from "./types";
 
 export async function processPdfDocument(
   file: File,
-  context: ProcessingContext
+  context: ProcessingContext,
 ): Promise<ProcessingResult> {
   const { sourceId } = context;
 
@@ -33,7 +33,7 @@ export async function processPdfDocument(
     const markdown = await storeImagesAndRewriteMarkdown(
       sourceId,
       mineruResult.markdown,
-      mineruResult.images
+      mineruResult.images,
     );
 
     const toc = extractTocFromMarkdown(markdown);

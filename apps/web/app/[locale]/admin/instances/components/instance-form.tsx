@@ -4,13 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -83,9 +77,7 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [currentInstance, setCurrentInstance] = useState<InstanceRecord | undefined>(
-    instance,
-  );
+  const [currentInstance, setCurrentInstance] = useState<InstanceRecord | undefined>(instance);
 
   const [venueId, setVenueId] = useState(instance?.venueId ?? "");
   const [year, setYear] = useState(
@@ -110,11 +102,7 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
   function reset(nextInstance = instance) {
     setCurrentInstance(nextInstance);
     setVenueId(nextInstance?.venueId ?? "");
-    setYear(
-      nextInstance?.year
-        ? String(nextInstance.year)
-        : String(new Date().getFullYear()),
-    );
+    setYear(nextInstance?.year ? String(nextInstance.year) : String(new Date().getFullYear()));
     setName(nextInstance?.name ?? "");
     setStartDate(toDateInput(nextInstance?.startDate));
     setEndDate(toDateInput(nextInstance?.endDate));
@@ -139,9 +127,7 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
     if (!val) reset(instance);
   }
 
-  async function handleImportFileChange(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
+  async function handleImportFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
     setSubmitError("");
@@ -206,17 +192,13 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
           setImportReset(false);
           setFileInputKey((value) => value + 1);
           setImportResult(result.importResult as ImportResult);
-          setSubmitSuccess(
-            buildSuccessMessage(result.importResult as ImportResult),
-          );
+          setSubmitSuccess(buildSuccessMessage(result.importResult as ImportResult));
           return;
         }
 
         setOpen(false);
       } catch (error) {
-        setSubmitError(
-          error instanceof Error ? error.message : "Failed to save instance.",
-        );
+        setSubmitError(error instanceof Error ? error.message : "Failed to save instance.");
       }
     });
   }
@@ -226,14 +208,15 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        className="max-h-[90vh] max-w-2xl overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle>
-            {currentInstance ? "Edit Instance" : "New Instance"}
-          </DialogTitle>
+          <DialogTitle>{currentInstance ? "Edit Instance" : "New Instance"}</DialogTitle>
           <DialogDescription>
-            Save the instance metadata and optionally import its publications or
-            sessions from a JSON file.
+            Save the instance metadata and optionally import its publications or sessions from a
+            JSON file.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -332,8 +315,8 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Bulk Import</CardTitle>
               <CardDescription>
-                Upload a JSON file that matches the selected venue and year. Use
-                the page-level Format Guide button for the exact schema.
+                Upload a JSON file that matches the selected venue and year. Use the page-level
+                Format Guide button for the exact schema.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -372,13 +355,12 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
                   onChange={handleImportFileChange}
                 />
                 <p className="text-xs text-muted-foreground">
-                  The file&apos;s top-level <code>venue</code> and{" "}
-                  <code>year</code> must match the instance you are saving.
+                  The file&apos;s top-level <code>venue</code> and <code>year</code> must match the
+                  instance you are saving.
                 </p>
                 {importFileName ? (
                   <div className="rounded-md border bg-background px-3 py-2 text-sm">
-                    Selected file:{" "}
-                    <span className="font-medium">{importFileName}</span>
+                    Selected file: <span className="font-medium">{importFileName}</span>
                   </div>
                 ) : null}
               </div>
@@ -390,42 +372,28 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
                     <div className="mt-3 space-y-3">
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="outline">Total {importResult.total}</Badge>
-                        <Badge variant="outline">
-                          Created {importResult.created}
-                        </Badge>
-                        <Badge variant="outline">
-                          Skipped {importResult.skipped}
-                        </Badge>
+                        <Badge variant="outline">Created {importResult.created}</Badge>
+                        <Badge variant="outline">Skipped {importResult.skipped}</Badge>
                         {importResult.deleted > 0 ? (
-                          <Badge variant="outline">
-                            Deleted {importResult.deleted}
-                          </Badge>
+                          <Badge variant="outline">Deleted {importResult.deleted}</Badge>
                         ) : null}
                         {importResult.errors.length > 0 ? (
-                          <Badge variant="outline">
-                            Errors {importResult.errors.length}
-                          </Badge>
+                          <Badge variant="outline">Errors {importResult.errors.length}</Badge>
                         ) : null}
                         {importResult.kind === "SESSIONS" &&
                         importResult.warnings &&
                         importResult.warnings.length > 0 ? (
-                          <Badge variant="outline">
-                            Warnings {importResult.warnings.length}
-                          </Badge>
+                          <Badge variant="outline">Warnings {importResult.warnings.length}</Badge>
                         ) : null}
                       </div>
                       {importResult.kind === "SESSIONS" &&
                       importResult.warnings &&
                       importResult.warnings.length > 0 ? (
                         <div className="space-y-1">
-                          <div className="font-medium">
-                            Missing publication links
-                          </div>
+                          <div className="font-medium">Missing publication links</div>
                           <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border border-emerald-200 bg-white/70 p-2 text-xs">
                             {importResult.warnings.map((warning) => (
-                              <div
-                                key={`${warning.session}-${warning.publication}`}
-                              >
+                              <div key={`${warning.session}-${warning.publication}`}>
                                 {warning.session}: {warning.publication}
                               </div>
                             ))}
@@ -466,10 +434,7 @@ export function InstanceForm({ instance, venues, trigger }: InstanceFormProps) {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending || !venueId || !name.trim() || !year}
-            >
+            <Button type="submit" disabled={isPending || !venueId || !name.trim() || !year}>
               {isPending
                 ? "Saving..."
                 : isImportReady

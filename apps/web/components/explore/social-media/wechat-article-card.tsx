@@ -45,9 +45,7 @@ export function WechatArticleCard({ article }: WechatArticleCardProps) {
           <span className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
             {article.source_name}
           </span>
-          {publishDate && (
-            <span className="text-xs text-muted-foreground">{publishDate}</span>
-          )}
+          {publishDate && <span className="text-xs text-muted-foreground">{publishDate}</span>}
         </div>
       </div>
     </Link>

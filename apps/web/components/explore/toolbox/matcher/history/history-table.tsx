@@ -154,11 +154,12 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                   onClick={() => hasQueries && toggleExpand(job.id)}
                 >
                   <TableCell className="w-8 pr-0">
-                    {hasQueries && (
-                      isExpanded
-                        ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    {hasQueries &&
+                      (isExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      ))}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -169,9 +170,7 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="capitalize">
-                      {job.targetType.toLowerCase()}s
-                    </span>
+                    <span className="capitalize">{job.targetType.toLowerCase()}s</span>
                   </TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(job.status)} variant="outline">
@@ -199,9 +198,7 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                         </a>
                       )}
                       {job.status === "PROCESSING" && (
-                        <span className="text-sm text-muted-foreground">
-                          {job.progress}%
-                        </span>
+                        <span className="text-sm text-muted-foreground">{job.progress}%</span>
                       )}
                       <Button
                         variant="ghost"
@@ -224,48 +221,47 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                           Query Details ({queries.length} queries)
                         </p>
                         <div className="space-y-3">
-                          {Object.entries(groupByBu(queries)).map(
-                            ([bu, group]) => (
-                              <div key={bu} className="text-sm">
-                                <p className="font-medium text-foreground mb-1">
-                                  {bu}
-                                  <span className="text-muted-foreground font-normal ml-2">
-                                    ({group.queries.length} {group.queries.length === 1 ? "query" : "queries"})
-                                  </span>
-                                </p>
-                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5 pl-2">
-                                  {group.queries.map((q, i) => (
-                                    <li key={i} className="truncate max-w-2xl">
-                                      {q}
-                                    </li>
-                                  ))}
-                                </ul>
-                                {(group.optimizedQueryNative || group.optimizedQueryEn) && (
-                                  <div className="mt-3 rounded-md border bg-background/70 p-3">
-                                    <p className="font-medium text-foreground mb-1">
-                                      Optimized Query
+                          {Object.entries(groupByBu(queries)).map(([bu, group]) => (
+                            <div key={bu} className="text-sm">
+                              <p className="font-medium text-foreground mb-1">
+                                {bu}
+                                <span className="text-muted-foreground font-normal ml-2">
+                                  ({group.queries.length}{" "}
+                                  {group.queries.length === 1 ? "query" : "queries"})
+                                </span>
+                              </p>
+                              <ul className="list-disc list-inside text-muted-foreground space-y-0.5 pl-2">
+                                {group.queries.map((q, i) => (
+                                  <li key={i} className="truncate max-w-2xl">
+                                    {q}
+                                  </li>
+                                ))}
+                              </ul>
+                              {(group.optimizedQueryNative || group.optimizedQueryEn) && (
+                                <div className="mt-3 rounded-md border bg-background/70 p-3">
+                                  <p className="font-medium text-foreground mb-1">
+                                    Optimized Query
+                                  </p>
+                                  {group.optimizedQueryNative && (
+                                    <p className="text-muted-foreground whitespace-pre-wrap">
+                                      {group.optimizedQueryNative}
                                     </p>
-                                    {group.optimizedQueryNative && (
-                                      <p className="text-muted-foreground whitespace-pre-wrap">
-                                        {group.optimizedQueryNative}
+                                  )}
+                                  {group.optimizedQueryEn &&
+                                    group.optimizedQueryEn !== group.optimizedQueryNative && (
+                                      <p className="text-muted-foreground whitespace-pre-wrap mt-2">
+                                        {group.optimizedQueryEn}
                                       </p>
                                     )}
-                                    {group.optimizedQueryEn &&
-                                      group.optimizedQueryEn !== group.optimizedQueryNative && (
-                                        <p className="text-muted-foreground whitespace-pre-wrap mt-2">
-                                          {group.optimizedQueryEn}
-                                        </p>
-                                      )}
-                                    {group.optimizationFocuses.length > 0 && (
-                                      <p className="text-xs text-muted-foreground mt-2">
-                                        Focuses: {group.optimizationFocuses.join(" / ")}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ),
-                          )}
+                                  {group.optimizationFocuses.length > 0 && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Focuses: {group.optimizationFocuses.join(" / ")}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </TableCell>

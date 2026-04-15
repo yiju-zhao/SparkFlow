@@ -33,12 +33,8 @@ export default async function DeepdivePage({ params }: DeepdivePageProps) {
         <main className="mx-auto max-w-6xl px-6 py-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold font-mono tracking-tight">
-                {t("notebooks")}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("notebooksSubtitle")}
-              </p>
+              <h2 className="text-sm font-semibold font-mono tracking-tight">{t("notebooks")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("notebooksSubtitle")}</p>
             </div>
             <CreateNotebookDialog />
           </div>

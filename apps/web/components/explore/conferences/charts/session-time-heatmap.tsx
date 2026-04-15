@@ -17,11 +17,7 @@ export function SessionTimeHeatmap({ data, days, hours }: SessionTimeHeatmapProp
     const maxCount = Math.max(...data.map((d) => d.count));
 
     // ECharts heatmap expects [xIndex, yIndex, value]
-    const heatData = data.map((d) => [
-      days.indexOf(d.day),
-      hours.indexOf(d.hour),
-      d.count,
-    ]);
+    const heatData = data.map((d) => [days.indexOf(d.day), hours.indexOf(d.hour), d.count]);
 
     return {
       tooltip: {

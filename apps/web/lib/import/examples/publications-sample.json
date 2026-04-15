@@ -25,12 +25,7 @@
       "summary": "An AI browser extension that improves navigation and summarization for visually impaired users.",
       "affiliations": ["University of Washington", "Google Research"],
       "countries": ["USA"],
-      "keywords": [
-        "accessibility",
-        "AI",
-        "web navigation",
-        "assistive technology"
-      ],
+      "keywords": ["accessibility", "AI", "web navigation", "assistive technology"],
       "researchTopic": "Accessibility",
       "status": "Best Paper",
       "rating": 4.8

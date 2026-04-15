@@ -70,7 +70,8 @@ export async function runHealthCheck(notebookId: string): Promise<HealthReport> 
 
   // 3. Pages with no source refs (except INDEX, LOG, ARTICLE)
   for (const page of pages) {
-    if (page.pageType === "INDEX" || page.pageType === "LOG" || page.pageType === "ARTICLE") continue;
+    if (page.pageType === "INDEX" || page.pageType === "LOG" || page.pageType === "ARTICLE")
+      continue;
     if (page.sourceRefs.length === 0) {
       issues.push({
         type: "stale",

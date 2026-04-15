@@ -15,14 +15,8 @@ export default async function InstancesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Instances</h1>
         <div className="flex items-center gap-2">
-          <FormatGuideDialog
-            publicationSample={publicationSample}
-            sessionSample={sessionSample}
-          />
-          <InstanceForm
-            venues={venueList}
-            trigger={<Button>New Instance</Button>}
-          />
+          <FormatGuideDialog publicationSample={publicationSample} sessionSample={sessionSample} />
+          <InstanceForm venues={venueList} trigger={<Button>New Instance</Button>} />
         </div>
       </div>
 
@@ -49,12 +43,8 @@ export default async function InstancesPage() {
                 <td className="py-3">{inst.year}</td>
                 <td className="py-3">{inst.name}</td>
                 <td className="py-3 text-muted-foreground">
-                  {inst.startDate
-                    ? new Date(inst.startDate).toISOString().split("T")[0]
-                    : "—"}
-                  {inst.endDate
-                    ? ` – ${new Date(inst.endDate).toISOString().split("T")[0]}`
-                    : ""}
+                  {inst.startDate ? new Date(inst.startDate).toISOString().split("T")[0] : "—"}
+                  {inst.endDate ? ` – ${new Date(inst.endDate).toISOString().split("T")[0]}` : ""}
                 </td>
                 <td className="py-3">{inst._count.sessions}</td>
                 <td className="py-3">

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWechatImage } from "@/lib/wechat/queries";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const imageId = parseInt(id, 10);
   if (isNaN(imageId)) {

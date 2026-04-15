@@ -66,9 +66,7 @@ class MineRUClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `MineRU API error: ${response.status} ${response.statusText} - ${errorText}`,
-      );
+      throw new Error(`MineRU API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data: MineRUParseResponse = await response.json();

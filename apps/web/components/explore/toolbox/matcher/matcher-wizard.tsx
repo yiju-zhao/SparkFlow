@@ -176,20 +176,10 @@ export function MatcherWizard() {
           />
         );
       case 2:
-        return (
-          <RunningStep
-            jobId={state.jobId!}
-            progress={progress}
-            onCancel={handleCancelJob}
-          />
-        );
+        return <RunningStep jobId={state.jobId!} progress={progress} onCancel={handleCancelJob} />;
       case 3:
         return (
-          <ResultsStep
-            job={state.completedJob}
-            onDownload={handleDownload}
-            onReset={handleReset}
-          />
+          <ResultsStep job={state.completedJob} onDownload={handleDownload} onReset={handleReset} />
         );
       default:
         return null;
@@ -200,15 +190,14 @@ export function MatcherWizard() {
     <Card className="overflow-hidden max-w-3xl mx-auto">
       <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
         {DISPLAY_STEPS.map((step, index) => {
-          const isActive = step.internalStep === state.step ||
-            (state.step === 2 && step.internalStep === 3); // show results as active during running
-          const isPast = step.internalStep < state.step && !(state.step === 2 && step.internalStep === 3);
+          const isActive =
+            step.internalStep === state.step || (state.step === 2 && step.internalStep === 3); // show results as active during running
+          const isPast =
+            step.internalStep < state.step && !(state.step === 2 && step.internalStep === 3);
           const isClickable = isPast && state.step !== 2;
           return (
             <div key={step.id} className="flex items-center gap-1">
-              {index > 0 && (
-                <span className="text-muted-foreground/40 mx-2">/</span>
-              )}
+              {index > 0 && <span className="text-muted-foreground/40 mx-2">/</span>}
               <button
                 type="button"
                 onClick={() => isClickable && handleStepClick(step.internalStep)}
@@ -221,14 +210,22 @@ export function MatcherWizard() {
                 <span
                   className={cn(
                     "tabular-nums",
-                    isActive ? "text-primary font-bold" : isPast ? "text-foreground" : "text-muted-foreground",
+                    isActive
+                      ? "text-primary font-bold"
+                      : isPast
+                        ? "text-foreground"
+                        : "text-muted-foreground",
                   )}
                 >
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span
                   className={cn(
-                    isActive ? "text-foreground font-bold" : isPast ? "text-foreground" : "text-muted-foreground",
+                    isActive
+                      ? "text-foreground font-bold"
+                      : isPast
+                        ? "text-foreground"
+                        : "text-muted-foreground",
                   )}
                 >
                   {step.label}

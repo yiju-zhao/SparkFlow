@@ -78,7 +78,9 @@ def stats_chart(
 
 
 @mcp.tool(meta={"ui/resourceUri": "ui://stat-card"})
-def stat_card(title: str, value: str | int | float, subtitle: str | None = None) -> dict[str, Any]:
+def stat_card(
+    title: str, value: str | int | float, subtitle: str | None = None
+) -> dict[str, Any]:
     """Render a single KPI card."""
     return _build_mcp_result(
         {"title": title, "value": value, "subtitle": subtitle},
@@ -104,8 +106,14 @@ def select_value_app(
             continue
         normalized_options.append(
             {
-                "label": option.get("label") or option.get("value") or option.get("name") or "",
-                "value": option.get("value") or option.get("label") or option.get("name") or "",
+                "label": option.get("label")
+                or option.get("value")
+                or option.get("name")
+                or "",
+                "value": option.get("value")
+                or option.get("label")
+                or option.get("name")
+                or "",
                 "count": option.get("count"),
                 "description": option.get("description"),
             }

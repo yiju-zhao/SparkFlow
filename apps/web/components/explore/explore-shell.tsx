@@ -89,9 +89,7 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
         <main className="px-12 pt-24 pb-16">{children}</main>
       </div>
 
-      {!assistantOpen && (
-        <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />
-      )}
+      {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}
       {assistantOpen && (
         <ResearchAssistantPanel
           open={assistantOpen}

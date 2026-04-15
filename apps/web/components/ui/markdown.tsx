@@ -180,30 +180,16 @@ const STATIC_COMPONENTS: Partial<Components> = {
         </code>
       </div>
     ) : (
-      <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
-        {children}
-      </code>
+      <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
     );
   },
-  pre: ({ children }) => (
-    <div className="max-w-full overflow-x-auto">{children}</div>
-  ),
-  ul: ({ children }) => (
-    <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>
-  ),
+  pre: ({ children }) => <div className="max-w-full overflow-x-auto">{children}</div>,
+  ul: ({ children }) => <ul className="list-disc pl-4 my-2 space-y-1">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-4 my-2 space-y-1">{children}</ol>,
   li: ({ children }) => <li className="my-0.5">{children}</li>,
-  h1: ({ children }) => (
-    <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>
-  ),
-  h2: ({ children }) => (
-    <h2 className="text-base font-bold mt-3 mb-2">{children}</h2>
-  ),
-  h3: ({ children }) => (
-    <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>
-  ),
+  h1: ({ children }) => <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-base font-bold mt-3 mb-2">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>,
   blockquote: ({ children }) => (
     <blockquote className="border-l-2 border-border pl-4 italic text-muted-foreground my-2">
       {children}
@@ -211,27 +197,19 @@ const STATIC_COMPONENTS: Partial<Components> = {
   ),
   table: ({ children }) => (
     <div className="my-4 w-full overflow-x-auto">
-      <table className="w-full text-sm border-collapse border border-border">
-        {children}
-      </table>
+      <table className="w-full text-sm border-collapse border border-border">{children}</table>
     </div>
   ),
   thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
-  tbody: ({ children }) => (
-    <tbody className="divide-y divide-border">{children}</tbody>
-  ),
-  tr: ({ children }) => (
-    <tr className="hover:bg-muted/50 transition-colors">{children}</tr>
-  ),
+  tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+  tr: ({ children }) => <tr className="hover:bg-muted/50 transition-colors">{children}</tr>,
   th: ({ children }) => (
     <th className="border border-border bg-muted px-3 py-2 text-left font-semibold text-xs">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border border-border px-3 py-2 text-left text-xs">
-      {children}
-    </td>
+    <td className="border border-border px-3 py-2 text-left text-xs">{children}</td>
   ),
   img: ({ src, alt }) => (
     <span className="block max-w-full overflow-hidden my-2">
@@ -256,10 +234,7 @@ const STATIC_COMPONENTS: Partial<Components> = {
   ),
 };
 
-export const Markdown = memo(function Markdown({
-  children,
-  className,
-}: MarkdownProps) {
+export const Markdown = memo(function Markdown({ children, className }: MarkdownProps) {
   const { processed: contentWithoutTables, tables } = useMemo(
     () => extractHtmlTables(children),
     [children],
@@ -271,43 +246,46 @@ export const Markdown = memo(function Markdown({
 
   const tableRef = useMemo(() => tables, [tables]);
 
-  const components = useMemo<Components>(() => ({
-    ...STATIC_COMPONENTS,
-    "citation-ref": ({
-      "data-chunk": chunkId,
-      "data-index": index,
-      "data-type": type,
-    }: {
-      "data-chunk": string;
-      "data-index": string;
-      "data-type"?: string;
-    }) => <CitationLink data-chunk={chunkId} data-index={index} data-type={type} />,
-    "html-table-placeholder": ({
-      "data-index": dataIndex,
-    }: {
-      "data-index": string;
-    }) => {
-      const idx = parseInt(dataIndex, 10);
-      const html = tableRef[idx];
-      return html ? <HtmlTable html={html} /> : null;
-    },
-    p: ({ children: pChildren }) => {
-      const hasBlockChild = hasNestedBlockElement(pChildren);
-      const Tag = hasBlockChild ? "div" : "p";
-      return (
-        <Tag className="mb-2 last:mb-0 leading-relaxed">{pChildren}</Tag>
-      );
-    },
-  }), [tableRef]);
+  const components = useMemo<Components>(
+    () => ({
+      ...STATIC_COMPONENTS,
+      "citation-ref": ({
+        "data-chunk": chunkId,
+        "data-index": index,
+        "data-type": type,
+      }: {
+        "data-chunk": string;
+        "data-index": string;
+        "data-type"?: string;
+      }) => <CitationLink data-chunk={chunkId} data-index={index} data-type={type} />,
+      "html-table-placeholder": ({ "data-index": dataIndex }: { "data-index": string }) => {
+        const idx = parseInt(dataIndex, 10);
+        const html = tableRef[idx];
+        return html ? <HtmlTable html={html} /> : null;
+      },
+      p: ({ children: pChildren }) => {
+        const hasBlockChild = hasNestedBlockElement(pChildren);
+        const Tag = hasBlockChild ? "div" : "p";
+        return <Tag className="mb-2 last:mb-0 leading-relaxed">{pChildren}</Tag>;
+      },
+    }),
+    [tableRef],
+  );
 
   return (
     <div
-      className={cn("wrap-break-word [&_.katex-display]:overflow-x-auto [&_.katex-display]:max-w-full", className)}
+      className={cn(
+        "wrap-break-word [&_.katex-display]:overflow-x-auto [&_.katex-display]:max-w-full",
+        className,
+      )}
       style={{ contentVisibility: "auto", containIntrinsicSize: "0 500px" }}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false, output: "html" }], rehypeRaw]}
+        rehypePlugins={[
+          [rehypeKatex, { strict: false, throwOnError: false, output: "html" }],
+          rehypeRaw,
+        ]}
         disallowedElements={DISALLOWED_RAW_TAGS}
         unwrapDisallowed
         components={components}

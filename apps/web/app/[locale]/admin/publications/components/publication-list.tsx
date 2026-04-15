@@ -39,10 +39,7 @@ export function PublicationList({ instances }: { instances: Instance[] }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Publications</h1>
-        <PublicationForm
-          instances={instances}
-          trigger={<Button>New Publication</Button>}
-        />
+        <PublicationForm instances={instances} trigger={<Button>New Publication</Button>} />
       </div>
 
       <div className="flex items-center gap-3 mb-6">
@@ -105,13 +102,10 @@ export function PublicationList({ instances }: { instances: Instance[] }) {
                   </td>
                   <td className="py-3 text-muted-foreground max-w-xs truncate">
                     {pub.authors.length > 0
-                      ? pub.authors.slice(0, 3).join(", ") +
-                        (pub.authors.length > 3 ? "..." : "")
+                      ? pub.authors.slice(0, 3).join(", ") + (pub.authors.length > 3 ? "..." : "")
                       : "—"}
                   </td>
-                  <td className="py-3 text-muted-foreground">
-                    {pub.status ?? "—"}
-                  </td>
+                  <td className="py-3 text-muted-foreground">{pub.status ?? "—"}</td>
                   <td className="py-3 text-muted-foreground">
                     {pub.rating != null ? pub.rating.toFixed(1) : "—"}
                   </td>

@@ -16,20 +16,14 @@ export async function GET(request: NextRequest) {
   const fileUrl = searchParams.get("url");
 
   if (!fileUrl) {
-    return NextResponse.json(
-      { error: "Missing URL parameter" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Missing URL parameter" }, { status: 400 });
   }
 
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(fileUrl);
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      return NextResponse.json(
-        { error: "Only http and https URLs are allowed" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Only http and https URLs are allowed" }, { status: 400 });
     }
   } catch {
     return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
@@ -37,11 +31,7 @@ export async function GET(request: NextRequest) {
 
   const hostname = parsedUrl.hostname.toLowerCase();
   const blockedHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
-  if (
-    blockedHosts.has(hostname) ||
-    hostname.endsWith(".local") ||
-    hostname.endsWith(".internal")
-  ) {
+  if (blockedHosts.has(hostname) || hostname.endsWith(".local") || hostname.endsWith(".internal")) {
     return NextResponse.json({ error: "Host not allowed" }, { status: 403 });
   }
 
@@ -79,16 +69,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const contentType =
-      response.headers.get("content-type") || "application/octet-stream";
+    const contentType = response.headers.get("content-type") || "application/octet-stream";
     const contentDisposition = response.headers.get("content-disposition");
     const contentLength = response.headers.get("content-length");
 
     let filename = "";
     if (contentDisposition) {
-      const match = contentDisposition.match(
-        /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
-      );
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
       if (match) {
         filename = match[1].replace(/['"]/g, "").trim();
       }

@@ -22,12 +22,7 @@ const icons = {
   folder: FolderOpen,
 };
 
-export function EmptyState({
-  title,
-  description,
-  icon = "inbox",
-  action,
-}: EmptyStateProps) {
+export function EmptyState({ title, description, icon = "inbox", action }: EmptyStateProps) {
   const t = useTranslations("explore.empty");
   const Icon = icons[icon];
 
@@ -39,12 +34,7 @@ export function EmptyState({
         {description || t("description")}
       </p>
       {action && (
-        <Button
-          onClick={action.onClick}
-          variant="outline"
-          size="sm"
-          className="mt-4"
-        >
+        <Button onClick={action.onClick} variant="outline" size="sm" className="mt-4">
           {action.label}
         </Button>
       )}

@@ -3,10 +3,7 @@ import { wechatPool } from "@/lib/wechat-db";
 
 export async function POST(req: NextRequest) {
   if (!wechatPool) {
-    return NextResponse.json(
-      { error: "WeChat database not configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "WeChat database not configured" }, { status: 503 });
   }
 
   const { query, limit = 20 } = (await req.json()) as {

@@ -6,12 +6,11 @@
 
 import { NextRequest } from "next/server";
 
-const MATCHER_API_URL =
-  process.env.MATCHER_API_URL || "http://localhost:2025";
+const MATCHER_API_URL = process.env.MATCHER_API_URL || "http://localhost:2025";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> }
+  { params }: { params: Promise<{ jobId: string }> },
 ) {
   const { jobId } = await params;
 
@@ -23,10 +22,9 @@ export async function GET(
   });
 
   if (!response.ok) {
-    return new Response(
-      JSON.stringify({ error: "Failed to connect to matcher service" }),
-      { status: response.status }
-    );
+    return new Response(JSON.stringify({ error: "Failed to connect to matcher service" }), {
+      status: response.status,
+    });
   }
 
   // Stream the SSE response
@@ -34,7 +32,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     },
   });

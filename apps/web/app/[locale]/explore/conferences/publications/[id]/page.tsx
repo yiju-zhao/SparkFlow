@@ -5,16 +5,7 @@ import Link from "next/link";
 import { getPublication } from "@/lib/explore/queries";
 import { AddToNotebook } from "@/components/explore/shared";
 import { Badge } from "@/components/ui/badge";
-import {
-  FileText,
-  Github,
-  Globe,
-  ExternalLink,
-  Star,
-  Building2,
-  MapPin,
-  Tag,
-} from "lucide-react";
+import { FileText, Github, Globe, ExternalLink, Star, Building2, MapPin, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PageProps {
@@ -34,18 +25,13 @@ export default async function PublicationDetailPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
         ~/research-hub/publications/
-        {publication.instance.venue.name.toLowerCase()}/
-        {publication.instance.year}
+        {publication.instance.venue.name.toLowerCase()}/{publication.instance.year}
       </p>
 
       {/* Title */}
       <div>
-        <h1 className="text-4xl font-bold tracking-tight mb-4">
-          {publication.title}
-        </h1>
-        <p className="text-muted-foreground">
-          {publication.authors.join(", ")}
-        </p>
+        <h1 className="text-4xl font-bold tracking-tight mb-4">{publication.title}</h1>
+        <p className="text-muted-foreground">{publication.authors.join(", ")}</p>
       </div>
 
       {/* Metadata pills */}
@@ -126,9 +112,7 @@ export default async function PublicationDetailPage({ params }: PageProps) {
       {publication.abstract && (
         <div className="bg-card rounded-lg p-6">
           <h2 className="text-sm font-semibold mb-3">Abstract</h2>
-          <p className="text-muted-foreground whitespace-pre-wrap">
-            {publication.abstract}
-          </p>
+          <p className="text-muted-foreground whitespace-pre-wrap">{publication.abstract}</p>
         </div>
       )}
 
@@ -136,9 +120,7 @@ export default async function PublicationDetailPage({ params }: PageProps) {
       {publication.summary && (
         <div className="bg-card rounded-lg p-6">
           <h2 className="text-sm font-semibold mb-3">Summary</h2>
-          <p className="text-muted-foreground whitespace-pre-wrap">
-            {publication.summary}
-          </p>
+          <p className="text-muted-foreground whitespace-pre-wrap">{publication.summary}</p>
         </div>
       )}
 
@@ -233,11 +215,7 @@ export default async function PublicationDetailPage({ params }: PageProps) {
                           className="h-6 w-6 p-0 z-20 relative"
                           asChild
                         >
-                          <a
-                            href={session.sessionUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
+                          <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3.5 w-3.5" />
                             <span className="sr-only">View Session</span>
                           </a>

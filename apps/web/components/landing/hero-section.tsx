@@ -39,8 +39,7 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
           variants={fadeUp}
           className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl"
         >
-          {t("title")}{" "}
-          <span className="text-accent-red">{t("titleHighlight")}</span>
+          {t("title")} <span className="text-accent-red">{t("titleHighlight")}</span>
         </motion.h1>
 
         {/* Subline */}
@@ -52,19 +51,9 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
         </motion.p>
 
         {/* CTA Buttons */}
-        <motion.div
-          variants={fadeUp}
-          className="flex flex-wrap items-center justify-center gap-4"
-        >
-          <Button
-            size="lg"
-            className="bg-accent-red text-white hover:bg-accent-red-hover"
-            asChild
-          >
-            <Link
-              href={deepdiveHref}
-              className="font-mono font-black uppercase tracking-widest"
-            >
+        <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-4">
+          <Button size="lg" className="bg-accent-red text-white hover:bg-accent-red-hover" asChild>
+            <Link href={deepdiveHref} className="font-mono font-black uppercase tracking-widest">
               {t("deepdiveBtn")}
             </Link>
           </Button>

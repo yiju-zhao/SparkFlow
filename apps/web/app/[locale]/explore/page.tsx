@@ -23,10 +23,7 @@ async function StatsSection() {
 }
 
 async function ChartsSectionWrapper() {
-  const [yearData, topicsData] = await Promise.all([
-    getYearTrendData(),
-    getTopicsChartData(),
-  ]);
+  const [yearData, topicsData] = await Promise.all([getYearTrendData(), getTopicsChartData()]);
 
   return <ChartsSection yearData={yearData} topicsData={topicsData} />;
 }
@@ -45,15 +42,9 @@ export default async function ExplorePage({ params }: ExplorePageProps) {
     <div className="flex flex-col gap-10">
       {/* Title Section */}
       <div>
-        <p className="text-sm text-muted-foreground mb-2">
-          {t("breadcrumb")}
-        </p>
-        <h1 className="text-4xl font-bold tracking-tight mb-2">
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground">
-          {t("subtitle")}
-        </p>
+        <p className="text-sm text-muted-foreground mb-2">{t("breadcrumb")}</p>
+        <h1 className="text-4xl font-bold tracking-tight mb-2">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Stats Overview */}

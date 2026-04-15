@@ -10,8 +10,7 @@ import { NextRequest } from "next/server";
 const serviceAdapter = new ExperimentalEmptyAdapter();
 
 function getLangGraphUrl(): string {
-  const url =
-    process.env.LANGGRAPH_API_URL || process.env.NEXT_PUBLIC_LANGGRAPH_API_URL;
+  const url = process.env.LANGGRAPH_API_URL || process.env.NEXT_PUBLIC_LANGGRAPH_API_URL;
 
   if (!url) {
     throw new Error(
@@ -60,13 +59,9 @@ export const POST = async (req: NextRequest) => {
       agentName: body?.agentName ?? "unknown",
       messageCount: body?.messages?.length ?? 0,
       lastRole: lastMessage?.role ?? "unknown",
-      lastContentType: Array.isArray(lastMessage?.content)
-        ? "array"
-        : typeof lastMessage?.content,
+      lastContentType: Array.isArray(lastMessage?.content) ? "array" : typeof lastMessage?.content,
       langGraphUrl:
-        process.env.LANGGRAPH_API_URL ||
-        process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ||
-        "missing",
+        process.env.LANGGRAPH_API_URL || process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "missing",
     });
   }
 
@@ -82,8 +77,7 @@ export const POST = async (req: NextRequest) => {
     console.error("[copilotkit] Route error:", error);
     return Response.json(
       {
-        error:
-          error instanceof Error ? error.message : "Failed to reach LangGraph backend",
+        error: error instanceof Error ? error.message : "Failed to reach LangGraph backend",
       },
       { status: 503 },
     );

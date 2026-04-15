@@ -16,8 +16,7 @@ function ChartSkeleton() {
 
 // Lazy load chart components (follows bundle-dynamic-imports best practice)
 const YearTrendChart = dynamic(
-  () =>
-    import("./year-trend-chart").then((m) => ({ default: m.YearTrendChart })),
+  () => import("./year-trend-chart").then((m) => ({ default: m.YearTrendChart })),
   { loading: () => <ChartSkeleton />, ssr: false },
 );
 

@@ -16,9 +16,7 @@ function formatRelative(date: Date): string {
  * minor server/client time differences.
  */
 export function useRelativeTime(date: Date): string {
-  const [timeString, setTimeString] = useState<string>(() =>
-    formatRelative(date),
-  );
+  const [timeString, setTimeString] = useState<string>(() => formatRelative(date));
 
   useEffect(() => {
     // Update immediately in case of minor drift, then every minute

@@ -56,9 +56,7 @@ export default async function ToolboxPage({ params }: PageProps) {
               </div>
               <div>
                 <h3 className="font-medium text-sm">{tool.title}</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {tool.description}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{tool.description}</p>
               </div>
             </Link>
           ))}

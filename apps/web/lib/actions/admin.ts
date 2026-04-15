@@ -48,11 +48,7 @@ export async function getVenues() {
   });
 }
 
-export async function createVenue(data: {
-  name: string;
-  type?: string;
-  description?: string;
-}) {
+export async function createVenue(data: { name: string; type?: string; description?: string }) {
   await requireAdminUser();
 
   const venue = await prisma.venue.create({ data });
@@ -178,9 +174,7 @@ export async function saveInstanceWithImport(input: {
     throw new Error("Venue not found");
   }
 
-  const parsedImport = input.importPayload
-    ? parseImportPayload(input.importPayload)
-    : null;
+  const parsedImport = input.importPayload ? parseImportPayload(input.importPayload) : null;
 
   if (parsedImport) {
     assertImportMatchesInstance(parsedImport, {
@@ -201,21 +195,13 @@ export async function saveInstanceWithImport(input: {
   let importResult: InstanceImportResult | undefined;
 
   if (parsedImport?.kind === "PUBLICATIONS") {
-    importResult = await importPublicationsForInstance(
-      instance.id,
-      parsedImport.data,
-      {
-        reset: input.importPayload?.reset,
-      },
-    );
+    importResult = await importPublicationsForInstance(instance.id, parsedImport.data, {
+      reset: input.importPayload?.reset,
+    });
   } else if (parsedImport?.kind === "SESSIONS") {
-    importResult = await importSessionsForInstance(
-      instance.id,
-      parsedImport.data,
-      {
-        reset: input.importPayload?.reset,
-      },
-    );
+    importResult = await importSessionsForInstance(instance.id, parsedImport.data, {
+      reset: input.importPayload?.reset,
+    });
   }
 
   revalidatePath("/admin/instances");

@@ -43,37 +43,40 @@ def optimize_query(state: AgentState, runtime: Runtime) -> dict | None:
     """Optimize the user's query before agent processing."""
     if not ENABLE_PROMPT_OPTIMIZER:
         return None
-    
+
     messages = state.get("messages", [])
     if not messages:
         return None
-    
+
     # Get the last human message
     last_message = messages[-1]
     if not hasattr(last_message, "content") or not last_message.content:
         return None
-    
+
     # Skip if message is too short
     content = last_message.content
     if isinstance(content, str) and len(content.strip()) < 10:
         return None
-    
+
     try:
         client = OpenAI()
         response = client.chat.completions.create(
             model="gpt-4.1",
             messages=[
                 {"role": "system", "content": OPTIMIZER_SYSTEM_PROMPT},
-                {"role": "user", "content": OPTIMIZER_USER_PROMPT_TEMPLATE.format(prompt=content)},
+                {
+                    "role": "user",
+                    "content": OPTIMIZER_USER_PROMPT_TEMPLATE.format(prompt=content),
+                },
             ],
         )
-        
+
         optimized = response.choices[0].message.content
         if optimized and optimized.strip():
-            print(f"Query optimized: \"{content}\" -> \"{optimized.strip()}\"")
+            print(f'Query optimized: "{content}" -> "{optimized.strip()}"')
             # Update the last message with optimized content
             last_message.content = optimized.strip()
     except Exception as e:
         print(f"Query optimization error: {e}")
-    
+
     return None

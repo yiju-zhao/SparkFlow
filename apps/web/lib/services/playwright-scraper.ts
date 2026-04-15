@@ -67,16 +67,11 @@ async function autoScroll(page: Page): Promise<void> {
   });
 }
 
-async function extractMetadata(
-  page: Page,
-  url: string
-): Promise<ScrapeResult["metadata"]> {
+async function extractMetadata(page: Page, url: string): Promise<ScrapeResult["metadata"]> {
   return page.evaluate((pageUrl) => {
     const title =
       document.querySelector("h1")?.textContent?.trim() ||
-      document
-        .querySelector('meta[property="og:title"]')
-        ?.getAttribute("content") ||
+      document.querySelector('meta[property="og:title"]')?.getAttribute("content") ||
       document.title ||
       "Untitled";
 
@@ -84,22 +79,16 @@ async function extractMetadata(
     if (pageUrl.includes("mp.weixin.qq.com")) {
       author =
         document.querySelector("#js_name")?.textContent?.trim() ||
-        document
-          .querySelector(".rich_media_meta_nickname")
-          ?.textContent?.trim();
+        document.querySelector(".rich_media_meta_nickname")?.textContent?.trim();
     } else {
       author =
-        document
-          .querySelector('meta[name="author"]')
-          ?.getAttribute("content") ||
+        document.querySelector('meta[name="author"]')?.getAttribute("content") ||
         document.querySelector('[rel="author"]')?.textContent?.trim() ||
         undefined;
     }
 
     const date =
-      document
-        .querySelector('meta[property="article:published_time"]')
-        ?.getAttribute("content") ||
+      document.querySelector('meta[property="article:published_time"]')?.getAttribute("content") ||
       document.querySelector("time")?.getAttribute("datetime") ||
       undefined;
 
@@ -109,7 +98,7 @@ async function extractMetadata(
 
 async function extractContent(
   page: Page,
-  url: string
+  url: string,
 ): Promise<{ markdown: string; imageUrls: string[] }> {
   return page.evaluate((pageUrl) => {
     let container: Element | null = null;
@@ -143,9 +132,7 @@ async function extractContent(
       const el = node as Element;
       const tag = el.tagName.toLowerCase();
 
-      if (
-        ["script", "style", "nav", "footer", "aside", "iframe"].includes(tag)
-      ) {
+      if (["script", "style", "nav", "footer", "aside", "iframe"].includes(tag)) {
         return "";
       }
 
@@ -157,9 +144,7 @@ async function extractContent(
         return "";
       }
 
-      const children = Array.from(node.childNodes)
-        .map(nodeToMarkdown)
-        .join("");
+      const children = Array.from(node.childNodes).map(nodeToMarkdown).join("");
 
       switch (tag) {
         case "h1":
@@ -193,8 +178,7 @@ async function extractContent(
           return href ? `[${children}](${href})` : children;
         }
         case "img": {
-          const src =
-            el.getAttribute("data-src") || el.getAttribute("src") || "";
+          const src = el.getAttribute("data-src") || el.getAttribute("src") || "";
           if (src && !src.startsWith("data:")) {
             const name = `image_${imgIndex++}`;
             imageUrls.push(src);
@@ -231,7 +215,7 @@ async function extractContent(
       const mdRows = rows.map((row) =>
         Array.from(row.querySelectorAll("th, td"))
           .map((cell) => cell.textContent?.trim() || "")
-          .join(" | ")
+          .join(" | "),
       );
 
       if (mdRows.length >= 1) {
@@ -254,10 +238,7 @@ async function extractContent(
   }, url);
 }
 
-async function downloadImages(
-  imageUrls: string[],
-  page: Page
-): Promise<ScrapeResult["images"]> {
+async function downloadImages(imageUrls: string[], page: Page): Promise<ScrapeResult["images"]> {
   const images: ScrapeResult["images"] = [];
 
   for (let i = 0; i < imageUrls.length; i++) {
@@ -266,8 +247,7 @@ async function downloadImages(
       const response = await page.context().request.get(url);
       if (response.ok()) {
         const data = await response.body();
-        const contentType =
-          response.headers()["content-type"] || "image/png";
+        const contentType = response.headers()["content-type"] || "image/png";
         const ext =
           contentType.includes("jpeg") || contentType.includes("jpg")
             ? "jpg"

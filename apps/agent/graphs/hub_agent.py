@@ -73,7 +73,9 @@ def _dedupe_tools(frontend_tools: list[Any]) -> list[Any]:
     return combined
 
 
-async def call_model(state: HubState, runtime: Runtime[HubAgentContext]) -> dict[str, list[BaseMessage]]:
+async def call_model(
+    state: HubState, runtime: Runtime[HubAgentContext]
+) -> dict[str, list[BaseMessage]]:
     frontend_tools = (state.get("copilotkit") or {}).get("actions") or []
     available_tools = _dedupe_tools(frontend_tools)
     model = _get_model(runtime.context.model_provider, runtime.context.model_name)
@@ -103,7 +105,11 @@ async def run_backend_tools(state: HubState) -> dict[str, list[BaseMessage]]:
 
         try:
             result = await tool.ainvoke(call.get("args", {}))
-            content = json.dumps(result, ensure_ascii=False) if not isinstance(result, str) else result
+            content = (
+                json.dumps(result, ensure_ascii=False)
+                if not isinstance(result, str)
+                else result
+            )
         except Exception as exc:  # pragma: no cover - defensive runtime path
             content = json.dumps({"error": str(exc)}, ensure_ascii=False)
 
@@ -132,7 +138,9 @@ builder = StateGraph(HubState, context_schema=HubAgentContext)
 builder.add_node("agent", call_model)
 builder.add_node("backend_tools", run_backend_tools)
 builder.add_edge(START, "agent")
-builder.add_conditional_edges("agent", route_after_model, {"backend_tools": "backend_tools", END: END})
+builder.add_conditional_edges(
+    "agent", route_after_model, {"backend_tools": "backend_tools", END: END}
+)
 builder.add_edge("backend_tools", "agent")
 
 agent = builder.compile()

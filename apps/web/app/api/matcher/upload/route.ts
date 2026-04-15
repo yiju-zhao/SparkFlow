@@ -44,10 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 10MB" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "File too large. Maximum size is 10MB" }, { status: 400 });
     }
 
     // Generate storage key and path
@@ -67,9 +64,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
   }
 }

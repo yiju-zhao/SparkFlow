@@ -78,9 +78,7 @@ export function ChatPanel({
 
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
-    initialSessions.length > 0
-      ? initialSessions[0].langgraphThreadId || null
-      : null,
+    initialSessions.length > 0 ? initialSessions[0].langgraphThreadId || null : null,
   );
 
   // Session management for persistence
@@ -129,10 +127,12 @@ export function ChatPanel({
     modelProvider: "openai",
     modelName: "gemini-2.5-flash",
   });
-  const [resolvedKey, setResolvedKey] = useState<{ apiKey: string; baseUrl?: string } | null | "pending">("pending");
-const messagesContainerRef = useRef<HTMLDivElement>(null);
-const textareaRef = useRef<HTMLTextAreaElement>(null);
-const prevIsLoadingRef = useRef<boolean>(false);
+  const [resolvedKey, setResolvedKey] = useState<
+    { apiKey: string; baseUrl?: string } | null | "pending"
+  >("pending");
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevIsLoadingRef = useRef<boolean>(false);
 
   // Fetch user model settings on mount
   useEffect(() => {
@@ -189,8 +189,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
 
   // Scroll to bottom when messages change (only if there are messages)
   useEffect(() => {
-    const hasMessages =
-      sessionMessages.length > 0 || stream.messages.length > 0;
+    const hasMessages = sessionMessages.length > 0 || stream.messages.length > 0;
     const container = messagesContainerRef.current;
     if (hasMessages && container) {
       // Use scrollTop instead of scrollIntoView to prevent affecting parent layouts
@@ -206,20 +205,21 @@ const prevIsLoadingRef = useRef<boolean>(false);
     // Detect transition from loading to not loading (streaming just completed)
     if (wasLoading && !stream.isLoading && !stream.error && streamSessionId) {
       // Combine iterations into single reduce (Vercel best practice: js-combine-iterations)
-      const messagesToSave = stream.messages.reduce<
-        { sender: string; content: string }[]
-      >((acc, m) => {
-        if (m.type === "human" || m.type === "ai") {
-          const content = getMessageContent(m);
-          if (content.trim().length > 0) {
-            acc.push({
-              sender: m.type === "human" ? "USER" : "ASSISTANT",
-              content,
-            });
+      const messagesToSave = stream.messages.reduce<{ sender: string; content: string }[]>(
+        (acc, m) => {
+          if (m.type === "human" || m.type === "ai") {
+            const content = getMessageContent(m);
+            if (content.trim().length > 0) {
+              acc.push({
+                sender: m.type === "human" ? "USER" : "ASSISTANT",
+                content,
+              });
+            }
           }
-        }
-        return acc;
-      }, []);
+          return acc;
+        },
+        [],
+      );
 
       if (messagesToSave.length > 0) {
         fetch("/api/chat/messages", {
@@ -237,11 +237,11 @@ const prevIsLoadingRef = useRef<boolean>(false);
               prev.map((s) =>
                 s.id === streamSessionId
                   ? {
-                    ...s,
-                    _count: {
-                      messages: s._count.messages + messagesToSave.length,
-                    },
-                  }
+                      ...s,
+                      _count: {
+                        messages: s._count.messages + messagesToSave.length,
+                      },
+                    }
                   : s,
               ),
             );
@@ -251,18 +251,10 @@ const prevIsLoadingRef = useRef<boolean>(false);
           .catch((err) => console.error("Failed to save messages:", err));
       }
     }
-  }, [
-    stream.isLoading,
-    stream.error,
-    stream.messages,
-    streamSessionId,
-    notebookId,
-  ]);
+  }, [stream.isLoading, stream.error, stream.messages, streamSessionId, notebookId]);
 
   // Load stored messages for the active session
-  const hasLoadedPreloaded = useRef(
-    preloadedSessionId !== null && initialMessages.length > 0,
-  );
+  const hasLoadedPreloaded = useRef(preloadedSessionId !== null && initialMessages.length > 0);
 
   useEffect(() => {
     if (!activeSessionId) {
@@ -319,9 +311,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
           .replace(/^#+\s*/, "")
           .trim();
         const title =
-          firstLine.length > 50
-            ? firstLine.slice(0, 50) + "..."
-            : firstLine || "Chat Note";
+          firstLine.length > 50 ? firstLine.slice(0, 50) + "..." : firstLine || "Chat Note";
         await createNote(notebookId, { title, content, tags: ["from-chat"] });
         onNoteAdded?.();
       } catch (error) {
@@ -369,15 +359,14 @@ const prevIsLoadingRef = useRef<boolean>(false);
       try {
         const slug = `article-${Date.now()}`;
         const firstLine = content.split("\n").find((l) => l.trim().length > 0) || "";
-        const title = firstLine
-          .replace(/^#+\s*/, "")
-          .replace(/[*_~`]/g, "")
-          .slice(0, 80)
-          .trim() || "Chat Synthesis";
+        const title =
+          firstLine
+            .replace(/^#+\s*/, "")
+            .replace(/[*_~`]/g, "")
+            .slice(0, 80)
+            .trim() || "Chat Synthesis";
 
-        const sourceIds = sources
-          .filter((s) => s.status === "READY")
-          .map((s) => s.id);
+        const sourceIds = sources.filter((s) => s.status === "READY").map((s) => s.id);
 
         await fetch(`/api/notebooks/${notebookId}/wiki/${slug}`, {
           method: "PUT",
@@ -451,10 +440,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
   }, []);
 
   // Delete session
-  const handleDeleteSession = async (
-    e: React.MouseEvent,
-    sessionId: string,
-  ) => {
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     if (!confirm("Delete this chat history?")) return;
     try {
@@ -555,9 +541,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
   };
 
   const displayMessages =
-    streamSessionId &&
-      streamSessionId === activeSessionId &&
-      stream.messages.length > 0
+    streamSessionId && streamSessionId === activeSessionId && stream.messages.length > 0
       ? stream.messages
       : sessionMessages;
 
@@ -566,8 +550,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
     const completedToolCallIds = new Set<string>();
     displayMessages.forEach((message) => {
       if (message.type === "tool") {
-        const toolCallId = (message as unknown as { tool_call_id?: string })
-          .tool_call_id;
+        const toolCallId = (message as unknown as { tool_call_id?: string }).tool_call_id;
         if (toolCallId) completedToolCallIds.add(toolCallId);
       }
     });
@@ -576,9 +559,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
       if (message.type === "human") return true;
 
       if (message.type === "ai") {
-        const toolCalls = (
-          message as unknown as { tool_calls?: { id: string; name: string }[] }
-        ).tool_calls;
+        const toolCalls = (message as unknown as { tool_calls?: { id: string; name: string }[] })
+          .tool_calls;
         const content = getMessageContent(message);
         const hasInProgressToolCalls =
           toolCalls?.some((tc) => !completedToolCallIds.has(tc.id)) ?? false;
@@ -625,9 +607,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
       {showHistory && (
         <div className="absolute top-10 right-2 z-10 w-64 max-h-80 overflow-y-auto rounded-lg border border-border bg-background shadow-lg">
           <div className="p-2">
-            <h3 className="text-xs font-medium text-muted-foreground mb-2">
-              Recent Chats
-            </h3>
+            <h3 className="text-xs font-medium text-muted-foreground mb-2">Recent Chats</h3>
             {sessions.length === 0 ? (
               <p className="text-xs text-muted-foreground">No chat history</p>
             ) : (
@@ -641,8 +621,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{session.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(session.lastActivity)} ·{" "}
-                        {session._count.messages} msgs
+                        {formatDate(session.lastActivity)} · {session._count.messages} msgs
                       </p>
                     </div>
                     <Button
@@ -701,10 +680,11 @@ const prevIsLoadingRef = useRef<boolean>(false);
                 className={`group flex ${isUser ? "justify-end" : "justify-start"} px-2`}
               >
                 <div
-                  className={`relative rounded-[4px] transition-all duration-200 ${isUser
-                    ? "bg-accent-primary text-white px-4 py-3 border-none w-fit max-w-[85%]"
-                    : "w-full p-5 bg-white dark:bg-transparent"
-                    }`}
+                  className={`relative rounded-[4px] transition-all duration-200 ${
+                    isUser
+                      ? "bg-accent-primary text-white px-4 py-3 border-none w-fit max-w-[85%]"
+                      : "w-full p-5 bg-white dark:bg-transparent"
+                  }`}
                 >
                   {isUser ? (
                     <p className="text-[13px] font-normal leading-relaxed whitespace-pre-wrap">
@@ -716,7 +696,9 @@ const prevIsLoadingRef = useRef<boolean>(false);
                       <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
                       <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground/60 uppercase">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>CONSULTING {inProgressToolCalls.map((tc) => tc.name).join(", ")}...</span>
+                        <span>
+                          CONSULTING {inProgressToolCalls.map((tc) => tc.name).join(", ")}...
+                        </span>
                       </div>
                     </div>
                   ) : (
@@ -729,7 +711,10 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             className="overflow-x-auto"
                             onClick={(e) => {
                               const target = e.target as HTMLElement;
-                              const wikiEl = target.tagName === "WIKI-LINK" ? target : target.closest("wiki-link");
+                              const wikiEl =
+                                target.tagName === "WIKI-LINK"
+                                  ? target
+                                  : target.closest("wiki-link");
                               if (wikiEl) {
                                 const slug = wikiEl.getAttribute("data-slug");
                                 if (slug && onWikiNavigate) {
@@ -742,7 +727,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             <Markdown className="text-[13px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
                               {content.replace(
                                 /\[\[([a-zA-Z0-9_-]+)\]\]/g,
-                                (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
+                                (_, slug) =>
+                                  `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`,
                               )}
                             </Markdown>
                             <style>{`
@@ -767,9 +753,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             variant="ghost"
                             size="sm"
                             className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
-                            onClick={() =>
-                              handleSaveToNotes(messageKey, content)
-                            }
+                            onClick={() => handleSaveToNotes(messageKey, content)}
                             disabled={savingNoteId === messageKey}
                           >
                             {savingNoteId === messageKey ? (
@@ -783,9 +767,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             variant="ghost"
                             size="sm"
                             className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
-                            onClick={() =>
-                              handleSaveToWiki(messageKey, content)
-                            }
+                            onClick={() => handleSaveToWiki(messageKey, content)}
                             disabled={savingWikiId === messageKey}
                           >
                             {savingWikiId === messageKey ? (
@@ -806,11 +788,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
                             ) : (
                               <Copy className="h-3.5 w-3.5" />
                             )}
-                            <span>
-                              {copiedMessageId === messageKey
-                                ? "COPIED"
-                                : "COPY"}
-                            </span>
+                            <span>{copiedMessageId === messageKey ? "COPIED" : "COPY"}</span>
                           </Button>
                         </div>
                       )}
@@ -835,10 +813,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
           <div className="flex justify-start">
             <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2">
               <p className="text-sm">
-                Error:{" "}
-                {stream.error instanceof Error
-                  ? stream.error.message
-                  : String(stream.error)}
+                Error: {stream.error instanceof Error ? stream.error.message : String(stream.error)}
               </p>
             </div>
           </div>
@@ -855,14 +830,15 @@ const prevIsLoadingRef = useRef<boolean>(false);
       {resolvedKey === null && !stream.isLoading && (
         <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2">
           <p className="text-xs text-amber-800 dark:text-amber-200">
-            Set your API key in <a href="/settings" className="underline">Settings</a> to use the chat.
+            Set your API key in{" "}
+            <a href="/settings" className="underline">
+              Settings
+            </a>{" "}
+            to use the chat.
           </p>
         </div>
       )}
-      <div
-        className="flex items-start px-6 py-3 gap-3"
-        style={{ minHeight: inputHeight }}
-      >
+      <div className="flex items-start px-6 py-3 gap-3" style={{ minHeight: inputHeight }}>
         <form onSubmit={handleSubmit} className="flex flex-1 items-start gap-3">
           <Textarea
             ref={textareaRef}

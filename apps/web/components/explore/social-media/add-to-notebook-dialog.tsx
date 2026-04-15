@@ -141,11 +141,7 @@ export function AddToNotebookDialog({ article }: AddToNotebookDialogProps) {
               >
                 Back
               </Button>
-              <Button
-                size="sm"
-                onClick={handleCreateAndAdd}
-                disabled={loading || !newName.trim()}
-              >
+              <Button size="sm" onClick={handleCreateAndAdd} disabled={loading || !newName.trim()}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Create & Add
               </Button>
@@ -154,9 +150,7 @@ export function AddToNotebookDialog({ article }: AddToNotebookDialogProps) {
         ) : (
           <div className="space-y-2 mt-2">
             {notebooks.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No notebooks yet.
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-4">No notebooks yet.</p>
             ) : (
               notebooks.map((nb) => (
                 <Button
@@ -171,11 +165,7 @@ export function AddToNotebookDialog({ article }: AddToNotebookDialogProps) {
                 </Button>
               ))
             )}
-            <Button
-              variant="secondary"
-              className="w-full mt-2"
-              onClick={() => setShowCreate(true)}
-            >
+            <Button variant="secondary" className="w-full mt-2" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New Notebook
             </Button>

@@ -36,7 +36,9 @@ def llm_call(state: MessagesState, runtime: Runtime[AgentContext]):
     if notebook_id:
         set_notebook_id(notebook_id)
 
-    provider = runtime.context.model_provider or os.getenv("DEFAULT_MODEL_PROVIDER", "openai")
+    provider = runtime.context.model_provider or os.getenv(
+        "DEFAULT_MODEL_PROVIDER", "openai"
+    )
     model_name = runtime.context.model_name or os.getenv("DEFAULT_MODEL_NAME", "gpt-4o")
     model_with_tools = _get_model_with_tools(provider, model_name)
 
@@ -64,10 +66,16 @@ def tool_node(state: MessagesState):
     for tool_call in state["messages"][-1].tool_calls:
         tool = tools_by_name.get(tool_call["name"])
         try:
-            observation = tool.invoke(tool_call["args"]) if tool else f"Unknown tool: {tool_call['name']}"
+            observation = (
+                tool.invoke(tool_call["args"])
+                if tool
+                else f"Unknown tool: {tool_call['name']}"
+            )
         except Exception as e:
             observation = f"Tool error: {e}"
-        results.append(ToolMessage(content=str(observation), tool_call_id=tool_call["id"]))
+        results.append(
+            ToolMessage(content=str(observation), tool_call_id=tool_call["id"])
+        )
     return {"messages": results}
 
 

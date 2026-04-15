@@ -59,10 +59,7 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium mb-1"
-            >
+            <label htmlFor="username" className="block text-sm font-medium mb-1">
               {t("usernameLabel")}
             </label>
             <Input
@@ -88,10 +85,7 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium mb-1"
-            >
+            <label htmlFor="password" className="block text-sm font-medium mb-1">
               {t("passwordLabel")}
             </label>
             <Input
@@ -105,10 +99,7 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium mb-1"
-            >
+            <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
               {t("confirmPasswordLabel")}
             </label>
             <Input

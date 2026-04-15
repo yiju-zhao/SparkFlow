@@ -99,10 +99,7 @@ export async function deleteNotebook(id: string) {
   revalidatePath("/deepdive");
 }
 
-export async function updateNotebook(
-  id: string,
-  data: { name?: string; description?: string },
-) {
+export async function updateNotebook(id: string, data: { name?: string; description?: string }) {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Unauthorized");

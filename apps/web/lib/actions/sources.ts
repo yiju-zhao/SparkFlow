@@ -33,11 +33,7 @@ export async function getSources(notebookId: string) {
   });
 }
 
-export async function addWebpageSource(
-  notebookId: string,
-  url: string,
-  title?: string,
-) {
+export async function addWebpageSource(notebookId: string, url: string, title?: string) {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
@@ -86,10 +82,7 @@ export async function addWebpageSource(
   return source;
 }
 
-export async function uploadDocumentSource(
-  notebookId: string,
-  formData: FormData,
-) {
+export async function uploadDocumentSource(notebookId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
@@ -157,10 +150,7 @@ export async function uploadDocumentSource(
   return source;
 }
 
-export async function addPublicationSource(
-  notebookId: string,
-  publicationId: string,
-) {
+export async function addPublicationSource(notebookId: string, publicationId: string) {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
@@ -235,10 +225,7 @@ export async function addPublicationSource(
   return source;
 }
 
-export async function addWechatSource(
-  notebookId: string,
-  articleId: number,
-) {
+export async function addWechatSource(notebookId: string, articleId: number) {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
@@ -252,9 +239,8 @@ export async function addWechatSource(
   }
 
   // Fetch article from WeChat DB
-  const { getWechatArticleById, getWechatArticleImages } = await import(
-    "@/lib/services/wechat-client"
-  );
+  const { getWechatArticleById, getWechatArticleImages } =
+    await import("@/lib/services/wechat-client");
 
   const article = await getWechatArticleById(articleId);
   if (!article) {
@@ -340,9 +326,7 @@ export async function addWechatSource(
       });
 
       const htmlContent = article.content_html;
-      const markdownContent = htmlContent
-        ? td.turndown(htmlContent)
-        : (article.content_text || "");
+      const markdownContent = htmlContent ? td.turndown(htmlContent) : article.content_text || "";
 
       // Extract TOC from markdown headings
       const { extractTocFromMarkdown } = await import("@/lib/utils/toc-extractor");
@@ -418,13 +402,11 @@ export async function deleteSource(sourceId: string) {
 
   // Remove source contributions from wiki in background (non-blocking)
   import("@/lib/services/wiki-ingest")
-    .then(({ removeSourceFromWiki }) =>
-      removeSourceFromWiki(notebookId, sourceId, sourceTitle)
-    )
+    .then(({ removeSourceFromWiki }) => removeSourceFromWiki(notebookId, sourceId, sourceTitle))
     .then((result) =>
       console.log(
-        `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`
-      )
+        `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`,
+      ),
     )
     .catch((err) => console.error("Wiki source removal failed:", err));
 }

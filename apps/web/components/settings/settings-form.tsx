@@ -76,15 +76,23 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
   const [wikiProvider, setWikiProvider] = useState(initialSettings?.wikiModelProvider || "openai");
   const [wikiModel, setWikiModel] = useState(initialSettings?.wikiModelName || "gpt-4o-mini");
-  const [searchProvider, setSearchProvider] = useState(initialSettings?.searchModelProvider || "openai");
+  const [searchProvider, setSearchProvider] = useState(
+    initialSettings?.searchModelProvider || "openai",
+  );
   const [searchModel, setSearchModel] = useState(initialSettings?.searchModelName || "gpt-4o-mini");
 
   // Research Hub settings
-  const [matcherProvider, setMatcherProvider] = useState(initialSettings?.matcherModelProvider || "openai");
-  const [matcherModel, setMatcherModel] = useState(initialSettings?.matcherModelName || "gpt-4o-mini");
+  const [matcherProvider, setMatcherProvider] = useState(
+    initialSettings?.matcherModelProvider || "openai",
+  );
+  const [matcherModel, setMatcherModel] = useState(
+    initialSettings?.matcherModelName || "gpt-4o-mini",
+  );
 
   // API Keys
-  const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, { hasKey: boolean; maskedKey: string }>>({});
+  const [apiKeyStatus, setApiKeyStatus] = useState<
+    Record<string, { hasKey: boolean; maskedKey: string }>
+  >({});
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
@@ -232,7 +240,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           apiKeys: {
             [providerId]: {
               apiKey: keyInput.trim(),
-              ...(providerId === "custom" && baseUrlInput.trim() ? { baseUrl: baseUrlInput.trim() } : {}),
+              ...(providerId === "custom" && baseUrlInput.trim()
+                ? { baseUrl: baseUrlInput.trim() }
+                : {}),
             },
           },
         }),
@@ -287,8 +297,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   };
 
   const handleSelectAllWechat = () => setWechatExcluded(new Set());
-  const handleDeselectAllWechat = () =>
-    setWechatExcluded(new Set(wechatSources.map((s) => s.id)));
+  const handleDeselectAllWechat = () => setWechatExcluded(new Set(wechatSources.map((s) => s.id)));
 
   const handleSaveWechat = async () => {
     setWechatSaving(true);
@@ -340,7 +349,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           </SelectTrigger>
           <SelectContent>
             {providerOptions.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+              <SelectItem key={p.id} value={p.id}>
+                {p.label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -374,7 +385,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
       <div className="space-y-5">
         <div className="border-b pb-2">
           <h3 className="text-base font-semibold">Deepdive</h3>
-          <p className="text-xs text-muted-foreground">Models for notebook chat and wiki generation</p>
+          <p className="text-xs text-muted-foreground">
+            Models for notebook chat and wiki generation
+          </p>
         </div>
 
         <ModelSelector
@@ -412,7 +425,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
       <div className="space-y-5">
         <div className="border-b pb-2">
           <h3 className="text-base font-semibold">Research Hub</h3>
-          <p className="text-xs text-muted-foreground">Models for conference/publication matching</p>
+          <p className="text-xs text-muted-foreground">
+            Models for conference/publication matching
+          </p>
         </div>
 
         <ModelSelector
@@ -576,10 +591,23 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
                           {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      <Button size="sm" onClick={() => handleSaveKey(provider.id)} disabled={keySaving || !keyInput.trim()}>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveKey(provider.id)}
+                        disabled={keySaving || !keyInput.trim()}
+                      >
                         {keySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => { setEditingProvider(null); setKeyInput(""); setBaseUrlInput(""); setShowKey(false); }}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingProvider(null);
+                          setKeyInput("");
+                          setBaseUrlInput("");
+                          setShowKey(false);
+                        }}
+                      >
                         Cancel
                       </Button>
                     </div>
@@ -597,15 +625,37 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
                     <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                       {status.maskedKey}
                     </code>
-                    <Button size="sm" variant="outline" onClick={() => { setEditingProvider(provider.id); setKeyInput(""); setShowKey(false); }}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingProvider(provider.id);
+                        setKeyInput("");
+                        setShowKey(false);
+                      }}
+                    >
                       Update
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemoveKey(provider.id)} disabled={keySaving}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveKey(provider.id)}
+                      disabled={keySaving}
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => { setEditingProvider(provider.id); setKeyInput(""); setShowKey(false); }}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingProvider(provider.id);
+                      setKeyInput("");
+                      setShowKey(false);
+                    }}
+                  >
                     <Key className="mr-1.5 h-3.5 w-3.5" />
                     Set Key
                   </Button>

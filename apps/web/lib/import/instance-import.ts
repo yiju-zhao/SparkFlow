@@ -44,9 +44,7 @@ export interface SessionsImportResult {
   warnings: SessionImportWarning[];
 }
 
-export type InstanceImportResult =
-  | PublicationsImportResult
-  | SessionsImportResult;
+export type InstanceImportResult = PublicationsImportResult | SessionsImportResult;
 
 type ParsedImportPayload =
   | { kind: "PUBLICATIONS"; data: PublicationsFile }
@@ -68,9 +66,7 @@ function formatValidationErrors(result: {
     .join("\n");
 }
 
-export function parseImportPayload(
-  payload: InstanceImportPayload,
-): ParsedImportPayload {
+export function parseImportPayload(payload: InstanceImportPayload): ParsedImportPayload {
   if (payload.kind === "PUBLICATIONS") {
     const result = PublicationsFileSchema.safeParse(payload.rawData);
     if (!result.success) {
@@ -98,10 +94,7 @@ export function assertImportMatchesInstance(
   parsed: ParsedImportPayload,
   target: { venueName: string; year: number },
 ) {
-  if (
-    parsed.data.venue !== target.venueName ||
-    parsed.data.year !== target.year
-  ) {
+  if (parsed.data.venue !== target.venueName || parsed.data.year !== target.year) {
     throw new Error(
       `JSON file targets ${parsed.data.venue} ${parsed.data.year}, but the form is set to ${target.venueName} ${target.year}.`,
     );
@@ -242,11 +235,8 @@ export async function importSessionsForInstance(
 
           return { publicationId, presentationOrder: index };
         })
-        .filter(
-          (
-            entry,
-          ): entry is { publicationId: string; presentationOrder: number } =>
-            Boolean(entry),
+        .filter((entry): entry is { publicationId: string; presentationOrder: number } =>
+          Boolean(entry),
         );
 
       await prisma.conferenceSession.create({

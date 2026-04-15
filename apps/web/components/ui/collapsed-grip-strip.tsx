@@ -26,27 +26,22 @@ export function CollapsedGripStrip({
       ? "border-r-2 dark:border-r border-divider"
       : "border-l-2 dark:border-l border-divider";
 
-  const bgClasses = isHovered || isDragging
-    ? "bg-[#F5F5F5] dark:bg-[#1A1A1A]"
-    : "bg-[#FAFAFA] dark:bg-[#0C0C0C]";
+  const bgClasses =
+    isHovered || isDragging ? "bg-[#F5F5F5] dark:bg-[#1A1A1A]" : "bg-[#FAFAFA] dark:bg-[#0C0C0C]";
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      isDraggingRef.current = true;
-      setIsDragging(true);
-      dragStartRef.current = e.clientX;
-    },
-    []
-  );
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    dragStartRef.current = e.clientX;
+  }, []);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isDraggingRef.current || dragStartRef.current === null) return;
 
-      const delta = side === "left"
-        ? e.clientX - dragStartRef.current
-        : dragStartRef.current - e.clientX;
+      const delta =
+        side === "left" ? e.clientX - dragStartRef.current : dragStartRef.current - e.clientX;
 
       if (delta >= DRAG_THRESHOLD) {
         const expandedWidth = Math.max(200, delta + 100);
@@ -56,7 +51,7 @@ export function CollapsedGripStrip({
         dragStartRef.current = null;
       }
     },
-    [side, onExpand]
+    [side, onExpand],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -86,10 +81,7 @@ export function CollapsedGripStrip({
     >
       <div className="flex flex-col gap-1.5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="w-1 h-1 rounded-full bg-[#A0A0A0] dark:bg-[#555555]"
-          />
+          <div key={i} className="w-1 h-1 rounded-full bg-[#A0A0A0] dark:bg-[#555555]" />
         ))}
       </div>
     </div>

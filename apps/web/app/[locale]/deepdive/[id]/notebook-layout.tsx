@@ -4,9 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import {
-  UserNav
-} from "@/components/user-nav";
+import { UserNav } from "@/components/user-nav";
 import { ChatPanel } from "@/components/deepdive/chat/chat-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
@@ -14,12 +12,16 @@ import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
 
 // Lazy-load side panels — they're collapsible and can load after the main chat panel
 const SourcesPanel = dynamic(
-  () => import("@/components/deepdive/sources/sources-panel").then((m) => ({ default: m.SourcesPanel })),
-  { ssr: false }
+  () =>
+    import("@/components/deepdive/sources/sources-panel").then((m) => ({
+      default: m.SourcesPanel,
+    })),
+  { ssr: false },
 );
 const StudioPanel = dynamic(
-  () => import("@/components/deepdive/studio/studio-panel").then((m) => ({ default: m.StudioPanel })),
-  { ssr: false }
+  () =>
+    import("@/components/deepdive/studio/studio-panel").then((m) => ({ default: m.StudioPanel })),
+  { ssr: false },
 );
 
 import type { Source, Note, Notebook } from "@prisma/client";
@@ -95,17 +97,23 @@ function NotebookLayoutInner({
   }, []);
 
   // Drag handlers for sources panel
-  const handleSourcesDrag = useCallback((delta: number) => {
-    setSourcesWidth((prev) => clampWidth(prev + delta));
-  }, [clampWidth]);
+  const handleSourcesDrag = useCallback(
+    (delta: number) => {
+      setSourcesWidth((prev) => clampWidth(prev + delta));
+    },
+    [clampWidth],
+  );
 
   const handleSourcesDoubleClick = useCallback(() => {
     setSourcesWidth(SOURCES_DEFAULT_WIDTH);
   }, []);
 
-  const handleStudioDrag = useCallback((delta: number) => {
-    setStudioWidth((prev) => clampWidth(prev - delta));
-  }, [clampWidth]);
+  const handleStudioDrag = useCallback(
+    (delta: number) => {
+      setStudioWidth((prev) => clampWidth(prev - delta));
+    },
+    [clampWidth],
+  );
 
   const handleStudioDoubleClick = useCallback(() => {
     setStudioWidth(STUDIO_DEFAULT_WIDTH);
@@ -141,11 +149,14 @@ function NotebookLayoutInner({
   }, []);
 
   // Handle citation click — placeholder for future wiki-based navigation
-  const handleCitationNavigate = useCallback(async (_refId: string) => {
-    if (sourcesWidth === 0) {
-      setSourcesWidth(SOURCES_CONTENT_WIDTH);
-    }
-  }, [sourcesWidth]);
+  const handleCitationNavigate = useCallback(
+    async (_refId: string) => {
+      if (sourcesWidth === 0) {
+        setSourcesWidth(SOURCES_CONTENT_WIDTH);
+      }
+    },
+    [sourcesWidth],
+  );
 
   // Register navigation handler with citation context
   useEffect(() => {

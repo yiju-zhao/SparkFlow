@@ -91,11 +91,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
   if (content) {
     import("@/lib/services/wiki-ingest")
       .then(({ ingestSourceToWiki }) =>
-        ingestSourceToWiki(notebookId, source.id, session.user!.id!)
+        ingestSourceToWiki(notebookId, source.id, session.user!.id!),
       )
-      .catch((err) =>
-        console.error("[POST sources] Wiki ingest failed:", err)
-      );
+      .catch((err) => console.error("[POST sources] Wiki ingest failed:", err));
   }
 
   return NextResponse.json(source, { status: 201 });

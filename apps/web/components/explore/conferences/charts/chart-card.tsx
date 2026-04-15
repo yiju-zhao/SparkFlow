@@ -10,19 +10,11 @@ interface ChartCardProps {
   action?: ReactNode;
 }
 
-export function ChartCard({
-  title,
-  children,
-  className,
-  height = "h-75",
-  action,
-}: ChartCardProps) {
+export function ChartCard({ title, children, className, height = "h-75", action }: ChartCardProps) {
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-semibold text-foreground/80">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-base font-semibold text-foreground/80">{title}</CardTitle>
         {action}
       </CardHeader>
       <CardContent className="flex-1 min-h-0 pt-4">

@@ -40,9 +40,7 @@ export function ExploreShell({ children, aiContext, ...headerProps }: ExploreShe
         <main className="px-12 pt-24 pb-16">{children}</main>
       </div>
 
-      {!assistantOpen && (
-        <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />
-      )}
+      {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}
       <ResearchAssistantPanel
         open={assistantOpen}
         onOpenChange={setAssistantOpen}

@@ -98,13 +98,13 @@
   /* Notebook Design Tokens */
   --accent-primary: oklch(0.44 0.19 16);
   /* Huawei Red accent for light mode (matches accent-red) */
-  --surface-elevated: #FFFFFF;
+  --surface-elevated: #ffffff;
   /* Card/raised surface */
-  --surface-hover: #F0F0F0;
+  --surface-hover: #f0f0f0;
   /* Card hover */
-  --divider: #0A0A0A;
+  --divider: #0a0a0a;
   /* Swiss-style bold black borders */
-  --outline: #0A0A0A;
+  --outline: #0a0a0a;
   /* Swiss-style bold black button borders */
 
   /* Chunk Highlight Colors */
@@ -152,17 +152,17 @@
   /* Focus ring matching theme */
 
   /* Notebook Design Tokens */
-  --accent-red: #FF3B30;
+  --accent-red: #ff3b30;
   /* Updated to match .pen design (was #CE0E2D) */
-  --accent-primary: #FF3B30;
+  --accent-primary: #ff3b30;
   /* User bubble in dark mode */
-  --surface-elevated: #1A1A1A;
+  --surface-elevated: #1a1a1a;
   /* Card/raised surface */
   --surface-hover: #252525;
   /* Card hover */
-  --divider: #2A2A2A;
+  --divider: #2a2a2a;
   /* Panel borders - matches .pen design */
-  --outline: #3A3A3A;
+  --outline: #3a3a3a;
   /* Button borders - matches .pen design */
 
   --highlight-bg: oklch(0.35 0.1 265 / 0.5);
@@ -171,7 +171,6 @@
 }
 
 @layer base {
-
   html,
   body {
     overflow: hidden;
@@ -314,7 +313,6 @@
 /* Chunk highlight animation for citation navigation */
 /* Stay solid for 95% of duration (57s), then fade over last 5% (3s) */
 @keyframes highlight-fade {
-
   0%,
   95% {
     background-color: var(--highlight-bg);

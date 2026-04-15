@@ -84,11 +84,7 @@ export function AddToNotebook({ publication }: AddToNotebookProps) {
         <Button
           variant="outline"
           disabled={!hasPdf}
-          title={
-            !hasPdf
-              ? "No PDF available for this publication"
-              : "Add to notebook for research"
-          }
+          title={!hasPdf ? "No PDF available for this publication" : "Add to notebook for research"}
         >
           <BookPlus className="h-4 w-4 mr-2" />
           Add to Notebook
@@ -118,9 +114,7 @@ export function AddToNotebook({ publication }: AddToNotebookProps) {
                 onClick={() => handleAdd(nb.id)}
                 disabled={loading}
               >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {nb.name}
               </Button>
             ))

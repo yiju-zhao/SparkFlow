@@ -24,9 +24,7 @@ export { prisma };
  * Find venue by name or create if not exists
  * @returns Venue ID and whether it was created
  */
-export async function findOrCreateVenue(
-  name: string,
-): Promise<{ id: string; created: boolean }> {
+export async function findOrCreateVenue(name: string): Promise<{ id: string; created: boolean }> {
   const existing = await prisma.venue.findUnique({
     where: { name },
   });

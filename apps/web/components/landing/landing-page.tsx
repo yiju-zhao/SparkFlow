@@ -7,25 +7,21 @@ import { LandingFooter } from "./landing-footer";
 
 // Lazy-load below-the-fold sections to reduce initial bundle size
 const HowItWorksSection = dynamic(() =>
-  import("./how-it-works-section").then((m) => ({ default: m.HowItWorksSection }))
+  import("./how-it-works-section").then((m) => ({ default: m.HowItWorksSection })),
 );
 const CoreFeaturesSection = dynamic(() =>
-  import("./core-features-section").then((m) => ({ default: m.CoreFeaturesSection }))
+  import("./core-features-section").then((m) => ({ default: m.CoreFeaturesSection })),
 );
 const SecondaryFeaturesSection = dynamic(() =>
   import("./secondary-features-section").then((m) => ({
     default: m.SecondaryFeaturesSection,
-  }))
+  })),
 );
 const SocialProofSection = dynamic(() =>
-  import("./social-proof-section").then((m) => ({ default: m.SocialProofSection }))
+  import("./social-proof-section").then((m) => ({ default: m.SocialProofSection })),
 );
-const FaqSection = dynamic(() =>
-  import("./faq-section").then((m) => ({ default: m.FaqSection }))
-);
-const CtaSection = dynamic(() =>
-  import("./cta-section").then((m) => ({ default: m.CtaSection }))
-);
+const FaqSection = dynamic(() => import("./faq-section").then((m) => ({ default: m.FaqSection })));
+const CtaSection = dynamic(() => import("./cta-section").then((m) => ({ default: m.CtaSection })));
 
 interface LandingPageProps {
   user: {
@@ -38,10 +34,7 @@ interface LandingPageProps {
 
 export function LandingPage({ user }: LandingPageProps) {
   return (
-    <div
-      id="landing-scroll-container"
-      className="h-screen overflow-y-auto scroll-smooth"
-    >
+    <div id="landing-scroll-container" className="h-screen overflow-y-auto scroll-smooth">
       <LandingHeader user={user} />
       <main>
         <HeroSection isLoggedIn={!!user} />

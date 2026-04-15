@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { getConference, getConferenceStats, getConferenceSessions } from "@/lib/explore/queries";
 import {
-  getConference,
-  getConferenceStats,
-  getConferenceSessions,
-} from "@/lib/explore/queries";
-import { ConferenceHero, SessionCalendar, SessionStatsSection } from "@/components/explore/conferences";
+  ConferenceHero,
+  SessionCalendar,
+  SessionStatsSection,
+} from "@/components/explore/conferences";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SetAIContext } from "@/components/explore/set-ai-context";
@@ -50,25 +50,26 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
       />
       <ConferenceHero conference={conference} />
 
-      <Tabs defaultValue={stats.publicationCount === 0 && stats.sessionCount > 0 ? "sessions" : "publications"} className="relative">
+      <Tabs
+        defaultValue={
+          stats.publicationCount === 0 && stats.sessionCount > 0 ? "sessions" : "publications"
+        }
+        className="relative"
+      >
         <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-4">
           <TabsTrigger
             value="publications"
             className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
             {tDetail("tabPublications")}
-            <span className="ml-1.5 tabular-nums">
-              ({stats.publicationCount.toLocaleString()})
-            </span>
+            <span className="ml-1.5 tabular-nums">({stats.publicationCount.toLocaleString()})</span>
           </TabsTrigger>
           <TabsTrigger
             value="sessions"
             className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
           >
             {tDetail("tabSessions")}
-            <span className="ml-1.5 tabular-nums">
-              ({stats.sessionCount.toLocaleString()})
-            </span>
+            <span className="ml-1.5 tabular-nums">({stats.sessionCount.toLocaleString()})</span>
           </TabsTrigger>
         </TabsList>
 
