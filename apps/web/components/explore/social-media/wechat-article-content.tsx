@@ -22,7 +22,7 @@ export function WechatArticleContent({ html, fallbackText, images }: WechatArtic
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Build a map from original WeChat CDN URLs to local DB image IDs
+    // Build maps for matching: original_url → DB id, and image_index → DB id
     const urlToId = new Map<string, number>();
     if (images) {
       for (const img of images) {
@@ -32,28 +32,39 @@ export function WechatArticleContent({ html, fallbackText, images }: WechatArtic
       }
     }
 
+    // Pattern: scraper rewrites img src to "/api/images/{id}" where id is the DB image id
+    const scraperPathPattern = /^\/api\/images\/(\d+)$/;
+
     const imgElements = containerRef.current.querySelectorAll("img");
     imgElements.forEach((img) => {
       const originalSrc = img.getAttribute("data-src") || img.getAttribute("src") || "";
       if (!originalSrc) return;
 
-      // Prefer DB-stored image if we have a match by original URL
+      // Case 1: Scraper-rewritten paths like "/api/images/94" → "/api/wechat/images/94"
+      const scraperMatch = originalSrc.match(scraperPathPattern);
+      if (scraperMatch) {
+        img.src = `/api/wechat/images/${scraperMatch[1]}`;
+        img.onerror = () => { img.style.display = "none"; };
+        return;
+      }
+
+      // Case 2: Match by original WeChat CDN URL against DB images
       const dbImageId = urlToId.get(originalSrc);
       if (dbImageId) {
         img.src = `/api/wechat/images/${dbImageId}`;
-      } else {
-        // Fallback to proxy for images not in the DB
-        img.src = `/api/wechat/proxy-image?url=${encodeURIComponent(originalSrc)}`;
+        img.onerror = () => {
+          if (!img.src.includes("proxy-image")) {
+            img.src = `/api/wechat/proxy-image?url=${encodeURIComponent(originalSrc)}`;
+          } else {
+            img.style.display = "none";
+          }
+        };
+        return;
       }
 
-      img.onerror = () => {
-        // If DB image failed, try proxy as last resort
-        if (dbImageId && !img.src.includes("proxy-image")) {
-          img.src = `/api/wechat/proxy-image?url=${encodeURIComponent(originalSrc)}`;
-        } else {
-          img.style.display = "none";
-        }
-      };
+      // Case 3: Fallback to proxy for external URLs
+      img.src = `/api/wechat/proxy-image?url=${encodeURIComponent(originalSrc)}`;
+      img.onerror = () => { img.style.display = "none"; };
     });
   }, [html, images]);
 
