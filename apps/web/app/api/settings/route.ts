@@ -27,6 +27,7 @@ export async function GET() {
       matcherModelProvider: true,
       matcherModelName: true,
       apiKeys: true,
+      wechatExcludedSourceIds: true,
     },
   });
 
@@ -57,6 +58,7 @@ export async function GET() {
     matcherModelProvider: settings?.matcherModelProvider || defaults.provider,
     matcherModelName: settings?.matcherModelName || defaults.matcherModel,
     apiKeyStatus,
+    wechatExcludedSourceIds: settings?.wechatExcludedSourceIds || [],
   });
 }
 
@@ -78,6 +80,7 @@ export async function POST(request: Request) {
     matcherModelProvider,
     matcherModelName,
     apiKeys: apiKeysUpdate,
+    wechatExcludedSourceIds,
   } = body;
 
   // Build update data — accept any provider/model (validated client-side against config)
@@ -90,6 +93,10 @@ export async function POST(request: Request) {
   if (searchModelName) updateData.searchModelName = searchModelName;
   if (matcherModelProvider) updateData.matcherModelProvider = matcherModelProvider;
   if (matcherModelName) updateData.matcherModelName = matcherModelName;
+
+  if (wechatExcludedSourceIds !== undefined) {
+    (updateData as any).wechatExcludedSourceIds = wechatExcludedSourceIds;
+  }
 
   // Handle API keys update
   if (apiKeysUpdate && typeof apiKeysUpdate === "object") {
@@ -142,6 +149,7 @@ export async function POST(request: Request) {
       matcherModelProvider: matcherModelProvider || defaults.provider,
       matcherModelName: matcherModelName || defaults.matcherModel,
       ...(updateData.apiKeys ? { apiKeys: updateData.apiKeys as string } : {}),
+      ...(wechatExcludedSourceIds ? { wechatExcludedSourceIds } : {}),
     },
   });
 
@@ -154,5 +162,6 @@ export async function POST(request: Request) {
     searchModelName: settings.searchModelName,
     matcherModelProvider: settings.matcherModelProvider,
     matcherModelName: settings.matcherModelName,
+    wechatExcludedSourceIds: settings.wechatExcludedSourceIds,
   });
 }

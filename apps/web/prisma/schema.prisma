@@ -68,6 +68,8 @@ model UserSettings {
   matcherModelName    String   @default("gpt-4o-mini")
   // BYOK — encrypted JSON blob of API keys per provider
   apiKeys             String?  @db.Text
+  // WeChat — excluded source IDs for Add Source search (empty = all)
+  wechatExcludedSourceIds Int[]   @default([])
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
