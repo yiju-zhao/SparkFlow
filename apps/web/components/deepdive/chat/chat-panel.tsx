@@ -129,7 +129,7 @@ export function ChatPanel({
     modelProvider: "openai",
     modelName: "gemini-2.5-flash",
   });
-  const [resolvedKey, setResolvedKey] = useState<{ apiKey: string; baseUrl?: string } | null>(null);
+  const [resolvedKey, setResolvedKey] = useState<{ apiKey: string; baseUrl?: string } | null | "pending">("pending");
 const messagesContainerRef = useRef<HTMLDivElement>(null);
 const textareaRef = useRef<HTMLTextAreaElement>(null);
 const prevIsLoadingRef = useRef<boolean>(false);
@@ -512,8 +512,8 @@ const prevIsLoadingRef = useRef<boolean>(false);
             wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
-            api_key: resolvedKey?.apiKey || "",
-            base_url: resolvedKey?.baseUrl || "",
+            api_key: (resolvedKey !== "pending" && resolvedKey?.apiKey) || "",
+            base_url: (resolvedKey !== "pending" && resolvedKey?.baseUrl) || "",
           },
         },
       );
@@ -852,7 +852,7 @@ const prevIsLoadingRef = useRef<boolean>(false);
       />
 
       {/* Input */}
-      {!resolvedKey && !stream.isLoading && (
+      {resolvedKey === null && !stream.isLoading && (
         <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2">
           <p className="text-xs text-amber-800 dark:text-amber-200">
             Set your API key in <a href="/settings" className="underline">Settings</a> to use the chat.
