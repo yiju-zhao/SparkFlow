@@ -75,7 +75,6 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
             originalUrl: article.original_url,
             contentText: article.content_text,
             contentHtml: article.content_html,
-            images: article.images,
           }}
         />
       </div>
