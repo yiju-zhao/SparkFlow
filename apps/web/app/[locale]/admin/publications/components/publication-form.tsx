@@ -55,11 +55,7 @@ function strToArr(str: string): string[] {
     .filter(Boolean);
 }
 
-export function PublicationForm({
-  publication,
-  instances,
-  trigger,
-}: PublicationFormProps) {
+export function PublicationForm({ publication, instances, trigger }: PublicationFormProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -68,18 +64,10 @@ export function PublicationForm({
   const [authors, setAuthors] = useState(arrToStr(publication?.authors ?? []));
   const [abstract, setAbstract] = useState(publication?.abstract ?? "");
   const [summary, setSummary] = useState(publication?.summary ?? "");
-  const [affiliations, setAffiliations] = useState(
-    arrToStr(publication?.affiliations ?? []),
-  );
-  const [countries, setCountries] = useState(
-    arrToStr(publication?.countries ?? []),
-  );
-  const [keywords, setKeywords] = useState(
-    arrToStr(publication?.keywords ?? []),
-  );
-  const [researchTopic, setResearchTopic] = useState(
-    publication?.researchTopic ?? "",
-  );
+  const [affiliations, setAffiliations] = useState(arrToStr(publication?.affiliations ?? []));
+  const [countries, setCountries] = useState(arrToStr(publication?.countries ?? []));
+  const [keywords, setKeywords] = useState(arrToStr(publication?.keywords ?? []));
+  const [researchTopic, setResearchTopic] = useState(publication?.researchTopic ?? "");
   const [rating, setRating] = useState(
     publication?.rating != null ? String(publication.rating) : "",
   );
@@ -149,9 +137,7 @@ export function PublicationForm({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {publication ? "Edit Publication" : "New Publication"}
-          </DialogTitle>
+          <DialogTitle>{publication ? "Edit Publication" : "New Publication"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
@@ -228,9 +214,7 @@ export function PublicationForm({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="pub-affiliations">
-                Affiliations (comma-separated)
-              </Label>
+              <Label htmlFor="pub-affiliations">Affiliations (comma-separated)</Label>
               <Input
                 id="pub-affiliations"
                 value={affiliations}
@@ -335,15 +319,8 @@ export function PublicationForm({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending || !instanceId || !title.trim()}
-            >
-              {isPending
-                ? "Saving..."
-                : publication
-                  ? "Save Changes"
-                  : "Create"}
+            <Button type="submit" disabled={isPending || !instanceId || !title.trim()}>
+              {isPending ? "Saving..." : publication ? "Save Changes" : "Create"}
             </Button>
           </div>
         </form>

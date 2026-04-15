@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ instanceId: string }> }
+  { params }: { params: Promise<{ instanceId: string }> },
 ) {
   try {
     const session = await auth();
@@ -25,10 +25,7 @@ export async function GET(
     });
 
     if (!instance) {
-      return NextResponse.json(
-        { error: "Conference not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Conference not found" }, { status: 404 });
     }
 
     // Fetch all publications and sessions in parallel
@@ -149,9 +146,7 @@ export async function GET(
       sessSheet.addRow({
         title: sess.title,
         type: sess.type,
-        date: sess.date
-          ? new Intl.DateTimeFormat("en-CA").format(new Date(sess.date))
-          : null,
+        date: sess.date ? new Intl.DateTimeFormat("en-CA").format(new Date(sess.date)) : null,
         startTime: sess.startTime,
         endTime: sess.endTime,
         location: sess.location,
@@ -177,16 +172,12 @@ export async function GET(
 
     return new Response(buffer as ArrayBuffer, {
       headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   } catch (error) {
     console.error("Conference export error:", error);
-    return NextResponse.json(
-      { error: "Failed to export conference data" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to export conference data" }, { status: 500 });
   }
 }

@@ -53,18 +53,13 @@ export function ConferenceHero({ conference }: ConferenceHeroProps) {
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
-        ~/research-hub/conferences/{conference.venue.name.toLowerCase()}/
-        {conference.year}
+        ~/research-hub/conferences/{conference.venue.name.toLowerCase()}/{conference.year}
       </p>
 
       <div>
-        <h1 className="text-4xl font-bold tracking-tight mb-4">
-          {conference.name}
-        </h1>
+        <h1 className="text-4xl font-bold tracking-tight mb-4">{conference.name}</h1>
         {conference.summary && (
-          <p className="text-muted-foreground leading-relaxed max-w-3xl">
-            {conference.summary}
-          </p>
+          <p className="text-muted-foreground leading-relaxed max-w-3xl">{conference.summary}</p>
         )}
       </div>
 

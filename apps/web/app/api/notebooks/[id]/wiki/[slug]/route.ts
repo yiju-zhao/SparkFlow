@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 // This allows the LangGraph agent to read pages without session cookies.
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; slug: string }> }
+  { params }: { params: Promise<{ id: string; slug: string }> },
 ) {
   const { id: notebookId, slug } = await params;
 
@@ -31,7 +31,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; slug: string }> }
+  { params }: { params: Promise<{ id: string; slug: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -54,7 +54,7 @@ export async function PUT(
   if (!title || !content || !pageType) {
     return NextResponse.json(
       { error: "title, content, and pageType are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -81,7 +81,7 @@ export async function PUT(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; slug: string }> }
+  { params }: { params: Promise<{ id: string; slug: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {

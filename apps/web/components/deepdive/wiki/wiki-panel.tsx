@@ -2,7 +2,22 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, FileText, GitCompare, Lightbulb, MessageSquare, Pencil, Users, ScrollText, ChevronRight, ChevronDown, Wrench, Database, User } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  FileText,
+  GitCompare,
+  Lightbulb,
+  MessageSquare,
+  Pencil,
+  Users,
+  ScrollText,
+  ChevronRight,
+  ChevronDown,
+  Wrench,
+  Database,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
@@ -106,7 +121,7 @@ function buildCommunities(
 
     // Internal edges only
     const edges = graphData.edges.filter(
-      (e: any) => nodeIds.has(e.source) && nodeIds.has(e.target)
+      (e: any) => nodeIds.has(e.source) && nodeIds.has(e.target),
     );
 
     // Source count from page or from nodes
@@ -118,14 +133,33 @@ function buildCommunities(
     communities.push({
       id: communityId,
       slug,
-      title: page?.title || nodes.sort((a: any, b: any) => {
-        const aDeg = graphData.edges.filter((e: any) => e.source === a.id || e.target === a.id).length;
-        const bDeg = graphData.edges.filter((e: any) => e.source === b.id || e.target === b.id).length;
-        return bDeg - aDeg;
-      })[0]?.label || `Community ${communityId}`,
+      title:
+        page?.title ||
+        nodes.sort((a: any, b: any) => {
+          const aDeg = graphData.edges.filter(
+            (e: any) => e.source === a.id || e.target === a.id,
+          ).length;
+          const bDeg = graphData.edges.filter(
+            (e: any) => e.source === b.id || e.target === b.id,
+          ).length;
+          return bDeg - aDeg;
+        })[0]?.label ||
+        `Community ${communityId}`,
       page,
-      nodes: nodes.map((n: any) => ({ id: n.id, label: n.label, type: n.type, summary: n.summary, sourceRefs: n.sourceRefs || [] })),
-      edges: edges.map((e: any) => ({ source: e.source, target: e.target, relation: e.relation, confidence: e.confidence, weight: e.weight })),
+      nodes: nodes.map((n: any) => ({
+        id: n.id,
+        label: n.label,
+        type: n.type,
+        summary: n.summary,
+        sourceRefs: n.sourceRefs || [],
+      })),
+      edges: edges.map((e: any) => ({
+        source: e.source,
+        target: e.target,
+        relation: e.relation,
+        confidence: e.confidence,
+        weight: e.weight,
+      })),
       sourceCount: page?.sourceRefs.length || sourceRefs.size,
     });
   }
@@ -135,7 +169,15 @@ function buildCommunities(
   return communities;
 }
 
-export function WikiPanel({ notebookId, initialPages = [], sources = [], graphData = null, onSourceClick, navigateToSlug, onNavigateComplete }: WikiPanelProps) {
+export function WikiPanel({
+  notebookId,
+  initialPages = [],
+  sources = [],
+  graphData = null,
+  onSourceClick,
+  navigateToSlug,
+  onNavigateComplete,
+}: WikiPanelProps) {
   // Build source ID → title map for resolving [source:id] references
   const sourceMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -203,7 +245,7 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
       setSelectedSlug(resolveSlug(navigateToSlug));
       onNavigateComplete?.();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigateToSlug]);
 
   if (selectedSlug) {
@@ -224,7 +266,9 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
       {/* === TOP: Pages List === */}
       <div className="flex flex-col overflow-hidden" style={{ height: `${topPercent}%` }}>
         <div className="px-6 pt-3 pb-2 flex items-center justify-between relative shrink-0">
-          <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">Knowledge Base</span>
+          <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">
+            Knowledge Base
+          </span>
           <div className="flex items-center gap-1">
             <HealthCheckButton notebookId={notebookId} />
             <span className="text-[11px] text-muted-foreground">
@@ -237,7 +281,9 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
           {communities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <Lightbulb className="h-6 w-6 text-muted-foreground/50" />
-              <p className="mt-2 text-xs text-muted-foreground">Add sources to discover knowledge</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Add sources to discover knowledge
+              </p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -265,10 +311,15 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
       {/* === BOTTOM: Graph === */}
       <div className="flex flex-col overflow-hidden" style={{ height: `${100 - topPercent}%` }}>
         <div className="px-6 pt-1 pb-1 shrink-0">
-          <span className="text-[10px] font-semibold tracking-[2px] uppercase font-mono text-muted-foreground">Graph</span>
+          <span className="text-[10px] font-semibold tracking-[2px] uppercase font-mono text-muted-foreground">
+            Graph
+          </span>
         </div>
         <div className="flex-1">
-          <GraphView graphData={graphData} onNodeClick={(slug) => setSelectedSlug(resolveSlug(slug))} />
+          <GraphView
+            graphData={graphData}
+            onNodeClick={(slug) => setSelectedSlug(resolveSlug(slug))}
+          />
         </div>
       </div>
     </div>
@@ -300,7 +351,9 @@ const CommunityItem = memo(function CommunityItem({
     `${community.nodes.length} entities`,
     `${community.edges.length} relations`,
     community.sourceCount > 0 ? `${community.sourceCount} sources` : null,
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="rounded-[4px] border border-divider dark:border-0 bg-surface-elevated overflow-hidden">
@@ -310,10 +363,11 @@ const CommunityItem = memo(function CommunityItem({
           className="shrink-0 h-8 w-8 flex items-center justify-center hover:bg-surface-hover transition-colors rounded-[4px]"
           onClick={() => setExpanded(!expanded)}
         >
-          {expanded
-            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          }
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
         </button>
         <button
           className="flex-1 min-w-0 text-left py-2 pr-3 hover:text-accent-red transition-colors"
@@ -332,7 +386,9 @@ const CommunityItem = memo(function CommunityItem({
           {/* Entities */}
           {community.nodes.length > 0 && (
             <div className="mb-2">
-              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">Entities</span>
+              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">
+                Entities
+              </span>
               <div className="mt-1 space-y-0.5">
                 {community.nodes.map((node) => {
                   const Icon = ENTITY_TYPE_ICONS[node.type] || FileText;
@@ -346,10 +402,14 @@ const CommunityItem = memo(function CommunityItem({
                       <div className="min-w-0">
                         <span className="text-[12px] font-medium block truncate">{node.label}</span>
                         {node.summary && (
-                          <span className="text-[10px] text-muted-foreground line-clamp-1">{node.summary}</span>
+                          <span className="text-[10px] text-muted-foreground line-clamp-1">
+                            {node.summary}
+                          </span>
                         )}
                       </div>
-                      <span className="text-[9px] text-muted-foreground shrink-0 mt-0.5">{node.type}</span>
+                      <span className="text-[9px] text-muted-foreground shrink-0 mt-0.5">
+                        {node.type}
+                      </span>
                     </button>
                   );
                 })}
@@ -360,7 +420,9 @@ const CommunityItem = memo(function CommunityItem({
           {/* Relationships */}
           {community.edges.length > 0 && (
             <div>
-              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">Relationships</span>
+              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">
+                Relationships
+              </span>
               <div className="mt-1 space-y-0.5">
                 {community.edges.map((edge, i) => (
                   <div
@@ -410,7 +472,11 @@ function WikiPageView({
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: page, isLoading, isError } = useQuery<WikiPage & { content: string }>({
+  const {
+    data: page,
+    isLoading,
+    isError,
+  } = useQuery<WikiPage & { content: string }>({
     queryKey: ["wiki-page", notebookId, slug],
     queryFn: async () => {
       const res = await fetch(`/api/notebooks/${notebookId}/wiki/${slug}`);
@@ -464,20 +530,34 @@ function WikiPageView({
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <h2 className="text-[13px] font-semibold truncate">
-            {page?.title || slug}
-          </h2>
+          <h2 className="text-[13px] font-semibold truncate">{page?.title || slug}</h2>
           {page && !isEditing && page.pageType !== "INDEX" && page.pageType !== "LOG" && (
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleStartEdit} title="Edit">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={handleStartEdit}
+              title="Edit"
+            >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           )}
           {isEditing && (
             <div className="flex gap-1">
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setIsEditing(false)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setIsEditing(false)}
+              >
                 Cancel
               </Button>
-              <Button size="sm" className="h-7 px-2 text-xs bg-accent-red hover:bg-accent-red-hover text-white" onClick={handleSave} disabled={isSaving}>
+              <Button
+                size="sm"
+                className="h-7 px-2 text-xs bg-accent-red hover:bg-accent-red-hover text-white"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
                 {isSaving ? "Saving..." : "Save"}
               </Button>
             </div>
@@ -498,8 +578,12 @@ function WikiPageView({
         ) : isError ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-sm text-muted-foreground">Page &quot;{slug}&quot; not found</p>
-            <p className="text-xs text-muted-foreground mt-1">This entity exists in the graph but doesn&apos;t have its own page yet</p>
-            <Button variant="ghost" size="sm" className="mt-3 text-xs" onClick={onBack}>Go back</Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              This entity exists in the graph but doesn&apos;t have its own page yet
+            </p>
+            <Button variant="ghost" size="sm" className="mt-3 text-xs" onClick={onBack}>
+              Go back
+            </Button>
           </div>
         ) : isEditing ? (
           <textarea
@@ -509,7 +593,12 @@ function WikiPageView({
           />
         ) : page?.content ? (
           <>
-            <WikiMarkdown content={page.content} sourceMap={sourceMap} onNavigate={onNavigate} onSourceClick={onSourceClick} />
+            <WikiMarkdown
+              content={page.content}
+              sourceMap={sourceMap}
+              onNavigate={onNavigate}
+              onSourceClick={onSourceClick}
+            />
             {sourceTitles.length > 0 && (
               <div className="mt-6 pt-4 border-t border-divider">
                 <h4 className="text-[10px] font-semibold tracking-[2px] uppercase text-muted-foreground mb-2">
@@ -552,7 +641,7 @@ function WikiMarkdown({
   // Replace [[slug]] with clickable wiki links
   let processed = content.replace(
     /\[\[([a-zA-Z0-9_-]+)\]\]/g,
-    (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`
+    (_, slug) => `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`,
   );
 
   // Strip LLM-generated [source:id] references — accurate sources shown in "Related Sources" section instead

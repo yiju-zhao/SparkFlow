@@ -39,10 +39,7 @@ export function SessionList({ instances }: { instances: Instance[] }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Sessions</h1>
-        <SessionForm
-          instances={instances}
-          trigger={<Button>New Session</Button>}
-        />
+        <SessionForm instances={instances} trigger={<Button>New Session</Button>} />
       </div>
 
       <div className="flex items-center gap-3 mb-6">
@@ -102,13 +99,9 @@ export function SessionList({ instances }: { instances: Instance[] }) {
                   <td className="py-3 text-muted-foreground whitespace-nowrap">
                     {sess.instance.venue.name} {sess.instance.year}
                   </td>
-                  <td className="py-3 text-muted-foreground">
-                    {sess.type ?? "—"}
-                  </td>
+                  <td className="py-3 text-muted-foreground">{sess.type ?? "—"}</td>
                   <td className="py-3 text-muted-foreground whitespace-nowrap">
-                    {sess.date
-                      ? new Date(sess.date).toISOString().split("T")[0]
-                      : "—"}
+                    {sess.date ? new Date(sess.date).toISOString().split("T")[0] : "—"}
                   </td>
                   <td className="py-3 text-muted-foreground max-w-xs truncate">
                     {sess.speaker.length > 0 ? sess.speaker.join(", ") : "—"}

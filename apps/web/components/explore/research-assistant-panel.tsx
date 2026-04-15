@@ -1,19 +1,8 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useEffect,
-  useMemo,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  useCopilotChatInternal,
-  useCopilotReadable,
-  useThreads,
-} from "@copilotkit/react-core";
+import { useCopilotChatInternal, useCopilotReadable, useThreads } from "@copilotkit/react-core";
 import { v4 as uuidv4 } from "uuid";
 import type { ActivityMessage, Message } from "@copilotkit/shared";
 import { McpActivityRenderer } from "./mcp-activity-renderer";
@@ -38,11 +27,7 @@ type AssistantUiMessage = Message & {
 
 const INTERNAL_MESSAGE_ROLES = new Set(["tool", "system", "developer"]);
 
-function ActivityMessageView({
-  message,
-}: {
-  message: ActivityMessage;
-}) {
+function ActivityMessageView({ message }: { message: ActivityMessage }) {
   return <McpActivityRenderer message={message} />;
 }
 
@@ -136,22 +121,27 @@ export function ResearchAssistantPanel({
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  const handleSend = useCallback(async (text?: string) => {
-    const content = text || input.trim();
-    if (!content || isLoading) return;
+  const handleSend = useCallback(
+    async (text?: string) => {
+      const content = text || input.trim();
+      if (!content || isLoading) return;
 
-    setAgentError(null);
-    try {
-      await sendMessage({
-        id: uuidv4(),
-        role: "user",
-        content,
-      } as Message);
-      setInput("");
-    } catch {
-      setAgentError("Research assistant is currently unavailable. Other features still work normally.");
-    }
-  }, [input, isLoading, sendMessage]);
+      setAgentError(null);
+      try {
+        await sendMessage({
+          id: uuidv4(),
+          role: "user",
+          content,
+        } as Message);
+        setInput("");
+      } catch {
+        setAgentError(
+          "Research assistant is currently unavailable. Other features still work normally.",
+        );
+      }
+    },
+    [input, isLoading, sendMessage],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -168,8 +158,7 @@ export function ResearchAssistantPanel({
       if (data?.type !== "sparkflow.workflow.submit") return;
 
       const workflowId = data.workflowId;
-      const content =
-        typeof data.content === "string" ? data.content.trim() : "";
+      const content = typeof data.content === "string" ? data.content.trim() : "";
 
       if (!workflowId || !content) return;
       if (handledWorkflowIdsRef.current.has(workflowId)) return;
@@ -200,7 +189,9 @@ export function ResearchAssistantPanel({
         .map((item: unknown) => {
           if (typeof item === "string") return item;
           if (item && typeof item === "object" && "text" in item) {
-            return typeof (item as { text: unknown }).text === "string" ? (item as { text: string }).text : "";
+            return typeof (item as { text: unknown }).text === "string"
+              ? (item as { text: string }).text
+              : "";
           }
           return "";
         })
@@ -227,9 +218,9 @@ export function ResearchAssistantPanel({
 
       return Boolean(
         parsed &&
-          typeof parsed === "object" &&
-          parsed.structuredContent &&
-          parsed._meta?.ui?.resourceUri,
+        typeof parsed === "object" &&
+        parsed.structuredContent &&
+        parsed._meta?.ui?.resourceUri,
       );
     } catch {
       return false;
@@ -265,12 +256,7 @@ export function ResearchAssistantPanel({
                 </div>
                 <span className="text-sm font-medium">Research Assistant</span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleClose}
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClose}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -283,9 +269,7 @@ export function ResearchAssistantPanel({
                     <Sparkles className="h-6 w-6 text-[#00D084]" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">
-                      Ask anything about the research hub
-                    </p>
+                    <p className="text-sm font-medium">Ask anything about the research hub</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Explore trends, compare papers, find key insights
                     </p>
@@ -309,20 +293,13 @@ export function ResearchAssistantPanel({
                 if (INTERNAL_MESSAGE_ROLES.has(role)) return null;
 
                 if (role === "activity") {
-                  return (
-                    <ActivityMessageView
-                      key={msg.id}
-                      message={msg as ActivityMessage}
-                    />
-                  );
+                  return <ActivityMessageView key={msg.id} message={msg as ActivityMessage} />;
                 }
 
                 const content = getMessageContent(msg);
                 const generativeUi = (msg as AssistantUiMessage).generativeUI?.();
                 const hideRawMcpPayload =
-                  role === "assistant" &&
-                  Boolean(generativeUi) &&
-                  isMcpAppPayload(content);
+                  role === "assistant" && Boolean(generativeUi) && isMcpAppPayload(content);
 
                 if (!content && !generativeUi) return null;
 

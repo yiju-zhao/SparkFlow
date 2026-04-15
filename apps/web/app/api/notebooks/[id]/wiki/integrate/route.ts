@@ -3,10 +3,7 @@ import { auth } from "@/lib/auth";
 import { integrateWikiPage } from "@/lib/services/graph-service";
 import prisma from "@/lib/prisma";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,12 +25,7 @@ export async function POST(
   }
 
   try {
-    const result = await integrateWikiPage(
-      notebookId,
-      slug,
-      page.content,
-      page.sourceRefs
-    );
+    const result = await integrateWikiPage(notebookId, slug, page.content, page.sourceRefs);
     return NextResponse.json(result);
   } catch (error) {
     console.error("Wiki integrate failed:", error);

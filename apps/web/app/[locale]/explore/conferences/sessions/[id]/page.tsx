@@ -54,8 +54,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
 
       {/* Breadcrumb */}
       <p className="text-sm text-muted-foreground">
-        ~/research-hub/sessions/{session.instance.venue.name.toLowerCase()}/
-        {session.instance.year}
+        ~/research-hub/sessions/{session.instance.venue.name.toLowerCase()}/{session.instance.year}
       </p>
 
       {/* Title */}
@@ -93,9 +92,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
             {session.location}
           </span>
         )}
-        {session.sessionFormat && (
-          <FormatBadge format={session.sessionFormat} />
-        )}
+        {session.sessionFormat && <FormatBadge format={session.sessionFormat} />}
         {session.intendedAudience && (
           <span className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm text-muted-foreground">
             {session.intendedAudience}
@@ -126,10 +123,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
           <User className="h-4 w-4 text-muted-foreground" />
           <div className="flex flex-wrap gap-2">
             {session.speaker.map((name) => (
-              <span
-                key={name}
-                className="px-2.5 py-1 bg-muted rounded-md text-sm"
-              >
+              <span key={name} className="px-2.5 py-1 bg-muted rounded-md text-sm">
                 {name}
               </span>
             ))}
@@ -149,7 +143,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {session.topic.map((t) => (
-                  <Badge key={t} variant="secondary">{t}</Badge>
+                  <Badge key={t} variant="secondary">
+                    {t}
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -161,7 +157,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {session.technology.map((t) => (
-                  <Badge key={t} variant="secondary">{t}</Badge>
+                  <Badge key={t} variant="secondary">
+                    {t}
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -173,7 +171,9 @@ export default async function SessionDetailPage({ params }: PageProps) {
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {session.affiliation.map((a) => (
-                  <Badge key={a} variant="secondary">{a}</Badge>
+                  <Badge key={a} variant="secondary">
+                    {a}
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -185,9 +185,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
       {session.abstract && (
         <div className="bg-card rounded-lg p-6">
           <h2 className="text-sm font-semibold mb-3">Abstract</h2>
-          <p className="text-muted-foreground whitespace-pre-wrap">
-            {session.abstract}
-          </p>
+          <p className="text-muted-foreground whitespace-pre-wrap">{session.abstract}</p>
         </div>
       )}
 
@@ -195,9 +193,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
       {session.overview && (
         <div className="bg-card rounded-lg p-6">
           <h2 className="text-sm font-semibold mb-3">Overview</h2>
-          <p className="text-muted-foreground whitespace-pre-wrap">
-            {session.overview}
-          </p>
+          <p className="text-muted-foreground whitespace-pre-wrap">{session.overview}</p>
         </div>
       )}
 
@@ -216,9 +212,7 @@ export default async function SessionDetailPage({ params }: PageProps) {
       {/* Related Publications */}
       {session.publications.length > 0 && (
         <div className="bg-card rounded-lg">
-          <h2 className="text-sm font-semibold p-6 pb-0">
-            Related Publications
-          </h2>
+          <h2 className="text-sm font-semibold p-6 pb-0">Related Publications</h2>
           <div className="divide-y divide-border mt-3">
             {session.publications.map((pub) => (
               <Link

@@ -24,8 +24,7 @@ export async function processFallbackDocument(
     };
   } catch (error) {
     console.error("Fallback document processing error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Upload failed";
+    const errorMessage = error instanceof Error ? error.message : "Upload failed";
 
     await prisma.source.update({
       where: { id: sourceId },

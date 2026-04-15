@@ -8,10 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Fetch chat messages for a notebook.
  * Returns messages from the active chat session, ordered by messageOrder.
  */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,10 +26,7 @@ export async function GET(
     });
 
     if (!notebook) {
-      return NextResponse.json(
-        { error: "Notebook not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
     }
 
     // Get the active chat session
@@ -74,10 +68,7 @@ export async function GET(
     return NextResponse.json({ messages: formattedMessages });
   } catch (error) {
     console.error("Fetch messages error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch messages" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch messages" }, { status: 500 });
   }
 }
 
@@ -86,10 +77,7 @@ export async function GET(
  *
  * Clear chat history for a notebook.
  */
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -107,10 +95,7 @@ export async function DELETE(
     });
 
     if (!notebook) {
-      return NextResponse.json(
-        { error: "Notebook not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
     }
 
     // Delete all messages for this notebook
@@ -127,9 +112,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Clear messages error:", error);
-    return NextResponse.json(
-      { error: "Failed to clear messages" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to clear messages" }, { status: 500 });
   }
 }

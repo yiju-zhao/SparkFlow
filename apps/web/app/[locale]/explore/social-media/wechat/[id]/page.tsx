@@ -41,16 +41,12 @@ export default async function WechatArticleDetailPage({ params }: PageProps) {
       </p>
 
       {/* Title */}
-      <h1 className="text-3xl font-bold tracking-tight leading-tight">
-        {article.title}
-      </h1>
+      <h1 className="text-3xl font-bold tracking-tight leading-tight">{article.title}</h1>
 
       {/* Meta row */}
       <div className="flex items-center gap-3 flex-wrap">
         <Badge variant="secondary">{article.source_name}</Badge>
-        {article.author && (
-          <span className="text-sm text-muted-foreground">{article.author}</span>
-        )}
+        {article.author && <span className="text-sm text-muted-foreground">{article.author}</span>}
         {publishDate && (
           <>
             <span className="text-muted-foreground">·</span>

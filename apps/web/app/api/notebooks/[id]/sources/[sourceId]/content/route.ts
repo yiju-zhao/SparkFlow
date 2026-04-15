@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Unauthenticated — allows agent to read source content.
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; sourceId: string }> }
+  { params }: { params: Promise<{ id: string; sourceId: string }> },
 ) {
   const { id: notebookId, sourceId } = await params;
 

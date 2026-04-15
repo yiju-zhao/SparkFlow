@@ -32,12 +32,10 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
   // Dynamically import echarts + wordcloud on client only
   const echartsRef = useRef<typeof import("echarts") | null>(null);
   useEffect(() => {
-    Promise.all([import("echarts"), import("echarts-wordcloud")]).then(
-      ([mod]) => {
-        echartsRef.current = mod;
-        setIsReady(true);
-      },
-    );
+    Promise.all([import("echarts"), import("echarts-wordcloud")]).then(([mod]) => {
+      echartsRef.current = mod;
+      setIsReady(true);
+    });
   }, []);
 
   const wordData = useMemo(() => {
@@ -121,10 +119,5 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
     );
   }
 
-  return (
-    <div
-      ref={chartRef}
-      className={`w-full h-full min-h-75 ${className || ""}`}
-    />
-  );
+  return <div ref={chartRef} className={`w-full h-full min-h-75 ${className || ""}`} />;
 }

@@ -4,13 +4,10 @@ import { Component, ReactNode, Suspense, lazy } from "react";
 
 // Lazy-load CopilotKit SDK — it's ~8-12MB and only needed for chat features
 const CopilotKit = lazy(() =>
-  import("@copilotkit/react-core").then((mod) => ({ default: mod.CopilotKit }))
+  import("@copilotkit/react-core").then((mod) => ({ default: mod.CopilotKit })),
 );
 
-class CopilotKitErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean }
-> {
+class CopilotKitErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false };
@@ -26,16 +23,12 @@ class CopilotKitErrorBoundary extends Component<
     }
     return (
       <Suspense fallback={this.props.children}>
-        <CopilotKit runtimeUrl="/api/copilotkit">
-          {this.props.children}
-        </CopilotKit>
+        <CopilotKit runtimeUrl="/api/copilotkit">{this.props.children}</CopilotKit>
       </Suspense>
     );
   }
 }
 
 export function CopilotKitProvider({ children }: { children: ReactNode }) {
-  return (
-    <CopilotKitErrorBoundary>{children}</CopilotKitErrorBoundary>
-  );
+  return <CopilotKitErrorBoundary>{children}</CopilotKitErrorBoundary>;
 }

@@ -7,15 +7,9 @@ import { searchWechatArticles } from "@/lib/services/wechat-client";
 import modelsConfig from "@/config/models.json";
 
 // In-memory task store (sufficient for single-server)
-export const searchTasks = new Map<
-  string,
-  SearchStatusResponse & { notebookId: string }
->();
+export const searchTasks = new Map<string, SearchStatusResponse & { notebookId: string }>();
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -60,7 +54,15 @@ export async function POST(
   const wechatExcludedSourceIds = userSettings?.wechatExcludedSourceIds || [];
 
   // Fire search in background
-  performSearch(taskId, query, sourceType, domains, searchModelProvider, searchModelName, wechatExcludedSourceIds).catch((err) => {
+  performSearch(
+    taskId,
+    query,
+    sourceType,
+    domains,
+    searchModelProvider,
+    searchModelName,
+    wechatExcludedSourceIds,
+  ).catch((err) => {
     console.error(`[Search] Task ${taskId} failed:`, err);
     const task = searchTasks.get(taskId);
     if (task) {
@@ -129,7 +131,9 @@ async function performSearch(
                 id: r.url || r.id || uuidv4(),
                 title: r.title || "Untitled",
                 snippet: r.content || r.snippet || "",
-                meta: new URL(r.url || "").hostname + (r.published_date ? ` · ${r.published_date}` : ""),
+                meta:
+                  new URL(r.url || "").hostname +
+                  (r.published_date ? ` · ${r.published_date}` : ""),
                 url: r.url,
                 sourceType: "web" as const,
               }));
@@ -157,10 +161,7 @@ async function performSearch(
         id: pub.id,
         title: pub.title,
         snippet: pub.abstract?.slice(0, 200) || "",
-        meta: [
-          pub.instance?.venue?.name,
-          pub.authors?.slice(0, 3).join(", "),
-        ]
+        meta: [pub.instance?.venue?.name, pub.authors?.slice(0, 3).join(", ")]
           .filter(Boolean)
           .join(" · "),
         url: pub.pdfUrl || undefined,
@@ -177,9 +178,7 @@ async function performSearch(
         meta: [
           "WeChat",
           article.source_name || article.author,
-          article.publish_time
-            ? new Date(article.publish_time).toLocaleDateString()
-            : null,
+          article.publish_time ? new Date(article.publish_time).toLocaleDateString() : null,
         ]
           .filter(Boolean)
           .join(" · "),

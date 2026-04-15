@@ -29,9 +29,6 @@ export async function GET() {
     return NextResponse.json(instances);
   } catch (error) {
     console.error("Get instances error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch instances" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch instances" }, { status: 500 });
   }
 }

@@ -11,15 +11,7 @@ const stats = [
   { value: 99, suffix: "%", label: "Citation Accuracy" },
 ];
 
-function AnimatedStat({
-  value,
-  suffix,
-  label,
-}: {
-  value: number;
-  suffix: string;
-  label: string;
-}) {
+function AnimatedStat({ value, suffix, label }: { value: number; suffix: string; label: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
   const motionValue = useMotionValue(0);

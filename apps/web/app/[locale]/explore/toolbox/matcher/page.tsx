@@ -17,12 +17,10 @@ export default function MatcherPage() {
         </p>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-2">
-              Query Matcher
-            </h1>
+            <h1 className="text-4xl font-bold tracking-tight mb-2">Query Matcher</h1>
             <p className="text-muted-foreground">
-              Upload queries and match them against conference sessions or
-              publications using semantic search.
+              Upload queries and match them against conference sessions or publications using
+              semantic search.
             </p>
           </div>
           <Link href="/explore/toolbox/matcher/history">

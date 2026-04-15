@@ -105,9 +105,7 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
         </h3>
 
         {notebook.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-            {notebook.description}
-          </p>
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{notebook.description}</p>
         )}
 
         <div className="mt-auto flex items-center gap-4 text-[10px] font-mono text-muted-foreground">

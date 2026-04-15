@@ -80,7 +80,7 @@ export async function extractGraph(
   sourceTitle: string,
   sourceId: string,
   existingNodeLabels: string[],
-  userId?: string
+  userId?: string,
 ): Promise<ExtractionResult> {
   const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
@@ -156,10 +156,7 @@ ${existingContext}`,
 // 2. Merge — combine new extraction into existing graph
 // ============================================================
 
-export function mergeGraph(
-  existing: GraphData,
-  extraction: ExtractionResult
-): GraphData {
+export function mergeGraph(existing: GraphData, extraction: ExtractionResult): GraphData {
   const nodeMap = new Map<string, GraphNode>();
   const edgeMap = new Map<string, GraphEdge>();
 
@@ -270,7 +267,7 @@ export async function generateWikiPages(
   notebookId: string,
   graphData: GraphData,
   communities: CommunityMap,
-  userId?: string
+  userId?: string,
 ): Promise<string[]> {
   const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
@@ -282,12 +279,12 @@ export async function generateWikiPages(
   const preparations = communityEntries.map(([communityId, nodeIds]) => {
     const communityNodes = nodeIds.map((id) => nodeMap.get(id)!).filter(Boolean);
     const communityEdges = graphData.edges.filter(
-      (e) => nodeIds.includes(e.source) && nodeIds.includes(e.target)
+      (e) => nodeIds.includes(e.source) && nodeIds.includes(e.target),
     );
     const bridgeEdges = graphData.edges.filter(
       (e) =>
         (nodeIds.includes(e.source) && !nodeIds.includes(e.target)) ||
-        (!nodeIds.includes(e.source) && nodeIds.includes(e.target))
+        (!nodeIds.includes(e.source) && nodeIds.includes(e.target)),
     );
 
     // Find god nodes by degree
@@ -298,20 +295,39 @@ export async function generateWikiPages(
       degreeMap[e.target] = (degreeMap[e.target] || 0) + 1;
     }
     const topNode = Object.entries(degreeMap).sort((a, b) => b[1] - a[1])[0];
-    const communityLabel = (topNode ? nodeMap.get(topNode[0])?.label : null) || communityNodes[0]?.label || `Community ${communityId}`;
+    const communityLabel =
+      (topNode ? nodeMap.get(topNode[0])?.label : null) ||
+      communityNodes[0]?.label ||
+      `Community ${communityId}`;
 
-    const nodesText = communityNodes.map((n) => `- **${n.label}** (${n.type}): ${n.summary}`).join("\n");
-    const edgesText = communityEdges.map((e) => {
-      const src = nodeMap.get(e.source)?.label || e.source;
-      const tgt = nodeMap.get(e.target)?.label || e.target;
-      return `- ${src} --${e.relation}--> ${tgt} (${e.confidence}, ${e.weight})`;
-    }).join("\n");
-    const bridgeText = bridgeEdges.length > 0
-      ? bridgeEdges.slice(0, 5).map((e) => `- ${nodeMap.get(e.source)?.label || e.source} --${e.relation}--> ${nodeMap.get(e.target)?.label || e.target}`).join("\n")
-      : "(none)";
+    const nodesText = communityNodes
+      .map((n) => `- **${n.label}** (${n.type}): ${n.summary}`)
+      .join("\n");
+    const edgesText = communityEdges
+      .map((e) => {
+        const src = nodeMap.get(e.source)?.label || e.source;
+        const tgt = nodeMap.get(e.target)?.label || e.target;
+        return `- ${src} --${e.relation}--> ${tgt} (${e.confidence}, ${e.weight})`;
+      })
+      .join("\n");
+    const bridgeText =
+      bridgeEdges.length > 0
+        ? bridgeEdges
+            .slice(0, 5)
+            .map(
+              (e) =>
+                `- ${nodeMap.get(e.source)?.label || e.source} --${e.relation}--> ${nodeMap.get(e.target)?.label || e.target}`,
+            )
+            .join("\n")
+        : "(none)";
 
     return {
-      communityId, communityLabel, communityNodes, nodesText, edgesText, bridgeText,
+      communityId,
+      communityLabel,
+      communityNodes,
+      nodesText,
+      edgesText,
+      bridgeText,
       sourceRefs: [...new Set(communityNodes.flatMap((n) => n.sourceRefs))],
     };
   });
@@ -336,8 +352,8 @@ Do NOT include a References section — source attribution is handled separately
             content: `## Community: ${p.communityLabel}\n\n### Entities\n${p.nodesText}\n\n### Internal Relationships\n${p.edgesText || "(none)"}\n\n### Bridge Connections\n${p.bridgeText}`,
           },
         ],
-      })
-    )
+      }),
+    ),
   );
 
   // Write all pages to DB
@@ -347,11 +363,18 @@ Do NOT include a References section — source attribution is handled separately
       const content = completions[i].choices[0]?.message?.content || "";
       await prisma.wikiPage.upsert({
         where: { notebookId_slug: { notebookId, slug } },
-        create: { notebookId, slug, title: p.communityLabel, content, pageType: "CONCEPT", sourceRefs: p.sourceRefs },
+        create: {
+          notebookId,
+          slug,
+          title: p.communityLabel,
+          content,
+          pageType: "CONCEPT",
+          sourceRefs: p.sourceRefs,
+        },
         update: { title: p.communityLabel, content, sourceRefs: p.sourceRefs },
       });
       return slug;
-    })
+    }),
   );
 
   // Generate index page
@@ -366,12 +389,24 @@ Do NOT include a References section — source attribution is handled separately
     });
     const label = sorted[0]?.label || `Community ${communityId}`;
     indexLines.push(`## [[community-${communityId}]] — ${label}`);
-    indexLines.push(`${nodeIds.length} entities: ${nodes.slice(0, 5).map((n) => `[[${n.id}]]`).join(", ")}${nodeIds.length > 5 ? "..." : ""}\n`);
+    indexLines.push(
+      `${nodeIds.length} entities: ${nodes
+        .slice(0, 5)
+        .map((n) => `[[${n.id}]]`)
+        .join(", ")}${nodeIds.length > 5 ? "..." : ""}\n`,
+    );
   }
 
   await prisma.wikiPage.upsert({
     where: { notebookId_slug: { notebookId, slug: "index" } },
-    create: { notebookId, slug: "index", title: "Wiki Index", content: indexLines.join("\n"), pageType: "INDEX", sourceRefs: [] },
+    create: {
+      notebookId,
+      slug: "index",
+      title: "Wiki Index",
+      content: indexLines.join("\n"),
+      pageType: "INDEX",
+      sourceRefs: [],
+    },
     update: { content: indexLines.join("\n") },
   });
 
@@ -387,7 +422,7 @@ export async function integrateWikiPage(
   pageSlug: string,
   pageContent: string,
   sourceRefs: string[],
-  userId?: string
+  userId?: string,
 ): Promise<{ nodesAdded: number; edgesAdded: number }> {
   const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
@@ -408,7 +443,10 @@ export async function integrateWikiPage(
         content: `Extract knowledge graph entities from this wiki article. Output JSON:
 {"nodes": [{"id": "slug-name", "label": "Display Name", "type": "entity|concept|method", "summary": "one-line"}], "edges": [{"source": "id-a", "target": "id-b", "relation": "uses|improves|alternative_to|component_of|extends", "confidence": "INFERRED", "weight": 0.7}]}
 Only extract key entities. Reuse existing node IDs when possible.
-Existing nodes: ${existing.nodes.slice(0, 50).map((n) => `${n.id}: ${n.label}`).join(", ")}`,
+Existing nodes: ${existing.nodes
+          .slice(0, 50)
+          .map((n) => `${n.id}: ${n.label}`)
+          .join(", ")}`,
       },
       {
         role: "user",
@@ -451,10 +489,7 @@ Existing nodes: ${existing.nodes.slice(0, 50).map((n) => `${n.id}: ${n.label}`).
 // 6. Remove source — deterministic graph operations
 // ============================================================
 
-export function removeSourceFromGraph(
-  graphData: GraphData,
-  sourceId: string
-): GraphData {
+export function removeSourceFromGraph(graphData: GraphData, sourceId: string): GraphData {
   const survivingNodes = graphData.nodes
     .map((node) => {
       const remainingRefs = node.sourceRefs.filter((ref) => ref !== sourceId);
@@ -467,9 +502,7 @@ export function removeSourceFromGraph(
 
   const survivingEdges = graphData.edges.filter(
     (edge) =>
-      survivingIds.has(edge.source) &&
-      survivingIds.has(edge.target) &&
-      edge.sourceRef !== sourceId
+      survivingIds.has(edge.source) && survivingIds.has(edge.target) && edge.sourceRef !== sourceId,
   );
 
   return { nodes: survivingNodes, edges: survivingEdges };
@@ -484,7 +517,7 @@ export async function runGraphPipeline(
   sourceId: string,
   sourceContent: string,
   sourceTitle: string,
-  userId?: string
+  userId?: string,
 ): Promise<{
   nodesAdded: number;
   edgesAdded: number;
@@ -518,7 +551,7 @@ export async function runGraphPipeline(
     sourceTitle,
     sourceId,
     existing.nodes.map((n) => `${n.id}: ${n.label}`),
-    userId
+    userId,
   );
 
   // Build extraction report with cross-references
@@ -546,7 +579,11 @@ export async function runGraphPipeline(
 
   const extractionReport = {
     nodes: extraction.nodes.map((n) => ({ id: n.id, label: n.label, type: n.type })),
-    edges: extraction.edges.map((e) => ({ source: e.source, target: e.target, relation: e.relation })),
+    edges: extraction.edges.map((e) => ({
+      source: e.source,
+      target: e.target,
+      relation: e.relation,
+    })),
     crossRefs,
   };
 
@@ -578,7 +615,12 @@ export async function runGraphPipeline(
   await prisma.wikiPage.deleteMany({
     where: { notebookId, slug: { startsWith: "community-" } },
   });
-  const writtenSlugs = await generateWikiPages(notebookId, graphWithCommunities, communities, userId);
+  const writtenSlugs = await generateWikiPages(
+    notebookId,
+    graphWithCommunities,
+    communities,
+    userId,
+  );
 
   // 6. Log
   const today = new Date().toISOString().split("T")[0];

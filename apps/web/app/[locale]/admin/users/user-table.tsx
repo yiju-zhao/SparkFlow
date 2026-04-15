@@ -12,21 +12,13 @@ type User = {
   createdAt: Date;
 };
 
-export function UserTable({
-  users,
-  currentUserId,
-}: {
-  users: User[];
-  currentUserId: string;
-}) {
+export function UserTable({ users, currentUserId }: { users: User[]; currentUserId: string }) {
   const [userList, setUserList] = useState(users);
 
   async function handleRoleChange(userId: string, newRole: "USER" | "ADMIN") {
     try {
       await updateUserRole(userId, newRole);
-      setUserList((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)),
-      );
+      setUserList((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
     } catch (error) {
       console.error("Failed to update role:", error);
       alert("Failed to update role");
@@ -48,9 +40,7 @@ export function UserTable({
           {userList.map((user) => (
             <tr key={user.id} className="border-b last:border-b-0">
               <td className="px-4 py-3 text-sm">{user.username}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">
-                {user.email}
-              </td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
               <td className="px-4 py-3 text-sm">
                 <span
                   className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
@@ -68,10 +58,7 @@ export function UserTable({
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      handleRoleChange(
-                        user.id,
-                        user.role === "ADMIN" ? "USER" : "ADMIN",
-                      )
+                      handleRoleChange(user.id, user.role === "ADMIN" ? "USER" : "ADMIN")
                     }
                   >
                     {user.role === "ADMIN" ? "Remove Admin" : "Make Admin"}

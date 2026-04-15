@@ -53,9 +53,7 @@ export async function searchWechatArticles(
   return result.rows;
 }
 
-export async function getWechatArticleById(
-  articleId: number,
-): Promise<WechatArticle | null> {
+export async function getWechatArticleById(articleId: number): Promise<WechatArticle | null> {
   if (!wechatPool) return null;
   const result = await wechatPool!.query<WechatArticle>(
     `SELECT a.id, a.title, a.author, a.publish_time, a.original_url,
@@ -68,9 +66,7 @@ export async function getWechatArticleById(
   return result.rows[0] || null;
 }
 
-export async function getWechatArticleImages(
-  articleId: number,
-): Promise<WechatImage[]> {
+export async function getWechatArticleImages(articleId: number): Promise<WechatImage[]> {
   if (!wechatPool) return [];
   const result = await wechatPool!.query<WechatImage>(
     `SELECT id, article_id, image_type, original_url, mime_type, data

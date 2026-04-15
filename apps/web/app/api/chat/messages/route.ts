@@ -44,10 +44,7 @@ export async function POST(req: NextRequest) {
       return new Response("Session not found", { status: 404 });
     }
 
-    if (
-      chatSession.notebookId !== notebookId ||
-      chatSession.notebook.userId !== session.user.id
-    ) {
+    if (chatSession.notebookId !== notebookId || chatSession.notebook.userId !== session.user.id) {
       return new Response("Unauthorized", { status: 403 });
     }
 
@@ -68,9 +65,7 @@ export async function POST(req: NextRequest) {
             notebookId,
             sender: msg.sender,
             content: msg.content,
-            metadata: msg.metadata
-              ? JSON.parse(JSON.stringify(msg.metadata))
-              : undefined,
+            metadata: msg.metadata ? JSON.parse(JSON.stringify(msg.metadata)) : undefined,
             messageOrder: nextOrder++,
           },
         }),

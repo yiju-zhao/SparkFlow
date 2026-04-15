@@ -46,66 +46,60 @@ export const getGlobalStats = cache(async (): Promise<GlobalStats> => {
     publications,
     sessions,
     yearsRange:
-      years._min.year && years._max.year
-        ? { min: years._min.year, max: years._max.year }
-        : null,
+      years._min.year && years._max.year ? { min: years._min.year, max: years._max.year } : null,
   };
 
   statsCache.set(cacheKey, result);
   return result;
 });
 
-export const getRecentConferences = cache(
-  async (limit = 5): Promise<RecentConferenceItem[]> => {
-    const cacheKey = `recent - conferences - ${limit} `;
-    const cached = statsCache.get(cacheKey) as
-      | RecentConferenceItem[]
-      | undefined;
-    if (cached) return cached;
+export const getRecentConferences = cache(async (limit = 5): Promise<RecentConferenceItem[]> => {
+  const cacheKey = `recent - conferences - ${limit} `;
+  const cached = statsCache.get(cacheKey) as RecentConferenceItem[] | undefined;
+  if (cached) return cached;
 
-    const instances = await prisma.instance.findMany({
-      where: {
-        startDate: { not: null },
-      },
-      select: {
-        id: true,
-        name: true,
-        year: true,
-        startDate: true,
-        endDate: true,
-        location: true,
-        venue: { select: { name: true } },
-        _count: {
-          select: {
-            publications: {
-              where: {
-                status: { notIn: ["Reject", "Withdrawal"] },
-              },
+  const instances = await prisma.instance.findMany({
+    where: {
+      startDate: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      year: true,
+      startDate: true,
+      endDate: true,
+      location: true,
+      venue: { select: { name: true } },
+      _count: {
+        select: {
+          publications: {
+            where: {
+              status: { notIn: ["Reject", "Withdrawal"] },
             },
-            sessions: true,
           },
+          sessions: true,
         },
       },
-      orderBy: [{ startDate: "desc" }, { name: "asc" }],
-      take: limit,
-    });
+    },
+    orderBy: [{ startDate: "desc" }, { name: "asc" }],
+    take: limit,
+  });
 
-    const results: RecentConferenceItem[] = instances.map((inst) => ({
-      id: inst.id,
-      name: inst.name,
-      year: inst.year,
-      venueName: inst.venue.name,
-      startDate: inst.startDate,
-      endDate: inst.endDate,
-      location: inst.location,
-      publicationCount: inst._count.publications,
-      sessionCount: inst._count.sessions,
-    }));
+  const results: RecentConferenceItem[] = instances.map((inst) => ({
+    id: inst.id,
+    name: inst.name,
+    year: inst.year,
+    venueName: inst.venue.name,
+    startDate: inst.startDate,
+    endDate: inst.endDate,
+    location: inst.location,
+    publicationCount: inst._count.publications,
+    sessionCount: inst._count.sessions,
+  }));
 
-    statsCache.set(cacheKey, results);
-    return results;
-  },
-);
+  statsCache.set(cacheKey, results);
+  return results;
+});
 
 // ============ FILTER OPTIONS ============
 
@@ -114,56 +108,49 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
   const cached = filterOptionsCache.get(cacheKey);
   if (cached) return cached;
 
-  const [
-    venues,
-    years,
-    topics,
-    statuses,
-    sessionTypes,
-    affiliations,
-    countries,
-  ] = await Promise.all([
-    prisma.venue.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.instance.findMany({
-      select: { year: true },
-      distinct: ["year"],
-      orderBy: { year: "desc" },
-    }),
-    prisma.publication.findMany({
-      select: { researchTopic: true },
-      distinct: ["researchTopic"],
-      where: { researchTopic: { not: null, notIn: [""] } },
-    }),
-    prisma.publication.findMany({
-      select: { status: true },
-      distinct: ["status"],
-      where: { status: { not: null, notIn: [""] } },
-    }),
-    prisma.conferenceSession.findMany({
-      select: { type: true },
-      distinct: ["type"],
-      where: { type: { not: null, notIn: [""] } },
-    }),
-    // Get unique affiliations (top 100 most common)
-    prisma.$queryRaw<{ affiliation: string }[]>`
+  const [venues, years, topics, statuses, sessionTypes, affiliations, countries] =
+    await Promise.all([
+      prisma.venue.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.instance.findMany({
+        select: { year: true },
+        distinct: ["year"],
+        orderBy: { year: "desc" },
+      }),
+      prisma.publication.findMany({
+        select: { researchTopic: true },
+        distinct: ["researchTopic"],
+        where: { researchTopic: { not: null, notIn: [""] } },
+      }),
+      prisma.publication.findMany({
+        select: { status: true },
+        distinct: ["status"],
+        where: { status: { not: null, notIn: [""] } },
+      }),
+      prisma.conferenceSession.findMany({
+        select: { type: true },
+        distinct: ["type"],
+        where: { type: { not: null, notIn: [""] } },
+      }),
+      // Get unique affiliations (top 100 most common)
+      prisma.$queryRaw<{ affiliation: string }[]>`
       SELECT unnest(affiliations) as affiliation
       FROM "publications"
       GROUP BY affiliation
       ORDER BY COUNT(*) DESC
       LIMIT 100
   `,
-    // Get unique countries
-    prisma.$queryRaw<{ country: string }[]>`
+      // Get unique countries
+      prisma.$queryRaw<{ country: string }[]>`
       SELECT unnest(countries) as country
       FROM "publications"
       GROUP BY country
       ORDER BY COUNT(*) DESC
       LIMIT 50
     `,
-  ]);
+    ]);
 
   const result: FilterOptions = {
     venues,
@@ -176,9 +163,7 @@ export const getFilterOptions = cache(async (): Promise<FilterOptions> => {
       .map((s) => s.status)
       .filter((s): s is string => s !== null)
       .sort((a, b) => a.localeCompare(b)),
-    sessionTypes: sessionTypes
-      .map((s) => s.type)
-      .filter((s): s is string => s !== null),
+    sessionTypes: sessionTypes.map((s) => s.type).filter((s): s is string => s !== null),
     affiliations: affiliations
       .map((a) => a.affiliation)
       .filter(Boolean)
@@ -273,9 +258,7 @@ export const getFilteredSessionOptions = cache(
         .map(([id, name]) => ({ id, name }))
         .sort((a, b) => a.name.localeCompare(b.name)),
       years: yearInstances.map((y) => y.year),
-      sessionTypes: types
-        .map((s) => s.type)
-        .filter((s): s is string => s !== null && s !== ""),
+      sessionTypes: types.map((s) => s.type).filter((s): s is string => s !== null && s !== ""),
     };
 
     filterOptionsCache.set(cacheKey, result as unknown as FilterOptions);
@@ -331,10 +314,7 @@ export const getFilteredPublicationOptions = cache(
 
       // Default: hide rejected/withdrawn unless specific status selected or showExcluded
       if (!filters.status && !filters.showExcluded) {
-        where.OR = [
-          { status: { notIn: ["Reject", "Withdrawal"] } },
-          { status: null },
-        ];
+        where.OR = [{ status: { notIn: ["Reject", "Withdrawal"] } }, { status: null }];
       }
 
       return where;
@@ -465,31 +445,29 @@ export const getConferences = cache(
   },
 );
 
-export const getConference = cache(
-  async (id: string): Promise<ConferenceDetail | null> => {
-    const cacheKey = `conference - ${id} `;
-    const cached = statsCache.get(cacheKey) as ConferenceDetail | undefined;
-    if (cached) return cached;
+export const getConference = cache(async (id: string): Promise<ConferenceDetail | null> => {
+  const cacheKey = `conference - ${id} `;
+  const cached = statsCache.get(cacheKey) as ConferenceDetail | undefined;
+  if (cached) return cached;
 
-    const instance = await prisma.instance.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        year: true,
-        startDate: true,
-        endDate: true,
-        location: true,
-        website: true,
-        summary: true,
-        venue: { select: { id: true, name: true, type: true } },
-      },
-    });
+  const instance = await prisma.instance.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      year: true,
+      startDate: true,
+      endDate: true,
+      location: true,
+      website: true,
+      summary: true,
+      venue: { select: { id: true, name: true, type: true } },
+    },
+  });
 
-    if (instance) statsCache.set(cacheKey, instance);
-    return instance;
-  },
-);
+  if (instance) statsCache.set(cacheKey, instance);
+  return instance;
+});
 
 export const getConferenceStats = cache(async (id: string) => {
   const cacheKey = `conference - stats - ${id} `;
@@ -709,9 +687,7 @@ AND(status NOT IN('Reject', 'Withdrawal') OR status IS NULL)
 // ============ PUBLICATIONS ============
 
 export const getPublications = cache(
-  async (
-    filters: PublicationFilters,
-  ): Promise<PaginatedResult<PublicationListItem>> => {
+  async (filters: PublicationFilters): Promise<PaginatedResult<PublicationListItem>> => {
     const where: Prisma.PublicationWhereInput = {};
 
     if (filters.conference) {
@@ -739,10 +715,7 @@ export const getPublications = cache(
       where.status = filters.status;
     } else if (!filters.showExcluded) {
       // Hide Reject and Withdrawal by default unless toggle is checked
-      where.OR = [
-        { status: { notIn: ["Reject", "Withdrawal"] } },
-        { status: null },
-      ];
+      where.OR = [{ status: { notIn: ["Reject", "Withdrawal"] } }, { status: null }];
     }
 
     let orderBy: Prisma.PublicationOrderByWithRelationInput = {};
@@ -789,67 +762,63 @@ export const getPublications = cache(
   },
 );
 
-export const getPublication = cache(
-  async (id: string): Promise<PublicationDetail | null> => {
-    const publication = await prisma.publication.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        title: true,
-        authors: true,
-        abstract: true,
-        summary: true,
-        affiliations: true,
-        countries: true,
-        keywords: true,
-        researchTopic: true,
-        rating: true,
-        status: true,
-        doi: true,
-        pdfUrl: true,
-        githubUrl: true,
-        websiteUrl: true,
-        instance: {
-          select: {
-            id: true,
-            name: true,
-            year: true,
-            venue: { select: { name: true } },
-          },
+export const getPublication = cache(async (id: string): Promise<PublicationDetail | null> => {
+  const publication = await prisma.publication.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      authors: true,
+      abstract: true,
+      summary: true,
+      affiliations: true,
+      countries: true,
+      keywords: true,
+      researchTopic: true,
+      rating: true,
+      status: true,
+      doi: true,
+      pdfUrl: true,
+      githubUrl: true,
+      websiteUrl: true,
+      instance: {
+        select: {
+          id: true,
+          name: true,
+          year: true,
+          venue: { select: { name: true } },
         },
-        sessions: {
-          select: {
-            session: {
-              select: {
-                id: true,
-                title: true,
-                type: true,
-                date: true,
-                startTime: true,
-                endTime: true,
-                sessionUrl: true,
-              },
+      },
+      sessions: {
+        select: {
+          session: {
+            select: {
+              id: true,
+              title: true,
+              type: true,
+              date: true,
+              startTime: true,
+              endTime: true,
+              sessionUrl: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
-    if (!publication) return null;
+  if (!publication) return null;
 
-    return {
-      ...publication,
-      sessions: publication.sessions.map((s) => s.session),
-    };
-  },
-);
+  return {
+    ...publication,
+    sessions: publication.sessions.map((s) => s.session),
+  };
+});
 
 // ============ SESSIONS ============
 
 export const getSessions = cache(
-  async (
-    filters: SessionFilters,
-  ): Promise<PaginatedResult<SessionListItem>> => {
+  async (filters: SessionFilters): Promise<PaginatedResult<SessionListItem>> => {
     const where: Prisma.ConferenceSessionWhereInput = {};
 
     if (filters.conference) {
@@ -930,53 +899,51 @@ export const getConferenceSessions = cache(
   },
 );
 
-export const getSession = cache(
-  async (id: string): Promise<SessionDetail | null> => {
-    const session = await prisma.conferenceSession.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        title: true,
-        type: true,
-        date: true,
-        startTime: true,
-        endTime: true,
-        location: true,
-        speaker: true,
-        abstract: true,
-        overview: true,
-        transcript: true,
-        sessionUrl: true,
-        topic: true,
-        affiliation: true,
-        technology: true,
-        sessionFormat: true,
-        hasRecording: true,
-        intendedAudience: true,
-        instance: {
-          select: {
-            id: true,
-            name: true,
-            year: true,
-            venue: { select: { name: true } },
-          },
-        },
-        publications: {
-          select: {
-            publication: { select: { id: true, title: true, authors: true } },
-          },
+export const getSession = cache(async (id: string): Promise<SessionDetail | null> => {
+  const session = await prisma.conferenceSession.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      type: true,
+      date: true,
+      startTime: true,
+      endTime: true,
+      location: true,
+      speaker: true,
+      abstract: true,
+      overview: true,
+      transcript: true,
+      sessionUrl: true,
+      topic: true,
+      affiliation: true,
+      technology: true,
+      sessionFormat: true,
+      hasRecording: true,
+      intendedAudience: true,
+      instance: {
+        select: {
+          id: true,
+          name: true,
+          year: true,
+          venue: { select: { name: true } },
         },
       },
-    });
+      publications: {
+        select: {
+          publication: { select: { id: true, title: true, authors: true } },
+        },
+      },
+    },
+  });
 
-    if (!session) return null;
+  if (!session) return null;
 
-    return {
-      ...session,
-      publications: session.publications.map((p) => p.publication),
-    };
-  },
-);
+  return {
+    ...session,
+    publications: session.publications.map((p) => p.publication),
+  };
+});
 
 // ============ CHART DATA ============
 

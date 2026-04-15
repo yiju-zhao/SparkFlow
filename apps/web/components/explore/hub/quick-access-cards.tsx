@@ -58,9 +58,7 @@ export function QuickAccessCards() {
                 <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
               </div>
               <h3 className="font-semibold text-lg mb-1">{card.title}</h3>
-              <p className="text-sm text-muted-foreground">
-                {card.description}
-              </p>
+              <p className="text-sm text-muted-foreground">{card.description}</p>
             </CardContent>
           </Card>
         </Link>

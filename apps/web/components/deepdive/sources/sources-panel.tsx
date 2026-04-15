@@ -1,22 +1,8 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-  memo,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, memo } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
-import {
-  FileText,
-  Plus,
-  Loader2,
-  ArrowLeft,
-  X,
-} from "lucide-react";
+import { FileText, Plus, Loader2, ArrowLeft, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { deleteSource } from "@/lib/actions/sources";
@@ -111,9 +97,7 @@ export function SourcesPanel({
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/50" />
             <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
-            <p className="text-xs text-muted-foreground">
-              Add documents or webpages
-            </p>
+            <p className="text-xs text-muted-foreground">Add documents or webpages</p>
           </div>
         ) : (
           <>
@@ -152,11 +136,7 @@ export function SourcesPanel({
       </div>
 
       {/* Add Source Dialog */}
-      <AddSourceDialog
-        notebookId={notebookId}
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-      />
+      <AddSourceDialog notebookId={notebookId} open={isDialogOpen} onOpenChange={setIsDialogOpen} />
     </div>
   );
 }
@@ -209,21 +189,27 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${isPending ? "opacity-50" : ""
-        }`}
+      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${
+        isPending ? "opacity-50" : ""
+      }`}
       onClick={onSelect}
     >
       {/* Delete Badge - hover visible */}
       <button
         className="absolute -top-2 -right-2 h-4.5 w-4.5 rounded-full bg-accent-red flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDelete(e);
+        }}
         title="Delete"
       >
         <X className="h-3 w-3 text-white" />
       </button>
 
       <div className="min-w-0 flex-1">
-        <span className="truncate block text-[13px] font-semibold dark:font-medium leading-tight">{source.title}</span>
+        <span className="truncate block text-[13px] font-semibold dark:font-medium leading-tight">
+          {source.title}
+        </span>
         <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span>{source.sourceType === "DOCUMENT" ? "PDF" : "Web"}</span>
           <span>•</span>
@@ -250,13 +236,7 @@ const SourceItem = memo(function SourceItem({
 });
 
 // Source content viewer - shows title and markdown content with TOC button
-function SourceContentView({
-  source,
-  onBack,
-}: {
-  source: Source;
-  onBack: () => void;
-}) {
+function SourceContentView({ source, onBack }: { source: Source; onBack: () => void }) {
   const [showToc, setShowToc] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -342,8 +322,7 @@ function SourceContentView({
     if (targetElement) {
       const containerRect = container.getBoundingClientRect();
       const elementRect = targetElement.getBoundingClientRect();
-      const relativeTop =
-        elementRect.top - containerRect.top + container.scrollTop;
+      const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
 
       container.scrollTo({
         top: relativeTop - 16,
@@ -357,12 +336,7 @@ function SourceContentView({
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Header with back button and TOC button */}
       <div className="flex items-center gap-2 border-b border-divider px-4 py-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0"
-          onClick={onBack}
-        >
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="min-w-0 flex-1">
@@ -398,19 +372,17 @@ function SourceContentView({
             {showToc && (
               <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-background shadow-lg">
                 <div className="p-3">
-                  <h3 className="mb-2 text-xs font-semibold">
-                    Table of Contents
-                  </h3>
+                  <h3 className="mb-2 text-xs font-semibold">Table of Contents</h3>
                   <nav className="max-h-96 space-y-1 overflow-y-auto">
                     {headings.map((heading, index) => (
                       <button
                         key={index}
                         onClick={() => scrollToHeading(heading.text)}
-                        className={`block w-full text-left text-xs hover:text-accent-red transition-colors ${heading.level === 1 ? "font-medium" : ""
-                          } ${heading.level === 2 ? "pl-2" : ""} ${heading.level === 3
-                            ? "pl-4 text-muted-foreground"
-                            : ""
-                          }`}
+                        className={`block w-full text-left text-xs hover:text-accent-red transition-colors ${
+                          heading.level === 1 ? "font-medium" : ""
+                        } ${heading.level === 2 ? "pl-2" : ""} ${
+                          heading.level === 3 ? "pl-4 text-muted-foreground" : ""
+                        }`}
                       >
                         {heading.text}
                       </button>
@@ -457,4 +429,3 @@ function SourceContentView({
     </div>
   );
 }
-

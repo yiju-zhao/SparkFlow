@@ -3,14 +3,19 @@
  * merges into notebook graph, clusters, generates wiki pages.
  */
 
-import { runGraphPipeline, removeSourceFromGraph, clusterGraph, generateWikiPages } from "./graph-service";
+import {
+  runGraphPipeline,
+  removeSourceFromGraph,
+  clusterGraph,
+  generateWikiPages,
+} from "./graph-service";
 import type { GraphData } from "./graph-service";
 import prisma from "@/lib/prisma";
 
 export async function ingestSourceToWiki(
   notebookId: string,
   sourceId: string,
-  userId?: string
+  userId?: string,
 ): Promise<{ pagesWritten: number; pages: string[] }> {
   const source = await prisma.source.findUnique({
     where: { id: sourceId },
@@ -33,7 +38,9 @@ export async function ingestSourceToWiki(
     const result = await runGraphPipeline(notebookId, sourceId, content, source.title, userId);
 
     // Store extraction report in source metadata for UI display
-    const currentMeta = (await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } }))?.metadata as Record<string, unknown> || {};
+    const currentMeta =
+      ((await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } }))
+        ?.metadata as Record<string, unknown>) || {};
     await prisma.source.update({
       where: { id: sourceId },
       data: {
@@ -47,18 +54,25 @@ export async function ingestSourceToWiki(
 
     return {
       pagesWritten: result.pagesWritten,
-      pages: [`${result.nodesAdded} nodes, ${result.edgesAdded} edges, ${result.communities} communities`],
+      pages: [
+        `${result.nodesAdded} nodes, ${result.edgesAdded} edges, ${result.communities} communities`,
+      ],
     };
   } catch (err) {
     // Mark wiki status as failed
     try {
-      const current = await prisma.source.findUnique({ where: { id: sourceId }, select: { metadata: true } });
+      const current = await prisma.source.findUnique({
+        where: { id: sourceId },
+        select: { metadata: true },
+      });
       const meta = (current?.metadata as Record<string, unknown>) || {};
       await prisma.source.update({
         where: { id: sourceId },
         data: { metadata: { ...meta, wikiStatus: "failed", wikiError: String(err) } },
       });
-    } catch { /* ignore metadata update failure */ }
+    } catch {
+      /* ignore metadata update failure */
+    }
     throw err;
   }
 }
@@ -70,7 +84,7 @@ export async function ingestSourceToWiki(
 export async function removeSourceFromWiki(
   notebookId: string,
   sourceId: string,
-  sourceTitle: string
+  sourceTitle: string,
 ): Promise<{ pagesDeleted: number; pagesUpdated: number }> {
   const existingGraph = await prisma.notebookGraph.findUnique({
     where: { notebookId },
@@ -113,8 +127,17 @@ export async function removeSourceFromWiki(
   } else {
     await prisma.wikiPage.upsert({
       where: { notebookId_slug: { notebookId, slug: "index" } },
-      create: { notebookId, slug: "index", title: "Wiki Index", content: "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.", pageType: "INDEX", sourceRefs: [] },
-      update: { content: "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge." },
+      create: {
+        notebookId,
+        slug: "index",
+        title: "Wiki Index",
+        content: "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.",
+        pageType: "INDEX",
+        sourceRefs: [],
+      },
+      update: {
+        content: "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.",
+      },
     });
   }
 

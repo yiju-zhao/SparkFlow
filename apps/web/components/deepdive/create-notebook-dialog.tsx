@@ -74,22 +74,17 @@ export function CreateNotebookDialog() {
               <div>
                 <p className="text-sm font-medium">API Key Required</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Notebooks need an LLM API key for wiki generation and chat. Set your API key first.
+                  Notebooks need an LLM API key for wiki generation and chat. Set your API key
+                  first.
                 </p>
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
               <Link href="/settings">
-                <Button className="bg-accent-red hover:bg-accent-red-hover">
-                  Go to Settings
-                </Button>
+                <Button className="bg-accent-red hover:bg-accent-red-hover">Go to Settings</Button>
               </Link>
             </div>
           </div>
@@ -109,10 +104,7 @@ export function CreateNotebookDialog() {
               />
             </div>
             <div>
-              <label
-                htmlFor="description"
-                className="mb-2 block text-sm font-medium"
-              >
+              <label htmlFor="description" className="mb-2 block text-sm font-medium">
                 Description (optional)
               </label>
               <Textarea

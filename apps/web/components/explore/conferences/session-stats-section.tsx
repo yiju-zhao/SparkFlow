@@ -95,9 +95,7 @@ export function SessionStatsSection({ sessions }: SessionStatsSectionProps) {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
       {hasTypes && (
         <div className="bg-card rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-foreground/80 mb-4">
-            Session Types
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground/80 mb-4">Session Types</h3>
           <div className="h-70">
             <SessionTypePieChart data={stats.typeData} />
           </div>
@@ -105,9 +103,7 @@ export function SessionStatsSection({ sessions }: SessionStatsSectionProps) {
       )}
       {hasDays && (
         <div className="bg-card rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-foreground/80 mb-4">
-            Daily Distribution
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground/80 mb-4">Daily Distribution</h3>
           <div className="h-70">
             <SessionDailyChart data={stats.dailyData} />
           </div>
@@ -115,9 +111,7 @@ export function SessionStatsSection({ sessions }: SessionStatsSectionProps) {
       )}
       {hasAffiliations && (
         <div className="bg-card rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-foreground/80 mb-4">
-            Top Affiliations
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground/80 mb-4">Top Affiliations</h3>
           <div className="h-70">
             <SessionAffiliationChart data={stats.affiliationData} />
           </div>

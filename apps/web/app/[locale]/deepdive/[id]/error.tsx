@@ -24,8 +24,8 @@ export default function NotebookError({
         </div>
         <h2 className="mb-2 text-xl font-semibold">Failed to load notebook</h2>
         <p className="mb-6 text-sm text-muted-foreground">
-          There was a problem loading this notebook. The notebook may not exist
-          or you may not have permission to access it.
+          There was a problem loading this notebook. The notebook may not exist or you may not have
+          permission to access it.
         </p>
         <div className="flex gap-3">
           <Button onClick={reset} variant="outline">

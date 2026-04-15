@@ -30,14 +30,10 @@ export function ExploreHeader({
   return (
     <nav
       className={`z-100 shrink-0 transition-all duration-500 ease-in-out border-b border-border ${
-        isScrolled
-          ? "bg-background/80 backdrop-blur-lg"
-          : "bg-background"
+        isScrolled ? "bg-background/80 backdrop-blur-lg" : "bg-background"
       }`}
     >
-      <div
-        className={`grid h-14 items-center transition-all duration-500 px-12 grid-cols-3`}
-      >
+      <div className={`grid h-14 items-center transition-all duration-500 px-12 grid-cols-3`}>
         {/* Left: Logo */}
         <div className="flex items-center gap-3">
           <Link
@@ -56,18 +52,14 @@ export function ExploreHeader({
           {subtitle && (
             <>
               <span className={`${accentColor} font-bold text-base`}>&gt;</span>
-              <span className="font-medium text-sm truncate max-w-50">
-                {subtitle}
-              </span>
+              <span className="font-medium text-sm truncate max-w-50">{subtitle}</span>
             </>
           )}
         </div>
 
         {/* Center: Nav links */}
         <div className="flex items-center justify-center">
-          <div className="flex items-center gap-8">
-            {navLinks}
-          </div>
+          <div className="flex items-center gap-8">{navLinks}</div>
         </div>
 
         {/* Right: Actions & User */}

@@ -93,10 +93,7 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
   }));
 
   return (
-    <DeepdiveShell
-      user={session?.user}
-      breadcrumb={{ label: notebook.name }}
-    >
+    <DeepdiveShell user={session?.user} breadcrumb={{ label: notebook.name }}>
       <NotebookLayout
         notebook={notebook}
         sources={sources}

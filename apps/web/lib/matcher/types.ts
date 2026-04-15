@@ -2,18 +2,13 @@
  * Matcher Service Types
  */
 
-export type MatchJobStatus =
-  | "PENDING"
-  | "PROCESSING"
-  | "COMPLETED"
-  | "FAILED"
-  | "CANCELLED";
+export type MatchJobStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
 export type MatchTargetType = "SESSION" | "PUBLICATION";
 
 export interface ParsedQuery {
   id: string;
-  bu: string;  // Business unit - who wants the matching
+  bu: string; // Business unit - who wants the matching
   query: string;
   rowIndex: number;
   optimizedQueryNative?: string;

@@ -58,12 +58,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     // Transform for frontend
     const formattedMessages = messages.map(
-      (msg: {
-        id: string;
-        sender: string;
-        content: string;
-        createdAt: Date;
-      }) => ({
+      (msg: { id: string; sender: string; content: string; createdAt: Date }) => ({
         id: msg.id,
         role: msg.sender === "USER" ? "user" : "assistant",
         content: msg.content,

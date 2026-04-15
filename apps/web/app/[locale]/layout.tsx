@@ -40,9 +40,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body
-        className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
-      >
+      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ScrollbarAutoHide />
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>

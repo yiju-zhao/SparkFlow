@@ -28,12 +28,8 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
     <div className="flex flex-col gap-10">
       {/* Title Section */}
       <div>
-        <p className="text-sm text-muted-foreground mb-2">
-          {t("socialMedia.wechat.breadcrumb")}
-        </p>
-        <h1 className="text-4xl font-bold tracking-tight">
-          {t("socialMedia.wechat.title")}
-        </h1>
+        <p className="text-sm text-muted-foreground mb-2">{t("socialMedia.wechat.breadcrumb")}</p>
+        <h1 className="text-4xl font-bold tracking-tight">{t("socialMedia.wechat.title")}</h1>
         <p className="text-muted-foreground mt-2">
           {t("socialMedia.wechat.found", { count: total.toLocaleString() })}
         </p>

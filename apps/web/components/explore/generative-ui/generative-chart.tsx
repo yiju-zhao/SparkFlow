@@ -18,7 +18,7 @@ export const GenerativeChartPropsSchema = z.object({
       z.object({
         label: z.string().describe("The label for this data point"),
         value: z.number().describe("The numeric value for this data point"),
-      })
+      }),
     )
     .describe("Array of data points with labels and values"),
 });

@@ -15,12 +15,7 @@ interface PaginationProps {
   pageSize: number;
 }
 
-export function Pagination({
-  currentPage,
-  totalPages,
-  totalItems,
-  pageSize,
-}: PaginationProps) {
+export function Pagination({ currentPage, totalPages, totalItems, pageSize }: PaginationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,9 +44,7 @@ export function Pagination({
   }, [currentPage, totalPages]);
 
   return (
-    <div
-      className={`flex items-center justify-between ${isPending ? "opacity-70" : ""}`}
-    >
+    <div className={`flex items-center justify-between ${isPending ? "opacity-70" : ""}`}>
       <p className="text-sm text-muted-foreground">
         {t("showing", { start: startItem, end: endItem, total: totalItems })}
       </p>

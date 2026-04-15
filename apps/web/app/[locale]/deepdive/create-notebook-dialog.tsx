@@ -58,10 +58,7 @@ export function CreateNotebookDialog() {
             />
           </div>
           <div>
-            <label
-              htmlFor="description"
-              className="mb-2 block text-sm font-medium"
-            >
+            <label htmlFor="description" className="mb-2 block text-sm font-medium">
               Description (optional)
             </label>
             <Textarea

@@ -4,12 +4,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getSessions, getFilteredSessionOptions } from "@/lib/explore/queries";
 import { parseSessionFilters, PAGE_SIZE } from "@/lib/explore/filters";
-import {
-  FilterBar,
-  Pagination,
-  EmptyState,
-  type FilterConfig,
-} from "@/components/explore/shared";
+import { FilterBar, Pagination, EmptyState, type FilterConfig } from "@/components/explore/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
@@ -63,9 +58,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
     <div className="flex flex-col gap-10">
       {/* Title Section */}
       <div>
-        <p className="text-sm text-muted-foreground mb-2">
-          {t("sessions.breadcrumb")}
-        </p>
+        <p className="text-sm text-muted-foreground mb-2">{t("sessions.breadcrumb")}</p>
         <h1 className="text-4xl font-bold tracking-tight">{t("sessions.title")}</h1>
         <p className="text-muted-foreground mt-2">
           {t("sessions.found", { count: result.total.toLocaleString() })}
@@ -76,10 +69,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
       <FilterBar filters={filterConfigs} />
 
       {result.data.length === 0 ? (
-        <EmptyState
-          title={t("empty.title")}
-          description={t("empty.description")}
-        />
+        <EmptyState title={t("empty.title")} description={t("empty.description")} />
       ) : (
         <div className="bg-card rounded-lg">
           {/* Session List */}
@@ -111,11 +101,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
                           className="h-6 w-6 p-0 z-20 relative"
                           asChild
                         >
-                          <a
-                            href={session.sessionUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
+                          <a href={session.sessionUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3.5 w-3.5" />
                             <span className="sr-only">View Session</span>
                           </a>

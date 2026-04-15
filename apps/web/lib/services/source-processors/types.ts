@@ -4,7 +4,7 @@
 export interface ProcessingContext {
   sourceId: string;
   notebookId: string;
-  userId?: string;  // for BYOK key resolution
+  userId?: string; // for BYOK key resolution
 }
 
 /**

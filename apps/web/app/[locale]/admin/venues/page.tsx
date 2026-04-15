@@ -13,9 +13,7 @@ export default async function VenuesPage() {
       </div>
 
       {venues.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No venues yet. Create one to get started.
-        </p>
+        <p className="text-sm text-muted-foreground">No venues yet. Create one to get started.</p>
       ) : (
         <table className="w-full text-sm">
           <thead>
@@ -30,9 +28,7 @@ export default async function VenuesPage() {
             {venues.map((venue) => (
               <tr key={venue.id} className="border-b">
                 <td className="py-3">{venue.name}</td>
-                <td className="py-3 text-muted-foreground">
-                  {venue.type ?? "—"}
-                </td>
+                <td className="py-3 text-muted-foreground">{venue.type ?? "—"}</td>
                 <td className="py-3">{venue._count.instances}</td>
                 <td className="py-3">
                   <VenueForm

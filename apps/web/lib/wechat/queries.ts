@@ -38,13 +38,13 @@ export async function getWechatSources(): Promise<WechatSource[]> {
   const result = await wechatPool.query(
     `SELECT id, slug, name, description
      FROM wechat_articles.sources
-     ORDER BY name`
+     ORDER BY name`,
   );
   return result.rows;
 }
 
 export async function getWechatArticles(
-  filters: WechatArticleFilters
+  filters: WechatArticleFilters,
 ): Promise<{ articles: WechatArticleSummary[]; total: number }> {
   if (!wechatPool) return { articles: [], total: 0 };
   const conditions: string[] = [];
@@ -69,12 +69,11 @@ export async function getWechatArticles(
     paramIndex++;
   }
 
-  const whereClause =
-    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const countResult = await wechatPool.query(
     `SELECT COUNT(*)::int as total FROM wechat_articles.articles a ${whereClause}`,
-    values
+    values,
   );
   const total = countResult.rows[0].total;
 
@@ -87,15 +86,13 @@ export async function getWechatArticles(
      ${whereClause}
      ORDER BY a.publish_time DESC NULLS LAST
      LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
-    [...values, WECHAT_PAGE_SIZE, offset]
+    [...values, WECHAT_PAGE_SIZE, offset],
   );
 
   return { articles: dataResult.rows, total };
 }
 
-export async function getWechatArticle(
-  id: number
-): Promise<WechatArticleDetail | null> {
+export async function getWechatArticle(id: number): Promise<WechatArticleDetail | null> {
   if (!wechatPool) return null;
   const articleResult = await wechatPool.query(
     `SELECT a.id, a.title, a.author, a.publish_time, a.original_url,
@@ -104,7 +101,7 @@ export async function getWechatArticle(
      FROM wechat_articles.articles a
      JOIN wechat_articles.sources s ON s.id = a.source_id
      WHERE a.id = $1`,
-    [id]
+    [id],
   );
 
   if (articleResult.rows.length === 0) return null;
@@ -114,7 +111,7 @@ export async function getWechatArticle(
      FROM wechat_articles.images
      WHERE article_id = $1
      ORDER BY image_index`,
-    [id]
+    [id],
   );
 
   return {
@@ -124,12 +121,12 @@ export async function getWechatArticle(
 }
 
 export async function getWechatImage(
-  id: number
+  id: number,
 ): Promise<{ data: Buffer; mime_type: string } | null> {
   if (!wechatPool) return null;
   const result = await wechatPool.query(
     `SELECT data, mime_type FROM wechat_articles.images WHERE id = $1`,
-    [id]
+    [id],
   );
   if (result.rows.length === 0 || !result.rows[0].data) return null;
   return result.rows[0];

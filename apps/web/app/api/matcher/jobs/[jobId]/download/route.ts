@@ -14,7 +14,7 @@ const DATA_DIR = path.join(process.cwd(), "data");
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> }
+  { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
     const session = await auth();
@@ -38,18 +38,12 @@ export async function GET(
 
     // Check job is completed
     if (job.status !== "COMPLETED") {
-      return NextResponse.json(
-        { error: "Job is not completed yet" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Job is not completed yet" }, { status: 400 });
     }
 
     // Check result file exists
     if (!job.resultFileKey) {
-      return NextResponse.json(
-        { error: "Result file not available yet" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Result file not available yet" }, { status: 404 });
     }
 
     // Get stream from local file
@@ -67,16 +61,12 @@ export async function GET(
 
     return new Response(webStream, {
       headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="match-results-${jobId}.xlsx"`,
       },
     });
   } catch (error) {
     console.error("Download error:", error);
-    return NextResponse.json(
-      { error: "Failed to download results" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to download results" }, { status: 500 });
   }
 }

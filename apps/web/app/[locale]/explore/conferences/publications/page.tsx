@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getPublications, getFilteredPublicationOptions, getFilterOptions } from "@/lib/explore/queries";
+import {
+  getPublications,
+  getFilteredPublicationOptions,
+  getFilterOptions,
+} from "@/lib/explore/queries";
 import { parsePublicationFilters, PAGE_SIZE } from "@/lib/explore/filters";
 import {
   FilterBar,
@@ -87,9 +91,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
     <div className="flex flex-col gap-10">
       {/* Title Section */}
       <div>
-        <p className="text-sm text-muted-foreground mb-2">
-          {t("publications.breadcrumb")}
-        </p>
+        <p className="text-sm text-muted-foreground mb-2">{t("publications.breadcrumb")}</p>
         <h1 className="text-4xl font-bold tracking-tight">{t("publications.title")}</h1>
         <p className="text-muted-foreground mt-2">
           {t("publications.found", { count: result.total.toLocaleString() })}
@@ -103,10 +105,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
       </div>
 
       {result.data.length === 0 ? (
-        <EmptyState
-          title={t("empty.title")}
-          description={t("empty.description")}
-        />
+        <EmptyState title={t("empty.title")} description={t("empty.description")} />
       ) : (
         <div className="bg-card rounded-lg">
           {/* Publication List */}
@@ -138,11 +137,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
                           className="h-6 w-6 p-0 z-20 relative"
                           asChild
                         >
-                          <a
-                            href={pub.pdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
+                          <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
                             <FileText className="h-3.5 w-3.5" />
                             <span className="sr-only">PDF</span>
                           </a>

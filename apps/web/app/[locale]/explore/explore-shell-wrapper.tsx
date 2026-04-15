@@ -9,7 +9,7 @@ interface ExploreShellWrapperProps extends ExploreShellProps {
 
 function ExploreShellInner({ children, ...props }: ExploreShellWrapperProps) {
   const { context } = useAIContext();
-  
+
   return (
     <ExploreShell aiContext={context ?? undefined} {...props}>
       {children}
@@ -20,9 +20,7 @@ function ExploreShellInner({ children, ...props }: ExploreShellWrapperProps) {
 export function ExploreShellWrapper({ children, ...props }: ExploreShellWrapperProps) {
   return (
     <AIContextProvider>
-      <ExploreShellInner {...props}>
-        {children}
-      </ExploreShellInner>
+      <ExploreShellInner {...props}>{children}</ExploreShellInner>
     </AIContextProvider>
   );
 }

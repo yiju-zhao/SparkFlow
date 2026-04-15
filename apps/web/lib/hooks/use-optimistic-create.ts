@@ -33,9 +33,7 @@ export function useOptimisticCreate<T, TInput>(
         // Replace temp item with real item
         queryClient.setQueryData(queryKey, (old: T[] | undefined) =>
           old?.map((item) =>
-            (item as { id?: string }).id === (tempItem as { id?: string }).id
-              ? created
-              : item,
+            (item as { id?: string }).id === (tempItem as { id?: string }).id ? created : item,
           ),
         );
       } finally {

@@ -39,7 +39,7 @@ async function fetchWithRetry(
 
 export async function parsePdf(
   filePathOrUrl: string,
-  options?: { modelVersion?: string }
+  options?: { modelVersion?: string },
 ): Promise<MineruResult> {
   if (MINERU_MODE === "api") {
     return parsePdfViaApi(filePathOrUrl, options);
@@ -70,7 +70,9 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
     });
   } catch (err) {
     if (controller.signal.aborted) {
-      throw new Error("MinerU local parse timed out after 10 minutes — the PDF may be too large or the server too slow");
+      throw new Error(
+        "MinerU local parse timed out after 10 minutes — the PDF may be too large or the server too slow",
+      );
     }
     throw new Error(describeFetchError(err, "MinerU local connection failed"));
   } finally {
@@ -79,7 +81,9 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => "");
-    throw new Error(`MinerU local parse failed: ${response.status} ${response.statusText} ${errorBody}`);
+    throw new Error(
+      `MinerU local parse failed: ${response.status} ${response.statusText} ${errorBody}`,
+    );
   }
 
   const result = await response.json();
@@ -121,7 +125,9 @@ function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
   }
 
   if (!markdown) {
-    throw new Error(`MinerU returned empty markdown. Response keys: ${Object.keys(result).join(", ")}`);
+    throw new Error(
+      `MinerU returned empty markdown. Response keys: ${Object.keys(result).join(", ")}`,
+    );
   }
 
   return { markdown, images };
@@ -129,7 +135,7 @@ function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
 
 async function parsePdfViaApi(
   filePath: string,
-  options?: { modelVersion?: string }
+  options?: { modelVersion?: string },
 ): Promise<MineruResult> {
   if (!MINERU_API_TOKEN) {
     throw new Error("MINERU_API_TOKEN is required when MINERU_MODE=api");
@@ -195,7 +201,7 @@ async function pollMineruBatch(
   batchId: string,
   headers: Record<string, string>,
   maxAttempts = 120,
-  intervalMs = 3000
+  intervalMs = 3000,
 ): Promise<{ full_zip_url: string }> {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs));
@@ -229,7 +235,7 @@ async function pollMineruBatch(
     // "waiting-file", "pending", "running", "converting" — keep polling
   }
 
-  throw new Error(`MinerU extraction timed out after ${maxAttempts * intervalMs / 1000}s`);
+  throw new Error(`MinerU extraction timed out after ${(maxAttempts * intervalMs) / 1000}s`);
 }
 
 async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {

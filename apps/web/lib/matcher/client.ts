@@ -4,14 +4,9 @@
  * Client for communicating with the matcher service.
  */
 
-import type {
-  CreateMatchJobInput,
-  JobProgress,
-  MatchJob,
-} from "./types";
+import type { CreateMatchJobInput, JobProgress, MatchJob } from "./types";
 
-const MATCHER_API_URL =
-  process.env.NEXT_PUBLIC_MATCHER_API_URL || "http://localhost:2025";
+const MATCHER_API_URL = process.env.NEXT_PUBLIC_MATCHER_API_URL || "http://localhost:2025";
 
 class MatcherClient {
   private baseUrl: string;

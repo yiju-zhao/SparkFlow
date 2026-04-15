@@ -30,12 +30,8 @@ export function HowItWorksSection() {
       <div className="mx-auto max-w-6xl">
         <SectionReveal>
           <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-              {t("title")}
-            </h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground">
-              {t("subtitle")}
-            </p>
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">{t("title")}</h2>
+            <p className="mx-auto max-w-2xl text-muted-foreground">{t("subtitle")}</p>
           </div>
         </SectionReveal>
 

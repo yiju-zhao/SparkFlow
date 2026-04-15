@@ -28,9 +28,7 @@ interface GraphData {
  * Returns top entities by connectivity + top relationships.
  * Target: ~500 tokens max.
  */
-export async function getWikiContextForSearch(
-  notebookId: string,
-): Promise<string> {
+export async function getWikiContextForSearch(notebookId: string): Promise<string> {
   const graph = await prisma.notebookGraph.findUnique({
     where: { notebookId },
   });
@@ -65,18 +63,13 @@ export async function getWikiContextForSearch(
 
   const parts: string[] = [];
 
-  const topicsList = topNodes
-    .map((n) => `${n.label} (${n.type})`)
-    .join(", ");
+  const topicsList = topNodes.map((n) => `${n.label} (${n.type})`).join(", ");
   parts.push(`Topics: ${topicsList}`);
 
   if (topEdges.length > 0) {
     const nodeLabel = new Map(data.nodes.map((n) => [n.id, n.label]));
     const relsList = topEdges
-      .map(
-        (e) =>
-          `${nodeLabel.get(e.source)} → ${e.relation} → ${nodeLabel.get(e.target)}`,
-      )
+      .map((e) => `${nodeLabel.get(e.source)} → ${e.relation} → ${nodeLabel.get(e.target)}`)
       .join("; ");
     parts.push(`Relationships: ${relsList}`);
   }

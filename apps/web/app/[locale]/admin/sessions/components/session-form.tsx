@@ -79,12 +79,8 @@ export function SessionForm({ session, instances, trigger }: SessionFormProps) {
   const [transcript, setTranscript] = useState(session?.transcript ?? "");
   const [sessionUrl, setSessionUrl] = useState(session?.sessionUrl ?? "");
   const [topics, setTopics] = useState(arrToStr(session?.topic ?? []));
-  const [affiliations, setAffiliations] = useState(
-    arrToStr(session?.affiliation ?? []),
-  );
-  const [technologies, setTechnologies] = useState(
-    arrToStr(session?.technology ?? []),
-  );
+  const [affiliations, setAffiliations] = useState(arrToStr(session?.affiliation ?? []));
+  const [technologies, setTechnologies] = useState(arrToStr(session?.technology ?? []));
 
   function reset() {
     setInstanceId(session?.instanceId ?? "");
@@ -146,9 +142,7 @@ export function SessionForm({ session, instances, trigger }: SessionFormProps) {
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {session ? "Edit Session" : "New Session"}
-          </DialogTitle>
+          <DialogTitle>{session ? "Edit Session" : "New Session"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
@@ -192,12 +186,7 @@ export function SessionForm({ session, instances, trigger }: SessionFormProps) {
             </div>
             <div className="space-y-1">
               <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </div>
 
@@ -325,10 +314,7 @@ export function SessionForm({ session, instances, trigger }: SessionFormProps) {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending || !instanceId || !title.trim()}
-            >
+            <Button type="submit" disabled={isPending || !instanceId || !title.trim()}>
               {isPending ? "Saving..." : session ? "Save Changes" : "Create"}
             </Button>
           </div>

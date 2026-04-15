@@ -17,9 +17,7 @@
       "sessionFormat": "IN_PERSON",
       "hasRecording": true,
       "intendedAudience": "Researchers and practitioners building immersive systems.",
-      "publicationTitles": [
-        "Understanding User Behavior in Virtual Reality Environments"
-      ]
+      "publicationTitles": ["Understanding User Behavior in Virtual Reality Environments"]
     },
     {
       "title": "Accessibility and Inclusive Design",

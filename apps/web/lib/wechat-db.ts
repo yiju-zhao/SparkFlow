@@ -13,8 +13,7 @@ function createPool(): Pool | null {
   });
 }
 
-export const wechatPool: Pool | null =
-  globalForWechat.wechatPool ?? createPool();
+export const wechatPool: Pool | null = globalForWechat.wechatPool ?? createPool();
 
 if (process.env.NODE_ENV !== "production" && wechatPool) {
   globalForWechat.wechatPool = wechatPool;

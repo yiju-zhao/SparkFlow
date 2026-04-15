@@ -80,10 +80,5 @@ export function CountryBarChart({ data, className }: CountryBarChartProps) {
     );
   }
 
-  return (
-    <div
-      ref={chartRef}
-      className={cn("w-full h-full min-h-75", className)}
-    />
-  );
+  return <div ref={chartRef} className={cn("w-full h-full min-h-75", className)} />;
 }

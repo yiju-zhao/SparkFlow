@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useCallback,
-  useRef,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useCallback, useRef, ReactNode } from "react";
 
 interface CitationContextValue {
   navigateToChunk: (chunkId: string) => void;
@@ -21,19 +15,13 @@ export function CitationProvider({ children }: { children: ReactNode }) {
   const onNavigateRef = useRef<((chunkId: string) => void) | null>(null);
   const onNavigateSourceRef = useRef<((sourceId: string) => void) | null>(null);
 
-  const setOnNavigate = useCallback(
-    (handler: ((chunkId: string) => void) | null) => {
-      onNavigateRef.current = handler;
-    },
-    [],
-  );
+  const setOnNavigate = useCallback((handler: ((chunkId: string) => void) | null) => {
+    onNavigateRef.current = handler;
+  }, []);
 
-  const setOnNavigateSource = useCallback(
-    (handler: ((sourceId: string) => void) | null) => {
-      onNavigateSourceRef.current = handler;
-    },
-    [],
-  );
+  const setOnNavigateSource = useCallback((handler: ((sourceId: string) => void) | null) => {
+    onNavigateSourceRef.current = handler;
+  }, []);
 
   const navigateToChunk = useCallback((chunkId: string) => {
     onNavigateRef.current?.(chunkId);

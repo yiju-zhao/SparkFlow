@@ -17,17 +17,8 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   addWebpageSource,
   uploadDocumentSource,
@@ -35,11 +26,7 @@ import {
   addWechatSource,
 } from "@/lib/actions/sources";
 import type { Source as PrismaSource } from "@prisma/client";
-import type {
-  SourceSearchType,
-  SearchResult,
-  SearchStatusResponse,
-} from "@/lib/types/search";
+import type { SourceSearchType, SearchResult, SearchStatusResponse } from "@/lib/types/search";
 
 type Source = PrismaSource & { content?: string | null };
 
@@ -75,11 +62,7 @@ interface AddSourceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function AddSourceDialog({
-  notebookId,
-  open,
-  onOpenChange,
-}: AddSourceDialogProps) {
+export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDialogProps) {
   // Search state
   const [sourceType, setSourceType] = useState<SourceSearchType>("web");
   const [query, setQuery] = useState("");
@@ -168,9 +151,7 @@ export function AddSourceDialog({
       // Poll for results
       pollRef.current = setInterval(async () => {
         try {
-          const statusRes = await fetch(
-            `/api/notebooks/${notebookId}/sources/search/${taskId}`,
-          );
+          const statusRes = await fetch(`/api/notebooks/${notebookId}/sources/search/${taskId}`);
           if (!statusRes.ok) return;
 
           const data: SearchStatusResponse = await statusRes.json();
@@ -370,9 +351,7 @@ export function AddSourceDialog({
     });
   };
 
-  const currentSourceOption = SOURCE_TYPE_OPTIONS.find(
-    (o) => o.value === sourceType,
-  )!;
+  const currentSourceOption = SOURCE_TYPE_OPTIONS.find((o) => o.value === sourceType)!;
 
   return (
     <Dialog
@@ -427,10 +406,7 @@ export function AddSourceDialog({
 
             {/* Insert Button */}
             <div className="flex justify-end mt-4">
-              <Button
-                disabled={isPending || !urlsText.trim()}
-                onClick={handleWebsitesInsert}
-              >
+              <Button disabled={isPending || !urlsText.trim()} onClick={handleWebsitesInsert}>
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -499,18 +475,14 @@ export function AddSourceDialog({
                       <button
                         key={option.value}
                         className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left transition-colors ${
-                          sourceType === option.value
-                            ? "bg-accent/50"
-                            : "hover:bg-accent/30"
+                          sourceType === option.value ? "bg-accent/50" : "hover:bg-accent/30"
                         }`}
                         onClick={() => handleSourceTypeChange(option.value)}
                       >
                         <option.icon className="h-5 w-5 shrink-0" />
                         <div>
                           <div className="text-sm font-semibold">{option.label}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {option.description}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{option.description}</div>
                         </div>
                       </button>
                     ))}
@@ -578,141 +550,135 @@ export function AddSourceDialog({
             <div className="border-t border-border mx-6" />
 
             {view === "idle" ? (
-            <>
-            {/* Drop Zone */}
-            <div
-              className="mx-6 my-4 p-8 border-2 border-dashed border-border rounded-xl text-center cursor-pointer hover:border-foreground/30 transition-colors"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <p className="text-lg text-muted-foreground">or drop your files</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                pdf, docx, txt, md
-              </p>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.docx,.txt,.md"
-              onChange={handleFileSelect}
-            />
-
-            {/* Bottom Actions */}
-            <div className="flex gap-2.5 px-6 pb-6">
-              <button
-                className="flex-1 flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-4 w-4" />
-                Upload files
-              </button>
-              <button
-                className="flex-1 flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors"
-                onClick={() => setShowWebsites(true)}
-              >
-                <Link className="h-4 w-4" />
-                Websites
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="px-6 py-4 max-h-80 overflow-y-auto">
-            {isSearching && results.length === 0 && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">
-                  Searching...
-                </span>
-              </div>
-            )}
-
-            {searchError && (
-              <div className="text-sm text-destructive text-center py-4">
-                {searchError}
-              </div>
-            )}
-
-            {!isSearching && results.length === 0 && !searchError && (
-              <div className="text-sm text-muted-foreground text-center py-8">
-                No results found
-              </div>
-            )}
-
-            {results.length > 0 && (
-              <div className="space-y-2">
-                {results.map((result) => {
-                  const isSelected = selected.has(result.id);
-                  return (
-                    <div
-                      key={result.id}
-                      className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-foreground/20"
-                      }`}
-                      onClick={() => handleToggleSelect(result.id)}
-                    >
-                      <div
-                        className={`mt-0.5 h-5 w-5 rounded shrink-0 flex items-center justify-center ${
-                          isSelected
-                            ? "bg-primary text-primary-foreground"
-                            : "border-2 border-muted-foreground/30"
-                        }`}
-                      >
-                        {isSelected && <Check className="h-3.5 w-3.5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold leading-tight">
-                          {result.title}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {result.meta}
-                        </div>
-                        {result.snippet && (
-                          <div className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
-                            {result.snippet}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {results.length > 0 && (
-              <div className="flex justify-end mt-4 pb-2">
-                <Button
-                  disabled={selected.size === 0 || isPending}
-                  onClick={handleAddSelected}
-                  className="bg-foreground text-background hover:bg-foreground/90"
+              <>
+                {/* Drop Zone */}
+                <div
+                  className="mx-6 my-4 p-8 border-2 border-dashed border-border rounded-xl text-center cursor-pointer hover:border-foreground/30 transition-colors"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    `Add ${selected.size} selected source${selected.size !== 1 ? "s" : ""}`
-                  )}
-                </Button>
-              </div>
-            )}
+                  <p className="text-lg text-muted-foreground">or drop your files</p>
+                  <p className="text-xs text-muted-foreground mt-1">pdf, docx, txt, md</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx,.txt,.md"
+                  onChange={handleFileSelect}
+                />
 
-            {!isSearching && (
-              <button
-                className="text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors"
-                onClick={() => {
-                  resetSearch();
-                  setQuery("");
-                }}
-              >
-                Clear search
-              </button>
-            )}
-          </div>
+                {/* Bottom Actions */}
+                <div className="flex gap-2.5 px-6 pb-6">
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload files
+                  </button>
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors"
+                    onClick={() => setShowWebsites(true)}
+                  >
+                    <Link className="h-4 w-4" />
+                    Websites
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="px-6 py-4 max-h-80 overflow-y-auto">
+                {isSearching && results.length === 0 && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+                  </div>
+                )}
+
+                {searchError && (
+                  <div className="text-sm text-destructive text-center py-4">{searchError}</div>
+                )}
+
+                {!isSearching && results.length === 0 && !searchError && (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    No results found
+                  </div>
+                )}
+
+                {results.length > 0 && (
+                  <div className="space-y-2">
+                    {results.map((result) => {
+                      const isSelected = selected.has(result.id);
+                      return (
+                        <div
+                          key={result.id}
+                          className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-foreground/20"
+                          }`}
+                          onClick={() => handleToggleSelect(result.id)}
+                        >
+                          <div
+                            className={`mt-0.5 h-5 w-5 rounded shrink-0 flex items-center justify-center ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground"
+                                : "border-2 border-muted-foreground/30"
+                            }`}
+                          >
+                            {isSelected && <Check className="h-3.5 w-3.5" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold leading-tight">
+                              {result.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {result.meta}
+                            </div>
+                            {result.snippet && (
+                              <div className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
+                                {result.snippet}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {results.length > 0 && (
+                  <div className="flex justify-end mt-4 pb-2">
+                    <Button
+                      disabled={selected.size === 0 || isPending}
+                      onClick={handleAddSelected}
+                      className="bg-foreground text-background hover:bg-foreground/90"
+                    >
+                      {isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        `Add ${selected.size} selected source${selected.size !== 1 ? "s" : ""}`
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {!isSearching && (
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors"
+                    onClick={() => {
+                      resetSearch();
+                      setQuery("");
+                    }}
+                  >
+                    Clear search
+                  </button>
+                )}
+              </div>
             )}
           </>
         )}

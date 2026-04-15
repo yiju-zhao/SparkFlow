@@ -44,7 +44,9 @@ export function WechatArticleContent({ html, fallbackText, images }: WechatArtic
       const scraperMatch = originalSrc.match(scraperPathPattern);
       if (scraperMatch) {
         img.src = `/api/wechat/images/${scraperMatch[1]}`;
-        img.onerror = () => { img.style.display = "none"; };
+        img.onerror = () => {
+          img.style.display = "none";
+        };
         return;
       }
 
@@ -64,15 +66,15 @@ export function WechatArticleContent({ html, fallbackText, images }: WechatArtic
 
       // Case 3: Fallback to proxy for external URLs
       img.src = `/api/wechat/proxy-image?url=${encodeURIComponent(originalSrc)}`;
-      img.onerror = () => { img.style.display = "none"; };
+      img.onerror = () => {
+        img.style.display = "none";
+      };
     });
   }, [html, images]);
 
   if (!html) {
     return (
-      <div className="whitespace-pre-wrap text-foreground leading-relaxed">
-        {fallbackText}
-      </div>
+      <div className="whitespace-pre-wrap text-foreground leading-relaxed">{fallbackText}</div>
     );
   }
 

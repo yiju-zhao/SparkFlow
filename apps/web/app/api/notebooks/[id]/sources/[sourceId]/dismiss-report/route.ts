@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string; sourceId: string }> }
+  { params }: { params: Promise<{ id: string; sourceId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {

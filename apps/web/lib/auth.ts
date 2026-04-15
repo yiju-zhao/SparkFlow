@@ -24,10 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .split(",")
             .map((e) => e.trim().toLowerCase())
             .filter(Boolean);
-          if (
-            adminEmails.includes(dbUser.email.toLowerCase()) &&
-            dbUser.role !== "ADMIN"
-          ) {
+          if (adminEmails.includes(dbUser.email.toLowerCase()) && dbUser.role !== "ADMIN") {
             await prisma.user.update({
               where: { id: dbUser.id },
               data: { role: "ADMIN" },
@@ -61,10 +58,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const isPasswordValid = await compare(
-          credentials.password as string,
-          user.passwordHash,
-        );
+        const isPasswordValid = await compare(credentials.password as string, user.passwordHash);
 
         if (!isPasswordValid) {
           return null;

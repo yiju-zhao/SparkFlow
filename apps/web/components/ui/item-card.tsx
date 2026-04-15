@@ -102,11 +102,7 @@ export function ItemCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {dropdownItems.map((item, index) => (
-                <DropdownMenuItem
-                  key={index}
-                  className={item.className}
-                  onClick={item.onClick}
-                >
+                <DropdownMenuItem key={index} className={item.className} onClick={item.onClick}>
                   {item.icon}
                   {item.label}
                 </DropdownMenuItem>

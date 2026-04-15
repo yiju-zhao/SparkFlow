@@ -3,10 +3,7 @@ import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET is unauthenticated — allows the LangGraph agent to list pages without session cookies.
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: notebookId } = await params;
 
   // ?withContent=true returns full page content (for agent context injection)

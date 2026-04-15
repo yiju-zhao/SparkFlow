@@ -38,7 +38,16 @@ const nextConfig: NextConfig = {
     ],
   },
   // Prevent Turbopack from bundling native/heavy server-only packages
-  serverExternalPackages: ["playwright", "pg", "@prisma/adapter-pg", "jszip", "graphology", "graphology-communities-louvain", "openai", "bcryptjs"],
+  serverExternalPackages: [
+    "playwright",
+    "pg",
+    "@prisma/adapter-pg",
+    "jszip",
+    "graphology",
+    "graphology-communities-louvain",
+    "openai",
+    "bcryptjs",
+  ],
   // Allow dev server access from local network IPs (for remote development)
   allowedDevOrigins: ["10.218.163.144", "*.local"],
 };

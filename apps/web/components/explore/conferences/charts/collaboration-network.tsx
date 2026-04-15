@@ -65,9 +65,7 @@ export function CollaborationNetwork({
 
       // Only include links where both source and target exist in nodes
       const nodeIds = new Set(nodes.map((n) => n.id));
-      const validLinks = data.links.filter(
-        (l) => nodeIds.has(l.source) && nodeIds.has(l.target),
-      );
+      const validLinks = data.links.filter((l) => nodeIds.has(l.source) && nodeIds.has(l.target));
 
       const labelTruncate = compact ? 15 : 25;
 
@@ -75,13 +73,8 @@ export function CollaborationNetwork({
         tooltip: {
           trigger: "item" as const,
           backgroundColor:
-            resolvedTheme === "dark"
-              ? "rgba(30, 30, 30, 0.95)"
-              : "rgba(255, 255, 255, 0.95)",
-          borderColor:
-            resolvedTheme === "dark"
-              ? "rgba(255,255,255,0.08)"
-              : "rgba(0,0,0,0.08)",
+            resolvedTheme === "dark" ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
+          borderColor: resolvedTheme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
           borderWidth: 1,
           textStyle: {
             color: resolvedTheme === "dark" ? "#e5e5e5" : "#333",
@@ -105,17 +98,17 @@ export function CollaborationNetwork({
             draggable: true,
             force: compact
               ? {
-                repulsion: 260,
-                gravity: 0.12,
-                edgeLength: [80, 200],
-                friction: 0.6,
-              }
+                  repulsion: 260,
+                  gravity: 0.12,
+                  edgeLength: [80, 200],
+                  friction: 0.6,
+                }
               : {
-                repulsion: 400,
-                gravity: 0.08,
-                edgeLength: [120, 350],
-                friction: 0.6,
-              },
+                  repulsion: 400,
+                  gravity: 0.08,
+                  edgeLength: [120, 350],
+                  friction: 0.6,
+                },
             label: {
               show: true,
               position: "right" as const,
@@ -213,10 +206,7 @@ export function CollaborationNetwork({
     if (!isExpanded || !expandedChartRef.current || !expandedOption) return;
 
     const timer = setTimeout(() => {
-      if (
-        expandedChartInstance.current &&
-        !expandedChartInstance.current.isDisposed()
-      ) {
+      if (expandedChartInstance.current && !expandedChartInstance.current.isDisposed()) {
         expandedChartInstance.current.dispose();
       }
 
@@ -230,10 +220,7 @@ export function CollaborationNetwork({
     }, 50);
 
     const handleResize = () => {
-      if (
-        expandedChartInstance.current &&
-        !expandedChartInstance.current.isDisposed()
-      ) {
+      if (expandedChartInstance.current && !expandedChartInstance.current.isDisposed()) {
         expandedChartInstance.current.resize();
       }
     };
@@ -242,10 +229,7 @@ export function CollaborationNetwork({
     return () => {
       clearTimeout(timer);
       window.removeEventListener("resize", handleResize);
-      if (
-        expandedChartInstance.current &&
-        !expandedChartInstance.current.isDisposed()
-      ) {
+      if (expandedChartInstance.current && !expandedChartInstance.current.isDisposed()) {
         expandedChartInstance.current.dispose();
         expandedChartInstance.current = null;
       }
@@ -263,9 +247,7 @@ export function CollaborationNetwork({
   return (
     <>
       {/* Compact preview */}
-      <div
-        className={`w-full h-full relative group ${isExpanded ? "invisible" : ""}`}
-      >
+      <div className={`w-full h-full relative group ${isExpanded ? "invisible" : ""}`}>
         <Button
           variant="outline"
           size="icon"

@@ -70,9 +70,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json(chatSession, { status: 201 });
   } catch (error) {
     console.error("Create session error:", error);
-    return NextResponse.json(
-      { error: "Failed to create session" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
   }
 }

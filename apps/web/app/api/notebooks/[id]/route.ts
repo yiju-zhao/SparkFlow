@@ -47,10 +47,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Notebook not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
     }
 
     const { name, description } = await req.json();
@@ -68,10 +65,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     return NextResponse.json(notebook);
   } catch (error) {
     console.error("Update notebook error:", error);
-    return NextResponse.json(
-      { error: "Failed to update notebook" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to update notebook" }, { status: 500 });
   }
 }
 

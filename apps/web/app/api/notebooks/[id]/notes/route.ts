@@ -70,9 +70,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
     console.error("Create note error:", error);
-    return NextResponse.json(
-      { error: "Failed to create note" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to create note" }, { status: 500 });
   }
 }

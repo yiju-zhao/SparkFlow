@@ -16,14 +16,9 @@ function formatDate(date: Date) {
   return dateFormatter.format(date);
 }
 
-function formatDateRange(
-  startDate: Date | null,
-  endDate: Date | null,
-  year: number,
-) {
+function formatDateRange(startDate: Date | null, endDate: Date | null, year: number) {
   if (!startDate && !endDate) return `${year}`;
-  if (startDate && endDate)
-    return `${formatDate(startDate)} – ${formatDate(endDate)}`;
+  if (startDate && endDate) return `${formatDate(startDate)} – ${formatDate(endDate)}`;
   if (startDate) return formatDate(startDate);
   return endDate ? formatDate(endDate) : `${year}`;
 }
@@ -119,9 +114,7 @@ export function RecentConferences({ conferences }: RecentConferencesProps) {
             <div className="flex items-center gap-8">
               {/* Status Column */}
               <div className="hidden sm:block">
-                <span
-                  className={`font-mono text-[10px] font-semibold ${status.colorClass}`}
-                >
+                <span className={`font-mono text-[10px] font-semibold ${status.colorClass}`}>
                   [{status.statusCode}]
                 </span>
               </div>

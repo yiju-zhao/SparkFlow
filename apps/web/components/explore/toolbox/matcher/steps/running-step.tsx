@@ -49,17 +49,10 @@ export function RunningStep({ progress, onCancel }: RunningStepProps) {
       {/* Progress bar with integrated status */}
       <div className="space-y-3">
         <div className="flex items-center justify-between text-sm">
-          <span className={cn("font-medium", config.color)}>
-            {config.label}
-          </span>
-          <span className="font-medium tabular-nums text-muted-foreground">
-            {progressValue}%
-          </span>
+          <span className={cn("font-medium", config.color)}>{config.label}</span>
+          <span className="font-medium tabular-nums text-muted-foreground">{progressValue}%</span>
         </div>
-        <Progress
-          value={progressValue}
-          className={progressClass}
-        />
+        <Progress value={progressValue} className={progressClass} />
       </div>
 
       {/* Cancel / Close button — separated at the bottom */}

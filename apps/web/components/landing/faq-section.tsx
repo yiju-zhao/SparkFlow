@@ -42,9 +42,7 @@ function FaqItem({
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <p className="pb-5 text-sm leading-relaxed text-muted-foreground">
-              {answer}
-            </p>
+            <p className="pb-5 text-sm leading-relaxed text-muted-foreground">{answer}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -69,9 +67,7 @@ export function FaqSection() {
       <div className="mx-auto max-w-2xl">
         <SectionReveal>
           <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-              {t("title")}
-            </h2>
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">{t("title")}</h2>
             <p className="text-muted-foreground">{t("subtitle")}</p>
           </div>
         </SectionReveal>

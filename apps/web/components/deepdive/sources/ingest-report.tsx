@@ -49,7 +49,9 @@ export function IngestReport({ sourceTitle, report, onDismiss }: IngestReportPro
               </span>
             ))}
             {report.nodes.length > 8 && (
-              <span className="text-[10px] text-muted-foreground">+{report.nodes.length - 8} more</span>
+              <span className="text-[10px] text-muted-foreground">
+                +{report.nodes.length - 8} more
+              </span>
             )}
           </div>
         )}

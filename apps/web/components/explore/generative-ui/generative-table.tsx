@@ -22,12 +22,20 @@ export const GenerativeTablePropsSchema = z.object({
       z.object({
         key: z.string().describe("The key to access this column's value in each row object"),
         label: z.string().describe("The display label for the column header"),
-        type: z.enum(["string", "number", "date"]).optional().describe("The data type for sorting purposes"),
-      })
+        type: z
+          .enum(["string", "number", "date"])
+          .optional()
+          .describe("The data type for sorting purposes"),
+      }),
     )
     .describe("Column definitions for the table"),
   rows: z.array(z.record(z.string(), z.unknown())).describe("Array of row data objects"),
-  rowLinkPrefix: z.string().optional().describe("URL prefix for row click navigation. If provided, clicking a row navigates to this prefix + row id"),
+  rowLinkPrefix: z
+    .string()
+    .optional()
+    .describe(
+      "URL prefix for row click navigation. If provided, clicking a row navigates to this prefix + row id",
+    ),
   pageSize: z.number().optional().default(10).describe("Number of rows per page, defaults to 10"),
 });
 
@@ -211,10 +219,7 @@ export function GenerativeTable({
 }
 
 // Helper to format cell values based on type
-function formatCellValue(
-  value: unknown,
-  type?: "string" | "number" | "date"
-): string {
+function formatCellValue(value: unknown, type?: "string" | "number" | "date"): string {
   if (value == null) return "-";
 
   if (type === "date" && typeof value === "string") {

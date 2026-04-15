@@ -24,7 +24,7 @@ export function useJobProgress(
   } = {},
 ) {
   const { onComplete, onError } = options;
-  
+
   const [progress, setProgress] = useState<JobProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -74,9 +74,7 @@ export function useJobProgress(
           sseConnections.delete(jobId);
 
           if (onCompleteRef.current) {
-            matcherClient.getJob(jobId)
-              .then(onCompleteRef.current)
-              .catch(console.error);
+            matcherClient.getJob(jobId).then(onCompleteRef.current).catch(console.error);
           }
         } else if (data.status === "FAILED") {
           jobCompleted = true; // Mark as completed to prevent onerror from also firing
@@ -149,9 +147,7 @@ export function useMatchJob() {
   const cancelJob = useCallback(async (jobId: string) => {
     try {
       await matcherClient.cancelJob(jobId);
-      setJob((prev) =>
-        prev ? { ...prev, status: "CANCELLED" as MatchJobStatus } : null,
-      );
+      setJob((prev) => (prev ? { ...prev, status: "CANCELLED" as MatchJobStatus } : null));
     } catch (err) {
       console.error("Failed to cancel job:", err);
       throw err;

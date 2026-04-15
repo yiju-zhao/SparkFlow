@@ -16,7 +16,7 @@ const TableSchema = z.object({
         key: z.string(),
         label: z.string(),
         type: z.enum(["string", "number", "date"]).optional(),
-      })
+      }),
     )
     .describe("Column definitions for the table"),
   rows: z.array(z.record(z.string(), z.any())).describe("Array of row data objects"),
@@ -32,7 +32,7 @@ const ChartSchema = z.object({
       z.object({
         label: z.string().describe("The label for this data point"),
         value: z.number().describe("The numeric value for this data point"),
-      })
+      }),
     )
     .describe("Array of data points with labels and values"),
 });

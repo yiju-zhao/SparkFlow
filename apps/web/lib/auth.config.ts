@@ -40,8 +40,7 @@ export const authConfig: NextAuthConfig = {
         return Response.redirect(new URL("/access-denied", nextUrl));
       }
 
-      const isAuthPage =
-        path.startsWith("/login") || path.startsWith("/signup");
+      const isAuthPage = path.startsWith("/login") || path.startsWith("/signup");
       const isPublicPage =
         path === "/" ||
         nextUrl.pathname.startsWith("/api/auth") ||

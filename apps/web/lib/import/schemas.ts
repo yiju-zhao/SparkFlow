@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-export const SESSION_FORMAT_VALUES = [
-  "IN_PERSON",
-  "VIRTUAL",
-  "BOTH",
-] as const;
+export const SESSION_FORMAT_VALUES = ["IN_PERSON", "VIRTUAL", "BOTH"] as const;
 
 export const PublicationInputSchema = z.object({
   title: z.string().min(1),

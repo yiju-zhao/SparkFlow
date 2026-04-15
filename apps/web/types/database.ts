@@ -7,7 +7,6 @@ export type {
   User,
   Notebook,
   Source,
-
   ChatSession,
   ChatMessage,
   Note,

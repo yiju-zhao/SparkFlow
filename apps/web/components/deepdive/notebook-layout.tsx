@@ -94,17 +94,23 @@ function NotebookLayoutInner({
   }, []);
 
   // Drag handlers for sources panel
-  const handleSourcesDrag = useCallback((delta: number) => {
-    setSourcesWidth((prev) => clampWidth(prev + delta));
-  }, [clampWidth]);
+  const handleSourcesDrag = useCallback(
+    (delta: number) => {
+      setSourcesWidth((prev) => clampWidth(prev + delta));
+    },
+    [clampWidth],
+  );
 
   const handleSourcesDoubleClick = useCallback(() => {
     setSourcesWidth(SOURCES_DEFAULT_WIDTH);
   }, []);
 
-  const handleRightDrag = useCallback((delta: number) => {
-    setRightWidth((prev) => clampWidth(prev - delta));
-  }, [clampWidth]);
+  const handleRightDrag = useCallback(
+    (delta: number) => {
+      setRightWidth((prev) => clampWidth(prev - delta));
+    },
+    [clampWidth],
+  );
 
   const handleRightDoubleClick = useCallback(() => {
     setRightWidth(RIGHT_DEFAULT_WIDTH);
@@ -140,28 +146,37 @@ function NotebookLayoutInner({
   }, []);
 
   // Handle citation click — placeholder for future wiki-based navigation
-  const handleCitationNavigate = useCallback(async (_refId: string) => {
-    // TODO: Implement wiki-based citation navigation
-    // For now, just expand the sources panel
-    if (sourcesWidth === 0) {
-      setSourcesWidth(SOURCES_CONTENT_WIDTH);
-    }
-  }, [sourcesWidth]);
+  const handleCitationNavigate = useCallback(
+    async (_refId: string) => {
+      // TODO: Implement wiki-based citation navigation
+      // For now, just expand the sources panel
+      if (sourcesWidth === 0) {
+        setSourcesWidth(SOURCES_CONTENT_WIDTH);
+      }
+    },
+    [sourcesWidth],
+  );
 
   // Navigate to wiki page from chat [[wiki-link]] click
-  const handleWikiNavigate = useCallback((slug: string) => {
-    setRightTab("wiki");
-    if (rightWidth === 0) setRightWidth(RIGHT_DEFAULT_WIDTH);
-    setWikiNavigateSlug(slug);
-  }, [rightWidth]);
+  const handleWikiNavigate = useCallback(
+    (slug: string) => {
+      setRightTab("wiki");
+      if (rightWidth === 0) setRightWidth(RIGHT_DEFAULT_WIDTH);
+      setWikiNavigateSlug(slug);
+    },
+    [rightWidth],
+  );
 
   // Navigate to source — uses same width-snapping as user click
-  const handleSourceNavigate = useCallback((sourceId: string) => {
-    const source = sources.find((s) => s.id === sourceId);
-    if (source) {
-      handleSelectSource(source);
-    }
-  }, [sources, handleSelectSource]);
+  const handleSourceNavigate = useCallback(
+    (sourceId: string) => {
+      const source = sources.find((s) => s.id === sourceId);
+      if (source) {
+        handleSelectSource(source);
+      }
+    },
+    [sources, handleSelectSource],
+  );
 
   // Register navigation handlers with citation context
   useEffect(() => {

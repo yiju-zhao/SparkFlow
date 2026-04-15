@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; sourceId: string }> }
+  { params }: { params: Promise<{ id: string; sourceId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -21,8 +21,7 @@ export async function POST(
       pages: result.pages,
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Ingest failed";
+    const errorMessage = error instanceof Error ? error.message : "Ingest failed";
     console.error("Wiki ingest failed:", errorMessage);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

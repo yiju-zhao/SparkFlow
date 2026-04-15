@@ -16,12 +16,7 @@ interface StepperProps {
   className?: string;
 }
 
-export function Stepper({
-  steps,
-  currentStep,
-  onStepClick,
-  className,
-}: StepperProps) {
+export function Stepper({ steps, currentStep, onStepClick, className }: StepperProps) {
   return (
     <nav aria-label="Progress" className={cn("flex items-center", className)}>
       <ol className="flex items-center w-full">
@@ -33,10 +28,7 @@ export function Stepper({
           return (
             <li
               key={step.id}
-              className={cn(
-                "relative flex-1",
-                index !== steps.length - 1 && "pr-8",
-              )}
+              className={cn("relative flex-1", index !== steps.length - 1 && "pr-8")}
             >
               <div className="flex items-center">
                 <button
@@ -74,9 +66,7 @@ export function Stepper({
                     {step.label}
                   </p>
                   {step.description && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {step.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{step.description}</p>
                   )}
                 </div>
 

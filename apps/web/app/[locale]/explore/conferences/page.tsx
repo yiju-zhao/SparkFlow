@@ -48,15 +48,9 @@ export default async function ConferencesPage({ params, searchParams }: PageProp
     <div className="flex flex-col gap-10">
       {/* Title Section */}
       <div>
-        <p className="text-sm text-muted-foreground mb-2">
-          {t("conferences.breadcrumb")}
-        </p>
-        <h1 className="text-4xl font-bold tracking-tight">
-          {t("conferences.title")}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          {t("conferences.subtitle")}
-        </p>
+        <p className="text-sm text-muted-foreground mb-2">{t("conferences.breadcrumb")}</p>
+        <h1 className="text-4xl font-bold tracking-tight">{t("conferences.title")}</h1>
+        <p className="text-muted-foreground mt-2">{t("conferences.subtitle")}</p>
       </div>
 
       {/* Filters */}

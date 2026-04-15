@@ -42,11 +42,7 @@ interface PublicationStatsSectionProps {
   stats: ConferenceStats;
 }
 
-export function PublicationStatsSection({
-  venueId,
-  year,
-  stats,
-}: PublicationStatsSectionProps) {
+export function PublicationStatsSection({ venueId, year, stats }: PublicationStatsSectionProps) {
   return (
     <div className="flex flex-col gap-10">
       {/* Dashboard Panel */}

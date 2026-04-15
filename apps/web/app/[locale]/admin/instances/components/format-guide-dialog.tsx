@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -88,20 +82,13 @@ function CopyMarkdownButton({
 
   return (
     <Button variant="outline" size="sm" onClick={handleCopy}>
-      {copied ? (
-        <Check className="mr-2 h-3.5 w-3.5" />
-      ) : (
-        <Copy className="mr-2 h-3.5 w-3.5" />
-      )}
+      {copied ? <Check className="mr-2 h-3.5 w-3.5" /> : <Copy className="mr-2 h-3.5 w-3.5" />}
       {copied ? "Copied!" : "Copy as Markdown"}
     </Button>
   );
 }
 
-export function FormatGuideDialog({
-  publicationSample,
-  sessionSample,
-}: FormatGuideDialogProps) {
+export function FormatGuideDialog({ publicationSample, sessionSample }: FormatGuideDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -111,9 +98,9 @@ export function FormatGuideDialog({
         <DialogHeader>
           <DialogTitle>Instance Import Format Guide</DialogTitle>
           <DialogDescription>
-            Use the same JSON contract for both the admin panel uploader and the
-            CLI import scripts. The top-level <code>venue</code> and{" "}
-            <code>year</code> must match the instance you are targeting.
+            Use the same JSON contract for both the admin panel uploader and the CLI import scripts.
+            The top-level <code>venue</code> and <code>year</code> must match the instance you are
+            targeting.
           </DialogDescription>
         </DialogHeader>
 
@@ -128,8 +115,8 @@ export function FormatGuideDialog({
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Schema Notes</CardTitle>
                 <CardDescription>
-                  Publication import can create or enrich an instance and then
-                  load its publication records.
+                  Publication import can create or enrich an instance and then load its publication
+                  records.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -142,15 +129,10 @@ export function FormatGuideDialog({
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                   <div>
-                    Minimal format is{" "}
-                    <code>{`{ venue, year, publications }`}</code>.
+                    Minimal format is <code>{`{ venue, year, publications }`}</code>.
                   </div>
-                  <div>
-                    `publications[].summary` maps to the Publication model.
-                  </div>
-                  <div>
-                    Blank optional URLs are allowed, but valid URLs are preferred.
-                  </div>
+                  <div>`publications[].summary` maps to the Publication model.</div>
+                  <div>Blank optional URLs are allowed, but valid URLs are preferred.</div>
                 </div>
               </CardContent>
             </Card>
@@ -180,8 +162,8 @@ export function FormatGuideDialog({
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Schema Notes</CardTitle>
                 <CardDescription>
-                  Session import attaches sessions to an existing instance and
-                  optionally links them to publications by exact title match.
+                  Session import attaches sessions to an existing instance and optionally links them
+                  to publications by exact title match.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -194,15 +176,12 @@ export function FormatGuideDialog({
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                   <div>
-                    Minimal format is{" "}
-                    <code>{`{ venue, year, sessions }`}</code>.
+                    Minimal format is <code>{`{ venue, year, sessions }`}</code>.
                   </div>
+                  <div>`sessionFormat` accepts `IN_PERSON`, `VIRTUAL`, or `BOTH`.</div>
                   <div>
-                    `sessionFormat` accepts `IN_PERSON`, `VIRTUAL`, or `BOTH`.
-                  </div>
-                  <div>
-                    `hasRecording` defaults to `false` when omitted, and
-                    `publicationTitles` should match publication titles exactly.
+                    `hasRecording` defaults to `false` when omitted, and `publicationTitles` should
+                    match publication titles exactly.
                   </div>
                 </div>
               </CardContent>

@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  FileSearch,
-  Globe,
-  GraduationCap,
-  Calendar,
-  FileText,
-  Moon,
-} from "lucide-react";
+import { FileSearch, Globe, GraduationCap, Calendar, FileText, Moon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectionReveal } from "./section-reveal";
 
@@ -73,9 +66,7 @@ export function SecondaryFeaturesSection() {
                   <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10">
                     <feature.icon className="h-5 w-5 text-accent-red" />
                   </div>
-                  <h3 className="mb-2 text-base font-semibold">
-                    {feature.title}
-                  </h3>
+                  <h3 className="mb-2 text-base font-semibold">{feature.title}</h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     {feature.description}
                   </p>
