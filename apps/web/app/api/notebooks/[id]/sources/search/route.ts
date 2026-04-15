@@ -41,7 +41,11 @@ export async function POST(
   // Fetch user's search model preference
   const userSettings = await prisma.userSettings.findUnique({
     where: { userId: session.user.id },
-    select: { searchModelProvider: true, searchModelName: true },
+    select: {
+      searchModelProvider: true,
+      searchModelName: true,
+      wechatExcludedSourceIds: true,
+    },
   });
   const searchModelProvider = userSettings?.searchModelProvider || modelsConfig.defaults.provider;
   const searchModelName = userSettings?.searchModelName || modelsConfig.defaults.searchModel;
@@ -53,8 +57,10 @@ export async function POST(
     notebookId,
   });
 
+  const wechatExcludedSourceIds = userSettings?.wechatExcludedSourceIds || [];
+
   // Fire search in background
-  performSearch(taskId, query, sourceType, domains, searchModelProvider, searchModelName).catch((err) => {
+  performSearch(taskId, query, sourceType, domains, searchModelProvider, searchModelName, wechatExcludedSourceIds).catch((err) => {
     console.error(`[Search] Task ${taskId} failed:`, err);
     const task = searchTasks.get(taskId);
     if (task) {
@@ -73,6 +79,7 @@ async function performSearch(
   domains?: string[],
   modelProvider?: string,
   modelName?: string,
+  wechatExcludedSourceIds: number[] = [],
 ) {
   const task = searchTasks.get(taskId);
   if (!task) return;
@@ -161,7 +168,7 @@ async function performSearch(
       }));
     } else if (sourceType === "wechat") {
       // Search WeChat articles via external DB
-      const articles = await searchWechatArticles(query, 10);
+      const articles = await searchWechatArticles(query, 10, wechatExcludedSourceIds);
 
       results = articles.map((article) => ({
         id: String(article.id),

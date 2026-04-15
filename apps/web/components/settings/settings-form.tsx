@@ -12,6 +12,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Loader2, Check, Eye, EyeOff, Trash2, Key } from "lucide-react";
 
+interface WechatSource {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+}
+
 interface ModelInfo {
   id: string;
   label: string;
@@ -84,6 +91,13 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [showKey, setShowKey] = useState(false);
   const [keySaving, setKeySaving] = useState(false);
 
+  // WeChat source filter
+  const [wechatSources, setWechatSources] = useState<WechatSource[]>([]);
+  const [wechatExcluded, setWechatExcluded] = useState<Set<number>>(new Set());
+  const [wechatLoading, setWechatLoading] = useState(true);
+  const [wechatSaving, setWechatSaving] = useState(false);
+  const [wechatSaved, setWechatSaved] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -112,6 +126,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         if (settingsRes.ok) {
           const data = await settingsRes.json();
           setApiKeyStatus(data.apiKeyStatus || {});
+          if (data.wechatExcludedSourceIds?.length) {
+            setWechatExcluded(new Set(data.wechatExcludedSourceIds));
+          }
           if (data.wikiModelProvider) {
             setWikiProvider(data.wikiModelProvider);
             setWikiModel(data.wikiModelName);
@@ -121,8 +138,22 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
             setSearchModel(data.searchModelName);
           }
         }
+
+        // Fetch available WeChat sources
+        try {
+          const wechatRes = await fetch("/api/wechat/sources");
+          if (wechatRes.ok) {
+            const sources: WechatSource[] = await wechatRes.json();
+            setWechatSources(sources);
+          }
+        } catch {
+          // WeChat DB may not be configured
+        } finally {
+          setWechatLoading(false);
+        }
       } catch (error) {
         console.error("Failed to fetch settings:", error);
+        setWechatLoading(false);
       }
     };
     init();
@@ -240,6 +271,42 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
       console.error("Failed to remove API key:", error);
     } finally {
       setKeySaving(false);
+    }
+  };
+
+  const handleToggleWechatSource = (sourceId: number) => {
+    setWechatExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(sourceId)) {
+        next.delete(sourceId);
+      } else {
+        next.add(sourceId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllWechat = () => setWechatExcluded(new Set());
+  const handleDeselectAllWechat = () =>
+    setWechatExcluded(new Set(wechatSources.map((s) => s.id)));
+
+  const handleSaveWechat = async () => {
+    setWechatSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wechatExcludedSourceIds: Array.from(wechatExcluded),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setWechatSaved(true);
+      setTimeout(() => setWechatSaved(false), 2000);
+    } catch (error) {
+      console.error("Failed to save WeChat source preferences:", error);
+    } finally {
+      setWechatSaving(false);
     }
   };
 
@@ -376,6 +443,98 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
             "Save Settings"
           )}
         </Button>
+      </div>
+
+      {/* ─── WeChat Sources Section ─── */}
+      <div className="space-y-4">
+        <div className="border-b pb-2">
+          <h3 className="text-base font-semibold">WeChat Sources</h3>
+          <p className="text-xs text-muted-foreground">
+            Select which public accounts to include when searching for WeChat article sources
+          </p>
+        </div>
+
+        {wechatLoading ? (
+          <div className="flex items-center gap-2 py-4">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Loading sources...</span>
+          </div>
+        ) : wechatSources.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">No WeChat sources available</p>
+        ) : (
+          <>
+            {/* Select All / Deselect All */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleSelectAllWechat}
+              >
+                Select All
+              </button>
+              <span className="text-xs text-muted-foreground">/</span>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleDeselectAllWechat}
+              >
+                Deselect All
+              </button>
+            </div>
+
+            {/* Source checklist */}
+            <div className="space-y-1">
+              {wechatSources.map((source) => {
+                const isIncluded = !wechatExcluded.has(source.id);
+                return (
+                  <label
+                    key={source.id}
+                    className="flex items-center gap-3 py-2 px-1 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isIncluded}
+                      onChange={() => handleToggleWechatSource(source.id)}
+                      className="h-4 w-4 rounded border-muted-foreground/30"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{source.name}</span>
+                      {source.description && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {source.description}
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Save button */}
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveWechat}
+                disabled={wechatSaving}
+              >
+                {wechatSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : wechatSaved ? (
+                  <>
+                    <Check className="mr-2 h-3.5 w-3.5" />
+                    Saved
+                  </>
+                ) : (
+                  "Save Preferences"
+                )}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ─── API Keys Section ─── */}
