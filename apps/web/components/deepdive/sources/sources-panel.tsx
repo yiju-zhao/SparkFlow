@@ -24,6 +24,8 @@ import { AddSourceDialog } from "@/components/deepdive/sources/add-source-dialog
 import { IngestReport } from "./ingest-report";
 import type { Source as PrismaSource } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
+import { WechatArticleContent } from "@/components/explore/social-media/wechat-article-content";
+import type { WechatImage } from "@/components/explore/social-media/wechat-article-content";
 import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
 import type { TocHeading } from "@/lib/utils/toc-extractor";
 // Extended Source type with the new content field (until Prisma client is regenerated)
@@ -33,6 +35,9 @@ type Source = PrismaSource & {
 
 interface SourceMetadata {
   toc?: TocHeading[];
+  renderMode?: string;
+  contentHtml?: string;
+  wechatImages?: WechatImage[];
   [key: string]: unknown;
 }
 
@@ -261,6 +266,11 @@ function SourceContentView({
   const panelContext = useCollapsiblePanel();
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
 
+  const meta = source.metadata as SourceMetadata | null;
+  const isHtmlMode = meta?.renderMode === "html" && meta?.contentHtml;
+  const htmlContent = isHtmlMode ? (meta.contentHtml as string) : "";
+  const wechatImages = (meta?.wechatImages as WechatImage[] | undefined) ?? [];
+
   const markdownContent = source.content || "No content available";
   const [deferredContent, setDeferredContent] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -421,13 +431,19 @@ function SourceContentView({
         )}
       </div>
 
-      {/* Markdown content */}
+      {/* Content */}
       <div
         ref={scrollRef}
         className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4"
         style={{ contain: "content" }}
       >
-        {deferredContent ? (
+        {isHtmlMode ? (
+          <WechatArticleContent
+            html={htmlContent}
+            fallbackText={source.content || ""}
+            images={wechatImages}
+          />
+        ) : deferredContent ? (
           <Markdown className="space-y-3 text-[14px] leading-5 text-muted-foreground">
             {deferredContent}
           </Markdown>

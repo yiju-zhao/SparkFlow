@@ -24,6 +24,8 @@ interface AddToNotebookDialogProps {
     title: string;
     originalUrl: string;
     contentText: string;
+    contentHtml?: string;
+    images?: { id: number; image_type: string; original_url?: string }[];
   };
 }
 
@@ -70,6 +72,8 @@ export function AddToNotebookDialog({ article }: AddToNotebookDialogProps) {
           sourceType: "WEBPAGE",
           url: article.originalUrl,
           content: article.contentText,
+          contentHtml: article.contentHtml,
+          wechatImages: article.images,
         }),
       });
       if (res.ok) {
