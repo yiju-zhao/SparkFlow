@@ -18,6 +18,7 @@ dependencies = [
     "httpx",
     "copilotkit",
     "deepagents",
+    "tavily-python",
 ]
 
 [build-system]
