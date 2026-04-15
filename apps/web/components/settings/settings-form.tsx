@@ -446,96 +446,96 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
       </div>
 
       {/* ─── WeChat Sources Section ─── */}
-      {(wechatLoading || wechatSources.length > 0) && (
-        <div className="space-y-4">
-          <div className="border-b pb-2">
-            <h3 className="text-base font-semibold">WeChat Sources</h3>
-            <p className="text-xs text-muted-foreground">
-              Select which public accounts to include when searching for WeChat article sources
-            </p>
-          </div>
-
-          {wechatLoading ? (
-            <div className="flex items-center gap-2 py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Loading sources...</span>
-            </div>
-          ) : (
-            <>
-              {/* Select All / Deselect All */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={handleSelectAllWechat}
-                >
-                  Select All
-                </button>
-                <span className="text-xs text-muted-foreground">/</span>
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={handleDeselectAllWechat}
-                >
-                  Deselect All
-                </button>
-              </div>
-
-              {/* Source checklist */}
-              <div className="space-y-1">
-                {wechatSources.map((source) => {
-                  const isIncluded = !wechatExcluded.has(source.id);
-                  return (
-                    <label
-                      key={source.id}
-                      className="flex items-center gap-3 py-2 px-1 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isIncluded}
-                        onChange={() => handleToggleWechatSource(source.id)}
-                        className="h-4 w-4 rounded border-muted-foreground/30"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium">{source.name}</span>
-                        {source.description && (
-                          <span className="text-xs text-muted-foreground ml-2">
-                            {source.description}
-                          </span>
-                        )}
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-
-              {/* Save button */}
-              <div className="flex items-center gap-3 pt-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleSaveWechat}
-                  disabled={wechatSaving}
-                >
-                  {wechatSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                      Saving...
-                    </>
-                  ) : wechatSaved ? (
-                    <>
-                      <Check className="mr-2 h-3.5 w-3.5" />
-                      Saved
-                    </>
-                  ) : (
-                    "Save Preferences"
-                  )}
-                </Button>
-              </div>
-            </>
-          )}
+      <div className="space-y-4">
+        <div className="border-b pb-2">
+          <h3 className="text-base font-semibold">WeChat Sources</h3>
+          <p className="text-xs text-muted-foreground">
+            Select which public accounts to include when searching for WeChat article sources
+          </p>
         </div>
-      )}
+
+        {wechatLoading ? (
+          <div className="flex items-center gap-2 py-4">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Loading sources...</span>
+          </div>
+        ) : wechatSources.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">No WeChat sources available</p>
+        ) : (
+          <>
+            {/* Select All / Deselect All */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleSelectAllWechat}
+              >
+                Select All
+              </button>
+              <span className="text-xs text-muted-foreground">/</span>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleDeselectAllWechat}
+              >
+                Deselect All
+              </button>
+            </div>
+
+            {/* Source checklist */}
+            <div className="space-y-1">
+              {wechatSources.map((source) => {
+                const isIncluded = !wechatExcluded.has(source.id);
+                return (
+                  <label
+                    key={source.id}
+                    className="flex items-center gap-3 py-2 px-1 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isIncluded}
+                      onChange={() => handleToggleWechatSource(source.id)}
+                      className="h-4 w-4 rounded border-muted-foreground/30"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{source.name}</span>
+                      {source.description && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {source.description}
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Save button */}
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveWechat}
+                disabled={wechatSaving}
+              >
+                {wechatSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : wechatSaved ? (
+                  <>
+                    <Check className="mr-2 h-3.5 w-3.5" />
+                    Saved
+                  </>
+                ) : (
+                  "Save Preferences"
+                )}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* ─── API Keys Section ─── */}
       <div className="space-y-4">
