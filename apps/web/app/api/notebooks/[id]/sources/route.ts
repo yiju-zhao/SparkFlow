@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import TurndownService from "turndown";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -50,24 +50,29 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
   }
 
-  const { title, sourceType, url, content, contentHtml, wechatImages } = await req.json();
+  const { title, sourceType, url, content, contentHtml } = await req.json();
 
   if (!title?.trim()) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
 
-  // Build metadata for WeChat HTML sources
-  let metadata: Prisma.InputJsonValue | undefined;
-  if (contentHtml || wechatImages) {
-    const meta: Record<string, Prisma.InputJsonValue> = {};
-    if (contentHtml) {
-      meta.contentHtml = contentHtml;
-      meta.renderMode = "html";
-    }
-    if (wechatImages) {
-      meta.wechatImages = wechatImages;
-    }
-    metadata = meta;
+  // Convert WeChat HTML to markdown if provided, rewriting image URLs
+  let finalContent = content || null;
+  if (contentHtml && !content) {
+    const td = new TurndownService({ headingStyle: "atx" });
+    // Rewrite scraper image paths: /api/images/{id} → /api/wechat/images/{id}
+    td.addRule("wechatImages", {
+      filter: "img",
+      replacement: (_c, node) => {
+        const el = node as HTMLElement;
+        const src = el.getAttribute("data-src") || el.getAttribute("src") || "";
+        const alt = el.getAttribute("alt") || "";
+        const match = src.match(/^\/api\/images\/(\d+)$/);
+        const resolvedSrc = match ? `/api/wechat/images/${match[1]}` : src;
+        return resolvedSrc ? `\n\n![${alt}](${resolvedSrc})\n\n` : "";
+      },
+    });
+    finalContent = td.turndown(contentHtml);
   }
 
   const source = await prisma.source.create({
@@ -76,10 +81,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
       title: title.trim(),
       sourceType: sourceType || "WEBPAGE",
       url: url || null,
-      content: content || null,
-      markdownContent: content || null,
-      status: content ? "READY" : "PROCESSING",
-      ...(metadata && { metadata }),
+      content: finalContent,
+      markdownContent: finalContent,
+      status: finalContent ? "READY" : "PROCESSING",
     },
   });
 

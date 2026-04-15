@@ -167,8 +167,8 @@ export function WikiPanel({ notebookId, initialPages = [], sources = [], graphDa
       return json.pages || [];
     },
     initialData: initialPages,
-    // Auto-refresh every 5s so new pages appear after wiki ingest completes
-    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   // Build community tree from pages + graph data
