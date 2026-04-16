@@ -31,11 +31,30 @@ export async function storeImagesAndRewriteMarkdown(
     });
 
     const apiUrl = `/api/images/${savedImage.id}`;
-    // Replace full path first (e.g., "images/image_0.png"), then filename alone
+
+    // Replace full path first (e.g., "prefix/images/hash.jpg")
     if (image.fullPath) {
       rewrittenMarkdown = rewrittenMarkdown.replaceAll(image.fullPath, apiUrl);
+
+      // Also try path suffixes — MinerU zip paths have a prefix the markdown doesn't use.
+      // e.g., fullPath "content_abc/images/hash.jpg" but markdown says "images/hash.jpg"
+      const parts = image.fullPath.split("/");
+      for (let i = 1; i < parts.length - 1; i++) {
+        const suffix = parts.slice(i).join("/");
+        if (rewrittenMarkdown.includes(suffix)) {
+          rewrittenMarkdown = rewrittenMarkdown.replaceAll(suffix, apiUrl);
+          break;
+        }
+      }
     }
-    rewrittenMarkdown = rewrittenMarkdown.replaceAll(image.name, apiUrl);
+
+    // Fallback: replace bare filename, but only in markdown image syntax to avoid corruption
+    // e.g., ![alt](hash.jpg) → ![alt](/api/images/xxx)
+    const escaped = image.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    rewrittenMarkdown = rewrittenMarkdown.replace(
+      new RegExp(`(!\\[[^\\]]*\\]\\()${escaped}(\\))`, "g"),
+      `$1${apiUrl}$2`,
+    );
   }
 
   return rewrittenMarkdown;
