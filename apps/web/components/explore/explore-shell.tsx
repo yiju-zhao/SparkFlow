@@ -14,8 +14,7 @@ import { HubToolUIs } from "./research-assistant-tools";
 import { AIContextProvider, useAIContext } from "./ai-context";
 
 const langGraphClient = new Client({
-  apiUrl:
-    process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ?? "http://localhost:2024",
+  apiUrl: process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ?? "http://localhost:2024",
   apiKey: null,
 });
 
@@ -135,10 +134,7 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
 
         {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}
         {assistantOpen && (
-          <ResearchAssistantPanel
-            open={assistantOpen}
-            onOpenChange={setAssistantOpen}
-          />
+          <ResearchAssistantPanel open={assistantOpen} onOpenChange={setAssistantOpen} />
         )}
       </div>
     </AssistantRuntimeProvider>

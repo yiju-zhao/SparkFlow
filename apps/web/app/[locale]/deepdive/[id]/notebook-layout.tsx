@@ -149,14 +149,11 @@ function NotebookLayoutInner({
   }, []);
 
   // Handle citation click — placeholder for future wiki-based navigation
-  const handleCitationNavigate = useCallback(
-    async () => {
-      if (sourcesWidth === 0) {
-        setSourcesWidth(SOURCES_CONTENT_WIDTH);
-      }
-    },
-    [sourcesWidth],
-  );
+  const handleCitationNavigate = useCallback(async () => {
+    if (sourcesWidth === 0) {
+      setSourcesWidth(SOURCES_CONTENT_WIDTH);
+    }
+  }, [sourcesWidth]);
 
   // Register navigation handler with citation context
   useEffect(() => {

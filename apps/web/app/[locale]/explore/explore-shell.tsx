@@ -41,10 +41,7 @@ export function ExploreShell({ children, ...headerProps }: ExploreShellProps) {
       </div>
 
       {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}
-      <ResearchAssistantPanel
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
-      />
+      <ResearchAssistantPanel open={assistantOpen} onOpenChange={setAssistantOpen} />
     </div>
   );
 }

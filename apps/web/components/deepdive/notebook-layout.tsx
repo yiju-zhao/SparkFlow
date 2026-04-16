@@ -147,16 +147,13 @@ function NotebookLayoutInner({
   }, []);
 
   // Handle citation click — placeholder for future wiki-based navigation
-  const handleCitationNavigate = useCallback(
-    async () => {
-      // TODO: Implement wiki-based citation navigation
-      // For now, just expand the sources panel
-      if (sourcesWidth === 0) {
-        setSourcesWidth(SOURCES_CONTENT_WIDTH);
-      }
-    },
-    [sourcesWidth],
-  );
+  const handleCitationNavigate = useCallback(async () => {
+    // TODO: Implement wiki-based citation navigation
+    // For now, just expand the sources panel
+    if (sourcesWidth === 0) {
+      setSourcesWidth(SOURCES_CONTENT_WIDTH);
+    }
+  }, [sourcesWidth]);
 
   // Navigate to wiki page from chat [[wiki-link]] click
   const handleWikiNavigate = useCallback(

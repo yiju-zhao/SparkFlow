@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
       "framer-motion",
       "echarts",
       "date-fns",
-"@radix-ui/react-avatar",
+      "@radix-ui/react-avatar",
       "@radix-ui/react-checkbox",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",

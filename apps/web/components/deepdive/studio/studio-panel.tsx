@@ -107,11 +107,7 @@ export function StudioPanel({
             ) : (
               <div className="space-y-2">
                 {sortedNotes.map((note) => (
-                  <NoteCard
-                    key={note.id}
-                    note={note}
-                    onSelect={() => onSelectNote(note)}
-                  />
+                  <NoteCard key={note.id} note={note} onSelect={() => onSelectNote(note)} />
                 ))}
               </div>
             )}
