@@ -107,7 +107,7 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
 
   // Code block
   if (type === "code") {
-    const body = item.code_body ?? (content.code_body as string) ?? "";
+    const body = (item.code_body as string | undefined) ?? (content.code_body as string) ?? "";
     const lang = (content.code_language as string) ?? "";
     const langClass = lang ? ` class="lang-${escapeHtml(lang)}"` : "";
     return `<pre><code${langClass}>${escapeHtml(body)}</code></pre>`;

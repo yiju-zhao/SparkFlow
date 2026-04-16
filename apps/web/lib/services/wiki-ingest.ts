@@ -10,6 +10,7 @@ import {
   generateWikiPages,
 } from "./graph-service";
 import type { GraphData } from "./graph-service";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
 export async function ingestSourceToWiki(
@@ -106,8 +107,8 @@ export async function removeSourceFromWiki(
   await prisma.notebookGraph.update({
     where: { notebookId },
     data: {
-      graphData: graphWithCommunities as unknown,
-      communities: communities as unknown,
+      graphData: graphWithCommunities as unknown as Prisma.InputJsonValue,
+      communities: communities as unknown as Prisma.InputJsonValue,
     },
   });
 
