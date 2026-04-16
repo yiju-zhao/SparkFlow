@@ -44,7 +44,6 @@ export function ExploreShell({ children, aiContext, ...headerProps }: ExploreShe
       <ResearchAssistantPanel
         open={assistantOpen}
         onOpenChange={setAssistantOpen}
-        contextData={aiContext}
       />
     </div>
   );
