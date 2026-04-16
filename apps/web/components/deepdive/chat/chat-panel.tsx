@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import type { Message } from "@langchain/langgraph-sdk";
 import {
@@ -477,11 +478,13 @@ export function ChatPanel({
       try {
         const wikiRes = await fetch(`/api/notebooks/${notebookId}/wiki?withContent=true`);
         if (wikiRes.ok) {
-          const { pages } = await wikiRes.json();
+          const { pages } = (await wikiRes.json()) as {
+            pages?: Array<{ pageType: string; content?: string; title: string }>;
+          };
           wikiContent = (pages || [])
-            .filter((p: any) => p.pageType !== "LOG" && p.content)
+            .filter((p): p is typeof p & { content: string } => p.pageType !== "LOG" && !!p.content)
             .slice(0, 10)
-            .map((p: any) => `## ${p.title}\n\n${p.content}`)
+            .map((p) => `## ${p.title}\n\n${p.content}`)
             .join("\n\n---\n\n");
         }
       } catch {
@@ -831,9 +834,9 @@ export function ChatPanel({
         <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2">
           <p className="text-xs text-amber-800 dark:text-amber-200">
             Set your API key in{" "}
-            <a href="/settings" className="underline">
+            <Link href="/settings" className="underline">
               Settings
-            </a>{" "}
+            </Link>{" "}
             to use the chat.
           </p>
         </div>
