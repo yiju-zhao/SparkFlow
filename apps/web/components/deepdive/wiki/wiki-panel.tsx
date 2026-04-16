@@ -213,23 +213,46 @@ export function WikiPanel({
     refetchOnReconnect: true,
   });
 
+  // Fetch graph data via React Query so it auto-refreshes after wiki ingest
+  const { data: liveGraphData = graphData } = useQuery<{
+    nodes: any[];
+    edges: any[];
+  } | null>({
+    queryKey: ["notebook-graph", notebookId],
+    queryFn: async () => {
+      const res = await fetch(`/api/notebooks/${notebookId}/graph`);
+      if (!res.ok) throw new Error("Failed to fetch graph");
+      const json = await res.json();
+      return json.graphData || null;
+    },
+    initialData: graphData,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: (query) => {
+      // Poll while graph is empty but pages exist (ingest in progress)
+      const graph = query.state.data;
+      const hasNodes = graph?.nodes && graph.nodes.length > 0;
+      return !hasNodes && pages.length > 0 ? 10000 : false;
+    },
+  });
+
   // Build community tree from pages + graph data
-  const communities = useMemo(() => buildCommunities(pages, graphData), [pages, graphData]);
-  const totalEntities = useMemo(() => graphData?.nodes?.length || 0, [graphData]);
+  const communities = useMemo(() => buildCommunities(pages, liveGraphData), [pages, liveGraphData]);
+  const totalEntities = useMemo(() => liveGraphData?.nodes?.length || 0, [liveGraphData]);
 
   // Build entity ID → community slug lookup from graph data
   // So clicking [[rope]] navigates to community-0 (where rope lives)
   const entityToCommunity = useMemo(() => {
     const map: Record<string, string> = {};
-    if (graphData?.nodes) {
-      for (const node of graphData.nodes) {
+    if (liveGraphData?.nodes) {
+      for (const node of liveGraphData.nodes) {
         if (node.community !== undefined) {
           map[node.id] = `community-${node.community}`;
         }
       }
     }
     return map;
-  }, [graphData]);
+  }, [liveGraphData]);
 
   // Resolve a slug: if it's a page slug, use it directly; if it's an entity ID, find its community page
   const pageSlugs = useMemo(() => new Set(pages.map((p) => p.slug)), [pages]);
@@ -291,7 +314,7 @@ export function WikiPanel({
                 <CommunityItem
                   key={community.slug}
                   community={community}
-                  graphData={graphData}
+                  graphData={liveGraphData}
                   onSelectPage={() => setSelectedSlug(community.slug)}
                   onSelectEntity={(nodeId) => setSelectedSlug(resolveSlug(nodeId))}
                 />
@@ -317,7 +340,7 @@ export function WikiPanel({
         </div>
         <div className="flex-1">
           <GraphView
-            graphData={graphData}
+            graphData={liveGraphData}
             onNodeClick={(slug) => setSelectedSlug(resolveSlug(slug))}
           />
         </div>

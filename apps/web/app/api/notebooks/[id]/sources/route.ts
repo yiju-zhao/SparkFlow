@@ -56,9 +56,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
 
-  // Convert WeChat HTML to markdown if provided, rewriting image URLs
-  let finalContent = content || null;
-  if (contentHtml && !content) {
+  // Convert WeChat HTML to markdown if provided, rewriting image URLs.
+  // Always prefer HTML→markdown conversion over plain text for richer output.
+  let finalContent: string | null = null;
+  if (contentHtml) {
     const td = new TurndownService({ headingStyle: "atx" });
     // Rewrite scraper image paths: /api/images/{id} → /api/wechat/images/{id}
     td.addRule("wechatImages", {
@@ -73,6 +74,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
       },
     });
     finalContent = td.turndown(contentHtml);
+  } else {
+    finalContent = content || null;
   }
 
   const source = await prisma.source.create({
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
   });
 
   // Trigger wiki ingest in background if content is already available
-  if (content) {
+  if (finalContent) {
     import("@/lib/services/wiki-ingest")
       .then(({ ingestSourceToWiki }) =>
         ingestSourceToWiki(notebookId, source.id, session.user!.id!),

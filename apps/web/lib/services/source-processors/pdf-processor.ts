@@ -29,6 +29,10 @@ export async function processPdfDocument(
       await unlink(tempPath).catch(() => {});
     }
 
+    console.log(
+      `[PDF] MinerU returned ${mineruResult.images.length} images, markdown length: ${mineruResult.markdown.length}`,
+    );
+
     // Store images in PG and rewrite markdown references
     const markdown = await storeImagesAndRewriteMarkdown(
       sourceId,

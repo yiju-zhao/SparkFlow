@@ -108,13 +108,30 @@ function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
       if (fileResult.images && Array.isArray(fileResult.images)) {
         for (const img of fileResult.images as any[]) {
           if (img.data) {
+            // Handle multiple possible data formats from MinerU
+            let buf: Buffer;
+            if (typeof img.data === "string") {
+              buf = Buffer.from(img.data, "base64");
+            } else if (Buffer.isBuffer(img.data)) {
+              buf = img.data;
+            } else if (Array.isArray(img.data)) {
+              buf = Buffer.from(img.data);
+            } else if (img.data?.type === "Buffer" && Array.isArray(img.data.data)) {
+              buf = Buffer.from(img.data.data);
+            } else {
+              buf = Buffer.from(img.data);
+            }
             images.push({
               name: img.name || "image.png",
-              data: Buffer.from(img.data, "base64"),
+              data: buf,
               mimeType: img.content_type || "image/png",
             });
           }
         }
+      } else {
+        console.warn(
+          `[MinerU] No images returned from local parse. Keys in result: ${Object.keys(fileResult).join(", ")}`,
+        );
       }
     }
   }

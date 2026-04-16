@@ -36,6 +36,9 @@ export function SourcesPanel({
   onSelectSource,
 }: SourcesPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const prevWikiStatusRef = useRef<Map<string, string>>(new Map());
+
   const { data: liveSources = sources } = useQuery<Source[]>({
     queryKey: ["notebook-sources", notebookId],
     queryFn: async () => {
@@ -61,6 +64,27 @@ export function SourcesPanel({
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
+
+  // When any source's wikiStatus transitions to "done", invalidate wiki + graph queries
+  useEffect(() => {
+    const prev = prevWikiStatusRef.current;
+    let shouldInvalidate = false;
+
+    for (const src of liveSources) {
+      const meta = src.metadata as Record<string, unknown> | null;
+      const ws = (meta?.wikiStatus as string) || "";
+      const prevWs = prev.get(src.id) || "";
+      if (ws === "done" && prevWs !== "done") {
+        shouldInvalidate = true;
+      }
+      prev.set(src.id, ws);
+    }
+
+    if (shouldInvalidate) {
+      queryClient.invalidateQueries({ queryKey: ["wiki-pages", notebookId] });
+      queryClient.invalidateQueries({ queryKey: ["notebook-graph", notebookId] });
+    }
+  }, [liveSources, notebookId, queryClient]);
 
   // Show source content view when a source is selected
   if (selectedSource) {
@@ -243,7 +267,17 @@ function SourceContentView({ source, onBack }: { source: Source; onBack: () => v
   const panelContext = useCollapsiblePanel();
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
 
-  const markdownContent = source.content || "No content available";
+  const rawContent = source.content || "No content available";
+
+  // Rewrite any remaining relative image paths to use the fallback resolver.
+  // Images already rewritten to /api/images/{id} are left untouched.
+  const markdownContent = useMemo(() => {
+    return rawContent.replace(
+      /!\[([^\]]*)\]\((?!\/api\/|https?:\/\/)([^)]+)\)/g,
+      `![$1](/api/images/by-source/${source.id}/$2)`,
+    );
+  }, [rawContent, source.id]);
+
   const [deferredContent, setDeferredContent] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
