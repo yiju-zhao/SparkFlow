@@ -112,10 +112,7 @@ function EmptyState() {
 
 // ─── Panel ────────────────────────────────────────────────────────────────
 
-export function ResearchAssistantPanel({
-  open,
-  onOpenChange,
-}: ResearchAssistantPanelProps) {
+export function ResearchAssistantPanel({ open, onOpenChange }: ResearchAssistantPanelProps) {
   const handleClose = () => {
     onOpenChange(false);
   };

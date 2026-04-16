@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { NotebookLayout } from "@/components/deepdive/notebook-layout";
 import { DeepdiveShell } from "@/components/deepdive/deepdive-shell";
+import type { GraphData } from "@/lib/services/graph-service";
 
 interface NotebookPageProps {
   params: Promise<{ id: string }>;
@@ -104,7 +105,9 @@ export default async function NotebookPage({ params }: NotebookPageProps) {
           ...p,
           updatedAt: p.updatedAt.toISOString(),
         }))}
-        graphData={notebookGraph?.graphData || null}
+        graphData={
+          notebookGraph?.graphData ? (notebookGraph.graphData as unknown as GraphData) : null
+        }
       />
     </DeepdiveShell>
   );

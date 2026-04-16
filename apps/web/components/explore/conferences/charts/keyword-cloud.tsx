@@ -66,7 +66,11 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
     chartInstance.current.setOption({
       tooltip: {
         show: true,
-        formatter: (params: any) => `${params.name}: ${params.value}`,
+        formatter: (params: unknown) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          const pData = p as { name?: string; value?: unknown };
+          return `${pData.name}: ${pData.value}`;
+        },
       },
       series: [
         {

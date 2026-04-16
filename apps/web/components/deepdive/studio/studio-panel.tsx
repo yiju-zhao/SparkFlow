@@ -107,12 +107,7 @@ export function StudioPanel({
             ) : (
               <div className="space-y-2">
                 {sortedNotes.map((note) => (
-                  <NoteCard
-                    key={note.id}
-                    note={note}
-                    onSelect={() => onSelectNote(note)}
-                    selected={false}
-                  />
+                  <NoteCard key={note.id} note={note} onSelect={() => onSelectNote(note)} />
                 ))}
               </div>
             )}
@@ -133,10 +128,9 @@ export function StudioPanel({
 interface NoteCardProps {
   note: Note;
   onSelect: () => void;
-  selected: boolean;
 }
 
-function NoteCard({ note, onSelect, selected }: NoteCardProps) {
+function NoteCard({ note, onSelect }: NoteCardProps) {
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = (e: React.MouseEvent) => {

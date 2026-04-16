@@ -49,11 +49,34 @@ const HtmlTable = memo(function HtmlTable({ html }: { html: string }) {
 function preprocessLatex(content: string): string {
   let result = content;
 
-  // 1. \begin{env}...\end{env} → wrap in $$
-  // Use a simple scan instead of regex to avoid backtracking
+  // 1. \begin{env}...\end{env} → wrap in $$ (only if not already inside a $$ block)
+  // First, find all existing $$...$$ ranges to avoid double-wrapping
+  function findMathRanges(text: string): [number, number][] {
+    const ranges: [number, number][] = [];
+    let searchFrom = 0;
+    while (true) {
+      const open = text.indexOf("$$", searchFrom);
+      if (open === -1) break;
+      const close = text.indexOf("$$", open + 2);
+      if (close === -1) break;
+      ranges.push([open, close + 2]);
+      searchFrom = close + 2;
+    }
+    return ranges;
+  }
+
+  function isInsideMathBlock(pos: number, ranges: [number, number][]): boolean {
+    return ranges.some(([start, end]) => pos > start && pos < end);
+  }
+
+  const mathRanges = findMathRanges(result);
+
   const beginRegex = /\\begin\{(\w+)\}/g;
   let match;
   while ((match = beginRegex.exec(result)) !== null) {
+    // Skip if this \begin is already inside a $$...$$ block
+    if (isInsideMathBlock(match.index, mathRanges)) continue;
+
     const env = match[1];
     const endTag = `\\end{${env}}`;
     const endIdx = result.indexOf(endTag, match.index + match[0].length);
@@ -62,11 +85,8 @@ function preprocessLatex(content: string): string {
     const before = result.slice(0, match.index);
     const mathBlock = result.slice(match.index, fullEnd);
     const after = result.slice(fullEnd);
-    // Only wrap if not already in $$
-    if (!before.trimEnd().endsWith("$$")) {
-      result = before + "\n$$\n" + mathBlock + "\n$$\n" + after;
-      beginRegex.lastIndex = before.length + mathBlock.length + 8; // skip past what we inserted
-    }
+    result = before + "\n$$\n" + mathBlock + "\n$$\n" + after;
+    beginRegex.lastIndex = before.length + mathBlock.length + 8; // skip past what we inserted
   }
 
   // 2. \[...\] → $$...$$

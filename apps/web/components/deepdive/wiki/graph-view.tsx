@@ -11,11 +11,25 @@ interface GraphNode {
   type: string;
   summary: string;
   community?: number;
+  x?: number;
+  y?: number;
 }
 
 interface GraphEdge {
   source: string;
   target: string;
+  relation: string;
+  confidence: string;
+  weight: number;
+}
+
+interface ProcessedGraphNode extends GraphNode {
+  community: number;
+}
+
+interface ProcessedGraphEdge {
+  source: string | ProcessedGraphNode;
+  target: string | ProcessedGraphNode;
   relation: string;
   confidence: string;
   weight: number;
@@ -39,8 +53,17 @@ const COMMUNITY_COLORS = [
   "#84cc16",
 ];
 
+interface ForceGraphInstance {
+  zoomToFit: (ms?: number, padding?: number) => void;
+}
+
+// ForceGraph2D component doesn't have proper TypeScript definitions
+// so we suppress type checking for its usage
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ForceGraph2DComponent: any = ForceGraph2D;
+
 export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
-  const fgRef = useRef<any>(null);
+  const fgRef = useRef<ForceGraphInstance | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -77,7 +100,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
     return m;
   }, [graphData]);
 
-  const data = useMemo(() => {
+  const data = useMemo((): { nodes: ProcessedGraphNode[]; links: ProcessedGraphEdge[] } => {
     if (!graphData || graphData.nodes.length === 0) return { nodes: [], links: [] };
     const nodeIds = new Set(graphData.nodes.map((n) => n.id));
     return {
@@ -89,7 +112,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
         community: n.community ?? 0,
       })),
       links: graphData.edges
-        .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+        .filter((e) => nodeIds.has(e.source as string) && nodeIds.has(e.target as string))
         .map((e) => ({
           source: e.source,
           target: e.target,
@@ -101,8 +124,8 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
   }, [graphData]);
 
   const handleNodeClick = useCallback(
-    (node: any) => {
-      if (onNodeClick && node.community !== undefined) {
+    (node: ProcessedGraphNode) => {
+      if (onNodeClick) {
         onNodeClick(`community-${node.community}`);
       }
     },
@@ -113,7 +136,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
   // Key insight: nodeCanvasObject works in GRAPH coordinates.
   // To draw text at a fixed SCREEN pixel size, divide desired px by globalScale.
   const paintNode = useCallback(
-    (node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    (node: ProcessedGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const color = COMMUNITY_COLORS[node.community % COMMUNITY_COLORS.length];
       const degree = degreeMap[node.id] || 0;
 
@@ -123,7 +146,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
       const r = screenRadius / globalScale;
 
       ctx.beginPath();
-      ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+      ctx.arc(node.x ?? 0, node.y ?? 0, r, 0, 2 * Math.PI);
       ctx.fillStyle = color;
       ctx.fill();
 
@@ -142,7 +165,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       ctx.fillStyle = color;
-      ctx.fillText(text, node.x, node.y + r + 2 / globalScale);
+      ctx.fillText(text, node.x ?? 0, (node.y ?? 0) + r + 2 / globalScale);
     },
     [degreeMap],
   );
@@ -162,7 +185,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
   return (
     <div ref={containerRef} className="h-full w-full">
       {dimensions.width > 0 && dimensions.height > 0 && (
-        <ForceGraph2D
+        <ForceGraph2DComponent
           ref={fgRef}
           graphData={data}
           width={dimensions.width}
@@ -171,7 +194,7 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
           /* ── Nodes ── */
           nodeCanvasObject={paintNode}
           nodePointerAreaPaint={(
-            node: any,
+            node: ProcessedGraphNode,
             color: string,
             ctx: CanvasRenderingContext2D,
             globalScale: number,
@@ -179,24 +202,24 @@ export function GraphView({ graphData, onNodeClick }: GraphViewProps) {
             // Larger hit area for easier clicking
             const r = 10 / globalScale;
             ctx.beginPath();
-            ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+            ctx.arc(node.x ?? 0, node.y ?? 0, r, 0, 2 * Math.PI);
             ctx.fillStyle = color;
             ctx.fill();
           }}
-          nodeLabel={(node: any) => `${node.label} (${node.type})\n${node.summary}`}
+          nodeLabel={(node: ProcessedGraphNode) => `${node.label} (${node.type})\n${node.summary}`}
           onNodeClick={handleNodeClick}
           /* ── Links ── */
-          linkLabel={(link: any) => {
+          linkLabel={(link: ProcessedGraphEdge) => {
             const src = typeof link.source === "object" ? link.source.label : link.source;
             const tgt = typeof link.target === "object" ? link.target.label : link.target;
             return `${src} → ${link.relation.replace(/_/g, " ")} → ${tgt}`;
           }}
-          linkColor={(link: any) => {
+          linkColor={(link: ProcessedGraphEdge) => {
             if (link.confidence === "EXTRACTED") return "rgba(140,140,140,0.45)";
             if (link.confidence === "INFERRED") return "rgba(140,140,140,0.2)";
             return "rgba(140,140,140,0.1)";
           }}
-          linkWidth={(link: any) => Math.max(0.3, link.weight)}
+          linkWidth={(link: ProcessedGraphEdge) => Math.max(0.3, link.weight)}
           linkDirectionalArrowLength={0}
           linkDirectionalArrowRelPos={0}
           /* ── Force layout ── */

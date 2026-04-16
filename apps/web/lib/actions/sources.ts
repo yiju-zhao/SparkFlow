@@ -5,12 +5,13 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { processWebpage } from "@/lib/services/source-processors/webpage-processor";
 import { processTextDocument } from "@/lib/services/source-processors/text-processor";
-import { processPdfDocument } from "@/lib/services/source-processors/pdf-processor";
-import {
-  processDocxDocument,
-  processFallbackDocument,
-} from "@/lib/services/source-processors/fallback-processor";
+import { processMineruDocument } from "@/lib/services/source-processors/mineru-processor";
+import { processFallbackDocument } from "@/lib/services/source-processors/fallback-processor";
 import type { ProcessingContext } from "@/lib/services/source-processors/types";
+
+const MINERU_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt"];
+const TEXT_EXTENSIONS = ["txt", "md"];
+const ALLOWED_EXTENSIONS = [...MINERU_EXTENSIONS, ...TEXT_EXTENSIONS];
 
 export async function getSources(notebookId: string) {
   const session = await auth();
@@ -102,10 +103,13 @@ export async function uploadDocumentSource(notebookId: string, formData: FormDat
     throw new Error("No file provided");
   }
 
-  // Detect file type
   const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+  if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+    throw new Error(
+      `Unsupported file type ".${fileExtension}". Allowed: ${ALLOWED_EXTENSIONS.map((e) => "." + e).join(", ")}`,
+    );
+  }
 
-  // Create source with PROCESSING status
   const source = await prisma.source.create({
     data: {
       notebookId,
@@ -115,10 +119,8 @@ export async function uploadDocumentSource(notebookId: string, formData: FormDat
     },
   });
 
-  // Revalidate immediately so it shows up in the list
   revalidatePath(`/deepdive/${notebookId}`);
 
-  // Process in the background using the new processors
   const context: ProcessingContext = {
     sourceId: source.id,
     notebookId,
@@ -126,15 +128,13 @@ export async function uploadDocumentSource(notebookId: string, formData: FormDat
   };
 
   const processDocument = async () => {
-    if (fileExtension === "txt" || fileExtension === "md") {
+    if (TEXT_EXTENSIONS.includes(fileExtension)) {
       return processTextDocument(file, context);
-    } else if (fileExtension === "pdf") {
-      return processPdfDocument(file, context);
-    } else if (fileExtension === "docx" || fileExtension === "doc") {
-      return processDocxDocument(file, context);
-    } else {
-      return processFallbackDocument(file, context);
     }
+    if (MINERU_EXTENSIONS.includes(fileExtension)) {
+      return processMineruDocument(file, context);
+    }
+    return processFallbackDocument(file, context);
   };
 
   processDocument()
@@ -203,7 +203,7 @@ export async function addPublicationSource(notebookId: string, publicationId: st
       const file = new File([blob], `${publication.title}.pdf`, {
         type: "application/pdf",
       });
-      await processPdfDocument(file, context);
+      await processMineruDocument(file, context);
     } catch (err) {
       console.error("[addPublicationSource] Failed:", err);
       await prisma.source.update({
@@ -261,12 +261,6 @@ export async function addWechatSource(notebookId: string, articleId: number) {
   revalidatePath(`/deepdive/${notebookId}`);
 
   // Process in background: convert HTML to markdown, store images
-  const context: ProcessingContext = {
-    sourceId: source.id,
-    notebookId,
-    userId: session.user.id,
-  };
-
   (async () => {
     try {
       // Fetch and store images, building URL mappings for content rewriting
@@ -295,6 +289,32 @@ export async function addWechatSource(notebookId: string, articleId: number) {
           }
         }
       }
+
+      // Rewrite HTML image URLs to point to local /api/images/{id}
+      function rewriteWechatHtmlImages(html: string): string {
+        // Match <img ...> tags and rewrite src/data-src to local /api/images/{id}
+        return html.replace(/<img\b[^>]*>/gi, (tag) => {
+          const dataSrcMatch = tag.match(/data-src=["']([^"']+)["']/);
+          const srcMatch = tag.match(/src=["']([^"']+)["']/);
+          const src = dataSrcMatch?.[1] || srcMatch?.[1] || "";
+
+          // Case 1: Scraper-rewritten /api/images/{wechatDbId}
+          const scraperMatch = src.match(/^\/api\/images\/(\d+)$/);
+          if (scraperMatch) {
+            const localUrl = wechatIdToLocal.get(parseInt(scraperMatch[1], 10));
+            if (localUrl) return tag.replace(/(?:data-)?src=["'][^"']+["']/g, `src="${localUrl}"`);
+          }
+
+          // Case 2: Match by original WeChat CDN URL
+          const localUrl = originalUrlToLocal.get(src);
+          if (localUrl) return tag.replace(/(?:data-)?src=["'][^"']+["']/g, `src="${localUrl}"`);
+
+          // Case 3: Leave external URL as-is
+          return tag;
+        });
+      }
+
+      const contentHtml = rewriteWechatHtmlImages(article.content_html || "");
 
       // Convert HTML to markdown using TurndownService with image URL rewriting
       const TurndownService = (await import("turndown")).default;
@@ -338,6 +358,7 @@ export async function addWechatSource(notebookId: string, articleId: number) {
         data: {
           content: markdownContent,
           markdownContent: markdownContent,
+          contentHtml,
           status: "READY",
           metadata: {
             author: article.author,
@@ -345,6 +366,7 @@ export async function addWechatSource(notebookId: string, articleId: number) {
             sourceName: article.source_name,
             markdownLength: markdownContent.length,
             imageCount: images.filter((i) => i.data).length,
+            hasHtml: !!contentHtml,
             toc,
           },
         },

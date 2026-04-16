@@ -135,12 +135,12 @@ ${existingContext}`,
 
   const result = JSON.parse(text);
 
-  const nodes: GraphNode[] = (result.nodes || []).map((n: any) => ({
+  const nodes: GraphNode[] = (result.nodes || []).map((n: Omit<GraphNode, "sourceRefs">) => ({
     ...n,
     sourceRefs: [sourceId],
   }));
 
-  const edges: GraphEdge[] = (result.edges || []).map((e: any) => ({
+  const edges: GraphEdge[] = (result.edges || []).map((e: Omit<GraphEdge, "sourceRef">) => ({
     ...e,
     sourceRef: sourceId,
   }));
@@ -460,11 +460,11 @@ Existing nodes: ${existing.nodes
   if (!text) return { nodesAdded: 0, edgesAdded: 0 };
 
   const result = JSON.parse(text);
-  const nodes: GraphNode[] = (result.nodes || []).map((n: any) => ({
+  const nodes: GraphNode[] = (result.nodes || []).map((n: Omit<GraphNode, "sourceRefs">) => ({
     ...n,
     sourceRefs,
   }));
-  const edges: GraphEdge[] = (result.edges || []).map((e: any) => ({
+  const edges: GraphEdge[] = (result.edges || []).map((e: Omit<GraphEdge, "sourceRef">) => ({
     ...e,
     sourceRef: pageSlug,
   }));
@@ -478,8 +478,19 @@ Existing nodes: ${existing.nodes
 
   await prisma.notebookGraph.upsert({
     where: { notebookId },
-    create: { notebookId, graphData: graphWithCommunities as any, communities: communities as any },
-    update: { graphData: graphWithCommunities as any, communities: communities as any },
+    create: {
+      notebookId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      graphData: graphWithCommunities as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      communities: communities as any,
+    },
+    update: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      graphData: graphWithCommunities as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      communities: communities as any,
+    },
   });
 
   return { nodesAdded: nodes.length, edgesAdded: edges.length };
@@ -606,8 +617,19 @@ export async function runGraphPipeline(
   // 4. Store graph
   await prisma.notebookGraph.upsert({
     where: { notebookId },
-    create: { notebookId, graphData: graphWithCommunities as any, communities: communities as any },
-    update: { graphData: graphWithCommunities as any, communities: communities as any },
+    create: {
+      notebookId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      graphData: graphWithCommunities as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      communities: communities as any,
+    },
+    update: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      graphData: graphWithCommunities as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      communities: communities as any,
+    },
   });
 
   // 5. Delete old community pages and regenerate

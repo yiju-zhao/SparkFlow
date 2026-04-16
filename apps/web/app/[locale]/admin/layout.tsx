@@ -50,6 +50,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             Users
           </Link>
+          <Link
+            href="/admin/mineru"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            MinerU
+          </Link>
         </div>
       </nav>
       <main className="container mx-auto px-4 py-6">{children}</main>

@@ -4,14 +4,10 @@ import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
-  BookOpen,
   FileText,
-  GitCompare,
   Lightbulb,
-  MessageSquare,
   Pencil,
   Users,
-  ScrollText,
   ChevronRight,
   ChevronDown,
   Wrench,
@@ -39,26 +35,38 @@ interface SourceInfo {
   title: string;
 }
 
+interface GraphNode {
+  id: string;
+  label: string;
+  type: string;
+  summary: string;
+  community?: number;
+  sourceRefs?: string[];
+}
+
+interface GraphEdge {
+  source: string;
+  target: string;
+  relation: string;
+  confidence: string;
+  weight: number;
+}
+
+interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
 interface WikiPanelProps {
   notebookId: string;
   initialPages?: WikiPage[];
   sources?: SourceInfo[];
-  graphData?: { nodes: any[]; edges: any[] } | null;
+  graphData?: GraphData | null;
   onSourceClick?: (sourceId: string) => void;
   /** Set externally (e.g. from chat wiki links) to navigate to a page */
   navigateToSlug?: string | null;
   onNavigateComplete?: () => void;
 }
-
-const PAGE_TYPE_ICONS: Record<string, typeof FileText> = {
-  ENTITY: Users,
-  CONCEPT: Lightbulb,
-  SUMMARY: FileText,
-  COMPARISON: GitCompare,
-  ARTICLE: MessageSquare,
-  INDEX: BookOpen,
-  LOG: ScrollText,
-};
 
 const ENTITY_TYPE_ICONS: Record<string, typeof FileText> = {
   entity: Users,
@@ -85,10 +93,7 @@ interface CommunityInfo {
   sourceCount: number;
 }
 
-function buildCommunities(
-  pages: WikiPage[],
-  graphData: { nodes: any[]; edges: any[] } | null,
-): CommunityInfo[] {
+function buildCommunities(pages: WikiPage[], graphData: GraphData | null): CommunityInfo[] {
   if (!graphData?.nodes || !graphData?.edges) {
     // No graph — fall back to pages as communities without entity/edge detail
     return pages
@@ -105,7 +110,7 @@ function buildCommunities(
   }
 
   // Group nodes by community
-  const communityNodes = new Map<number, typeof graphData.nodes>();
+  const communityNodes = new Map<number, GraphNode[]>();
   for (const node of graphData.nodes) {
     if (node.community === undefined) continue;
     if (!communityNodes.has(node.community)) communityNodes.set(node.community, []);
@@ -117,11 +122,11 @@ function buildCommunities(
   for (const [communityId, nodes] of communityNodes.entries()) {
     const slug = `community-${communityId}`;
     const page = pages.find((p) => p.slug === slug);
-    const nodeIds = new Set(nodes.map((n: any) => n.id));
+    const nodeIds = new Set(nodes.map((n: GraphNode) => n.id));
 
     // Internal edges only
     const edges = graphData.edges.filter(
-      (e: any) => nodeIds.has(e.source) && nodeIds.has(e.target),
+      (e: GraphEdge) => nodeIds.has(e.source) && nodeIds.has(e.target),
     );
 
     // Source count from page or from nodes
@@ -135,25 +140,25 @@ function buildCommunities(
       slug,
       title:
         page?.title ||
-        nodes.sort((a: any, b: any) => {
+        nodes.sort((a: GraphNode, b: GraphNode) => {
           const aDeg = graphData.edges.filter(
-            (e: any) => e.source === a.id || e.target === a.id,
+            (e: GraphEdge) => e.source === a.id || e.target === a.id,
           ).length;
           const bDeg = graphData.edges.filter(
-            (e: any) => e.source === b.id || e.target === b.id,
+            (e: GraphEdge) => e.source === b.id || e.target === b.id,
           ).length;
           return bDeg - aDeg;
         })[0]?.label ||
         `Community ${communityId}`,
       page,
-      nodes: nodes.map((n: any) => ({
+      nodes: nodes.map((n: GraphNode) => ({
         id: n.id,
         label: n.label,
         type: n.type,
         summary: n.summary,
         sourceRefs: n.sourceRefs || [],
       })),
-      edges: edges.map((e: any) => ({
+      edges: edges.map((e: GraphEdge) => ({
         source: e.source,
         target: e.target,
         relation: e.relation,
@@ -214,10 +219,7 @@ export function WikiPanel({
   });
 
   // Fetch graph data via React Query so it auto-refreshes after wiki ingest
-  const { data: liveGraphData = graphData } = useQuery<{
-    nodes: any[];
-    edges: any[];
-  } | null>({
+  const { data: liveGraphData = graphData } = useQuery<GraphData | null>({
     queryKey: ["notebook-graph", notebookId],
     queryFn: async () => {
       const res = await fetch(`/api/notebooks/${notebookId}/graph`);
@@ -356,7 +358,7 @@ const CommunityItem = memo(function CommunityItem({
   onSelectEntity,
 }: {
   community: CommunityInfo;
-  graphData: { nodes: any[]; edges: any[] } | null;
+  graphData: GraphData | null;
   onSelectPage: () => void;
   onSelectEntity: (nodeId: string) => void;
 }) {
@@ -618,7 +620,6 @@ function WikiPageView({
           <>
             <WikiMarkdown
               content={page.content}
-              sourceMap={sourceMap}
               onNavigate={onNavigate}
               onSourceClick={onSourceClick}
             />
@@ -652,12 +653,10 @@ function WikiPageView({
 
 function WikiMarkdown({
   content,
-  sourceMap,
   onNavigate,
   onSourceClick,
 }: {
   content: string;
-  sourceMap: Record<string, string>;
   onNavigate: (slug: string) => void;
   onSourceClick?: (sourceId: string) => void;
 }) {

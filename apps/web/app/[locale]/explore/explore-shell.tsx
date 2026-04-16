@@ -19,7 +19,7 @@ export interface ExploreShellProps extends ExploreHeaderProps {
   aiContext?: AIContext;
 }
 
-export function ExploreShell({ children, aiContext, ...headerProps }: ExploreShellProps) {
+export function ExploreShell({ children, ...headerProps }: ExploreShellProps) {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -41,10 +41,7 @@ export function ExploreShell({ children, aiContext, ...headerProps }: ExploreShe
       </div>
 
       {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}
-      <ResearchAssistantPanel
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
-      />
+      <ResearchAssistantPanel open={assistantOpen} onOpenChange={setAssistantOpen} />
     </div>
   );
 }

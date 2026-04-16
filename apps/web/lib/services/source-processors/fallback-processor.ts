@@ -37,14 +37,3 @@ export async function processFallbackDocument(
     return { success: false, errorMessage };
   }
 }
-
-/**
- * Handle DOCX files - currently uses fallback processing.
- */
-export async function processDocxDocument(
-  file: File,
-  context: ProcessingContext,
-): Promise<ProcessingResult> {
-  console.warn("DOCX parsing not yet implemented, using fallback");
-  return processFallbackDocument(file, context);
-}

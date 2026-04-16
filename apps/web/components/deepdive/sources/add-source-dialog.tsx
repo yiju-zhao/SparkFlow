@@ -83,7 +83,6 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const [urlsText, setUrlsText] = useState("");
   const [showWebsites, setShowWebsites] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -212,6 +211,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
           status: "PROCESSING",
           content: null,
           markdownContent: null,
+          contentHtml: null,
           fileKey: null,
           errorMessage: null,
           metadata: {},
@@ -247,12 +247,20 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
     });
   };
 
+  const ALLOWED_UPLOAD_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt", "txt", "md"];
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      handleFileUpload(file);
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) {
+      alert(
+        `Unsupported file type ".${ext}". Allowed: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => "." + e).join(", ")}`,
+      );
+      e.target.value = "";
+      return;
     }
+    handleFileUpload(file);
   };
 
   const handleFileUpload = (file: File) => {
@@ -267,6 +275,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
         status: "PROCESSING",
         content: null,
         markdownContent: null,
+        contentHtml: null,
         fileKey: null,
         errorMessage: null,
         metadata: {},
@@ -288,7 +297,6 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
         await queryClient.invalidateQueries({
           queryKey: ["notebook-sources", notebookId],
         });
-        setSelectedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     });
@@ -298,7 +306,6 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) {
-      setSelectedFile(file);
       handleFileUpload(file);
     }
   };
@@ -322,6 +329,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
           status: "PROCESSING",
           content: null,
           markdownContent: null,
+          contentHtml: null,
           fileKey: null,
           errorMessage: null,
           metadata: {},
@@ -564,8 +572,9 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                 <input
                   ref={fileInputRef}
                   type="file"
+                  // Keep in sync with ALLOWED_EXTENSIONS in lib/actions/sources.ts
                   className="hidden"
-                  accept=".pdf,.docx,.txt,.md"
+                  accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md"
                   onChange={handleFileSelect}
                 />
 

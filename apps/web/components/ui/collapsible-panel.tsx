@@ -51,9 +51,9 @@ export function CollapsiblePanel({
 
   useLayoutEffect(() => {
     if (prevWidthRef.current !== width || prevIsOpenRef.current !== isOpen) {
-      setIsAnimationComplete(false);
       prevWidthRef.current = width;
       prevIsOpenRef.current = isOpen;
+      queueMicrotask(() => setIsAnimationComplete(false));
     }
   }, [width, isOpen]);
 

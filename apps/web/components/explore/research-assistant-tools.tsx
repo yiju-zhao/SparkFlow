@@ -48,13 +48,7 @@ export const ShowStatCardUI = makeAssistantToolUI<Record<string, unknown>, StatC
 
 // ─── show_table ─────────────────────────────────────────────────────────────
 
-function TableToolRender({
-  result,
-  status,
-}: {
-  result?: TableData;
-  status: { type: string };
-}) {
+function TableToolRender({ result, status }: { result?: TableData; status: { type: string } }) {
   const followUp = useFollowUp();
   if (status.type === "running") return <TableSkeleton />;
   if (!result) return null;
@@ -68,13 +62,7 @@ export const ShowTableUI = makeAssistantToolUI<Record<string, unknown>, TableDat
 
 // ─── show_chart ─────────────────────────────────────────────────────────────
 
-function ChartToolRender({
-  result,
-  status,
-}: {
-  result?: ChartData;
-  status: { type: string };
-}) {
+function ChartToolRender({ result, status }: { result?: ChartData; status: { type: string } }) {
   const followUp = useFollowUp();
   if (status.type === "running") return <ChartSkeleton />;
   if (!result) return null;

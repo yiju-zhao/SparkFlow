@@ -137,6 +137,7 @@ model Source {
   fileKey           String? // For documents (storage key)
   content           String?      @db.Text // Markdown content
   markdownContent   String?      @db.Text // Full markdown preview
+  contentHtml       String?      @db.Text // Rich HTML for rendering (MinerU/WeChat/Webpage); null for plain-text sources
   status            SourceStatus @default(UPLOADING)
   errorMessage      String?
   metadata          Json?

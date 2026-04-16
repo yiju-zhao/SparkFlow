@@ -20,7 +20,7 @@ export function useRelativeTime(date: Date): string {
 
   useEffect(() => {
     // Update immediately in case of minor drift, then every minute
-    setTimeString(formatRelative(date));
+    queueMicrotask(() => setTimeString(formatRelative(date)));
 
     const interval = setInterval(() => {
       setTimeString(formatRelative(date));

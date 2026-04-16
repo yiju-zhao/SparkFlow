@@ -32,7 +32,7 @@ export async function GET() {
   });
 
   // Build API key status (never return actual keys)
-  let apiKeyStatus: ApiKeyStatus = {};
+  const apiKeyStatus: ApiKeyStatus = {};
   if (settings?.apiKeys) {
     try {
       const decrypted = decrypt(settings.apiKeys);
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   } = body;
 
   // Build update data — accept any provider/model (validated client-side against config)
-  const updateData: Record<string, string | null> = {};
+  const updateData: Record<string, string | null | unknown> = {};
   if (modelProvider) updateData.modelProvider = modelProvider;
   if (modelName) updateData.modelName = modelName;
   if (wikiModelProvider) updateData.wikiModelProvider = wikiModelProvider;
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   if (matcherModelName) updateData.matcherModelName = matcherModelName;
 
   if (wechatExcludedSourceIds !== undefined) {
-    (updateData as any).wechatExcludedSourceIds = wechatExcludedSourceIds;
+    updateData.wechatExcludedSourceIds = wechatExcludedSourceIds;
   }
 
   // Handle API keys update

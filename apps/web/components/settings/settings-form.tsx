@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -173,34 +173,40 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     return Object.entries(config.providers).map(([id, { label }]) => ({ id, label }));
   }, [config]);
 
-  const getModels = (providerId: string): ModelInfo[] => {
-    return config?.providers[providerId]?.models || [];
-  };
+  const getModels = useCallback(
+    (providerId: string): ModelInfo[] => {
+      return config?.providers[providerId]?.models || [];
+    },
+    [config],
+  );
 
-  const getModelIds = (providerId: string): string[] => {
-    return getModels(providerId).map((m) => m.id);
-  };
+  const getModelIds = useCallback(
+    (providerId: string): string[] => {
+      return getModels(providerId).map((m) => m.id);
+    },
+    [getModels],
+  );
 
   // Reset model when provider changes
   useEffect(() => {
     const ids = getModelIds(chatProvider);
     if (ids.length > 0 && !ids.includes(chatModel)) setChatModel(ids[0]);
-  }, [chatProvider, config]);
+  }, [chatProvider, getModelIds, chatModel]);
 
   useEffect(() => {
     const ids = getModelIds(wikiProvider);
     if (ids.length > 0 && !ids.includes(wikiModel)) setWikiModel(ids[0]);
-  }, [wikiProvider, config]);
+  }, [wikiProvider, getModelIds, wikiModel]);
 
   useEffect(() => {
     const ids = getModelIds(searchProvider);
     if (ids.length > 0 && !ids.includes(searchModel)) setSearchModel(ids[0]);
-  }, [searchProvider, config]);
+  }, [searchProvider, getModelIds, searchModel]);
 
   useEffect(() => {
     const ids = getModelIds(matcherProvider);
     if (ids.length > 0 && !ids.includes(matcherModel)) setMatcherModel(ids[0]);
-  }, [matcherProvider, config]);
+  }, [matcherProvider, getModelIds, matcherModel]);
 
   const handleSave = async () => {
     setIsLoading(true);

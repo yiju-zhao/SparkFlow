@@ -1,6 +1,7 @@
 type Page = import("playwright").Page;
 
 interface ScrapeResult {
+  html: string;
   markdown: string;
   images: { name: string; data: Buffer; mimeType: string }[];
   metadata: { title: string; author?: string; date?: string };
@@ -25,10 +26,10 @@ export async function scrapeWebpage(url: string): Promise<ScrapeResult> {
     await autoScroll(page);
 
     const metadata = await extractMetadata(page, url);
-    const { markdown, imageUrls } = await extractContent(page, url);
+    const { html, markdown, imageUrls } = await extractContent(page, url);
     const images = await downloadImages(imageUrls, page);
 
-    return { markdown, images, metadata };
+    return { html, markdown, images, metadata };
   } finally {
     await browser.close();
   }
@@ -99,7 +100,7 @@ async function extractMetadata(page: Page, url: string): Promise<ScrapeResult["m
 async function extractContent(
   page: Page,
   url: string,
-): Promise<{ markdown: string; imageUrls: string[] }> {
+): Promise<{ html: string; markdown: string; imageUrls: string[] }> {
   return page.evaluate((pageUrl) => {
     let container: Element | null = null;
 
@@ -234,7 +235,28 @@ async function extractContent(
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
-    return { markdown, imageUrls };
+    // Build HTML version with img srcs rewritten to match the markdown placeholder scheme.
+    // Each img gets src="image_N" so it can be mapped the same way as markdown refs.
+    const htmlRoot = container!.cloneNode(true) as Element;
+    let htmlImgIndex = 0;
+    // Walk in same document order as nodeToMarkdown to keep indices aligned
+    const imgs = htmlRoot.querySelectorAll("img");
+    imgs.forEach((img) => {
+      const src = img.getAttribute("data-src") || img.getAttribute("src") || "";
+      if (src && !src.startsWith("data:")) {
+        img.setAttribute("src", `image_${htmlImgIndex++}`);
+        img.removeAttribute("data-src");
+      }
+    });
+    // Strip scripts/styles/noise from the HTML too
+    htmlRoot
+      .querySelectorAll(
+        "script, style, nav, footer, aside, iframe, #js_pc_qr_code, .qr_code_pc, .rich_media_tool",
+      )
+      .forEach((el) => el.remove());
+    const html = htmlRoot.outerHTML;
+
+    return { html, markdown, imageUrls };
   }, url);
 }
 
@@ -248,16 +270,10 @@ async function downloadImages(imageUrls: string[], page: Page): Promise<ScrapeRe
       if (response.ok()) {
         const data = await response.body();
         const contentType = response.headers()["content-type"] || "image/png";
-        const ext =
-          contentType.includes("jpeg") || contentType.includes("jpg")
-            ? "jpg"
-            : contentType.includes("gif")
-              ? "gif"
-              : contentType.includes("webp")
-                ? "webp"
-                : "png";
         images.push({
-          name: `image_${i}.${ext}`,
+          // Keep name aligned with markdown/HTML placeholder `image_N` (no extension)
+          // so storeImagesAndRewriteMarkdown can match references correctly.
+          name: `image_${i}`,
           data: Buffer.from(data),
           mimeType: contentType.split(";")[0],
         });

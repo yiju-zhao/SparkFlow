@@ -58,6 +58,7 @@ apps/web/
 ### Deepdive Notebook Layout
 
 The deepdive workspace (`/deepdive/[id]`) is a multi-panel layout:
+
 - **Left**: Sources panel (upload, manage documents)
 - **Center**: Chat panel (CopilotKit with LangGraph RAG agent)
 - **Right**: Tabbed panel with Wiki (knowledge graph + pages) and Notes
@@ -65,6 +66,7 @@ The deepdive workspace (`/deepdive/[id]`) is a multi-panel layout:
 ### When to Use Private Folders
 
 Prefix with underscore `_components` or `_lib` inside `app/` for:
+
 - Route-specific utilities that shouldn't be routable
 - Avoiding naming conflicts with Next.js special files
 
@@ -83,6 +85,7 @@ npx prisma db push       # Sync schema to DB (dev)
 - Import `Message` type from `@copilotkit/shared` for type safety
 - Create messages with `{ id: uuidv4(), role: "user", content: "..." } as Message` format
 - Example:
+
   ```typescript
   import { useCopilotChatInternal } from "@copilotkit/react-core";
   import type { Message } from "@copilotkit/shared";

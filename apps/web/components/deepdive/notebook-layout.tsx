@@ -11,6 +11,7 @@ import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
 
 import type { Source, Note, Notebook } from "@prisma/client";
+import type { GraphData } from "@/lib/services/graph-service";
 
 // Pre-transformed types from RSC (avoids client-side transformation)
 interface TransformedChatSession {
@@ -43,7 +44,7 @@ interface NotebookLayoutProps {
   initialChatSessions?: TransformedChatSession[];
   initialMessages?: TransformedMessage[];
   wikiPages?: WikiPageSummary[];
-  graphData?: any;
+  graphData?: GraphData | null;
 }
 
 // Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
@@ -146,16 +147,13 @@ function NotebookLayoutInner({
   }, []);
 
   // Handle citation click — placeholder for future wiki-based navigation
-  const handleCitationNavigate = useCallback(
-    async (_refId: string) => {
-      // TODO: Implement wiki-based citation navigation
-      // For now, just expand the sources panel
-      if (sourcesWidth === 0) {
-        setSourcesWidth(SOURCES_CONTENT_WIDTH);
-      }
-    },
-    [sourcesWidth],
-  );
+  const handleCitationNavigate = useCallback(async () => {
+    // TODO: Implement wiki-based citation navigation
+    // For now, just expand the sources panel
+    if (sourcesWidth === 0) {
+      setSourcesWidth(SOURCES_CONTENT_WIDTH);
+    }
+  }, [sourcesWidth]);
 
   // Navigate to wiki page from chat [[wiki-link]] click
   const handleWikiNavigate = useCallback(

@@ -21,8 +21,16 @@ export function SessionTimeHeatmap({ data, days, hours }: SessionTimeHeatmapProp
 
     return {
       tooltip: {
-        formatter: (params: any) => {
-          const [dayIdx, hourIdx, count] = params.data;
+        formatter: (params: unknown) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          const pData = p as { data?: unknown };
+          const arr = Array.isArray(pData.data) ? pData.data : [];
+          const [dayIdx, hourIdx, count] = arr as [
+            number | undefined,
+            number | undefined,
+            number | undefined,
+          ];
+          if (dayIdx === undefined || hourIdx === undefined) return "";
           return `${days[dayIdx]}, ${hours[hourIdx]}<br/>Sessions: <strong>${count}</strong>`;
         },
       },

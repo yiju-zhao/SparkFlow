@@ -61,7 +61,7 @@ export function LandingHeader({
 
   useEffect(() => {
     if (onScrollContainer) {
-      setScrolled(!!isScrolled);
+      queueMicrotask(() => setScrolled(!!isScrolled));
       return;
     }
     const container = document.getElementById("landing-scroll-container");

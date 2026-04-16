@@ -7,7 +7,6 @@ interface ResizableDividerProps {
   direction: "vertical" | "horizontal";
   onDrag?: (delta: number) => void;
   onDoubleClick?: () => void;
-  collapsed?: boolean;
   className?: string;
 }
 
@@ -22,11 +21,9 @@ export function ResizableDivider({
   direction,
   onDrag,
   onDoubleClick,
-  collapsed = false,
   className = "",
 }: ResizableDividerProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const startPositionRef = useRef(0);
 
   const handleMouseDown = useCallback(
@@ -76,8 +73,6 @@ export function ResizableDivider({
       `}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       initial={false}
       transition={isDragging ? { duration: 0.1 } : springTransition}
       style={{

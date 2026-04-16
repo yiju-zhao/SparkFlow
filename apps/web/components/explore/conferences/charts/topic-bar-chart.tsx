@@ -25,10 +25,14 @@ export function TopicBarChart({ data }: TopicBarChartProps) {
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        formatter: (params: any) => {
-          const idx = params[0].dataIndex;
+        formatter: (params: unknown) => {
+          const arr = Array.isArray(params) ? params : [params];
+          const first = arr[0] as { dataIndex?: number; value?: unknown };
+          const idx = first?.dataIndex;
+          if (idx === undefined || idx < 0) return "";
           const fullTopic = sortedData[idx].topic;
-          return `${fullTopic}<br/>Publications: <strong>${params[0].value}</strong>`;
+          const val = typeof first.value === "number" ? first.value : 0;
+          return `${fullTopic}<br/>Publications: <strong>${val}</strong>`;
         },
       },
       grid: {

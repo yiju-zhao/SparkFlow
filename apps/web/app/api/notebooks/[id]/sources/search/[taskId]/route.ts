@@ -18,7 +18,7 @@ export async function GET(
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
-  const { notebookId, ...response } = task;
+  const { ...response } = task;
 
   // Clean up completed/failed tasks after 5 minutes
   if (task.status === "completed" || task.status === "failed") {

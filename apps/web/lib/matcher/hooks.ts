@@ -39,22 +39,26 @@ export function useJobProgress(
 
   useEffect(() => {
     if (!jobId) {
-      setProgress(null);
-      setIsLoading(false);
-      setIsConnected(false);
+      queueMicrotask(() => {
+        setProgress(null);
+        setIsLoading(false);
+        setIsConnected(false);
+      });
       return;
     }
 
     // Check if connection already exists
     if (sseConnections.has(jobId)) {
       console.log("[Matcher] SSE connection already exists for job:", jobId);
-      setIsConnected(true);
-      setIsLoading(true);
+      queueMicrotask(() => {
+        setIsConnected(true);
+        setIsLoading(true);
+      });
       return;
     }
 
     console.log("[Matcher] Creating SSE connection for job:", jobId);
-    setIsLoading(true);
+    queueMicrotask(() => setIsLoading(true));
 
     // Track if job completed successfully - used to ignore onerror after completion
     let jobCompleted = false;

@@ -3,6 +3,22 @@ import { storeImagesAndRewriteMarkdown } from "@/lib/services/source-service";
 import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
 import type { ProcessingContext, ProcessingResult } from "./types";
 
+function rewriteImgTags(html: string, imageMap: Map<string, string>): string {
+  return html.replace(/<img\b[^>]*>/gi, (tag) => {
+    const srcMatch = tag.match(/src=["']([^"']+)["']/);
+    if (!srcMatch) return tag;
+    const src = srcMatch[1];
+    // Direct hit
+    const local = imageMap.get(src);
+    if (local) return tag.replace(/src=["'][^"']+["']/, `src="${local}"`);
+    // Try filename
+    const filename = src.split("/").pop() ?? "";
+    const byFilename = imageMap.get(filename);
+    if (byFilename) return tag.replace(/src=["'][^"']+["']/, `src="${byFilename}"`);
+    return tag;
+  });
+}
+
 export async function processWebpage(
   url: string,
   title: string | undefined,
@@ -19,7 +35,13 @@ export async function processWebpage(
     const { scrapeWebpage } = await import("@/lib/services/playwright-scraper");
     const result = await scrapeWebpage(url);
 
-    const markdown = await storeImagesAndRewriteMarkdown(sourceId, result.markdown, result.images);
+    const { markdown, imagePathToApiUrl } = await storeImagesAndRewriteMarkdown(
+      sourceId,
+      result.markdown,
+      result.images,
+    );
+
+    const contentHtml = result.html ? rewriteImgTags(result.html, imagePathToApiUrl) : null;
 
     const finalTitle = title || result.metadata.title;
     const toc = extractTocFromMarkdown(markdown);
@@ -30,12 +52,14 @@ export async function processWebpage(
         title: finalTitle,
         markdownContent: markdown,
         content: markdown,
+        contentHtml,
         status: "READY",
         metadata: {
           author: result.metadata.author,
           publishDate: result.metadata.date,
           markdownLength: markdown.length,
           imageCount: result.images.length,
+          hasHtml: !!contentHtml,
           toc,
         },
       },
@@ -44,8 +68,8 @@ export async function processWebpage(
     // Trigger wiki ingest (awaited to prevent premature termination)
     try {
       const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
-      const result = await ingestSourceToWiki(context.notebookId, sourceId, context.userId);
-      console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`);
+      const ingestResult = await ingestSourceToWiki(context.notebookId, sourceId, context.userId);
+      console.log(`Wiki ingest complete: ${ingestResult.pagesWritten} pages written`);
     } catch (err) {
       console.error("Wiki ingest failed:", err);
     }

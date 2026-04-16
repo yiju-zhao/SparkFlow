@@ -16,9 +16,12 @@ export function SessionDailyChart({ data }: SessionDailyChartProps) {
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        formatter: (params: any) => {
-          const p = params[0];
-          return `${p.name}<br/>Sessions: <strong>${p.value}</strong>`;
+        formatter: (params: unknown) => {
+          const arr = Array.isArray(params) ? params : [params];
+          const p = arr[0] as { name?: string; value?: unknown };
+          if (!p?.name) return "";
+          const val = typeof p.value === "number" ? p.value : 0;
+          return `${p.name}<br/>Sessions: <strong>${val}</strong>`;
         },
       },
       grid: { left: 10, right: 20, top: 20, bottom: 10, containLabel: true },
