@@ -21,12 +21,17 @@ export async function storeImagesAndRewriteMarkdown(
   let rewrittenMarkdown = markdown;
 
   for (const image of images) {
+    const imageData = new Uint8Array(image.data);
+    console.log(
+      `[storeImage] Saving "${image.name}" (${image.mimeType}), ${imageData.byteLength} bytes`,
+    );
+
     const savedImage = await prisma.sourceImage.create({
       data: {
         sourceId,
         originalName: image.name,
         mimeType: image.mimeType,
-        data: new Uint8Array(image.data),
+        data: imageData,
       },
     });
 
