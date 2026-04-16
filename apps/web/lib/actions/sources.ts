@@ -296,6 +296,32 @@ export async function addWechatSource(notebookId: string, articleId: number) {
         }
       }
 
+      // Rewrite HTML image URLs to point to local /api/images/{id}
+      function rewriteWechatHtmlImages(html: string): string {
+        // Match <img ...> tags and rewrite src/data-src to local /api/images/{id}
+        return html.replace(/<img\b[^>]*>/gi, (tag) => {
+          const dataSrcMatch = tag.match(/data-src=["']([^"']+)["']/);
+          const srcMatch = tag.match(/src=["']([^"']+)["']/);
+          const src = dataSrcMatch?.[1] || srcMatch?.[1] || "";
+
+          // Case 1: Scraper-rewritten /api/images/{wechatDbId}
+          const scraperMatch = src.match(/^\/api\/images\/(\d+)$/);
+          if (scraperMatch) {
+            const localUrl = wechatIdToLocal.get(parseInt(scraperMatch[1], 10));
+            if (localUrl) return tag.replace(/(?:data-)?src=["'][^"']+["']/g, `src="${localUrl}"`);
+          }
+
+          // Case 2: Match by original WeChat CDN URL
+          const localUrl = originalUrlToLocal.get(src);
+          if (localUrl) return tag.replace(/(?:data-)?src=["'][^"']+["']/g, `src="${localUrl}"`);
+
+          // Case 3: Leave external URL as-is
+          return tag;
+        });
+      }
+
+      const contentHtml = rewriteWechatHtmlImages(article.content_html || "");
+
       // Convert HTML to markdown using TurndownService with image URL rewriting
       const TurndownService = (await import("turndown")).default;
       const td = new TurndownService({ headingStyle: "atx" });
@@ -338,6 +364,7 @@ export async function addWechatSource(notebookId: string, articleId: number) {
         data: {
           content: markdownContent,
           markdownContent: markdownContent,
+          contentHtml,
           status: "READY",
           metadata: {
             author: article.author,
@@ -345,6 +372,7 @@ export async function addWechatSource(notebookId: string, articleId: number) {
             sourceName: article.source_name,
             markdownLength: markdownContent.length,
             imageCount: images.filter((i) => i.data).length,
+            hasHtml: !!contentHtml,
             toc,
           },
         },
