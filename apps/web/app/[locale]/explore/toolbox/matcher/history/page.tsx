@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { HistoryTable } from "@/components/explore/toolbox/matcher/history/history-table";
+import type { ParsedQuery } from "@/lib/matcher/types";
 
 export const metadata: Metadata = {
   title: "Match History | SparkFlow",
@@ -34,22 +35,25 @@ export default async function MatchHistoryPage() {
   });
 
   // Serialize for client component
-  const serializedJobs = jobs.map((job) => ({
-    id: job.id,
-    targetType: job.targetType,
-    status: job.status,
-    queryCount: job.queryCount,
-    matchCount: job.matchCount,
-    topK: job.topK,
-    searchK: job.searchK,
-    progress: job.progress,
-    queryData: job.queryData as any,
-    createdAt: job.createdAt.toISOString(),
-    instance: {
-      name: job.instance.name,
-      venue: { name: job.instance.venue.name },
-    },
-  }));
+  const serializedJobs = jobs.map((job) => {
+    const queryData = job.queryData ? (JSON.parse(String(job.queryData)) as ParsedQuery[]) : null;
+    return {
+      id: job.id,
+      targetType: job.targetType,
+      status: job.status,
+      queryCount: job.queryCount,
+      matchCount: job.matchCount,
+      topK: job.topK,
+      searchK: job.searchK,
+      progress: job.progress,
+      queryData,
+      createdAt: job.createdAt.toISOString(),
+      instance: {
+        name: job.instance.name,
+        venue: { name: job.instance.venue.name },
+      },
+    };
+  });
 
   return (
     <div className="flex flex-col gap-6">

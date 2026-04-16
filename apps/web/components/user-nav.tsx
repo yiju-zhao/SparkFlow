@@ -37,7 +37,7 @@ export function UserNav({ user }: UserNavProps) {
   const locale = useLocale();
   // Avoid hydration mismatch for theme
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => queueMicrotask(() => setMounted(true)), []);
 
   const fallbackContent = user.name ? (
     user.name.charAt(0).toUpperCase()

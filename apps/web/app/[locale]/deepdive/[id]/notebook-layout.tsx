@@ -150,7 +150,7 @@ function NotebookLayoutInner({
 
   // Handle citation click — placeholder for future wiki-based navigation
   const handleCitationNavigate = useCallback(
-    async (_refId: string) => {
+    async () => {
       if (sourcesWidth === 0) {
         setSourcesWidth(SOURCES_CONTENT_WIDTH);
       }

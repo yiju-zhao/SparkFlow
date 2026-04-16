@@ -23,7 +23,7 @@ export async function POST(
 
   await prisma.source.update({
     where: { id: sourceId },
-    data: { metadata: meta as any },
+    data: { metadata: JSON.parse(JSON.stringify(meta)) },
   });
 
   return NextResponse.json({ ok: true });

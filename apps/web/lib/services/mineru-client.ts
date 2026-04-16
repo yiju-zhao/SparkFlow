@@ -2,7 +2,7 @@ import { readFile } from "fs/promises";
 
 export interface ContentListItem {
   type: string;
-  content?: any;
+  content?: unknown;
   bbox?: number[];
   // For legacy content_list.json format
   text?: string;
@@ -13,7 +13,7 @@ export interface ContentListItem {
   table_caption?: string[];
   table_footnote?: string[];
   sub_type?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface MineruResult {

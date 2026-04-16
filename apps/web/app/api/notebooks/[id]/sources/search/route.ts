@@ -113,8 +113,7 @@ async function performSearch(
       const data = await response.json();
       // The agent's last message should be a JSON array of results
       const lastMessage = data?.output?.messages?.slice(-1)?.[0];
-      const content =
-        typeof lastMessage === "string" ? lastMessage : lastMessage?.content;
+      const content = typeof lastMessage === "string" ? lastMessage : lastMessage?.content;
       if (content) {
         try {
           // Strip markdown code fences if the LLM wrapped them
@@ -124,12 +123,12 @@ async function performSearch(
             .trim();
           const parsed = JSON.parse(cleaned);
           if (Array.isArray(parsed)) {
-            results = parsed.map((r: any) => ({
-              id: r.id || r.url || "",
-              title: r.title || "Untitled",
-              snippet: r.snippet || "",
-              meta: r.meta || "",
-              url: r.url || undefined,
+            results = parsed.map((r: Record<string, unknown>) => ({
+              id: (r.id as string | undefined) || (r.url as string | undefined) || "",
+              title: (r.title as string | undefined) || "Untitled",
+              snippet: (r.snippet as string | undefined) || "",
+              meta: (r.meta as string | undefined) || "",
+              url: (r.url as string | undefined) || undefined,
               sourceType: sourceType as SearchResult["sourceType"],
             }));
           }

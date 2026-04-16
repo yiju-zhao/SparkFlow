@@ -135,11 +135,16 @@ export function SourcesPanel({
               .slice(0, 1)
               .map((s) => {
                 const meta = s.metadata as Record<string, unknown>;
+                const report = meta.extractionReport as {
+                  nodes: { id: string; label: string; type: string }[];
+                  edges: { source: string; target: string; relation: string }[];
+                  crossRefs: string[];
+                };
                 return (
                   <IngestReport
                     key={`report-${s.id}`}
                     sourceTitle={s.title}
-                    report={meta.extractionReport as any}
+                    report={report}
                     onDismiss={() => {
                       fetch(`/api/notebooks/${s.notebookId}/sources/${s.id}/dismiss-report`, {
                         method: "POST",
@@ -289,7 +294,7 @@ function SourceContentView({ source, onBack }: { source: Source; onBack: () => v
         setDeferredContent(markdownContent);
       });
     } else {
-      setDeferredContent(null);
+      queueMicrotask(() => setDeferredContent(null));
     }
   }, [isAnimationComplete, markdownContent]);
 

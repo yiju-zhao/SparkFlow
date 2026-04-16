@@ -37,7 +37,7 @@ export function CreateNotebookDialog() {
         setHasApiKey(false);
       }
     };
-    setHasApiKey(null);
+    queueMicrotask(() => setHasApiKey(null));
     checkKey();
   }, [open]);
 

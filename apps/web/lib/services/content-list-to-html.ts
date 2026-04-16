@@ -21,16 +21,18 @@ function resolveImage(imgPath: string | undefined, map: Map<string, string>): st
   return null;
 }
 
+type InlineContent = string | Array<{ type?: string; content?: string }>;
+
 /**
  * Extract plain text from a title_content or paragraph_content value.
  * v2 format: [{type: "text", content: "..."}, {type: "equation", content: "..."}, ...]
  * legacy:    plain string
  */
-function extractInlineText(value: any): string {
+function extractInlineText(value: InlineContent): string {
   if (typeof value === "string") return escapeHtml(value);
   if (!Array.isArray(value)) return "";
   return value
-    .map((item: any) => {
+    .map((item): string => {
       if (typeof item === "string") return escapeHtml(item);
       if (item?.type === "equation") {
         return `<code class="inline-equation">${escapeHtml(item.content || "")}</code>`;

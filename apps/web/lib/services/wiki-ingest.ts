@@ -106,8 +106,8 @@ export async function removeSourceFromWiki(
   await prisma.notebookGraph.update({
     where: { notebookId },
     data: {
-      graphData: graphWithCommunities as any,
-      communities: communities as any,
+      graphData: graphWithCommunities as unknown,
+      communities: communities as unknown,
     },
   });
 

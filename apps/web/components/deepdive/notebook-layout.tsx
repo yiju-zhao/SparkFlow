@@ -11,6 +11,7 @@ import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
 
 import type { Source, Note, Notebook } from "@prisma/client";
+import type { GraphData } from "@/lib/services/graph-service";
 
 // Pre-transformed types from RSC (avoids client-side transformation)
 interface TransformedChatSession {
@@ -43,7 +44,7 @@ interface NotebookLayoutProps {
   initialChatSessions?: TransformedChatSession[];
   initialMessages?: TransformedMessage[];
   wikiPages?: WikiPageSummary[];
-  graphData?: any;
+  graphData?: GraphData | null;
 }
 
 // Hoist stable default values to module level (Vercel best practice: rerender-memo-with-default-value)
