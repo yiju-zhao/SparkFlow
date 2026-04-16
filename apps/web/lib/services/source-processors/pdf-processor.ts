@@ -34,7 +34,7 @@ export async function processPdfDocument(
     );
 
     // Store images in PG and rewrite markdown references
-    const markdown = await storeImagesAndRewriteMarkdown(
+    const { markdown } = await storeImagesAndRewriteMarkdown(
       sourceId,
       mineruResult.markdown,
       mineruResult.images,

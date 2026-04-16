@@ -19,7 +19,11 @@ export async function processWebpage(
     const { scrapeWebpage } = await import("@/lib/services/playwright-scraper");
     const result = await scrapeWebpage(url);
 
-    const markdown = await storeImagesAndRewriteMarkdown(sourceId, result.markdown, result.images);
+    const { markdown } = await storeImagesAndRewriteMarkdown(
+      sourceId,
+      result.markdown,
+      result.images,
+    );
 
     const finalTitle = title || result.metadata.title;
     const toc = extractTocFromMarkdown(markdown);

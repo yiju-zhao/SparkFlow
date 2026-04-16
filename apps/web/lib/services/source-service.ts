@@ -12,13 +12,16 @@ import type { Source } from "@prisma/client";
 
 /**
  * Store extracted images in PostgreSQL and rewrite markdown image references.
+ * Returns rewritten markdown AND a mapping of all image path aliases to their
+ * final /api/images/{id} URL, so callers can reuse the map (e.g., for HTML rewriting).
  */
 export async function storeImagesAndRewriteMarkdown(
   sourceId: string,
   markdown: string,
   images: { name: string; fullPath?: string; data: Buffer; mimeType: string }[],
-): Promise<string> {
+): Promise<{ markdown: string; imagePathToApiUrl: Map<string, string> }> {
   let rewrittenMarkdown = markdown;
+  const imagePathToApiUrl = new Map<string, string>();
 
   for (const image of images) {
     const imageData = new Uint8Array(image.data);
@@ -37,12 +40,21 @@ export async function storeImagesAndRewriteMarkdown(
 
     const apiUrl = `/api/images/${savedImage.id}`;
 
-    // Replace full path first (e.g., "prefix/images/hash.jpg")
+    // Record every known alias for this image so later consumers (HTML builder)
+    // can resolve references by any of them.
+    imagePathToApiUrl.set(image.name, apiUrl);
+    if (image.fullPath) {
+      imagePathToApiUrl.set(image.fullPath, apiUrl);
+      // Path suffixes too (e.g., "images/hash.jpg" from "prefix/images/hash.jpg")
+      const parts = image.fullPath.split("/");
+      for (let i = 1; i < parts.length; i++) {
+        imagePathToApiUrl.set(parts.slice(i).join("/"), apiUrl);
+      }
+    }
+
+    // Rewrite markdown
     if (image.fullPath) {
       rewrittenMarkdown = rewrittenMarkdown.replaceAll(image.fullPath, apiUrl);
-
-      // Also try path suffixes — MinerU zip paths have a prefix the markdown doesn't use.
-      // e.g., fullPath "content_abc/images/hash.jpg" but markdown says "images/hash.jpg"
       const parts = image.fullPath.split("/");
       for (let i = 1; i < parts.length - 1; i++) {
         const suffix = parts.slice(i).join("/");
@@ -53,8 +65,6 @@ export async function storeImagesAndRewriteMarkdown(
       }
     }
 
-    // Fallback: replace filename (with optional directory prefix) in markdown image syntax.
-    // Handles both ![alt](hash.jpg) and ![alt](images/hash.jpg) without corrupting other text.
     const escaped = image.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     rewrittenMarkdown = rewrittenMarkdown.replace(
       new RegExp(`(!\\[[^\\]]*\\]\\()[^)]*?${escaped}(\\))`, "g"),
@@ -62,7 +72,7 @@ export async function storeImagesAndRewriteMarkdown(
     );
   }
 
-  return rewrittenMarkdown;
+  return { markdown: rewrittenMarkdown, imagePathToApiUrl };
 }
 
 class SourceService {
