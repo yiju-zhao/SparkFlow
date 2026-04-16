@@ -6,15 +6,6 @@ import { ConferenceStats } from "@/lib/explore/types";
 import { cn } from "@/lib/utils";
 import type { EChartsOption } from "echarts";
 
-type TooltipParams =
-  | {
-      dataIndex?: number;
-      value?: number | number[];
-      data?: unknown;
-      name?: string;
-    }
-  | Array<{ dataIndex?: number; value?: number | number[]; data?: unknown; name?: string }>;
-
 interface AffiliationBarChartProps {
   data: ConferenceStats["topAffiliations"];
   className?: string;
@@ -36,12 +27,14 @@ export function AffiliationBarChart({ data, className }: AffiliationBarChartProp
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        formatter: (params: TooltipParams) => {
+        formatter: (params: unknown) => {
           const arr = Array.isArray(params) ? params : [params];
-          const idx = arr[0]?.dataIndex;
+          const first = arr[0] as { dataIndex?: number; value?: unknown };
+          const idx = first?.dataIndex;
           if (idx === undefined || idx < 0) return "";
           const fullName = sortedData[idx].affiliation;
-          return `${fullName}<br/>Publications: <strong>${arr[0].value}</strong>`;
+          const val = typeof first.value === "number" ? first.value : 0;
+          return `${fullName}<br/>Publications: <strong>${val}</strong>`;
         },
       },
       grid: {

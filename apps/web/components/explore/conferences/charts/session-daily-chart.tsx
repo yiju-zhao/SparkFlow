@@ -4,15 +4,6 @@ import { useMemo } from "react";
 import { useECharts } from "@/lib/hooks/use-echarts";
 import type { EChartsOption } from "echarts";
 
-type TooltipParams =
-  | {
-      dataIndex?: number;
-      value?: number | number[];
-      data?: unknown;
-      name?: string;
-    }
-  | Array<{ dataIndex?: number; value?: number | number[]; data?: unknown; name?: string }>;
-
 interface SessionDailyChartProps {
   data: { date: string; label: string; count: number }[];
 }
@@ -25,11 +16,12 @@ export function SessionDailyChart({ data }: SessionDailyChartProps) {
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        formatter: (params: TooltipParams) => {
+        formatter: (params: unknown) => {
           const arr = Array.isArray(params) ? params : [params];
-          const p = arr[0];
+          const p = arr[0] as { name?: string; value?: unknown };
           if (!p?.name) return "";
-          return `${p.name}<br/>Sessions: <strong>${p.value}</strong>`;
+          const val = typeof p.value === "number" ? p.value : 0;
+          return `${p.name}<br/>Sessions: <strong>${val}</strong>`;
         },
       },
       grid: { left: 10, right: 20, top: 20, bottom: 10, containLabel: true },

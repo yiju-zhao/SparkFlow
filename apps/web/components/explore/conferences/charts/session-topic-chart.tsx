@@ -4,15 +4,6 @@ import { useMemo } from "react";
 import { useECharts } from "@/lib/hooks/use-echarts";
 import type { EChartsOption } from "echarts";
 
-type TooltipParams =
-  | {
-      dataIndex?: number;
-      value?: number | number[];
-      data?: unknown;
-      name?: string;
-    }
-  | Array<{ dataIndex?: number; value?: number | number[]; data?: unknown; name?: string }>;
-
 interface SessionTopicChartProps {
   data: { topic: string; count: number }[];
 }
@@ -31,11 +22,13 @@ export function SessionTopicChart({ data }: SessionTopicChartProps) {
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        formatter: (params: TooltipParams) => {
+        formatter: (params: unknown) => {
           const arr = Array.isArray(params) ? params : [params];
-          const idx = arr[0]?.dataIndex;
+          const first = arr[0] as { dataIndex?: number; value?: unknown };
+          const idx = first?.dataIndex;
           if (idx === undefined || idx < 0) return "";
-          return `${sorted[idx].topic}<br/>Sessions: <strong>${arr[0].value}</strong>`;
+          const val = typeof first.value === "number" ? first.value : 0;
+          return `${sorted[idx].topic}<br/>Sessions: <strong>${val}</strong>`;
         },
       },
       grid: { left: 10, right: 30, top: 10, bottom: 10, containLabel: true },

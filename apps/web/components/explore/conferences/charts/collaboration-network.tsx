@@ -21,10 +21,6 @@ type EdgeTooltipParam = {
   marker?: string;
 };
 
-type TooltipParams =
-  | (NodeTooltipParam | EdgeTooltipParam)
-  | Array<NodeTooltipParam | EdgeTooltipParam>;
-
 interface CollaborationNetworkProps {
   data: NetworkGraphData;
   title: string;
@@ -99,13 +95,14 @@ export function CollaborationNetwork({
             fontSize: 12,
           },
           padding: [8, 12],
-          formatter: (params: TooltipParams) => {
+          formatter: (params: unknown) => {
             const p = Array.isArray(params) ? params[0] : params;
-            if (p?.dataType === "node") {
-              const nodeData = p as NodeTooltipParam;
+            const pData = p as { dataType?: string; name?: string; data?: unknown };
+            if (pData?.dataType === "node") {
+              const nodeData = pData as NodeTooltipParam;
               return `<strong>${nodeData.name}</strong><br/><span style="opacity:0.7">Publications:</span> ${nodeData.data?.value}`;
-            } else if (p?.dataType === "edge") {
-              const edgeData = p as EdgeTooltipParam;
+            } else if (pData?.dataType === "edge") {
+              const edgeData = pData as EdgeTooltipParam;
               return `${edgeData.data?.source} <span style="opacity:0.5">↔</span> ${edgeData.data?.target}<br/><span style="opacity:0.7">Collaborations:</span> ${edgeData.data?.value}`;
             }
             return "";
@@ -134,9 +131,10 @@ export function CollaborationNetwork({
               show: true,
               position: "right" as const,
               fontSize: compact ? 9 : 12,
-              formatter: (params: TooltipParams) => {
+              formatter: (params: unknown) => {
                 const p = Array.isArray(params) ? params[0] : params;
-                const name = p.name || "";
+                const pData = p as { name?: string };
+                const name = pData.name || "";
                 return name.length > labelTruncate
                   ? name.substring(0, labelTruncate) + "..."
                   : name;
