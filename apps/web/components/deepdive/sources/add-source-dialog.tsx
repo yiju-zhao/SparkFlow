@@ -248,12 +248,21 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
     });
   };
 
+  const ALLOWED_UPLOAD_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt", "txt", "md"];
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      handleFileUpload(file);
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) {
+      alert(
+        `Unsupported file type ".${ext}". Allowed: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => "." + e).join(", ")}`,
+      );
+      e.target.value = "";
+      return;
     }
+    setSelectedFile(file);
+    handleFileUpload(file);
   };
 
   const handleFileUpload = (file: File) => {
@@ -567,8 +576,9 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                 <input
                   ref={fileInputRef}
                   type="file"
+                  // Keep in sync with ALLOWED_EXTENSIONS in lib/actions/sources.ts
                   className="hidden"
-                  accept=".pdf,.docx,.txt,.md"
+                  accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md"
                   onChange={handleFileSelect}
                 />
 
