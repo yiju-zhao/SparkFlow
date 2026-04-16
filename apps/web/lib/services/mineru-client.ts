@@ -1,8 +1,25 @@
 import { readFile } from "fs/promises";
 
-interface MineruResult {
+export interface ContentListItem {
+  type: string;
+  content?: any;
+  bbox?: number[];
+  // For legacy content_list.json format
+  text?: string;
+  text_level?: number;
+  img_path?: string;
+  image_caption?: string[];
+  table_body?: string;
+  table_caption?: string[];
+  table_footnote?: string[];
+  sub_type?: string;
+  [key: string]: any;
+}
+
+export interface MineruResult {
   markdown: string;
   images: { name: string; fullPath?: string; data: Buffer; mimeType: string }[];
+  contentList?: ContentListItem[];
 }
 
 const MINERU_MODE = process.env.MINERU_MODE || "local";
@@ -55,6 +72,9 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
   formData.append("parse_method", "auto");
   formData.append("return_md", "true");
   formData.append("return_images", "true");
+  // Request zip format — MinerU's return_images in JSON mode is unreliable,
+  // but the zip always contains the images directory alongside the markdown.
+  formData.append("response_format_zip", "true");
 
   // Local MinerU /file_parse is synchronous — PDF parsing can take minutes.
   // Use a 10-minute timeout and no retries (retrying a long parse is wasteful).
@@ -86,8 +106,17 @@ async function parsePdfLocal(filePath: string): Promise<MineruResult> {
     );
   }
 
-  const result = await response.json();
-  return extractFromLocalResult(result);
+  // MinerU returns a zip when response_format_zip is supported, otherwise JSON.
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    // Fallback: server returned JSON (older MinerU without zip support)
+    const result = await response.json();
+    return extractFromLocalResult(result);
+  }
+
+  // Zip response — extract markdown + images from the archive
+  const arrayBuffer = await response.arrayBuffer();
+  return extractFromZipBuffer(arrayBuffer);
 }
 
 function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
@@ -255,30 +284,40 @@ async function pollMineruBatch(
   throw new Error(`MinerU extraction timed out after ${(maxAttempts * intervalMs) / 1000}s`);
 }
 
-async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
+/** Parse a zip buffer containing MinerU output (markdown + images). */
+export async function extractFromZipBuffer(buffer: ArrayBuffer): Promise<MineruResult> {
   const { default: JSZip } = await import("jszip");
-
-  let response: Response;
-  try {
-    response = await fetchWithRetry(zipUrl);
-  } catch (err) {
-    throw new Error(describeFetchError(err, "Failed to download MinerU result zip"));
-  }
-  if (!response.ok) {
-    throw new Error(`Failed to download MinerU result zip: ${response.status}`);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const zip = await JSZip.loadAsync(arrayBuffer);
+  const zip = await JSZip.loadAsync(buffer);
 
   let markdown = "";
+  let contentList: ContentListItem[] | undefined;
   const images: MineruResult["images"] = [];
 
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue;
 
-    if (path.endsWith(".md") && path.includes("full")) {
-      markdown = await file.async("string");
+    if (path.endsWith(".md")) {
+      const content = await file.async("string");
+      // Prefer files with "full" in the name (MinerU API convention).
+      // For local-mode zips there's usually only one .md file.
+      if (!markdown || path.includes("full")) {
+        markdown = content;
+      }
+    } else if (path.endsWith("_content_list_v2.json") || path.endsWith("_content_list.json")) {
+      // Prefer v2 (3.0+) — overwrites legacy if both present
+      const json = await file.async("string");
+      try {
+        const parsed = JSON.parse(json);
+        // v2 is page-grouped: [[items], [items], ...] — flatten
+        // legacy is flat: [items...]
+        if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+          contentList = parsed.flat() as ContentListItem[];
+        } else {
+          contentList = parsed as ContentListItem[];
+        }
+      } catch (err) {
+        console.warn(`[MinerU] Failed to parse ${path}:`, err);
+      }
     } else if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(path)) {
       const data = await file.async("nodebuffer");
       const ext = path.split(".").pop()!.toLowerCase();
@@ -302,5 +341,26 @@ async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
     }
   }
 
-  return { markdown, images };
+  if (!markdown) {
+    throw new Error(
+      `MinerU zip contained no markdown file. Entries: ${Object.keys(zip.files).join(", ")}`,
+    );
+  }
+
+  return { markdown, images, contentList };
+}
+
+async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
+  let response: Response;
+  try {
+    response = await fetchWithRetry(zipUrl);
+  } catch (err) {
+    throw new Error(describeFetchError(err, "Failed to download MinerU result zip"));
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to download MinerU result zip: ${response.status}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return extractFromZipBuffer(arrayBuffer);
 }
