@@ -7,6 +7,24 @@ import { Maximize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ECharts } from "echarts";
 
+type NodeTooltipParam = {
+  dataType: "node";
+  name?: string;
+  data?: { value?: number };
+  marker?: string;
+};
+
+type EdgeTooltipParam = {
+  dataType: "edge";
+  name?: string;
+  data?: { source?: string; target?: string; value?: number };
+  marker?: string;
+};
+
+type TooltipParams =
+  | (NodeTooltipParam | EdgeTooltipParam)
+  | Array<NodeTooltipParam | EdgeTooltipParam>;
+
 interface CollaborationNetworkProps {
   data: NetworkGraphData;
   title: string;
@@ -81,11 +99,14 @@ export function CollaborationNetwork({
             fontSize: 12,
           },
           padding: [8, 12],
-          formatter: (params: any) => {
-            if (params.dataType === "node") {
-              return `<strong>${params.name}</strong><br/><span style="opacity:0.7">Publications:</span> ${params.data.value}`;
-            } else if (params.dataType === "edge") {
-              return `${params.data.source} <span style="opacity:0.5">↔</span> ${params.data.target}<br/><span style="opacity:0.7">Collaborations:</span> ${params.data.value}`;
+          formatter: (params: TooltipParams) => {
+            const p = Array.isArray(params) ? params[0] : params;
+            if (p?.dataType === "node") {
+              const nodeData = p as NodeTooltipParam;
+              return `<strong>${nodeData.name}</strong><br/><span style="opacity:0.7">Publications:</span> ${nodeData.data?.value}`;
+            } else if (p?.dataType === "edge") {
+              const edgeData = p as EdgeTooltipParam;
+              return `${edgeData.data?.source} <span style="opacity:0.5">↔</span> ${edgeData.data?.target}<br/><span style="opacity:0.7">Collaborations:</span> ${edgeData.data?.value}`;
             }
             return "";
           },
@@ -113,8 +134,9 @@ export function CollaborationNetwork({
               show: true,
               position: "right" as const,
               fontSize: compact ? 9 : 12,
-              formatter: (params: any) => {
-                const name = params.name;
+              formatter: (params: TooltipParams) => {
+                const p = Array.isArray(params) ? params[0] : params;
+                const name = p.name || "";
                 return name.length > labelTruncate
                   ? name.substring(0, labelTruncate) + "..."
                   : name;

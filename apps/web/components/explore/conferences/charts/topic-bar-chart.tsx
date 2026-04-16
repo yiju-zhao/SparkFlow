@@ -5,6 +5,15 @@ import { useECharts } from "@/lib/hooks/use-echarts";
 import { ConferenceStats } from "@/lib/explore/types";
 import type { EChartsOption } from "echarts";
 
+type TooltipParams =
+  | {
+      dataIndex?: number;
+      value?: number | number[];
+      data?: unknown;
+      name?: string;
+    }
+  | Array<{ dataIndex?: number; value?: number | number[]; data?: unknown; name?: string }>;
+
 interface TopicBarChartProps {
   data: ConferenceStats["topTopics"];
 }
@@ -25,10 +34,12 @@ export function TopicBarChart({ data }: TopicBarChartProps) {
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        formatter: (params: any) => {
-          const idx = params[0].dataIndex;
+        formatter: (params: TooltipParams) => {
+          const arr = Array.isArray(params) ? params : [params];
+          const idx = arr[0]?.dataIndex;
+          if (idx === undefined || idx < 0) return "";
           const fullTopic = sortedData[idx].topic;
-          return `${fullTopic}<br/>Publications: <strong>${params[0].value}</strong>`;
+          return `${fullTopic}<br/>Publications: <strong>${arr[0].value}</strong>`;
         },
       },
       grid: {

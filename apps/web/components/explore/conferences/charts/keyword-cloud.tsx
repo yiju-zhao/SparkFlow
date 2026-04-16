@@ -5,6 +5,14 @@ import { useTheme } from "next-themes";
 import { KeywordStats } from "@/lib/explore/types";
 import type { ECharts } from "echarts";
 
+type TooltipParams =
+  | {
+      name?: string;
+      value?: number | number[];
+      data?: unknown;
+    }
+  | Array<{ name?: string; value?: number | number[]; data?: unknown }>;
+
 interface KeywordCloudProps {
   data: KeywordStats[];
   className?: string;
@@ -66,7 +74,10 @@ export function KeywordCloud({ data, className }: KeywordCloudProps) {
     chartInstance.current.setOption({
       tooltip: {
         show: true,
-        formatter: (params: any) => `${params.name}: ${params.value}`,
+        formatter: (params: TooltipParams) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          return `${p.name}: ${p.value}`;
+        },
       },
       series: [
         {

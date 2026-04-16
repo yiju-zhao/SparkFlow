@@ -4,6 +4,15 @@ import { useMemo } from "react";
 import { useECharts } from "@/lib/hooks/use-echarts";
 import type { EChartsOption } from "echarts";
 
+type TooltipParams =
+  | {
+      dataIndex?: number;
+      value?: number | number[];
+      data?: unknown;
+      name?: string;
+    }
+  | Array<{ dataIndex?: number; value?: number | number[]; data?: unknown; name?: string }>;
+
 interface SessionTimeHeatmapProps {
   data: { day: string; hour: string; count: number }[];
   days: string[];
@@ -21,8 +30,11 @@ export function SessionTimeHeatmap({ data, days, hours }: SessionTimeHeatmapProp
 
     return {
       tooltip: {
-        formatter: (params: any) => {
-          const [dayIdx, hourIdx, count] = params.data;
+        formatter: (params: TooltipParams) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          const arr = Array.isArray(p.data) ? p.data : [];
+          const [dayIdx, hourIdx, count] = arr;
+          if (dayIdx === undefined || hourIdx === undefined) return "";
           return `${days[dayIdx]}, ${hours[hourIdx]}<br/>Sessions: <strong>${count}</strong>`;
         },
       },
