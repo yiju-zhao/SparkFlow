@@ -11,10 +11,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css}\""
   },
   "dependencies": {
-    "@ag-ui/mcp-apps-middleware": "latest",
-    "@copilotkit/react-core": "^1.52.1",
-    "@copilotkit/react-ui": "^1.52.1",
-    "@copilotkit/runtime": "^1.52.1",
+    "@assistant-ui/react": "^0.12.25",
+    "@assistant-ui/react-langgraph": "^0.13.10",
     "@langchain/core": "^1.1.13",
     "@langchain/langgraph-sdk": "^1.5.3",
     "@matejmazur/react-katex": "^3.1.3",
