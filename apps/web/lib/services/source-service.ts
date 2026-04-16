@@ -48,11 +48,11 @@ export async function storeImagesAndRewriteMarkdown(
       }
     }
 
-    // Fallback: replace bare filename, but only in markdown image syntax to avoid corruption
-    // e.g., ![alt](hash.jpg) → ![alt](/api/images/xxx)
+    // Fallback: replace filename (with optional directory prefix) in markdown image syntax.
+    // Handles both ![alt](hash.jpg) and ![alt](images/hash.jpg) without corrupting other text.
     const escaped = image.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     rewrittenMarkdown = rewrittenMarkdown.replace(
-      new RegExp(`(!\\[[^\\]]*\\]\\()${escaped}(\\))`, "g"),
+      new RegExp(`(!\\[[^\\]]*\\]\\()[^)]*?${escaped}(\\))`, "g"),
       `$1${apiUrl}$2`,
     );
   }
