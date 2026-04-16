@@ -1,9 +1,14 @@
 import prisma from "@/lib/prisma";
 import { storeImagesAndRewriteMarkdown } from "@/lib/services/source-service";
 import { extractTocFromMarkdown } from "@/lib/utils/toc-extractor";
+import { buildHtmlFromContentList } from "@/lib/services/content-list-to-html";
 import type { ProcessingContext, ProcessingResult } from "./types";
 
-export async function processPdfDocument(
+/**
+ * Handles PDF / DOCX / PPT / PPTX via MinerU.
+ * MinerU auto-detects the file type based on extension.
+ */
+export async function processMineruDocument(
   file: File,
   context: ProcessingContext,
 ): Promise<ProcessingResult> {
@@ -15,11 +20,9 @@ export async function processPdfDocument(
       data: { status: "PROCESSING" },
     });
 
-    // Write file to temp location for MinerU
     const tempPath = `/tmp/${sourceId}-${file.name}`;
-    const arrayBuffer = await file.arrayBuffer();
     const { writeFile, unlink } = await import("fs/promises");
-    await writeFile(tempPath, Buffer.from(arrayBuffer));
+    await writeFile(tempPath, Buffer.from(await file.arrayBuffer()));
 
     let mineruResult;
     try {
@@ -30,15 +33,25 @@ export async function processPdfDocument(
     }
 
     console.log(
-      `[PDF] MinerU returned ${mineruResult.images.length} images, markdown length: ${mineruResult.markdown.length}`,
+      `[MinerU] ${file.name}: ${mineruResult.images.length} images, ` +
+        `${mineruResult.markdown.length} markdown chars, ` +
+        `contentList=${mineruResult.contentList?.length ?? "none"}`,
     );
 
-    // Store images in PG and rewrite markdown references
-    const { markdown } = await storeImagesAndRewriteMarkdown(
+    const { markdown, imagePathToApiUrl } = await storeImagesAndRewriteMarkdown(
       sourceId,
       mineruResult.markdown,
       mineruResult.images,
     );
+
+    let contentHtml: string | null = null;
+    if (mineruResult.contentList && mineruResult.contentList.length > 0) {
+      try {
+        contentHtml = buildHtmlFromContentList(mineruResult.contentList, imagePathToApiUrl);
+      } catch (err) {
+        console.warn("[MinerU] HTML build failed, will fall back to markdown:", err);
+      }
+    }
 
     const toc = extractTocFromMarkdown(markdown);
 
@@ -47,17 +60,18 @@ export async function processPdfDocument(
       data: {
         markdownContent: markdown,
         content: markdown,
+        contentHtml,
         status: "READY",
         metadata: {
-          fileType: "pdf",
+          fileType: file.name.split(".").pop()?.toLowerCase() ?? "unknown",
           markdownLength: markdown.length,
           imageCount: mineruResult.images.length,
+          hasHtml: !!contentHtml,
           toc,
         },
       },
     });
 
-    // Trigger wiki ingest (awaited to prevent premature termination)
     try {
       const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
       const result = await ingestSourceToWiki(context.notebookId, sourceId, context.userId);
