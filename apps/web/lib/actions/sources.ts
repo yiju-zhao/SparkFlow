@@ -261,12 +261,6 @@ export async function addWechatSource(notebookId: string, articleId: number) {
   revalidatePath(`/deepdive/${notebookId}`);
 
   // Process in background: convert HTML to markdown, store images
-  const context: ProcessingContext = {
-    sourceId: source.id,
-    notebookId,
-    userId: session.user.id,
-  };
-
   (async () => {
     try {
       // Fetch and store images, building URL mappings for content rewriting

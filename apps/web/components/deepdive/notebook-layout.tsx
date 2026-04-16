@@ -148,7 +148,7 @@ function NotebookLayoutInner({
 
   // Handle citation click — placeholder for future wiki-based navigation
   const handleCitationNavigate = useCallback(
-    async (_refId: string) => {
+    async () => {
       // TODO: Implement wiki-based citation navigation
       // For now, just expand the sources panel
       if (sourcesWidth === 0) {

@@ -83,7 +83,6 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const [urlsText, setUrlsText] = useState("");
   const [showWebsites, setShowWebsites] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -261,7 +260,6 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
       e.target.value = "";
       return;
     }
-    setSelectedFile(file);
     handleFileUpload(file);
   };
 
@@ -299,7 +297,6 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
         await queryClient.invalidateQueries({
           queryKey: ["notebook-sources", notebookId],
         });
-        setSelectedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     });
@@ -309,7 +306,6 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) {
-      setSelectedFile(file);
       handleFileUpload(file);
     }
   };

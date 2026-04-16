@@ -1,5 +1,7 @@
 import type { ContentListItem } from "./mineru-client";
 
+type ContentValue = Record<string, unknown>;
+
 function escapeHtml(s: string): string {
   return s
     .replaceAll("&", "&amp;")
@@ -44,23 +46,25 @@ function extractInlineText(value: InlineContent): string {
 
 function renderItem(item: ContentListItem, imageMap: Map<string, string>): string {
   const type = item.type;
+  const content =
+    typeof item.content === "object" && item.content !== null ? (item.content as ContentValue) : {};
 
   // Title (v2 + legacy)
   if (type === "title" || (type === "text" && item.text_level)) {
-    const level = Math.min(item.content?.level ?? item.text_level ?? 1, 6);
-    const text = extractInlineText(item.content?.title_content ?? item.text ?? "");
+    const level = Math.min((content.level as number) ?? item.text_level ?? 1, 6);
+    const text = extractInlineText((content.title_content as string) ?? item.text ?? "");
     return `<h${level}>${text}</h${level}>`;
   }
 
   // Paragraph / plain text
   if (type === "paragraph" || type === "text") {
-    const text = extractInlineText(item.content?.paragraph_content ?? item.text ?? "");
+    const text = extractInlineText((content.paragraph_content as string) ?? item.text ?? "");
     return text ? `<p>${text}</p>` : "";
   }
 
   // Equation block
   if (type === "equation_interline" || type === "equation") {
-    const latex = item.content?.math_content ?? item.text ?? "";
+    const latex = (content.math_content as string) ?? item.text ?? "";
     const imgSrc = resolveImage(item.img_path, imageMap);
     if (imgSrc) {
       return `<div class="math-block"><img src="${imgSrc}" alt="${escapeHtml(latex)}" /></div>`;
@@ -71,9 +75,9 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
 
   // Image
   if (type === "image") {
-    const imgSrc = resolveImage(item.img_path ?? item.content?.img_path, imageMap);
+    const imgSrc = resolveImage(item.img_path ?? (content.img_path as string), imageMap);
     if (!imgSrc) return "";
-    const captionList = item.image_caption ?? item.content?.image_caption ?? [];
+    const captionList = item.image_caption ?? (content.image_caption as string[]) ?? [];
     const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
     return `<figure><img src="${imgSrc}" alt="${escapeHtml(caption)}" />${
       caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""
@@ -82,8 +86,8 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
 
   // Table — MinerU gives us ready-to-use HTML
   if (type === "table") {
-    const body = item.table_body ?? item.content?.table_body ?? "";
-    const captionList = item.table_caption ?? item.content?.table_caption ?? [];
+    const body = item.table_body ?? (content.table_body as string) ?? "";
+    const captionList = item.table_caption ?? (content.table_caption as string[]) ?? [];
     const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
     const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
     // Wrap in figure for consistent styling
@@ -92,7 +96,7 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
 
   // Chart — treat like image
   if (type === "chart") {
-    const imgSrc = resolveImage(item.img_path ?? item.content?.img_path, imageMap);
+    const imgSrc = resolveImage(item.img_path ?? (content.img_path as string), imageMap);
     if (!imgSrc) return "";
     const captionList = item.chart_caption ?? [];
     const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
@@ -103,21 +107,21 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
 
   // Code block
   if (type === "code") {
-    const body = item.code_body ?? item.content?.code_body ?? "";
-    const lang = item.content?.code_language ?? "";
+    const body = item.code_body ?? (content.code_body as string) ?? "";
+    const lang = (content.code_language as string) ?? "";
     const langClass = lang ? ` class="lang-${escapeHtml(lang)}"` : "";
     return `<pre><code${langClass}>${escapeHtml(body)}</code></pre>`;
   }
 
   // Algorithm
   if (type === "algorithm") {
-    const body = item.content?.algorithm_content ?? "";
+    const body = (content.algorithm_content as string) ?? "";
     return `<pre class="algorithm"><code>${escapeHtml(body)}</code></pre>`;
   }
 
   // Lists
   if (type === "list" || type === "index") {
-    const items = item.list_items ?? item.content?.list_items ?? [];
+    const items = item.list_items ?? (content.list_items as string[]) ?? [];
     if (!Array.isArray(items) || items.length === 0) return "";
     const tag = type === "index" ? "ol" : "ul";
     const lis = items.map((li: string) => `<li>${escapeHtml(li)}</li>`).join("");

@@ -111,7 +111,6 @@ export function StudioPanel({
                     key={note.id}
                     note={note}
                     onSelect={() => onSelectNote(note)}
-                    selected={false}
                   />
                 ))}
               </div>
@@ -133,10 +132,9 @@ export function StudioPanel({
 interface NoteCardProps {
   note: Note;
   onSelect: () => void;
-  selected: boolean;
 }
 
-function NoteCard({ note, onSelect, selected }: NoteCardProps) {
+function NoteCard({ note, onSelect }: NoteCardProps) {
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = (e: React.MouseEvent) => {
