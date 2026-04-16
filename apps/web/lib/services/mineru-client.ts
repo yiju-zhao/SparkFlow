@@ -23,7 +23,6 @@ export interface MineruResult {
 }
 
 const MINERU_MODE = process.env.MINERU_MODE || "local";
-const MINERU_LOCAL_URL = process.env.MINERU_LOCAL_URL || "http://localhost:8000";
 const MINERU_API_TOKEN = process.env.MINERU_API_TOKEN || "";
 
 /** Extract a human-readable message from fetch errors (which bury the cause). */
