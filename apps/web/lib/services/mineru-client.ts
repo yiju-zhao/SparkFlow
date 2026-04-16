@@ -65,118 +65,23 @@ export async function parsePdf(
 }
 
 async function parsePdfLocal(filePath: string): Promise<MineruResult> {
-  const fileBuffer = await readFile(filePath);
-  const fileName = filePath.split("/").pop()!;
-  const formData = new FormData();
-  formData.append("files", new Blob([fileBuffer], { type: "application/pdf" }), fileName);
-  formData.append("parse_method", "auto");
-  formData.append("return_md", "true");
-  formData.append("return_images", "true");
-  // Request zip format — MinerU's return_images in JSON mode is unreliable,
-  // but the zip always contains the images directory alongside the markdown.
-  formData.append("response_format_zip", "true");
+  const { submitMineruTask, pollMineruTask, downloadMineruResult } =
+    await import("./mineru-task-client");
 
-  // Local MinerU /file_parse is synchronous — PDF parsing can take minutes.
-  // Use a 10-minute timeout and no retries (retrying a long parse is wasteful).
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
+  const { task_id } = await submitMineruTask(filePath, {
+    backend: "hybrid-auto-engine",
+    returnMd: true,
+    returnContentList: true,
+    returnImages: true,
+    responseFormatZip: true,
+    formulaEnable: true,
+    tableEnable: true,
+  });
 
-  let response: Response;
-  try {
-    response = await fetch(`${MINERU_LOCAL_URL}/file_parse`, {
-      method: "POST",
-      body: formData,
-      signal: controller.signal,
-    });
-  } catch (err) {
-    if (controller.signal.aborted) {
-      throw new Error(
-        "MinerU local parse timed out after 10 minutes — the PDF may be too large or the server too slow",
-      );
-    }
-    throw new Error(describeFetchError(err, "MinerU local connection failed"));
-  } finally {
-    clearTimeout(timeout);
-  }
+  await pollMineruTask(task_id, { intervalMs: 2000, maxAttempts: 300 });
 
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    throw new Error(
-      `MinerU local parse failed: ${response.status} ${response.statusText} ${errorBody}`,
-    );
-  }
-
-  // MinerU returns a zip when response_format_zip is supported, otherwise JSON.
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    // Fallback: server returned JSON (older MinerU without zip support)
-    const result = await response.json();
-    return extractFromLocalResult(result);
-  }
-
-  // Zip response — extract markdown + images from the archive
-  const arrayBuffer = await response.arrayBuffer();
-  return extractFromZipBuffer(arrayBuffer);
-}
-
-function extractFromLocalResult(result: Record<string, unknown>): MineruResult {
-  // MinerU /file_parse response format:
-  // { "backend": "pipeline", "version": "2.6.8", "results": { "filename": { "md_content": "..." } } }
-  let markdown = "";
-  const images: MineruResult["images"] = [];
-
-  // Try new format first: results.{filename}.md_content
-  const results = result.results as Record<string, Record<string, unknown>> | undefined;
-  if (results) {
-    const firstKey = Object.keys(results)[0];
-    if (firstKey) {
-      const fileResult = results[firstKey];
-      markdown = (fileResult.md_content as string) || "";
-
-      // Extract images if returned
-      if (fileResult.images && Array.isArray(fileResult.images)) {
-        for (const img of fileResult.images as any[]) {
-          if (img.data) {
-            // Handle multiple possible data formats from MinerU
-            let buf: Buffer;
-            if (typeof img.data === "string") {
-              buf = Buffer.from(img.data, "base64");
-            } else if (Buffer.isBuffer(img.data)) {
-              buf = img.data;
-            } else if (Array.isArray(img.data)) {
-              buf = Buffer.from(img.data);
-            } else if (img.data?.type === "Buffer" && Array.isArray(img.data.data)) {
-              buf = Buffer.from(img.data.data);
-            } else {
-              buf = Buffer.from(img.data);
-            }
-            images.push({
-              name: img.name || "image.png",
-              data: buf,
-              mimeType: img.content_type || "image/png",
-            });
-          }
-        }
-      } else {
-        console.warn(
-          `[MinerU] No images returned from local parse. Keys in result: ${Object.keys(fileResult).join(", ")}`,
-        );
-      }
-    }
-  }
-
-  // Fallback: old format with top-level markdown field
-  if (!markdown) {
-    markdown = (result.markdown as string) || (result.md_content as string) || "";
-  }
-
-  if (!markdown) {
-    throw new Error(
-      `MinerU returned empty markdown. Response keys: ${Object.keys(result).join(", ")}`,
-    );
-  }
-
-  return { markdown, images };
+  const zipBuffer = await downloadMineruResult(task_id);
+  return extractFromZipBuffer(zipBuffer);
 }
 
 async function parsePdfViaApi(
@@ -364,3 +269,6 @@ async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
   const arrayBuffer = await response.arrayBuffer();
   return extractFromZipBuffer(arrayBuffer);
 }
+
+// Alias — MinerU handles PDF/DOCX/PPT uniformly
+export const parseDocumentViaMineru = parsePdf;
