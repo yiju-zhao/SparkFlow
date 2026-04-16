@@ -5,12 +5,13 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { processWebpage } from "@/lib/services/source-processors/webpage-processor";
 import { processTextDocument } from "@/lib/services/source-processors/text-processor";
-import { processPdfDocument } from "@/lib/services/source-processors/pdf-processor";
-import {
-  processDocxDocument,
-  processFallbackDocument,
-} from "@/lib/services/source-processors/fallback-processor";
+import { processMineruDocument } from "@/lib/services/source-processors/mineru-processor";
+import { processFallbackDocument } from "@/lib/services/source-processors/fallback-processor";
 import type { ProcessingContext } from "@/lib/services/source-processors/types";
+
+const MINERU_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt"];
+const TEXT_EXTENSIONS = ["txt", "md"];
+const ALLOWED_EXTENSIONS = [...MINERU_EXTENSIONS, ...TEXT_EXTENSIONS];
 
 export async function getSources(notebookId: string) {
   const session = await auth();
@@ -102,10 +103,13 @@ export async function uploadDocumentSource(notebookId: string, formData: FormDat
     throw new Error("No file provided");
   }
 
-  // Detect file type
   const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+  if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+    throw new Error(
+      `Unsupported file type ".${fileExtension}". Allowed: ${ALLOWED_EXTENSIONS.map((e) => "." + e).join(", ")}`,
+    );
+  }
 
-  // Create source with PROCESSING status
   const source = await prisma.source.create({
     data: {
       notebookId,
@@ -115,10 +119,8 @@ export async function uploadDocumentSource(notebookId: string, formData: FormDat
     },
   });
 
-  // Revalidate immediately so it shows up in the list
   revalidatePath(`/deepdive/${notebookId}`);
 
-  // Process in the background using the new processors
   const context: ProcessingContext = {
     sourceId: source.id,
     notebookId,
@@ -126,15 +128,13 @@ export async function uploadDocumentSource(notebookId: string, formData: FormDat
   };
 
   const processDocument = async () => {
-    if (fileExtension === "txt" || fileExtension === "md") {
+    if (TEXT_EXTENSIONS.includes(fileExtension)) {
       return processTextDocument(file, context);
-    } else if (fileExtension === "pdf") {
-      return processPdfDocument(file, context);
-    } else if (fileExtension === "docx" || fileExtension === "doc") {
-      return processDocxDocument(file, context);
-    } else {
-      return processFallbackDocument(file, context);
     }
+    if (MINERU_EXTENSIONS.includes(fileExtension)) {
+      return processMineruDocument(file, context);
+    }
+    return processFallbackDocument(file, context);
   };
 
   processDocument()
@@ -203,7 +203,7 @@ export async function addPublicationSource(notebookId: string, publicationId: st
       const file = new File([blob], `${publication.title}.pdf`, {
         type: "application/pdf",
       });
-      await processPdfDocument(file, context);
+      await processMineruDocument(file, context);
     } catch (err) {
       console.error("[addPublicationSource] Failed:", err);
       await prisma.source.update({

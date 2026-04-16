@@ -3,11 +3,8 @@ import { revalidatePath } from "next/cache";
 import type { ProcessingContext } from "./source-processors/types";
 import { processWebpage } from "./source-processors/webpage-processor";
 import { processTextDocument } from "./source-processors/text-processor";
-import { processPdfDocument } from "./source-processors/pdf-processor";
-import {
-  processDocxDocument,
-  processFallbackDocument,
-} from "./source-processors/fallback-processor";
+import { processMineruDocument } from "./source-processors/mineru-processor";
+import { processFallbackDocument } from "./source-processors/fallback-processor";
 import type { Source } from "@prisma/client";
 
 /**
@@ -125,13 +122,11 @@ class SourceService {
   private async processDocument(file: File, fileExtension: string, context: ProcessingContext) {
     if (fileExtension === "txt" || fileExtension === "md") {
       return processTextDocument(file, context);
-    } else if (fileExtension === "pdf") {
-      return processPdfDocument(file, context);
-    } else if (fileExtension === "docx" || fileExtension === "doc") {
-      return processDocxDocument(file, context);
-    } else {
-      return processFallbackDocument(file, context);
     }
+    if (["pdf", "docx", "doc", "pptx", "ppt"].includes(fileExtension)) {
+      return processMineruDocument(file, context);
+    }
+    return processFallbackDocument(file, context);
   }
 
   private processInBackground(processFn: () => Promise<unknown>, notebookId: string): void {
