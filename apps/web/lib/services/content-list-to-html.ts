@@ -21,7 +21,25 @@ function resolveImage(imgPath: string | undefined, map: Map<string, string>): st
     const suffix = parts.slice(i).join("/");
     if (map.has(suffix)) return map.get(suffix)!;
   }
+  // Last-resort: try the basename alone
+  const basename = parts[parts.length - 1];
+  if (basename && map.has(basename)) return map.get(basename)!;
   return null;
+}
+
+/**
+ * MinerU v2 stores image paths under `content.image_source.path`. Legacy v1
+ * uses `content.img_path`. Accept either so an older zip still renders.
+ */
+function getImagePath(content: ContentValue): string | undefined {
+  const source = content.image_source;
+  if (source && typeof source === "object") {
+    const path = (source as { path?: unknown }).path;
+    if (typeof path === "string" && path) return path;
+  }
+  const imgPath = content.img_path;
+  if (typeof imgPath === "string" && imgPath) return imgPath;
+  return undefined;
 }
 
 /**
@@ -110,8 +128,27 @@ function restoreMathDelimiters(
   return out;
 }
 
-type InlineContent = string | Array<{ type?: string; content?: string }>;
+type InlineContent = string | Array<string | { type?: string; content?: unknown }>;
 type MathHints = { inline: string[]; display: string[] };
+
+/**
+ * Convert a caption value — which in v2 is a span-array like
+ * [{type:"text",content:"..."},{type:"equation_inline",content:"\\sigma"}] —
+ * into inline HTML with $...$ delimiters preserved for KaTeX auto-render.
+ * Falls back to joining plain-string arrays (legacy v1 shape).
+ */
+function renderCaption(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "string") return extractInlineText(value);
+  if (Array.isArray(value)) {
+    // All-string array (v1): join plain
+    if (value.every((v) => typeof v === "string")) {
+      return extractInlineText(value.join(" "));
+    }
+    return extractInlineText(value as InlineContent);
+  }
+  return "";
+}
 
 /**
  * Extract plain text from a title_content or paragraph_content value.
@@ -131,14 +168,22 @@ function extractInlineText(value: InlineContent, mathHints?: MathHints): string 
         const withMath = mathHints ? restoreMathDelimiters(item, mathHints) : item;
         return escapeHtml(withMath);
       }
-      if (item?.type === "equation") {
+      // MinerU v2 uses `equation_inline`; older dumps may use equation / inline_equation / latex.
+      const itemType = item?.type;
+      if (
+        itemType === "equation" ||
+        itemType === "inline_equation" ||
+        itemType === "equation_inline" ||
+        itemType === "latex"
+      ) {
         // Emit $...$ inline delimiters so KaTeX auto-render picks it up.
         // Don't wrap in <code> — KaTeX's default ignoredTags includes "code".
-        const latex = item.content || "";
+        const latex = typeof item.content === "string" ? item.content : "";
         const withDelim = latex.startsWith("$") && latex.endsWith("$") ? latex : `$${latex}$`;
         return escapeHtml(withDelim);
       }
-      return escapeHtml(item?.content || "");
+      const content = typeof item?.content === "string" ? item.content : "";
+      return escapeHtml(content);
     })
     .join("");
 }
@@ -158,8 +203,13 @@ function renderItemInner(
 
   // Title
   if (type === "title") {
-    const level = Math.min((content.level as number) ?? 1, 6);
-    const text = extractInlineText((content.title_content as string) ?? "", mathHints);
+    const level = Math.min(Math.max((content.level as number) ?? 1, 1), 6);
+    // title_content is a span-array in v2; may be a string in legacy dumps.
+    const raw =
+      (content.title_content as InlineContent | undefined) ??
+      (content.text as InlineContent | undefined) ??
+      "";
+    const text = extractInlineText(raw, mathHints);
     return text ? `<h${level}>${text}</h${level}>` : "";
   }
 
@@ -172,21 +222,30 @@ function renderItemInner(
     type === "footer" ||
     type === "page_number" ||
     type === "aside_text" ||
-    type === "page_footnote"
+    type === "page_aside_text" ||
+    type === "page_footnote" ||
+    type === "text"
   ) {
-    const text = extractInlineText((content.paragraph_content as string) ?? "", mathHints);
+    // v2 uses `paragraph_content`; v1 legacy dumps sometimes use `text` or `content`.
+    // The value may be a plain string or a span-array with equation_inline items.
+    const raw =
+      (content.paragraph_content as InlineContent | undefined) ??
+      (content[`${type}_content`] as InlineContent | undefined) ??
+      (content.text as InlineContent | undefined) ??
+      (content.content as InlineContent | undefined) ??
+      "";
+    const text = extractInlineText(raw, mathHints);
     return text ? `<p>${text}</p>` : "";
   }
 
-  // Equation block
+  // Display equation block
   if (type === "equation_interline") {
     const latex = (content.math_content as string) ?? "";
-    const imgSrc = resolveImage(content.img_path as string | undefined, imageMap);
+    const imgSrc = resolveImage(getImagePath(content), imageMap);
     if (imgSrc) {
-      return `<img src="${imgSrc}" alt="${escapeHtml(latex)}" />`;
+      return `<figure class="source-equation"><img src="${imgSrc}" alt="${escapeHtml(latex)}" /></figure>`;
     }
     // Fallback: emit $$...$$ so KaTeX auto-render picks it up.
-    // Don't wrap in <code> — KaTeX's default ignoredTags includes "code".
     const withDelim =
       latex.trim().startsWith("$$") && latex.trim().endsWith("$$") ? latex : `$$${latex}$$`;
     return escapeHtml(withDelim);
@@ -194,32 +253,74 @@ function renderItemInner(
 
   // Image / chart
   if (type === "image" || type === "chart") {
-    const imgSrc = resolveImage(content.img_path as string | undefined, imageMap);
-    if (!imgSrc) return "";
-    const captionList =
-      (content.image_caption as string[] | undefined) ??
-      (content.chart_caption as string[] | undefined) ??
-      [];
-    const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
-    return `<figure><img src="${imgSrc}" alt="${escapeHtml(caption)}" />${
-      caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""
-    }</figure>`;
+    const imgSrc = resolveImage(getImagePath(content), imageMap);
+    const captionSource =
+      type === "chart" ? content.chart_caption : content.image_caption;
+    const footnoteSource =
+      type === "chart" ? content.chart_footnote : content.image_footnote;
+    const caption = renderCaption(captionSource);
+    const footnote = renderCaption(footnoteSource);
+    if (!imgSrc) {
+      // Skip figure if we couldn't resolve the image (nothing useful to show).
+      return "";
+    }
+    // Use caption as alt text with no math delimiters, so screen readers aren't
+    // confused by $...$ markers.
+    const altText = typeof captionSource === "string"
+      ? captionSource
+      : Array.isArray(captionSource)
+        ? captionSource
+            .map((item) =>
+              typeof item === "string" ? item : (item as { content?: unknown })?.content ?? "",
+            )
+            .join(" ")
+        : "";
+    return (
+      `<figure><img src="${imgSrc}" alt="${escapeHtml(altText)}" />` +
+      (caption ? `<figcaption>${caption}</figcaption>` : "") +
+      (footnote ? `<figcaption class="source-footnote">${footnote}</figcaption>` : "") +
+      `</figure>`
+    );
   }
 
-  // Caption as standalone block
+  // Seal — rendered as a figure with the extracted image and the seal text caption.
+  if (type === "seal") {
+    const imgSrc = resolveImage(getImagePath(content), imageMap);
+    const caption = renderCaption(content.seal_content);
+    if (!imgSrc && !caption) return "";
+    return (
+      `<figure class="source-seal">` +
+      (imgSrc ? `<img src="${imgSrc}" alt="${escapeHtml(caption)}" />` : "") +
+      (caption ? `<figcaption>${caption}</figcaption>` : "") +
+      `</figure>`
+    );
+  }
+
+  // Caption as standalone block (legacy v1 shape — kept for defensive parsing).
   if (type === "image_caption" || type === "table_caption" || type === "chart_caption") {
-    const captionList = content.content as string[] | undefined;
-    const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
-    return caption ? `<p>${escapeHtml(caption)}</p>` : "";
+    const caption = renderCaption(
+      (content.content as InlineContent | undefined) ??
+        (content.text as InlineContent | undefined),
+    );
+    return caption ? `<p>${caption}</p>` : "";
   }
 
-  // Table — MinerU gives us ready-to-use HTML
-  if (type === "table") {
-    const body = (content.table_body as string) ?? "";
-    const captionList = (content.table_caption as string[]) ?? [];
-    const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
-    const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
-    return `<figure class="source-table">${captionHtml}${body}</figure>`;
+  // Table — v2 stores HTML at `content.html`, legacy v1 uses `content.table_body`.
+  if (type === "table" || type === "table_body") {
+    const body =
+      (typeof content.html === "string" && content.html) ||
+      (typeof content.table_body === "string" && content.table_body) ||
+      "";
+    const caption = renderCaption(content.table_caption);
+    const footnote = renderCaption(content.table_footnote);
+    const imgSrc = body ? null : resolveImage(getImagePath(content), imageMap);
+    const captionHtml = caption ? `<figcaption>${caption}</figcaption>` : "";
+    const footnoteHtml = footnote
+      ? `<figcaption class="source-footnote">${footnote}</figcaption>`
+      : "";
+    const inner = body || (imgSrc ? `<img src="${imgSrc}" alt="${escapeHtml(caption)}" />` : "");
+    if (!inner && !captionHtml) return "";
+    return `<figure class="source-table">${captionHtml}${inner}${footnoteHtml}</figure>`;
   }
 
   // Code block
@@ -236,7 +337,7 @@ function renderItemInner(
     return `<pre class="algorithm"><code>${escapeHtml(body)}</code></pre>`;
   }
 
-  // Lists — list_items may be plain strings OR objects with nested structure
+  // Lists — v2 items: {item_type, item_content: span-array}. Legacy: strings or {content}.
   if (type === "list" || type === "index") {
     const items = content.list_items as unknown;
     if (!Array.isArray(items) || items.length === 0) return "";
@@ -246,13 +347,12 @@ function renderItemInner(
         if (typeof li === "string") return `<li>${escapeHtml(li)}</li>`;
         if (li && typeof li === "object") {
           const obj = li as Record<string, unknown>;
-          // v2 may wrap text in {content: "..."} or {list_item_content: [...]}
-          const inner =
-            typeof obj.content === "string"
-              ? escapeHtml(obj.content)
-              : Array.isArray(obj.list_item_content)
-                ? extractInlineText(obj.list_item_content as InlineContent)
-                : extractInlineText(obj.content as InlineContent);
+          const raw =
+            (obj.item_content as InlineContent | undefined) ??
+            (obj.list_item_content as InlineContent | undefined) ??
+            (obj.content as InlineContent | undefined) ??
+            "";
+          const inner = extractInlineText(raw, mathHints);
           return inner ? `<li>${inner}</li>` : "";
         }
         return "";
@@ -265,35 +365,22 @@ function renderItemInner(
   return "";
 }
 
-function pageDivider(pageIdx: number): string {
-  return `<div class="md-page-divider" aria-hidden="true"><span>Page ${pageIdx + 1}</span></div>`;
-}
-
 export function buildHtmlFromContentList(
   contentList: ContentListItem[],
   imagePathToApiUrl: Map<string, string>,
   markdown?: string,
 ): string {
   const parts: string[] = [];
-  let lastPageIdx: number | null = null;
   const mathHints = markdown ? extractMathFromMarkdown(markdown) : undefined;
 
   for (const item of contentList) {
-    const pageIdx = (item.page_idx as number | undefined) ?? 0;
-    if (lastPageIdx !== null && pageIdx !== lastPageIdx) {
-      parts.push(pageDivider(lastPageIdx));
-    }
-    lastPageIdx = pageIdx;
+    // Page numbers carry no meaning in the continuous reading view — skip them.
+    if (item.type === "page_number") continue;
 
     const inner = renderItemInner(item, imagePathToApiUrl, mathHints);
     if (!inner) continue;
-    // Sanitize type → css-safe class token
     const typeClass = (item.type || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
     parts.push(`<div class="md-block md-block-${typeClass}">${inner}</div>`);
-  }
-
-  if (lastPageIdx !== null) {
-    parts.push(pageDivider(lastPageIdx));
   }
 
   return parts.join("\n");
