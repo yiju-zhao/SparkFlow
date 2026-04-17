@@ -22,8 +22,10 @@ npm run dev              # Dev server on port 3001
 npm run build            # Production build
 npm run lint             # ESLint
 npx tsc --noEmit         # Type check
-npx prisma generate      # After schema changes
-npx prisma db push       # Sync schema to DB (dev only)
+npx prisma generate               # Regenerate client after schema edits
+npx prisma migrate dev --name X   # Create + apply a migration (dev)
+npx prisma migrate deploy         # Apply pending migrations (production)
+# Never use `db push` — repo is baselined to Prisma Migrate. See apps/web/CLAUDE.md.
 ```
 
 ### Backend (apps/agent)

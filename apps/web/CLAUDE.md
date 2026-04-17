@@ -73,11 +73,57 @@ Prefix with underscore `_components` or `_lib` inside `app/` for:
 ## Commands
 
 ```bash
-npm run dev              # Start dev server on port 3001
-npm run build            # Production build
-npx prisma generate      # After schema changes
-npx prisma db push       # Sync schema to DB (dev)
+npm run dev                       # Start dev server on port 3001
+npm run build                     # Production build
+npx prisma generate               # Regenerate client after schema edits
+npx prisma migrate dev --name X   # Generate + apply a migration (dev)
+npx prisma migrate deploy         # Apply pending migrations (production)
+npx prisma migrate status         # Inspect applied/pending migrations
 ```
+
+## Prisma Migration Workflow
+
+The repo uses **Prisma Migrate** (not `db push`). Migrations live at
+`prisma/migrations/`, starting from the `0_init` baseline. Both local and
+production DBs have `_prisma_migrations` initialized.
+
+### Editing the schema
+
+1. Edit `prisma/schema.prisma`.
+2. `npx prisma migrate dev --name <what_changed>` — generates SQL, applies it
+   locally, regenerates the client.
+3. **Inspect the generated SQL** at `prisma/migrations/<timestamp>_<name>/migration.sql`.
+   - **Column renames**: Prisma writes `DROP COLUMN` + `ADD COLUMN` by default
+     (data loss). Hand-edit to `ALTER TABLE "foo" RENAME COLUMN "old" TO "new";`
+     before committing, then re-run `migrate dev` to verify.
+   - **Destructive changes on non-empty tables**: consider splitting into
+     expand → migrate data → contract, across multiple migrations.
+4. Commit `prisma/schema.prisma` **and** `prisma/migrations/` together.
+
+### Deploying to production
+
+```bash
+git pull
+cd apps/web
+npm ci
+npx prisma generate
+npx prisma migrate deploy   # only applies migrations not yet in _prisma_migrations
+npm run build
+pm2 restart web             # or docker compose restart / systemctl restart
+```
+
+`migrate deploy` is safe to re-run: it skips migrations already recorded.
+
+### Rules
+
+- **Never run `db push`** once migrations are baselined — it causes drift.
+- **Never edit an already-applied migration file.** To fix a mistake, add a
+  new migration that corrects it.
+- **Never use `migrate reset`** against production (wipes all data).
+- If a migration fails mid-apply in production, `migrate status` will show it
+  as `failed`. Fix the DB state manually, then
+  `prisma migrate resolve --rolled-back <name>` or `--applied <name>` to
+  unblock.
 
 ## CopilotKit
 
