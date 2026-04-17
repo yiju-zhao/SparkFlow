@@ -2,8 +2,10 @@ import type { ContentListItem } from "./mineru-client";
 
 type ContentValue = Record<string, unknown>;
 
-function escapeHtml(s: string): string {
-  return s
+function escapeHtml(s: unknown): string {
+  if (s == null) return "";
+  const str = typeof s === "string" ? s : String(s);
+  return str
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -136,13 +138,30 @@ function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): 
     return `<pre class="algorithm"><code>${escapeHtml(body)}</code></pre>`;
   }
 
-  // Lists
+  // Lists — list_items may be plain strings OR objects with nested structure
   if (type === "list" || type === "index") {
-    const items = (content.list_items as string[]) ?? [];
+    const items = content.list_items as unknown;
     if (!Array.isArray(items) || items.length === 0) return "";
     const tag = type === "index" ? "ol" : "ul";
-    const lis = items.map((li: string) => `<li>${escapeHtml(li)}</li>`).join("");
-    return `<${tag}>${lis}</${tag}>`;
+    const lis = items
+      .map((li) => {
+        if (typeof li === "string") return `<li>${escapeHtml(li)}</li>`;
+        if (li && typeof li === "object") {
+          const obj = li as Record<string, unknown>;
+          // v2 may wrap text in {content: "..."} or {list_item_content: [...]}
+          const inner =
+            typeof obj.content === "string"
+              ? escapeHtml(obj.content)
+              : Array.isArray(obj.list_item_content)
+                ? extractInlineText(obj.list_item_content as InlineContent)
+                : extractInlineText(obj.content as InlineContent);
+          return inner ? `<li>${inner}</li>` : "";
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("");
+    return lis ? `<${tag}>${lis}</${tag}>` : "";
   }
 
   return "";
