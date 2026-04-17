@@ -24,19 +24,99 @@ function resolveImage(imgPath: string | undefined, map: Map<string, string>): st
   return null;
 }
 
+/**
+ * Extract math expressions from markdown ($...$ and $$...$$ ranges).
+ * Returns sorted longest-first so multi-token expressions win over substrings.
+ */
+function extractMathFromMarkdown(markdown: string): { inline: string[]; display: string[] } {
+  const display: string[] = [];
+  const inline: string[] = [];
+
+  // $$...$$ (multi-line OK)
+  for (const match of markdown.matchAll(/\$\$([\s\S]+?)\$\$/g)) {
+    display.push(match[1].trim());
+  }
+
+  // $...$ — exclude $$ blocks by removing them first
+  const noDisplay = markdown.replace(/\$\$[\s\S]+?\$\$/g, "");
+  for (const match of noDisplay.matchAll(/\$([^$\n]+?)\$/g)) {
+    inline.push(match[1].trim());
+  }
+
+  // Sort longest-first so multi-token expressions win over substrings
+  display.sort((a, b) => b.length - a.length);
+  inline.sort((a, b) => b.length - a.length);
+
+  return { inline, display };
+}
+
+/**
+ * MinerU content_list_v2 strips $...$ delimiters from paragraph text, but the
+ * markdown output preserves them. Use the markdown as ground truth to restore
+ * delimiters in plain text: find each math expression and wrap it with $ or $$.
+ */
+function restoreMathDelimiters(
+  text: string,
+  mathHints: { inline: string[]; display: string[] },
+): string {
+  let out = text;
+
+  // Apply display math first (longer, safer to wrap)
+  for (const expr of mathHints.display) {
+    if (!expr) continue;
+    const idx = out.indexOf(expr);
+    if (idx === -1) continue;
+    // Skip if already wrapped
+    const before = out.slice(Math.max(0, idx - 2), idx);
+    const after = out.slice(idx + expr.length, idx + expr.length + 2);
+    if (before.endsWith("$$") || after.startsWith("$$")) continue;
+    out = out.slice(0, idx) + `$$${expr}$$` + out.slice(idx + expr.length);
+  }
+
+  // Then inline math
+  for (const expr of mathHints.inline) {
+    if (!expr) continue;
+    // Search all occurrences (non-overlapping)
+    let searchFrom = 0;
+    while (true) {
+      const idx = out.indexOf(expr, searchFrom);
+      if (idx === -1) break;
+      const before = out.charAt(idx - 1);
+      const after = out.charAt(idx + expr.length);
+      // Already wrapped? skip this occurrence
+      if (before === "$" || after === "$") {
+        searchFrom = idx + expr.length;
+        continue;
+      }
+      out = out.slice(0, idx) + `$${expr}$` + out.slice(idx + expr.length);
+      searchFrom = idx + expr.length + 2;
+    }
+  }
+
+  return out;
+}
+
 type InlineContent = string | Array<{ type?: string; content?: string }>;
+type MathHints = { inline: string[]; display: string[] };
 
 /**
  * Extract plain text from a title_content or paragraph_content value.
  * content_list_v2 items may be a plain string or an array of inline items
  * like [{type: "text", content: "..."}, {type: "equation", content: "..."}].
+ * If mathHints is provided, restore $...$ delimiters stripped by v2.
  */
-function extractInlineText(value: InlineContent): string {
-  if (typeof value === "string") return escapeHtml(value);
+function extractInlineText(value: InlineContent, mathHints?: MathHints): string {
+  if (typeof value === "string") {
+    const withMath = mathHints ? restoreMathDelimiters(value, mathHints) : value;
+    return escapeHtml(withMath);
+  }
   if (!Array.isArray(value)) return "";
   return value
     .map((item): string => {
-      if (typeof item === "string") return escapeHtml(item);
+      if (typeof item === "string") {
+        const withMath = mathHints ? restoreMathDelimiters(item, mathHints) : item;
+        return escapeHtml(withMath);
+      }
       if (item?.type === "equation") {
         // Emit $...$ inline delimiters so KaTeX auto-render picks it up.
         // Don't wrap in <code> — KaTeX's default ignoredTags includes "code".
@@ -53,7 +133,11 @@ function extractInlineText(value: InlineContent): string {
  * Render a single content_list_v2 item into inner HTML (without the block wrapper).
  * The caller wraps the output with `md-block md-block-{type}` for styling.
  */
-function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): string {
+function renderItemInner(
+  item: ContentListItem,
+  imageMap: Map<string, string>,
+  mathHints?: MathHints,
+): string {
   const type = item.type;
   const content =
     typeof item.content === "object" && item.content !== null ? (item.content as ContentValue) : {};
@@ -61,7 +145,7 @@ function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): 
   // Title
   if (type === "title") {
     const level = Math.min((content.level as number) ?? 1, 6);
-    const text = extractInlineText((content.title_content as string) ?? "");
+    const text = extractInlineText((content.title_content as string) ?? "", mathHints);
     return text ? `<h${level}>${text}</h${level}>` : "";
   }
 
@@ -76,7 +160,7 @@ function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): 
     type === "aside_text" ||
     type === "page_footnote"
   ) {
-    const text = extractInlineText((content.paragraph_content as string) ?? "");
+    const text = extractInlineText((content.paragraph_content as string) ?? "", mathHints);
     return text ? `<p>${text}</p>` : "";
   }
 
@@ -174,9 +258,11 @@ function pageDivider(pageIdx: number): string {
 export function buildHtmlFromContentList(
   contentList: ContentListItem[],
   imagePathToApiUrl: Map<string, string>,
+  markdown?: string,
 ): string {
   const parts: string[] = [];
   let lastPageIdx: number | null = null;
+  const mathHints = markdown ? extractMathFromMarkdown(markdown) : undefined;
 
   for (const item of contentList) {
     const pageIdx = (item.page_idx as number | undefined) ?? 0;
@@ -185,7 +271,7 @@ export function buildHtmlFromContentList(
     }
     lastPageIdx = pageIdx;
 
-    const inner = renderItemInner(item, imagePathToApiUrl);
+    const inner = renderItemInner(item, imagePathToApiUrl, mathHints);
     if (!inner) continue;
     // Sanitize type → css-safe class token
     const typeClass = (item.type || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
