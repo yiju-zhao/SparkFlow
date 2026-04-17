@@ -47,7 +47,13 @@ export async function processMineruDocument(
     let contentHtml: string | null = null;
     if (mineruResult.contentList && mineruResult.contentList.length > 0) {
       try {
-        contentHtml = buildHtmlFromContentList(mineruResult.contentList, imagePathToApiUrl);
+        // Pass original markdown as math-hint source — content_list_v2 strips
+        // $...$ delimiters from paragraph text, but markdown preserves them.
+        contentHtml = buildHtmlFromContentList(
+          mineruResult.contentList,
+          imagePathToApiUrl,
+          mineruResult.markdown,
+        );
       } catch (err) {
         console.warn("[MinerU] HTML build failed, will fall back to markdown:", err);
       }

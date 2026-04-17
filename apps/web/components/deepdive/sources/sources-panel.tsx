@@ -207,9 +207,20 @@ const SourceItem = memo(function SourceItem({
         (current) => (current || []).filter((item) => item.id !== source.id),
       );
       await deleteSource(source.id);
-      await queryClient.invalidateQueries({
-        queryKey: ["notebook-sources", source.notebookId],
-      });
+      // Graph/wiki cleanup runs inside deleteSource, so by the time it
+      // resolves the updated data is persisted — invalidate all three queries
+      // so the UI reflects the change without a manual refresh.
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["notebook-sources", source.notebookId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["notebook-graph", source.notebookId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["wiki-pages", source.notebookId],
+        }),
+      ]);
     });
   };
 

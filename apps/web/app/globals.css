@@ -380,9 +380,7 @@
 
 /* Block layout helpers */
 .md-block-image,
-.md-block-chart,
-.md-block-equation_interline,
-.md-block-equation {
+.md-block-chart {
   display: flex;
   justify-content: center;
   margin: 1rem 0;
@@ -392,6 +390,16 @@
 .md-block-chart img {
   max-width: 100%;
   height: auto;
+}
+
+/* Equation blocks — keep as block-level so KaTeX \tag{} can right-align properly.
+ * Flex centering collapses KaTeX's internal layout and causes the tag to overlap
+ * with the equation body. */
+.md-block-equation_interline,
+.md-block-equation {
+  margin: 1rem 0;
+  overflow-x: auto;
+  text-align: center;
 }
 
 .md-block-image_caption,
