@@ -13,10 +13,13 @@ import {
   Wrench,
   Database,
   User,
+  RefreshCw,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { GraphView } from "./graph-view";
 import { HealthCheckButton } from "./health-check";
 
@@ -194,7 +197,22 @@ export function WikiPanel({
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   // Top panel height as percentage (0-100), graph gets the rest
   const [topPercent, setTopPercent] = useState(55);
+  const [isGraphFullscreen, setIsGraphFullscreen] = useState(false);
+  const [isRefreshingGraph, setIsRefreshingGraph] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  const handleRefreshGraph = useCallback(async () => {
+    setIsRefreshingGraph(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["notebook-graph", notebookId] }),
+        queryClient.invalidateQueries({ queryKey: ["wiki-pages", notebookId] }),
+      ]);
+    } finally {
+      setIsRefreshingGraph(false);
+    }
+  }, [notebookId, queryClient]);
 
   const handleDividerDrag = useCallback((delta: number) => {
     const container = splitContainerRef.current;
@@ -335,10 +353,35 @@ export function WikiPanel({
 
       {/* === BOTTOM: Graph === */}
       <div className="flex flex-col overflow-hidden" style={{ height: `${100 - topPercent}%` }}>
-        <div className="px-6 pt-1 pb-1 shrink-0">
+        <div className="px-6 pt-1 pb-1 shrink-0 flex items-center justify-between">
           <span className="text-[10px] font-semibold tracking-[2px] uppercase font-mono text-muted-foreground">
             Graph
           </span>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={handleRefreshGraph}
+              disabled={isRefreshingGraph}
+              title="Refresh graph"
+            >
+              <RefreshCw
+                className={`h-3 w-3 text-muted-foreground ${
+                  isRefreshingGraph ? "animate-spin" : ""
+                }`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => setIsGraphFullscreen(true)}
+              title="Expand graph"
+            >
+              <Maximize2 className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </div>
         </div>
         <div className="flex-1">
           <GraphView
@@ -347,6 +390,55 @@ export function WikiPanel({
           />
         </div>
       </div>
+
+      {/* === Fullscreen Graph Dialog === */}
+      <Dialog open={isGraphFullscreen} onOpenChange={setIsGraphFullscreen}>
+        <DialogContent
+          showCloseButton={false}
+          className="w-[95vw] max-w-[95vw] h-[90vh] p-0 sm:max-w-[95vw] gap-0 flex flex-col"
+        >
+          <DialogTitle className="sr-only">Knowledge Graph</DialogTitle>
+          <div className="px-4 py-2 border-b border-divider flex items-center justify-between shrink-0">
+            <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">
+              Knowledge Graph
+            </span>
+            <div className="flex items-center gap-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleRefreshGraph}
+                disabled={isRefreshingGraph}
+                title="Refresh graph"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 text-muted-foreground ${
+                    isRefreshingGraph ? "animate-spin" : ""
+                  }`}
+                />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setIsGraphFullscreen(false)}
+                title="Close"
+              >
+                <span className="text-lg leading-none">×</span>
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0">
+            <GraphView
+              graphData={liveGraphData}
+              onNodeClick={(slug) => {
+                setIsGraphFullscreen(false);
+                setSelectedSlug(resolveSlug(slug));
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
