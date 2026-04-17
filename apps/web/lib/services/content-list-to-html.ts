@@ -323,18 +323,32 @@ function renderItemInner(
     return `<figure class="source-table">${captionHtml}${inner}${footnoteHtml}</figure>`;
   }
 
-  // Code block
+  // Code block — v2 stores body at `code_content` (span-array), legacy at `code_body`.
   if (type === "code") {
-    const body = (content.code_body as string) ?? "";
-    const lang = (content.code_language as string) ?? "";
+    const raw =
+      (content.code_content as InlineContent | undefined) ??
+      (content.code_body as InlineContent | undefined) ??
+      "";
+    const body = extractInlineText(raw);
+    const lang = typeof content.code_language === "string" ? content.code_language : "";
     const langClass = lang ? ` class="lang-${escapeHtml(lang)}"` : "";
-    return `<pre><code${langClass}>${escapeHtml(body)}</code></pre>`;
+    const caption = renderCaption(content.code_caption);
+    const captionHtml = caption ? `<figcaption>${caption}</figcaption>` : "";
+    if (!body && !captionHtml) return "";
+    return `<figure class="source-code">${captionHtml}<pre><code${langClass}>${body}</code></pre></figure>`;
   }
 
-  // Algorithm
+  // Algorithm — v2 stores body at `algorithm_content` (span-array).
   if (type === "algorithm") {
-    const body = (content.algorithm_content as string) ?? "";
-    return `<pre class="algorithm"><code>${escapeHtml(body)}</code></pre>`;
+    const raw =
+      (content.algorithm_content as InlineContent | undefined) ??
+      (content.algorithm_body as InlineContent | undefined) ??
+      "";
+    const body = extractInlineText(raw);
+    const caption = renderCaption(content.algorithm_caption);
+    const captionHtml = caption ? `<figcaption>${caption}</figcaption>` : "";
+    if (!body && !captionHtml) return "";
+    return `<figure class="source-algorithm">${captionHtml}<pre><code>${body}</code></pre></figure>`;
   }
 
   // Lists — v2 items: {item_type, item_content: span-array}. Legacy: strings or {content}.
