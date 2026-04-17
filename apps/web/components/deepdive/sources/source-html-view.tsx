@@ -59,15 +59,6 @@ export function SourceHtmlView({ html, sourceId, className }: SourceHtmlViewProp
       };
     });
 
-    // Unwrap legacy <code> inside .math-block / .inline-equation wrappers so KaTeX
-    // auto-render can process them (KaTeX ignores <code> tags by default).
-    // Affects sources imported before the builder was updated to avoid <code>.
-    container.querySelectorAll(".math-block > code, code.inline-equation").forEach((codeEl) => {
-      const parent = codeEl.parentElement;
-      if (!parent) return;
-      parent.textContent = codeEl.textContent;
-    });
-
     // Render inline/display math with KaTeX auto-render
     let cancelled = false;
     import("katex/dist/contrib/auto-render.mjs")

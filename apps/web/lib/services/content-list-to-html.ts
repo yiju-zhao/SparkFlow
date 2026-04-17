@@ -26,8 +26,8 @@ type InlineContent = string | Array<{ type?: string; content?: string }>;
 
 /**
  * Extract plain text from a title_content or paragraph_content value.
- * v2 format: [{type: "text", content: "..."}, {type: "equation", content: "..."}, ...]
- * legacy:    plain string
+ * content_list_v2 items may be a plain string or an array of inline items
+ * like [{type: "text", content: "..."}, {type: "equation", content: "..."}].
  */
 function extractInlineText(value: InlineContent): string {
   if (typeof value === "string") return escapeHtml(value);
@@ -48,7 +48,7 @@ function extractInlineText(value: InlineContent): string {
 }
 
 /**
- * Render a single content_list item into inner HTML (without the block wrapper).
+ * Render a single content_list_v2 item into inner HTML (without the block wrapper).
  * The caller wraps the output with `md-block md-block-{type}` for styling.
  */
 function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): string {
@@ -56,17 +56,16 @@ function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): 
   const content =
     typeof item.content === "object" && item.content !== null ? (item.content as ContentValue) : {};
 
-  // Title (v2 + legacy)
-  if (type === "title" || (type === "text" && item.text_level)) {
-    const level = Math.min((content.level as number) ?? item.text_level ?? 1, 6);
-    const text = extractInlineText((content.title_content as string) ?? item.text ?? "");
+  // Title
+  if (type === "title") {
+    const level = Math.min((content.level as number) ?? 1, 6);
+    const text = extractInlineText((content.title_content as string) ?? "");
     return text ? `<h${level}>${text}</h${level}>` : "";
   }
 
-  // Paragraph / plain text / noisy blocks (header, footer, page_number, aside_text, page_footnote)
+  // Paragraph / page-structure blocks
   if (
     type === "paragraph" ||
-    type === "text" ||
     type === "page_header" ||
     type === "header" ||
     type === "page_footer" ||
@@ -75,14 +74,14 @@ function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): 
     type === "aside_text" ||
     type === "page_footnote"
   ) {
-    const text = extractInlineText((content.paragraph_content as string) ?? item.text ?? "");
+    const text = extractInlineText((content.paragraph_content as string) ?? "");
     return text ? `<p>${text}</p>` : "";
   }
 
   // Equation block
-  if (type === "equation_interline" || type === "equation") {
-    const latex = (content.math_content as string) ?? item.text ?? "";
-    const imgSrc = resolveImage(item.img_path, imageMap);
+  if (type === "equation_interline") {
+    const latex = (content.math_content as string) ?? "";
+    const imgSrc = resolveImage(content.img_path as string | undefined, imageMap);
     if (imgSrc) {
       return `<img src="${imgSrc}" alt="${escapeHtml(latex)}" />`;
     }
@@ -93,47 +92,39 @@ function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): 
     return escapeHtml(withDelim);
   }
 
-  // Image
-  if (type === "image") {
-    const imgSrc = resolveImage(item.img_path ?? (content.img_path as string), imageMap);
+  // Image / chart
+  if (type === "image" || type === "chart") {
+    const imgSrc = resolveImage(content.img_path as string | undefined, imageMap);
     if (!imgSrc) return "";
-    const captionList = item.image_caption ?? (content.image_caption as string[]) ?? [];
+    const captionList =
+      (content.image_caption as string[] | undefined) ??
+      (content.chart_caption as string[] | undefined) ??
+      [];
     const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
     return `<figure><img src="${imgSrc}" alt="${escapeHtml(caption)}" />${
       caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""
     }</figure>`;
   }
 
-  // Image / table / chart caption as standalone block (v2 often separates these)
+  // Caption as standalone block
   if (type === "image_caption" || type === "table_caption" || type === "chart_caption") {
-    const captionList = (content.content as string[]) ?? (item.text ? [item.text] : []);
-    const caption = Array.isArray(captionList) ? captionList.join(" ") : String(captionList ?? "");
+    const captionList = content.content as string[] | undefined;
+    const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
     return caption ? `<p>${escapeHtml(caption)}</p>` : "";
   }
 
   // Table — MinerU gives us ready-to-use HTML
   if (type === "table") {
-    const body = item.table_body ?? (content.table_body as string) ?? "";
-    const captionList = item.table_caption ?? (content.table_caption as string[]) ?? [];
+    const body = (content.table_body as string) ?? "";
+    const captionList = (content.table_caption as string[]) ?? [];
     const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
     const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
     return `<figure class="source-table">${captionHtml}${body}</figure>`;
   }
 
-  // Chart — treat like image
-  if (type === "chart") {
-    const imgSrc = resolveImage(item.img_path ?? (content.img_path as string), imageMap);
-    if (!imgSrc) return "";
-    const captionList = item.chart_caption ?? [];
-    const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
-    return `<figure><img src="${imgSrc}" alt="${escapeHtml(caption)}" />${
-      caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""
-    }</figure>`;
-  }
-
   // Code block
   if (type === "code") {
-    const body = (item.code_body as string | undefined) ?? (content.code_body as string) ?? "";
+    const body = (content.code_body as string) ?? "";
     const lang = (content.code_language as string) ?? "";
     const langClass = lang ? ` class="lang-${escapeHtml(lang)}"` : "";
     return `<pre><code${langClass}>${escapeHtml(body)}</code></pre>`;
@@ -147,7 +138,7 @@ function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): 
 
   // Lists
   if (type === "list" || type === "index") {
-    const items = item.list_items ?? (content.list_items as string[]) ?? [];
+    const items = (content.list_items as string[]) ?? [];
     if (!Array.isArray(items) || items.length === 0) return "";
     const tag = type === "index" ? "ol" : "ul";
     const lis = items.map((li: string) => `<li>${escapeHtml(li)}</li>`).join("");

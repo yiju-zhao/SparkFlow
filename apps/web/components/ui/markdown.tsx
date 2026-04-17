@@ -14,7 +14,6 @@ interface MarkdownProps {
 }
 
 const HTML_TABLE_REGEX = /<table[\s\S]*?<\/table>/gi;
-const CITATION_REGEX = /\[ref:([a-zA-Z0-9_-]+)\]/g;
 const SOURCE_CITATION_REGEX = /\[\[source:([a-zA-Z0-9_-]+)\]\]/g;
 const DISALLOWED_RAW_TAGS = ["think", "answer"];
 
@@ -125,13 +124,8 @@ function preprocessCitations(content: string): string {
     return index;
   };
 
-  // Handle [ref:chunkId] (legacy chunk citations)
-  let result = content.replace(CITATION_REGEX, (_, chunkId) => {
-    return `<citation-ref data-chunk="${chunkId}" data-index="${getIndex(chunkId)}"></citation-ref>`;
-  });
-
   // Handle [[source:sourceId]] (wiki source citations)
-  result = result.replace(SOURCE_CITATION_REGEX, (_, sourceId) => {
+  let result = content.replace(SOURCE_CITATION_REGEX, (_, sourceId) => {
     return `<citation-ref data-chunk="${sourceId}" data-index="${getIndex(sourceId)}" data-type="source"></citation-ref>`;
   });
 
