@@ -1,7 +1,7 @@
 "use client";
 
 import DOMPurify from "dompurify";
-import { useEffect, useRef, useMemo } from "react";
+import { useLayoutEffect, useRef, useMemo } from "react";
 import "katex/dist/katex.min.css";
 
 interface SourceHtmlViewProps {
@@ -15,6 +15,10 @@ interface SourceHtmlViewProps {
  * - DOMPurify sanitization
  * - Fallback image resolver for unresolved relative paths
  * - KaTeX auto-render for inline ($...$) and display ($$...$$) math
+ *
+ * NOTE: innerHTML is set imperatively (not via dangerouslySetInnerHTML) so
+ * React re-renders (e.g. from parent resize/animation) don't wipe the
+ * KaTeX-rendered spans. The DOM is owned by this effect, not by React's diff.
  */
 export function SourceHtmlView({ html, sourceId, className }: SourceHtmlViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,9 +32,13 @@ export function SourceHtmlView({ html, sourceId, className }: SourceHtmlViewProp
     [html],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Imperatively set innerHTML so React's reconciliation doesn't touch it
+    // on later re-renders (which would blow away the KaTeX-rendered DOM).
+    container.innerHTML = clean;
 
     // Resolve image paths (fallback resolver for unresolved relatives)
     container.querySelectorAll("img").forEach((img) => {
@@ -95,7 +103,6 @@ export function SourceHtmlView({ html, sourceId, className }: SourceHtmlViewProp
         prose-td:border prose-td:border-border prose-td:px-3 prose-td:py-2
         prose-blockquote:border-accent-red/30 prose-blockquote:text-muted-foreground
         ${className ?? ""}`}
-      dangerouslySetInnerHTML={{ __html: clean }}
     />
   );
 }
