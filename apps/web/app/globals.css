@@ -339,3 +339,92 @@
   display: inline;
   /* Ensure exact decoration behavior */
 }
+
+/* ============================================================
+ * Source HTML render (MinerU-style blocks + page dividers)
+ * Used by SourceHtmlView via content-list-to-html builder.
+ * ============================================================ */
+.md-block {
+  margin: 0.5rem 0;
+}
+
+/* Block-type semantic coloring — primary content uses inherited color,
+ * "noise" content (page structure: headers, footers, numbers, asides,
+ * footnotes) is visually de-emphasized. */
+.md-block-page_header,
+.md-block-header,
+.md-block-page_footer,
+.md-block-footer,
+.md-block-page_number,
+.md-block-aside_text,
+.md-block-page_footnote {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.md-block-page_number {
+  text-align: center;
+  margin: 1rem 0 0;
+}
+
+.md-block-page_footnote {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  margin-top: 1rem;
+}
+
+.md-block-aside_text {
+  font-style: italic;
+}
+
+/* Block layout helpers */
+.md-block-image,
+.md-block-chart,
+.md-block-equation_interline,
+.md-block-equation {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.md-block-image img,
+.md-block-chart img {
+  max-width: 100%;
+  height: auto;
+}
+
+.md-block-image_caption,
+.md-block-table_caption,
+.md-block-chart_caption {
+  text-align: center;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted-foreground);
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* Page divider — subtle horizontal rule with centered page label */
+.md-page-divider {
+  position: relative;
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.md-page-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--border);
+}
+
+.md-page-divider span {
+  position: relative;
+  padding: 0 1rem;
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}

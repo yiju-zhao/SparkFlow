@@ -4,14 +4,6 @@ export interface ContentListItem {
   type: string;
   content?: unknown;
   bbox?: number[];
-  // For legacy content_list.json format
-  text?: string;
-  text_level?: number;
-  img_path?: string;
-  image_caption?: string[];
-  table_body?: string;
-  table_caption?: string[];
-  table_footnote?: string[];
   sub_type?: string;
   [key: string]: unknown;
 }
@@ -207,13 +199,11 @@ export async function extractFromZipBuffer(buffer: ArrayBuffer): Promise<MineruR
       if (!markdown || path.includes("full")) {
         markdown = content;
       }
-    } else if (path.endsWith("_content_list_v2.json") || path.endsWith("_content_list.json")) {
-      // Prefer v2 (3.0+) — overwrites legacy if both present
+    } else if (path.endsWith("_content_list_v2.json")) {
+      // v2 is page-grouped: [[items], [items], ...] — flatten
       const json = await file.async("string");
       try {
         const parsed = JSON.parse(json);
-        // v2 is page-grouped: [[items], [items], ...] — flatten
-        // legacy is flat: [items...]
         if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
           contentList = parsed.flat() as ContentListItem[];
         } else {
