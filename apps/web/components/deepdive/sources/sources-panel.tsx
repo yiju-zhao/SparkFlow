@@ -8,16 +8,11 @@ import { Button } from "@/components/ui/button";
 import { deleteSource } from "@/lib/actions/sources";
 import { AddSourceDialog } from "@/components/deepdive/sources/add-source-dialog";
 import { IngestReport } from "./ingest-report";
-import type { Source as PrismaSource } from "@prisma/client";
+import type { Source } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
 import { SourceHtmlView } from "./source-html-view";
 import { useCollapsiblePanel } from "@/components/ui/collapsible-panel";
 import type { TocHeading } from "@/lib/utils/toc-extractor";
-// Extended Source type with the new content field (until Prisma client is regenerated)
-type Source = PrismaSource & {
-  content?: string | null;
-  contentHtml?: string | null;
-};
 
 interface SourceMetadata {
   toc?: TocHeading[];

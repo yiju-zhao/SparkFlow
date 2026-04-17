@@ -6,7 +6,6 @@ import prisma from "@/lib/prisma";
 import { processWebpage } from "@/lib/services/source-processors/webpage-processor";
 import { processTextDocument } from "@/lib/services/source-processors/text-processor";
 import { processMineruDocument } from "@/lib/services/source-processors/mineru-processor";
-import { processFallbackDocument } from "@/lib/services/source-processors/fallback-processor";
 import type { ProcessingContext } from "@/lib/services/source-processors/types";
 
 const MINERU_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt"];
@@ -131,10 +130,7 @@ export async function uploadDocumentSource(notebookId: string, formData: FormDat
     if (TEXT_EXTENSIONS.includes(fileExtension)) {
       return processTextDocument(file, context);
     }
-    if (MINERU_EXTENSIONS.includes(fileExtension)) {
-      return processMineruDocument(file, context);
-    }
-    return processFallbackDocument(file, context);
+    return processMineruDocument(file, context);
   };
 
   processDocument()

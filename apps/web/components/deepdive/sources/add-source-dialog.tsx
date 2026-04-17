@@ -25,10 +25,8 @@ import {
   addPublicationSource,
   addWechatSource,
 } from "@/lib/actions/sources";
-import type { Source as PrismaSource } from "@prisma/client";
+import type { Source } from "@prisma/client";
 import type { SourceSearchType, SearchResult, SearchStatusResponse } from "@/lib/types/search";
-
-type Source = PrismaSource & { content?: string | null };
 
 const SOURCE_TYPE_OPTIONS: {
   value: SourceSearchType;
