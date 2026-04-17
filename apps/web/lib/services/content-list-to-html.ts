@@ -37,7 +37,11 @@ function extractInlineText(value: InlineContent): string {
     .map((item): string => {
       if (typeof item === "string") return escapeHtml(item);
       if (item?.type === "equation") {
-        return `<code class="inline-equation">${escapeHtml(item.content || "")}</code>`;
+        // Emit $...$ inline delimiters so KaTeX auto-render picks it up.
+        // Don't wrap in <code> — KaTeX's default ignoredTags includes "code".
+        const latex = item.content || "";
+        const withDelim = latex.startsWith("$") && latex.endsWith("$") ? latex : `$${latex}$`;
+        return escapeHtml(withDelim);
       }
       return escapeHtml(item?.content || "");
     })
@@ -69,8 +73,11 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
     if (imgSrc) {
       return `<div class="math-block"><img src="${imgSrc}" alt="${escapeHtml(latex)}" /></div>`;
     }
-    // Fallback: raw LaTeX in code tag
-    return `<div class="math-block"><code>${escapeHtml(latex)}</code></div>`;
+    // Fallback: emit $$...$$ so KaTeX auto-render picks it up.
+    // Don't wrap in <code> — KaTeX's default ignoredTags includes "code".
+    const withDelim =
+      latex.trim().startsWith("$$") && latex.trim().endsWith("$$") ? latex : `$$${latex}$$`;
+    return `<div class="math-block">${escapeHtml(withDelim)}</div>`;
   }
 
   // Image
