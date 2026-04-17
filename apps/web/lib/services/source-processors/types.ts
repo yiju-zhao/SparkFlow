@@ -22,8 +22,8 @@ export interface ProcessingResult {
  */
 export interface SourceUpdateData {
   title?: string;
-  content?: string;
-  markdownContent?: string;
+  markdown?: string;
+  html?: string;
   status: "UPLOADING" | "PROCESSING" | "READY" | "PARTIAL" | "FAILED";
   errorMessage?: string | null;
   metadata?: Record<string, unknown>;

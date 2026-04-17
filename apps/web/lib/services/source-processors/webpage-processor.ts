@@ -41,7 +41,7 @@ export async function processWebpage(
       result.images,
     );
 
-    const contentHtml = result.html ? rewriteImgTags(result.html, imagePathToApiUrl) : null;
+    const html = result.html ? rewriteImgTags(result.html, imagePathToApiUrl) : null;
 
     const finalTitle = title || result.metadata.title;
     const toc = extractTocFromMarkdown(markdown);
@@ -50,16 +50,15 @@ export async function processWebpage(
       where: { id: sourceId },
       data: {
         title: finalTitle,
-        markdownContent: markdown,
-        content: markdown,
-        contentHtml,
+        markdown,
+        html,
         status: "READY",
         metadata: {
           author: result.metadata.author,
           publishDate: result.metadata.date,
           markdownLength: markdown.length,
           imageCount: result.images.length,
-          hasHtml: !!contentHtml,
+          hasHtml: !!html,
           toc,
         },
       },

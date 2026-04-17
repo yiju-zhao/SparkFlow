@@ -70,8 +70,8 @@ export function AddToNotebookDialog({ article }: AddToNotebookDialogProps) {
           title: article.title,
           sourceType: "WEBPAGE",
           url: article.originalUrl,
-          content: article.contentText,
-          contentHtml: article.contentHtml,
+          markdown: article.contentText,
+          html: article.contentHtml,
         }),
       });
       if (res.ok) {

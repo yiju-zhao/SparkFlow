@@ -17,7 +17,7 @@ export async function GET(
   }
 
   return NextResponse.json({
-    content: source.markdownContent || source.content || "",
+    content: source.markdown || "",
     title: source.title,
   });
 }

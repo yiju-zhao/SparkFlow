@@ -44,12 +44,12 @@ export async function processMineruDocument(
       mineruResult.images,
     );
 
-    let contentHtml: string | null = null;
+    let html: string | null = null;
     if (mineruResult.contentList && mineruResult.contentList.length > 0) {
       try {
         // Pass original markdown as math-hint source — content_list_v2 strips
         // $...$ delimiters from paragraph text, but markdown preserves them.
-        contentHtml = buildHtmlFromContentList(
+        html = buildHtmlFromContentList(
           mineruResult.contentList,
           imagePathToApiUrl,
           mineruResult.markdown,
@@ -64,15 +64,14 @@ export async function processMineruDocument(
     await prisma.source.update({
       where: { id: sourceId },
       data: {
-        markdownContent: markdown,
-        content: markdown,
-        contentHtml,
+        markdown,
+        html,
         status: "READY",
         metadata: {
           fileType: file.name.split(".").pop()?.toLowerCase() ?? "unknown",
           markdownLength: markdown.length,
           imageCount: mineruResult.images.length,
-          hasHtml: !!contentHtml,
+          hasHtml: !!html,
           toc,
         },
       },

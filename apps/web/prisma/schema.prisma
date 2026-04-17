@@ -129,22 +129,20 @@ enum WikiPageType {
 }
 
 model Source {
-  id                String       @id @default(cuid())
-  notebookId        String
-  title             String
-  sourceType        SourceType
-  url               String? // For webpages
-  fileKey           String? // For documents (storage key)
-  content           String?      @db.Text // Markdown content
-  markdownContent   String?      @db.Text // Full markdown preview
-  contentHtml       String?      @db.Text // Rich HTML for rendering (MinerU/WeChat/Webpage); null for plain-text sources
-  status            SourceStatus @default(UPLOADING)
-  errorMessage      String?
-  metadata          Json?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  notebookId   String
+  title        String
+  sourceType   SourceType
+  status       SourceStatus @default(UPLOADING)
+  url          String? // Webpage source URL
+  fileKey      String? // Document storage key
+  markdown     String?      @db.Text // Plain markdown body — used for wiki ingest, chat context, preview
+  html         String?      @db.Text // Rich HTML view (MinerU/WeChat/Webpage); null for plain-text sources
+  errorMessage String?
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
-  // Relations
   notebook Notebook      @relation(fields: [notebookId], references: [id], onDelete: Cascade)
   images   SourceImage[]
 

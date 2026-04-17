@@ -341,26 +341,25 @@ export async function addWechatSource(notebookId: string, articleId: number) {
         },
       });
 
-      const htmlContent = article.content_html;
-      const markdownContent = htmlContent ? td.turndown(htmlContent) : article.content_text || "";
+      const sourceHtml = article.content_html;
+      const markdown = sourceHtml ? td.turndown(sourceHtml) : article.content_text || "";
 
       // Extract TOC from markdown headings
       const { extractTocFromMarkdown } = await import("@/lib/utils/toc-extractor");
-      const toc = extractTocFromMarkdown(markdownContent);
+      const toc = extractTocFromMarkdown(markdown);
 
       // Update source with content
       await prisma.source.update({
         where: { id: source.id },
         data: {
-          content: markdownContent,
-          markdownContent: markdownContent,
-          contentHtml,
+          markdown,
+          html: contentHtml,
           status: "READY",
           metadata: {
             author: article.author,
             publishDate: article.publish_time?.toISOString(),
             sourceName: article.source_name,
-            markdownLength: markdownContent.length,
+            markdownLength: markdown.length,
             imageCount: images.filter((i) => i.data).length,
             hasHtml: !!contentHtml,
             toc,
