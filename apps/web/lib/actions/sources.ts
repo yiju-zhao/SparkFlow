@@ -418,13 +418,15 @@ export async function deleteSource(sourceId: string) {
   await prisma.source.delete({ where: { id: sourceId } });
   revalidatePath(`/deepdive/${notebookId}`);
 
-  // Remove source contributions from wiki in background (non-blocking)
-  import("@/lib/services/wiki-ingest")
-    .then(({ removeSourceFromWiki }) => removeSourceFromWiki(notebookId, sourceId, sourceTitle))
-    .then((result) =>
-      console.log(
-        `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`,
-      ),
-    )
-    .catch((err) => console.error("Wiki source removal failed:", err));
+  // Remove source contributions from wiki/graph and await completion so the
+  // client can invalidate its queries with the updated data in one shot.
+  try {
+    const { removeSourceFromWiki } = await import("@/lib/services/wiki-ingest");
+    const result = await removeSourceFromWiki(notebookId, sourceId, sourceTitle);
+    console.log(
+      `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`,
+    );
+  } catch (err) {
+    console.error("Wiki source removal failed:", err);
+  }
 }
