@@ -53,46 +53,60 @@ function extractMathFromMarkdown(markdown: string): { inline: string[]; display:
 /**
  * MinerU content_list_v2 strips $...$ delimiters from paragraph text, but the
  * markdown output preserves them. Use the markdown as ground truth to restore
- * delimiters in plain text: find each math expression and wrap it with $ or $$.
+ * delimiters: collect all candidate matches (display + inline), pick a maximal
+ * non-overlapping set (longest wins), then splice delimiters in from the end
+ * so indices don't shift.
  */
 function restoreMathDelimiters(
   text: string,
   mathHints: { inline: string[]; display: string[] },
 ): string {
-  let out = text;
-
-  // Apply display math first (longer, safer to wrap)
-  for (const expr of mathHints.display) {
-    if (!expr) continue;
-    const idx = out.indexOf(expr);
-    if (idx === -1) continue;
-    // Skip if already wrapped
-    const before = out.slice(Math.max(0, idx - 2), idx);
-    const after = out.slice(idx + expr.length, idx + expr.length + 2);
-    if (before.endsWith("$$") || after.startsWith("$$")) continue;
-    out = out.slice(0, idx) + `$$${expr}$$` + out.slice(idx + expr.length);
+  interface Match {
+    start: number;
+    end: number;
+    expr: string;
+    display: boolean;
   }
+  const candidates: Match[] = [];
 
-  // Then inline math
-  for (const expr of mathHints.inline) {
-    if (!expr) continue;
-    // Search all occurrences (non-overlapping)
-    let searchFrom = 0;
-    while (true) {
-      const idx = out.indexOf(expr, searchFrom);
-      if (idx === -1) break;
-      const before = out.charAt(idx - 1);
-      const after = out.charAt(idx + expr.length);
-      // Already wrapped? skip this occurrence
-      if (before === "$" || after === "$") {
-        searchFrom = idx + expr.length;
-        continue;
+  const collect = (exprs: string[], display: boolean) => {
+    for (const expr of exprs) {
+      if (!expr) continue;
+      let from = 0;
+      while (true) {
+        const idx = text.indexOf(expr, from);
+        if (idx === -1) break;
+        candidates.push({ start: idx, end: idx + expr.length, expr, display });
+        from = idx + 1;
       }
-      out = out.slice(0, idx) + `$${expr}$` + out.slice(idx + expr.length);
-      searchFrom = idx + expr.length + 2;
     }
+  };
+  collect(mathHints.display, true);
+  collect(mathHints.inline, false);
+
+  // Prefer: display over inline, then longer, then earlier
+  candidates.sort((a, b) => {
+    if (a.display !== b.display) return a.display ? -1 : 1;
+    const lenA = a.end - a.start;
+    const lenB = b.end - b.start;
+    if (lenB !== lenA) return lenB - lenA;
+    return a.start - b.start;
+  });
+
+  // Greedy pick non-overlapping matches
+  const chosen: Match[] = [];
+  for (const c of candidates) {
+    const overlaps = chosen.some((x) => !(c.end <= x.start || c.start >= x.end));
+    if (!overlaps) chosen.push(c);
   }
 
+  // Apply from end to start so earlier indices remain valid
+  chosen.sort((a, b) => b.start - a.start);
+  let out = text;
+  for (const c of chosen) {
+    const delim = c.display ? "$$" : "$";
+    out = out.slice(0, c.start) + delim + c.expr + delim + out.slice(c.end);
+  }
   return out;
 }
 
