@@ -280,16 +280,16 @@ function SourceContentView({ source, onBack }: { source: Source; onBack: () => v
   const panelContext = useCollapsiblePanel();
   const isAnimationComplete = panelContext?.isAnimationComplete ?? true;
 
-  const rawContent = source.content || "No content available";
+  const rawMarkdown = source.markdown || "No content available";
 
   // Rewrite any remaining relative image paths to use the fallback resolver.
   // Images already rewritten to /api/images/{id} are left untouched.
   const markdownContent = useMemo(() => {
-    return rawContent.replace(
+    return rawMarkdown.replace(
       /!\[([^\]]*)\]\((?!\/api\/|https?:\/\/)([^)]+)\)/g,
       `![$1](/api/images/by-source/${source.id}/$2)`,
     );
-  }, [rawContent, source.id]);
+  }, [rawMarkdown, source.id]);
 
   const [deferredContent, setDeferredContent] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -449,9 +449,9 @@ function SourceContentView({ source, onBack }: { source: Source; onBack: () => v
         style={{ contain: "content" }}
       >
         {deferredContent ? (
-          source.contentHtml ? (
+          source.html ? (
             <SourceHtmlView
-              html={source.contentHtml}
+              html={source.html}
               sourceId={source.id}
               className="space-y-3 text-[14px] leading-5"
             />

@@ -25,7 +25,7 @@ export async function ingestSourceToWiki(
 
   if (!source) throw new Error(`Source ${sourceId} not found`);
 
-  const content = source.markdownContent || source.content;
+  const content = source.markdown;
   if (!content) throw new Error("Source has no content to ingest");
 
   try {

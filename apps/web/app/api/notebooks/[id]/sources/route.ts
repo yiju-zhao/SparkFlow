@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Notebook not found" }, { status: 404 });
   }
 
-  const { title, sourceType, url, content, contentHtml } = await req.json();
+  const { title, sourceType, url, markdown: markdownInput, html: htmlInput } = await req.json();
 
   if (!title?.trim()) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
   // Convert WeChat HTML to markdown if provided, rewriting image URLs.
   // Always prefer HTML→markdown conversion over plain text for richer output.
-  let finalContent: string | null = null;
-  if (contentHtml) {
+  let finalMarkdown: string | null = null;
+  if (htmlInput) {
     const td = new TurndownService({ headingStyle: "atx" });
     // Rewrite scraper image paths: /api/images/{id} → /api/wechat/images/{id}
     td.addRule("wechatImages", {
@@ -73,9 +73,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         return resolvedSrc ? `\n\n![${alt}](${resolvedSrc})\n\n` : "";
       },
     });
-    finalContent = td.turndown(contentHtml);
+    finalMarkdown = td.turndown(htmlInput);
   } else {
-    finalContent = content || null;
+    finalMarkdown = markdownInput || null;
   }
 
   const source = await prisma.source.create({
@@ -84,14 +84,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
       title: title.trim(),
       sourceType: sourceType || "WEBPAGE",
       url: url || null,
-      content: finalContent,
-      markdownContent: finalContent,
-      status: finalContent ? "READY" : "PROCESSING",
+      markdown: finalMarkdown,
+      status: finalMarkdown ? "READY" : "PROCESSING",
     },
   });
 
   // Trigger wiki ingest in background if content is already available
-  if (finalContent) {
+  if (finalMarkdown) {
     import("@/lib/services/wiki-ingest")
       .then(({ ingestSourceToWiki }) =>
         ingestSourceToWiki(notebookId, source.id, session.user!.id!),

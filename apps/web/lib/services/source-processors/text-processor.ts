@@ -14,18 +14,17 @@ export async function processTextDocument(
       data: { status: "PROCESSING" },
     });
 
-    const content = await file.text();
-    const toc = extractTocFromMarkdown(content);
+    const markdown = await file.text();
+    const toc = extractTocFromMarkdown(markdown);
 
     await prisma.source.update({
       where: { id: sourceId },
       data: {
-        markdownContent: content,
-        content,
+        markdown,
         status: "READY",
         metadata: {
           fileType: file.name.split(".").pop() || "txt",
-          contentLength: content.length,
+          markdownLength: markdown.length,
           toc,
         },
       },
