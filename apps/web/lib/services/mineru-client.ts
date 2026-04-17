@@ -189,6 +189,9 @@ export async function extractFromZipBuffer(buffer: ArrayBuffer): Promise<MineruR
   let contentList: ContentListItem[] | undefined;
   const images: MineruResult["images"] = [];
 
+  const entryNames = Object.keys(zip.files);
+  console.log(`[MinerU] ZIP contains ${entryNames.length} entries: ${entryNames.join(", ")}`);
+
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue;
 
@@ -199,7 +202,7 @@ export async function extractFromZipBuffer(buffer: ArrayBuffer): Promise<MineruR
       if (!markdown || path.includes("full")) {
         markdown = content;
       }
-    } else if (path.endsWith("_content_list_v2.json")) {
+    } else if (/content_list_v2\.json$/i.test(path)) {
       // v2 is page-grouped: [[items], [items], ...] — flatten
       const json = await file.async("string");
       try {
@@ -209,6 +212,7 @@ export async function extractFromZipBuffer(buffer: ArrayBuffer): Promise<MineruR
         } else {
           contentList = parsed as ContentListItem[];
         }
+        console.log(`[MinerU] Parsed ${path}: ${contentList?.length ?? 0} content items`);
       } catch (err) {
         console.warn(`[MinerU] Failed to parse ${path}:`, err);
       }
