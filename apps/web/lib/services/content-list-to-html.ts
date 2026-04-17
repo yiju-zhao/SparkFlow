@@ -13,7 +13,6 @@ function escapeHtml(s: string): string {
 
 function resolveImage(imgPath: string | undefined, map: Map<string, string>): string | null {
   if (!imgPath) return null;
-  // Try exact, then suffixes
   if (map.has(imgPath)) return map.get(imgPath)!;
   const parts = imgPath.split("/");
   for (let i = 1; i < parts.length; i++) {
@@ -48,7 +47,11 @@ function extractInlineText(value: InlineContent): string {
     .join("");
 }
 
-function renderItem(item: ContentListItem, imageMap: Map<string, string>): string {
+/**
+ * Render a single content_list item into inner HTML (without the block wrapper).
+ * The caller wraps the output with `md-block md-block-{type}` for styling.
+ */
+function renderItemInner(item: ContentListItem, imageMap: Map<string, string>): string {
   const type = item.type;
   const content =
     typeof item.content === "object" && item.content !== null ? (item.content as ContentValue) : {};
@@ -57,11 +60,21 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
   if (type === "title" || (type === "text" && item.text_level)) {
     const level = Math.min((content.level as number) ?? item.text_level ?? 1, 6);
     const text = extractInlineText((content.title_content as string) ?? item.text ?? "");
-    return `<h${level}>${text}</h${level}>`;
+    return text ? `<h${level}>${text}</h${level}>` : "";
   }
 
-  // Paragraph / plain text
-  if (type === "paragraph" || type === "text") {
+  // Paragraph / plain text / noisy blocks (header, footer, page_number, aside_text, page_footnote)
+  if (
+    type === "paragraph" ||
+    type === "text" ||
+    type === "page_header" ||
+    type === "header" ||
+    type === "page_footer" ||
+    type === "footer" ||
+    type === "page_number" ||
+    type === "aside_text" ||
+    type === "page_footnote"
+  ) {
     const text = extractInlineText((content.paragraph_content as string) ?? item.text ?? "");
     return text ? `<p>${text}</p>` : "";
   }
@@ -71,13 +84,13 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
     const latex = (content.math_content as string) ?? item.text ?? "";
     const imgSrc = resolveImage(item.img_path, imageMap);
     if (imgSrc) {
-      return `<div class="math-block"><img src="${imgSrc}" alt="${escapeHtml(latex)}" /></div>`;
+      return `<img src="${imgSrc}" alt="${escapeHtml(latex)}" />`;
     }
     // Fallback: emit $$...$$ so KaTeX auto-render picks it up.
     // Don't wrap in <code> — KaTeX's default ignoredTags includes "code".
     const withDelim =
       latex.trim().startsWith("$$") && latex.trim().endsWith("$$") ? latex : `$$${latex}$$`;
-    return `<div class="math-block">${escapeHtml(withDelim)}</div>`;
+    return escapeHtml(withDelim);
   }
 
   // Image
@@ -91,13 +104,19 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
     }</figure>`;
   }
 
+  // Image / table / chart caption as standalone block (v2 often separates these)
+  if (type === "image_caption" || type === "table_caption" || type === "chart_caption") {
+    const captionList = (content.content as string[]) ?? (item.text ? [item.text] : []);
+    const caption = Array.isArray(captionList) ? captionList.join(" ") : String(captionList ?? "");
+    return caption ? `<p>${escapeHtml(caption)}</p>` : "";
+  }
+
   // Table — MinerU gives us ready-to-use HTML
   if (type === "table") {
     const body = item.table_body ?? (content.table_body as string) ?? "";
     const captionList = item.table_caption ?? (content.table_caption as string[]) ?? [];
     const caption = Array.isArray(captionList) ? captionList.join(" ") : "";
     const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
-    // Wrap in figure for consistent styling
     return `<figure class="source-table">${captionHtml}${body}</figure>`;
   }
 
@@ -135,14 +154,37 @@ function renderItem(item: ContentListItem, imageMap: Map<string, string>): strin
     return `<${tag}>${lis}</${tag}>`;
   }
 
-  // Skip: page_header, page_footer, page_number, aside_text, page_footnote
   return "";
+}
+
+function pageDivider(pageIdx: number): string {
+  return `<div class="md-page-divider" aria-hidden="true"><span>Page ${pageIdx + 1}</span></div>`;
 }
 
 export function buildHtmlFromContentList(
   contentList: ContentListItem[],
   imagePathToApiUrl: Map<string, string>,
 ): string {
-  const parts = contentList.map((item) => renderItem(item, imagePathToApiUrl)).filter(Boolean);
+  const parts: string[] = [];
+  let lastPageIdx: number | null = null;
+
+  for (const item of contentList) {
+    const pageIdx = (item.page_idx as number | undefined) ?? 0;
+    if (lastPageIdx !== null && pageIdx !== lastPageIdx) {
+      parts.push(pageDivider(lastPageIdx));
+    }
+    lastPageIdx = pageIdx;
+
+    const inner = renderItemInner(item, imagePathToApiUrl);
+    if (!inner) continue;
+    // Sanitize type → css-safe class token
+    const typeClass = (item.type || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+    parts.push(`<div class="md-block md-block-${typeClass}">${inner}</div>`);
+  }
+
+  if (lastPageIdx !== null) {
+    parts.push(pageDivider(lastPageIdx));
+  }
+
   return parts.join("\n");
 }
