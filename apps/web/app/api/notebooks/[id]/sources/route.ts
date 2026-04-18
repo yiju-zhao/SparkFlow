@@ -56,24 +56,32 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
 
+  // Rewrite scraper image paths: /api/images/{id} → /api/wechat/images/{id}
+  const rewriteImgSrc = (src: string) =>
+    src.replace(/^\/api\/images\/(\d+)$/, "/api/wechat/images/$1");
+
   // Convert WeChat HTML to markdown if provided, rewriting image URLs.
   // Always prefer HTML→markdown conversion over plain text for richer output.
   let finalMarkdown: string | null = null;
+  let finalHtml: string | null = null;
   if (htmlInput) {
     const td = new TurndownService({ headingStyle: "atx" });
-    // Rewrite scraper image paths: /api/images/{id} → /api/wechat/images/{id}
     td.addRule("wechatImages", {
       filter: "img",
       replacement: (_c, node) => {
         const el = node as HTMLElement;
         const src = el.getAttribute("data-src") || el.getAttribute("src") || "";
         const alt = el.getAttribute("alt") || "";
-        const match = src.match(/^\/api\/images\/(\d+)$/);
-        const resolvedSrc = match ? `/api/wechat/images/${match[1]}` : src;
+        const resolvedSrc = rewriteImgSrc(src);
         return resolvedSrc ? `\n\n![${alt}](${resolvedSrc})\n\n` : "";
       },
     });
     finalMarkdown = td.turndown(htmlInput);
+    // Preserve HTML for rich rendering; rewrite img src/data-src to the WeChat proxy.
+    finalHtml = htmlInput.replace(
+      /(<img\b[^>]*?\b(?:data-src|src)=["'])([^"']+)(["'])/gi,
+      (_m: string, pre: string, src: string, post: string) => pre + rewriteImgSrc(src) + post,
+    );
   } else {
     finalMarkdown = markdownInput || null;
   }
@@ -85,6 +93,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       sourceType: sourceType || "WEBPAGE",
       url: url || null,
       markdown: finalMarkdown,
+      html: finalHtml,
       status: finalMarkdown ? "READY" : "PROCESSING",
     },
   });
