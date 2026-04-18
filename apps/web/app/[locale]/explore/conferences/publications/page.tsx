@@ -1,5 +1,3 @@
-// apps/web/app/explore/publications/page.tsx
-
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
@@ -15,9 +13,8 @@ import {
   StatusToggles,
   type FilterConfig,
 } from "@/components/explore/shared";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -32,14 +29,12 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
   const t = await getTranslations("explore");
   const tFilters = await getTranslations("explore.filters");
 
-  // Parallel fetch (follows async-parallel best practice)
   const [result, filteredOptions, globalOptions] = await Promise.all([
     getPublications(filters),
     getFilteredPublicationOptions(filters),
     getFilterOptions(),
   ]);
 
-  // Use cascading options for venue/year/topic/status, global for affiliations/countries
   const filterOptions = {
     ...filteredOptions,
     affiliations: globalOptions.affiliations,
@@ -50,18 +45,12 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
     {
       key: "venue",
       label: tFilters("venue"),
-      options: filterOptions.venues.map((v) => ({
-        value: v.id,
-        label: v.name,
-      })),
+      options: filterOptions.venues.map((v) => ({ value: v.id, label: v.name })),
     },
     {
       key: "year",
       label: tFilters("year"),
-      options: filterOptions.years.map((y) => ({
-        value: y.toString(),
-        label: y.toString(),
-      })),
+      options: filterOptions.years.map((y) => ({ value: y.toString(), label: y.toString() })),
     },
     {
       key: "topic",
@@ -88,18 +77,30 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
   const totalPages = Math.ceil(result.total / PAGE_SIZE);
 
   return (
-    <div className="flex flex-col gap-10">
-      {/* Title Section */}
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">{t("publications.breadcrumb")}</p>
-        <h1 className="text-4xl font-bold tracking-tight">{t("publications.title")}</h1>
-        <p className="text-muted-foreground mt-2">
-          {t("publications.found", { count: result.total.toLocaleString() })}
-        </p>
+    <div className="flex flex-col gap-8">
+      {/* Header */}
+      <header className="flex flex-col gap-3 border-b border-sf-line pb-6">
+        <p className="sf-eyebrow">{t("publications.breadcrumb")}</p>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h1 className="sf-h1">{t("publications.title")}</h1>
+            <p className="sf-meta mt-2">
+              {t("publications.found", { count: result.total.toLocaleString() })}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* Search bar (visual only — search is via the FilterBar selects) */}
+      <div className="sf-card p-3.5 flex items-center gap-3">
+        <Search className="h-4 w-4 text-sf-ink-4" />
+        <span className="text-sm text-sf-ink-4">
+          Search across {result.total.toLocaleString()}+ publications — refine with the filters below.
+        </span>
       </div>
 
       {/* Filters */}
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         <FilterBar filters={filterConfigs} />
         <StatusToggles />
       </div>
@@ -107,77 +108,63 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
       {result.data.length === 0 ? (
         <EmptyState title={t("empty.title")} description={t("empty.description")} />
       ) : (
-        <div className="bg-card rounded-lg">
-          {/* Publication List */}
-          <div className="divide-y divide-border">
+        <>
+          <div className="flex flex-col gap-2">
             {result.data.map((pub) => (
-              <div
+              <article
                 key={pub.id}
-                className="relative px-5 py-3 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                className="sf-card card-hoverable relative flex items-start justify-between gap-5 p-5"
               >
-                <div className="flex flex-col gap-1">
-                  {/* Row 1: Venue+Year + Title + PDF/Rating */}
-                  <div className="flex items-center gap-3">
-                    <span className="shrink-0 text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="sf-badge sf-badge-soft">
                       {pub.instance.venue.name} {pub.instance.year}
                     </span>
-                    <h3 className="font-medium truncate flex-1 min-w-0">
-                      <Link
-                        href={`/explore/publications/${pub.id}`}
-                        className="after:absolute after:inset-0"
-                      >
-                        {pub.title}
-                      </Link>
-                    </h3>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {pub.pdfUrl && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 p-0 z-20 relative"
-                          asChild
-                        >
-                          <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-3.5 w-3.5" />
-                            <span className="sr-only">PDF</span>
-                          </a>
-                        </Button>
-                      )}
-                      {pub.rating && (
-                        <Badge variant="secondary" className="tabular-nums">
-                          {pub.rating.toFixed(1)}
-                        </Badge>
-                      )}
-                    </div>
+                    {pub.status && <span className="sf-badge sf-badge-muted">{pub.status}</span>}
+                    {pub.researchTopic && (
+                      <span className="sf-badge sf-badge-muted">{pub.researchTopic}</span>
+                    )}
                   </div>
 
-                  {/* Row 2: Authors + Status + Topic */}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="truncate">
-                      {pub.authors.slice(0, 3).join(", ")}
-                      {pub.authors.length > 3 && ` +${pub.authors.length - 3}`}
-                    </span>
-                    {pub.status && (
-                      <Badge variant="secondary" className="shrink-0">
-                        {pub.status}
-                      </Badge>
-                    )}
-                    {pub.researchTopic && (
-                      <Badge
-                        variant="outline"
-                        className="h-5 px-1.5 text-[10px] font-medium pointer-events-none shrink-0 ml-auto"
-                      >
-                        {pub.researchTopic}
-                      </Badge>
-                    )}
-                  </div>
+                  <h3 className="text-[17px] font-semibold text-sf-ink leading-snug">
+                    <Link
+                      href={`/${locale}/explore/conferences/publications/${pub.id}`}
+                      className="after:absolute after:inset-0 after:content-[''] hover:text-sf-accent transition-colors"
+                    >
+                      {pub.title}
+                    </Link>
+                  </h3>
+
+                  <p className="text-sm text-sf-ink-3 truncate">
+                    {pub.authors.slice(0, 3).join(", ")}
+                    {pub.authors.length > 3 && ` +${pub.authors.length - 3} others`}
+                  </p>
+
+                  {pub.pdfUrl && (
+                    <div className="mt-1 flex items-center gap-2 relative z-10">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
+                          <FileText className="h-3.5 w-3.5" />
+                          View PDF
+                        </a>
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {pub.rating != null && (
+                  <div className="text-right shrink-0">
+                    <div className="font-extrabold text-sf-accent text-[28px] leading-none tabular-nums">
+                      {pub.rating.toFixed(1)}
+                    </div>
+                    <div className="sf-eyebrow mt-2">Impact</div>
+                  </div>
+                )}
+              </article>
             ))}
           </div>
 
-          {/* Pagination */}
-          <div className="border-t border-border p-5">
+          <div className="sf-card">
             <Pagination
               currentPage={result.page}
               totalPages={totalPages}
@@ -185,7 +172,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
               pageSize={PAGE_SIZE}
             />
           </div>
-        </div>
+        </>
       )}
     </div>
   );

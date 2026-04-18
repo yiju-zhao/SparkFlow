@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Book, MoreVertical, Trash2 } from "lucide-react";
+import { Book, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { deleteNotebook } from "@/lib/actions/notebooks";
 import { useState, useTransition } from "react";
+import { CreateNotebookDialog } from "@/components/deepdive/create-notebook-dialog";
 
 function RelativeTime({ date }: { date: Date }) {
   const timeString = useRelativeTime(date);
@@ -33,12 +34,15 @@ type Notebook = {
 export function NotebookList({ notebooks }: { notebooks: Notebook[] }) {
   if (notebooks.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-background p-12 text-center">
-        <Book className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-medium">No notebooks yet</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create your first notebook to get started
-        </p>
+      <div className="sf-card border-dashed flex flex-col items-center gap-4 py-16 text-center">
+        <span className="sf-icon-tile h-12 w-12">
+          <Book className="h-5 w-5" strokeWidth={1.5} />
+        </span>
+        <div>
+          <h3 className="sf-h3">No notebooks yet</h3>
+          <p className="sf-meta mt-1.5">Create your first notebook to get started.</p>
+        </div>
+        <CreateNotebookDialog />
       </div>
     );
   }
@@ -48,6 +52,27 @@ export function NotebookList({ notebooks }: { notebooks: Notebook[] }) {
       {notebooks.map((notebook) => (
         <NotebookCard key={notebook.id} notebook={notebook} />
       ))}
+      <CreateNotebookTile />
+    </div>
+  );
+}
+
+function CreateNotebookTile() {
+  return (
+    <div className="sf-card border-dashed flex items-center justify-center min-h-[200px] text-center transition-colors hover:border-sf-accent hover:bg-sf-accent-soft/30">
+      <CreateNotebookDialog
+        trigger={
+          <button
+            type="button"
+            className="flex flex-col items-center gap-3 text-sf-ink-3 hover:text-sf-accent transition-colors"
+          >
+            <span className="sf-icon-tile">
+              <Plus className="h-5 w-5" strokeWidth={1.5} />
+            </span>
+            <span className="text-sm font-semibold">Create new notebook</span>
+          </button>
+        }
+      />
     </div>
   );
 }
@@ -65,7 +90,7 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
 
   return (
     <div
-      className={`group relative flex flex-col rounded-lg border border-border bg-card p-5 transition-all hover:bg-muted/30 ${
+      className={`group sf-card card-hoverable relative flex flex-col min-h-[200px] p-5 ${
         isDeleting ? "pointer-events-none opacity-50" : ""
       }`}
     >
@@ -75,14 +100,14 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 text-sf-ink-4 hover:text-sf-ink-2"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              className="text-sf-danger focus:text-sf-danger"
               onClick={handleDelete}
               disabled={isPending}
             >
@@ -93,34 +118,43 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
         </DropdownMenu>
       </div>
 
-      <Link href={`/deepdive/${notebook.id}`} className="flex flex-col h-full">
-        <div className="mb-4">
-          <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center text-primary">
-            <Book className="h-4 w-4" />
-          </div>
+      <Link href={`/deepdive/${notebook.id}`} className="flex h-full flex-col gap-3">
+        <div className="flex items-start justify-between">
+          <span className="sf-icon-tile">
+            <Book className="h-4 w-4" strokeWidth={1.75} />
+          </span>
+          <span className="sf-badge sf-badge-soft">RESEARCH</span>
         </div>
 
-        <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">
+        <h3 className="mt-1 font-semibold text-[16px] text-sf-ink group-hover:text-sf-accent transition-colors">
           {notebook.name}
         </h3>
 
         {notebook.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{notebook.description}</p>
+          <p className="text-sm text-sf-ink-3 line-clamp-2 leading-relaxed">
+            {notebook.description}
+          </p>
         )}
 
-        <div className="mt-auto flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
+        <div className="mt-auto flex items-center gap-4 text-xs text-sf-ink-3">
           <span className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-border group-hover:bg-primary/50 transition-colors" />
-            {notebook._count.sources} sources
+            <span className="font-mono tabular-nums font-semibold text-sf-ink">
+              {notebook._count.sources}
+            </span>
+            sources
           </span>
           <span className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-border group-hover:bg-primary/50 transition-colors" />
-            {notebook._count.notes} notes
+            <span className="font-mono tabular-nums font-semibold text-sf-ink">
+              {notebook._count.notes}
+            </span>
+            notes
           </span>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-border/50 text-[10px] font-mono text-muted-foreground">
-          <RelativeTime date={new Date(notebook.updatedAt)} />
+        <div className="flex items-center justify-between border-t border-sf-line pt-3 text-[11px] text-sf-ink-4">
+          <span className="font-mono tabular-nums">
+            Updated <RelativeTime date={new Date(notebook.updatedAt)} />
+          </span>
         </div>
       </Link>
     </div>

@@ -28,14 +28,26 @@ export default async function DeepdivePage({ params }: DeepdivePageProps) {
 
   return (
     <DeepdiveShell user={session?.user}>
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto bg-secondary">
-        <main className="mx-auto max-w-6xl px-6 py-8">
-          <div className="mb-8 flex items-center justify-between">
+      <div className="flex-1 overflow-y-auto bg-sf-bg">
+        <main className="mx-auto max-w-[1280px] px-8 py-10">
+          <header className="mb-8 flex items-end justify-between border-b border-sf-line pb-6">
             <div>
-              <h2 className="text-sm font-semibold font-mono tracking-tight">{t("notebooks")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("notebooksSubtitle")}</p>
+              <p className="sf-eyebrow">DEEPDIVE · LIBRARY</p>
+              <h1 className="sf-h1 mt-2">{t("notebooks")}</h1>
+              <p className="sf-lede mt-2 max-w-[58ch]">{t("notebooksSubtitle")}</p>
             </div>
+            <div className="hidden md:flex items-center gap-5">
+              <div className="text-right">
+                <div className="font-extrabold text-sf-ink text-[32px] tabular-nums leading-none">
+                  {notebooks.length.toLocaleString()}
+                </div>
+                <div className="sf-eyebrow mt-2">Notebooks</div>
+              </div>
+              <CreateNotebookDialog />
+            </div>
+          </header>
+
+          <div className="md:hidden mb-6">
             <CreateNotebookDialog />
           </div>
 

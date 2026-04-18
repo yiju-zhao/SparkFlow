@@ -32,22 +32,22 @@ function AnimatedStat({ value, suffix, label }: { value: number; suffix: string;
   }, [spring]);
 
   return (
-    <div ref={ref} className="flex flex-col items-center gap-1 px-4 py-6">
-      <span className="text-3xl font-bold tracking-tight sm:text-4xl">
+    <div ref={ref} className="flex flex-col items-start gap-2 px-6 py-6">
+      <span className="sf-eyebrow">{label}</span>
+      <span className="font-extrabold text-[40px] leading-none tracking-tight text-sf-ink tabular-nums">
         {display}
-        {suffix}
+        <span className="text-sf-accent">{suffix}</span>
       </span>
-      <span className="text-sm text-muted-foreground">{label}</span>
     </div>
   );
 }
 
 export function SocialProofSection() {
   return (
-    <section className="px-6 py-24">
-      <div className="mx-auto max-w-4xl">
+    <section className="bg-sf-bg-alt border-y border-sf-line px-6 py-20">
+      <div className="mx-auto max-w-[1200px]">
         <SectionReveal>
-          <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-4">
+          <div className="grid grid-cols-2 divide-x divide-sf-line md:grid-cols-4">
             {stats.map((stat) => (
               <AnimatedStat key={stat.label} {...stat} />
             ))}

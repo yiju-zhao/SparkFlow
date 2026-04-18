@@ -24,7 +24,6 @@ async function StatsSection() {
 
 async function ChartsSectionWrapper() {
   const [yearData, topicsData] = await Promise.all([getYearTrendData(), getTopicsChartData()]);
-
   return <ChartsSection yearData={yearData} topicsData={topicsData} />;
 }
 
@@ -40,40 +39,39 @@ export default async function ExplorePage({ params }: ExplorePageProps) {
 
   return (
     <div className="flex flex-col gap-10">
-      {/* Title Section */}
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">{t("breadcrumb")}</p>
-        <h1 className="text-4xl font-bold tracking-tight mb-2">{t("title")}</h1>
-        <p className="text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      {/* Header block — eyebrow / h1 / lede / meta */}
+      <header className="flex flex-col gap-3">
+        <p className="sf-eyebrow">{t("breadcrumb")}</p>
+        <h1 className="sf-h1">{t("title")}</h1>
+        <p className="sf-lede max-w-[72ch]">{t("subtitle")}</p>
+      </header>
 
-      {/* Stats Overview */}
+      {/* Stats overview — 4-up */}
       <section>
         <Suspense fallback={<StatsSkeleton />}>
           <StatsSection />
         </Suspense>
       </section>
 
-      {/* Analytics */}
+      {/* Analytics — 2-up */}
       <section>
         <Suspense fallback={<ChartsSkeleton />}>
           <ChartsSectionWrapper />
         </Suspense>
       </section>
 
-      {/* Recent Conferences */}
+      {/* Recent conferences keyline */}
       <section className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-end justify-between border-b border-sf-line pb-3">
           <div>
-            <h2 className="text-sm font-semibold font-mono tracking-tight">
-              {t("recentConferences")}
-            </h2>
+            <p className="sf-eyebrow">{t("recentConferences")}</p>
+            <h2 className="sf-h3 mt-1">Latest conference activity</h2>
           </div>
           <Link
             href={`/${locale}/explore/conferences`}
-            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+            className="text-sm font-medium text-sf-accent hover:text-sf-accent-ink transition-colors"
           >
-            {t("viewAll")}
+            {t("viewAll")} →
           </Link>
         </div>
         <Suspense fallback={<RecentConferencesSkeleton />}>
@@ -86,9 +84,9 @@ export default async function ExplorePage({ params }: ExplorePageProps) {
 
 function StatsSkeleton() {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-25 rounded-lg" />
+        <Skeleton key={i} className="h-24 rounded-[10px]" />
       ))}
     </div>
   );
@@ -96,14 +94,14 @@ function StatsSkeleton() {
 
 function ChartsSkeleton() {
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="bg-card rounded-lg p-6">
-        <Skeleton className="h-6 w-48 mb-4" />
-        <Skeleton className="h-75 w-full" />
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="sf-card">
+        <Skeleton className="h-5 w-40 mb-4" />
+        <Skeleton className="h-64 w-full" />
       </div>
-      <div className="bg-card rounded-lg p-6">
-        <Skeleton className="h-6 w-48 mb-4" />
-        <Skeleton className="h-75 w-full" />
+      <div className="sf-card">
+        <Skeleton className="h-5 w-40 mb-4" />
+        <Skeleton className="h-64 w-full" />
       </div>
     </div>
   );
@@ -111,26 +109,16 @@ function ChartsSkeleton() {
 
 function RecentConferencesSkeleton() {
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div className="sf-keyline">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between gap-6 px-5 py-4 border-b border-border last:border-b-0"
-        >
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-11 w-11 rounded-md" />
-            <div>
-              <Skeleton className="h-4 w-48 mb-2" />
-              <Skeleton className="h-3 w-32" />
-            </div>
+        <div key={i} className="sf-keyline-row">
+          <Skeleton className="h-4 w-12" />
+          <div className="flex-1">
+            <Skeleton className="h-4 w-56 mb-2" />
+            <Skeleton className="h-3 w-40" />
           </div>
-          <div className="flex items-center gap-6">
-            <Skeleton className="h-5 w-20 rounded-full" />
-            <div className="text-right">
-              <Skeleton className="h-4 w-12 mb-2" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
+          <Skeleton className="h-5 w-20 rounded-md" />
+          <Skeleton className="h-4 w-16" />
         </div>
       ))}
     </div>

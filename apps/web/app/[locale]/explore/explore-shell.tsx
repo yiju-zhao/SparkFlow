@@ -31,13 +31,13 @@ export function ExploreShell({ children, ...headerProps }: ExploreShellProps) {
 
       {/* Scrollable content */}
       <div
-        className="flex-1 overflow-y-auto bg-secondary"
+        className="flex-1 overflow-y-auto bg-sf-bg"
         onScroll={(e) => {
           const scrollTop = (e.target as HTMLDivElement).scrollTop;
           setIsScrolled(scrollTop > 20);
         }}
       >
-        <main className="px-12 pt-24 pb-16">{children}</main>
+        <main className="mx-auto max-w-[1280px] px-8 pt-24 pb-24">{children}</main>
       </div>
 
       {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}

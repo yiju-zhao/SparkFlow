@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
@@ -9,9 +8,23 @@ import { ScrollbarAutoHide } from "./scrollbar-autohide";
 import "../globals.css";
 import { routing } from "@/src/i18n/routing";
 
+const interSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sparkflow-sans",
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-sparkflow-mono",
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "SparkFlow",
-  description: "AI-powered research notebook",
+  description: "A quiet, data-dense research product system — Hub + DeepDive.",
 };
 
 export function generateStaticParams() {
@@ -40,7 +53,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+      <body className={`${interSans.variable} ${jetbrainsMono.variable} antialiased`}>
         <ScrollbarAutoHide />
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>

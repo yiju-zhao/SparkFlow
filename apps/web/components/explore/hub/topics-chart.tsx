@@ -44,7 +44,9 @@ export function TopicsChart({ data }: TopicsChartProps) {
           },
         },
         axisLabel: {
-          color: theme === "dark" ? "#a1a1aa" : "#71717a",
+          color: theme === "dark" ? "#9aa0b7" : "#8A8F9C",
+          fontFamily: "var(--font-mono)",
+          fontSize: 11,
         },
       },
       yAxis: {
@@ -53,8 +55,11 @@ export function TopicsChart({ data }: TopicsChartProps) {
         axisTick: { show: false },
         axisLine: { show: false },
         axisLabel: {
-          color: theme === "dark" ? "#a1a1aa" : "#71717a",
-          width: 120,
+          color: theme === "dark" ? "#c8cde0" : "#5B6070",
+          fontFamily: "var(--font-sans)",
+          fontSize: 12,
+          fontWeight: 500,
+          width: 140,
           overflow: "truncate",
         },
       },
@@ -63,10 +68,13 @@ export function TopicsChart({ data }: TopicsChartProps) {
           data: data.map((d) => d.count),
           type: "bar",
           itemStyle: {
-            borderRadius: [0, 4, 4, 0],
-            color: theme === "dark" ? "#fafafa" : "#09090b",
+            borderRadius: [0, 3, 3, 0],
+            color: "#0F5FFE",
           },
-          barMaxWidth: 30,
+          emphasis: {
+            itemStyle: { color: "#0A49CC" },
+          },
+          barMaxWidth: 22,
         },
       ],
     };
@@ -75,9 +83,9 @@ export function TopicsChart({ data }: TopicsChartProps) {
   const chartRef = useECharts({ option });
 
   return (
-    <div className="bg-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold mb-4">{t("topTopics")}</h3>
-      <div className="h-65">
+    <div className="sf-card">
+      <h3 className="sf-row-label">{t("topTopics")}</h3>
+      <div className="h-65 mt-3">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />
         ) : (

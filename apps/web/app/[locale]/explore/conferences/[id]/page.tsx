@@ -56,20 +56,24 @@ export default async function ConferenceDetailPage({ params }: PageProps) {
         }
         className="relative"
       >
-        <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-4">
+        <TabsList className="inline-flex h-auto w-auto gap-1 rounded-md bg-sf-surface p-1 border border-sf-line">
           <TabsTrigger
             value="publications"
-            className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
+            className="rounded-[6px] px-3.5 py-1.5 text-[13px] font-semibold text-sf-ink-3 data-[state=active]:bg-sf-accent data-[state=active]:text-white data-[state=active]:shadow-none transition-colors"
           >
             {tDetail("tabPublications")}
-            <span className="ml-1.5 tabular-nums">({stats.publicationCount.toLocaleString()})</span>
+            <span className="ml-1.5 font-mono tabular-nums text-[11px] opacity-80">
+              {stats.publicationCount.toLocaleString()}
+            </span>
           </TabsTrigger>
           <TabsTrigger
             value="sessions"
-            className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-4 py-2 text-sm font-medium shadow-none transition-colors"
+            className="rounded-[6px] px-3.5 py-1.5 text-[13px] font-semibold text-sf-ink-3 data-[state=active]:bg-sf-accent data-[state=active]:text-white data-[state=active]:shadow-none transition-colors"
           >
             {tDetail("tabSessions")}
-            <span className="ml-1.5 tabular-nums">({stats.sessionCount.toLocaleString()})</span>
+            <span className="ml-1.5 font-mono tabular-nums text-[11px] opacity-80">
+              {stats.sessionCount.toLocaleString()}
+            </span>
           </TabsTrigger>
         </TabsList>
 

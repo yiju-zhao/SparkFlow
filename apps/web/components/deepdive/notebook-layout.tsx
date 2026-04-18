@@ -191,7 +191,7 @@ function NotebookLayoutInner({
   const rightCollapsed = rightWidth === 0;
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden bg-sf-bg">
       {/* Sources Panel (Left) - Collapsible */}
       {sourcesCollapsed ? (
         <CollapsedGripStrip side="left" onExpand={handleSourcesExpand} />
@@ -262,28 +262,32 @@ function NotebookLayoutInner({
             animate={{ width: rightWidth }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           >
-            {/* Tab Bar */}
-            <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-1">
-              <button
-                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
-                  rightTab === "wiki"
-                    ? "text-foreground bg-accent/20"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setRightTab("wiki")}
-              >
-                Wiki
-              </button>
-              <button
-                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
-                  rightTab === "notes"
-                    ? "text-foreground bg-accent/20"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setRightTab("notes")}
-              >
-                Notes
-              </button>
+            {/* Tab Bar — pill toggle (blue-filled active) */}
+            <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-2 border-b border-sf-line bg-sf-surface">
+              <div className="inline-flex gap-1 rounded-md border border-sf-line bg-sf-bg p-1">
+                <button
+                  type="button"
+                  className={`rounded-[6px] px-3 py-1 text-[12px] font-semibold transition-colors ${
+                    rightTab === "wiki"
+                      ? "bg-sf-accent text-white"
+                      : "text-sf-ink-3 hover:text-sf-ink-2"
+                  }`}
+                  onClick={() => setRightTab("wiki")}
+                >
+                  Wiki
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-[6px] px-3 py-1 text-[12px] font-semibold transition-colors ${
+                    rightTab === "notes"
+                      ? "bg-sf-accent text-white"
+                      : "text-sf-ink-3 hover:text-sf-ink-2"
+                  }`}
+                  onClick={() => setRightTab("notes")}
+                >
+                  Notes
+                </button>
+              </div>
             </div>
 
             {/* Tab Content */}

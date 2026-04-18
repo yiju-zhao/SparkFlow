@@ -14,18 +14,16 @@ import {
 import { Button } from "@/components/ui/button";
 import type { CalendarSessionItem } from "@/lib/explore/types";
 
-// 10-color palette, muted tones, dark-mode compatible
+// Restrained palette — blue, black, muted, warn — per the Sparkflow design system.
+// Distinct session types use the two accent colours and fall back to muted; the
+// warn tone marks one category (e.g. workshops) for rhythm.
 const TYPE_PALETTE = [
-  "#6366f1", // indigo
-  "#f59e0b", // amber
-  "#10b981", // emerald
-  "#ef4444", // red
-  "#8b5cf6", // violet
-  "#06b6d4", // cyan
-  "#f97316", // orange
-  "#ec4899", // pink
-  "#14b8a6", // teal
-  "#a855f7", // purple
+  "#0F5FFE", // accent blue — oral / main
+  "#111317", // black — spotlight
+  "#8A8F9C", // ink-4 — poster
+  "#B2551B", // warn — workshop
+  "#128A4B", // success — keynote
+  "#0A49CC", // accent ink — panel
 ];
 
 function buildTypeColorMap(sessions: CalendarSessionItem[]): Map<string, string> {
@@ -105,37 +103,42 @@ function SessionCard({ session, color }: SessionCardProps) {
 
   return (
     <div
-      className="rounded-lg bg-card border border-border hover:bg-muted/30 hover:border-muted-foreground/20 transition-colors"
-      style={{ borderLeftWidth: 4, borderLeftColor: color }}
+      className="sf-card card-hoverable p-0 overflow-hidden"
+      style={{ borderLeftWidth: 3, borderLeftColor: color }}
     >
-      <Link href={`/explore/sessions/${session.id}`} className="block p-3.5 space-y-2">
-        <h4 className="font-medium text-sm leading-snug line-clamp-2">{session.title}</h4>
+      <Link href={`/explore/sessions/${session.id}`} className="block p-4 space-y-2.5">
+        <div className="flex items-start justify-between gap-2">
+          {session.type && (
+            <span className="sf-badge sf-badge-muted">{session.type}</span>
+          )}
+          {durationLabel && (
+            <span className="font-mono text-[10px] text-sf-ink-4 tabular-nums">
+              {durationLabel}
+            </span>
+          )}
+        </div>
 
-        {/* Time + Duration */}
-        {(session.startTime || durationLabel) && (
-          <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground tabular-nums flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {session.startTime}
-              {session.endTime && ` – ${session.endTime}`}
-            </p>
-            {durationLabel && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                {durationLabel}
-              </span>
-            )}
-          </div>
+        <h4 className="font-semibold text-[14px] leading-snug line-clamp-2 text-sf-ink">
+          {session.title}
+        </h4>
+
+        {session.startTime && (
+          <p className="font-mono text-[12px] text-sf-accent tabular-nums flex items-center gap-1.5">
+            <Clock className="h-3 w-3" />
+            {session.startTime}
+            {session.endTime && ` — ${session.endTime}`}
+          </p>
         )}
 
         {session.location && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-[12px] text-sf-ink-4 flex items-center gap-1.5">
             <MapPin className="h-3 w-3 shrink-0" />
             <span className="truncate">{session.location}</span>
           </p>
         )}
 
         {session.speaker.length > 0 && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-[12px] text-sf-ink-3 flex items-center gap-1.5">
             <User className="h-3 w-3 shrink-0" />
             <span className="truncate">
               {session.speaker.slice(0, 2).join(", ")}
@@ -144,20 +147,14 @@ function SessionCard({ session, color }: SessionCardProps) {
           </p>
         )}
 
-        {/* Topic tags */}
         {session.topic.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap">
-            <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-1 flex-wrap pt-1">
+            <Tag className="h-3 w-3 text-sf-ink-4 shrink-0" />
             {session.topic.slice(0, 2).map((t) => (
-              <span
-                key={t}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground truncate max-w-30"
-              >
-                {t}
-              </span>
+              <span key={t} className="sf-badge sf-badge-soft">{t}</span>
             ))}
             {session.topic.length > 2 && (
-              <span className="text-[10px] text-muted-foreground">+{session.topic.length - 2}</span>
+              <span className="text-[10px] text-sf-ink-4">+{session.topic.length - 2}</span>
             )}
           </div>
         )}
@@ -445,14 +442,14 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         </p>
       ) : (
         <Tabs value={effectiveTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-transparent rounded-none w-full justify-start h-auto p-0 gap-1 overflow-x-auto flex-nowrap">
+          <TabsList className="inline-flex h-auto gap-1 rounded-md border border-sf-line bg-sf-surface p-1 overflow-x-auto flex-nowrap">
             {dateKeys.map((key) => {
               const count = dateGroups.get(key)?.length ?? 0;
               return (
                 <TabsTrigger
                   key={key}
                   value={key}
-                  className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
+                  className="rounded-[6px] px-3 py-1.5 text-[13px] font-semibold text-sf-ink-3 data-[state=active]:bg-sf-accent data-[state=active]:text-white data-[state=active]:shadow-none transition-colors whitespace-nowrap shrink-0"
                 >
                   {formatDateTab(new Date(key + "T00:00:00"))}
                   <span className="ml-1.5 tabular-nums opacity-70">({count})</span>
@@ -462,7 +459,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
             {unscheduled.length > 0 && (
               <TabsTrigger
                 value="unscheduled"
-                className="rounded-none border border-transparent bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=inactive]:border-border data-[state=inactive]:text-muted-foreground px-3 py-1.5 text-sm font-medium shadow-none transition-colors whitespace-nowrap shrink-0"
+                className="rounded-[6px] px-3 py-1.5 text-[13px] font-semibold text-sf-ink-3 data-[state=active]:bg-sf-accent data-[state=active]:text-white data-[state=active]:shadow-none transition-colors whitespace-nowrap shrink-0"
               >
                 Unscheduled
                 <span className="ml-1.5 tabular-nums opacity-70">({unscheduled.length})</span>

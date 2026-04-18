@@ -19,34 +19,49 @@ export function WechatArticleCard({ article }: WechatArticleCardProps) {
   return (
     <Link
       href={`/${locale}/explore/social-media/wechat/${article.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-md"
+      className="group sf-card card-hoverable p-0 overflow-hidden flex flex-col"
     >
-      {/* Cover image */}
-      <div className="relative h-40 w-full bg-muted overflow-hidden">
+      <div className="relative h-44 w-full bg-sf-bg-alt overflow-hidden">
         {article.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`/api/wechat/proxy-image?url=${encodeURIComponent(article.cover_url)}`}
             alt=""
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            No Cover
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-sf-ink-4">
+            <span className="sf-icon-tile">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden
+              >
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M3 9h18" />
+              </svg>
+            </span>
+            <span className="sf-eyebrow">No Cover</span>
           </div>
         )}
+        <span className="sf-badge sf-badge-black absolute left-3 top-3">WECHAT</span>
       </div>
 
-      {/* Card body */}
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="text-sm font-medium leading-snug line-clamp-2 group-hover:text-foreground">
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <h3 className="text-[15px] font-semibold leading-snug line-clamp-3 text-sf-ink group-hover:text-sf-accent transition-colors">
           {article.title}
         </h3>
-        <div className="mt-auto flex items-center justify-between pt-3">
-          <span className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+        <div className="mt-auto flex items-center justify-between gap-2">
+          <span className="sf-badge sf-badge-soft truncate max-w-[16ch]">
             {article.source_name}
           </span>
-          {publishDate && <span className="text-xs text-muted-foreground">{publishDate}</span>}
+          {publishDate && (
+            <span className="font-mono tabular-nums text-[11px] text-sf-ink-4">{publishDate}</span>
+          )}
         </div>
       </div>
     </Link>
