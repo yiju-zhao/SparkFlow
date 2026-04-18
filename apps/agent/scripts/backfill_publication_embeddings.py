@@ -99,7 +99,7 @@ async def backfill(batch_size: int, hard_limit: int | None) -> int:
 
 
 def main() -> int:
-    load_dotenv()
+    load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--limit", type=int, default=None)

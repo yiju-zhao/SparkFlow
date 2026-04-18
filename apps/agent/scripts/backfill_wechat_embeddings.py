@@ -185,7 +185,7 @@ async def run(mode: str, batch_size: int, hard_limit: int | None) -> dict[str, i
 
 
 def main() -> int:
-    load_dotenv()
+    load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--full",
