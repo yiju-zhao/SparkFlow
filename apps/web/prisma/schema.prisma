@@ -2,13 +2,15 @@
 // PostgreSQL with Prisma ORM
 
 generator client {
-  provider      = "prisma-client-js"
-  output        = "../node_modules/.prisma/client"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  output          = "../node_modules/.prisma/client"
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 // ============================================
@@ -344,6 +346,11 @@ model Publication {
   websiteUrl    String?
   status        String?
 
+  // BGE-M3 (1024-dim) embeddings for agent prefilter — indexed via HNSW in a
+  // raw-SQL migration step. Populated by the backfill script in apps/agent.
+  titleEmbedding    Unsupported("vector(1024)")?
+  abstractEmbedding Unsupported("vector(1024)")?
+
   sessions      SessionPublication[]
 
   createdAt     DateTime               @default(now())
@@ -352,6 +359,20 @@ model Publication {
   @@index([instanceId])
   @@index([researchTopic])
   @@map("publications")
+}
+
+// Mirror of BGE-M3 (1024-dim) embeddings for WeChat articles whose source rows
+// live in the external wechat_articles DB. Keyed by wechat_articles.articles.id
+// (int4). Populated by the backfill script in apps/agent; kept in sync
+// incrementally — rows removed upstream are cleaned up on next run.
+model WechatArticleEmbedding {
+  articleId        Int                          @id
+  articleHash      String?                      @db.VarChar(32)
+  titleEmbedding   Unsupported("vector(1024)")?
+  contentEmbedding Unsupported("vector(1024)")?
+  embeddedAt       DateTime                     @default(now())
+
+  @@map("wechat_article_embeddings")
 }
 
 model ConferenceSession {

@@ -26,3 +26,6 @@ pydantic
 python-dotenv
 httpx
 tavily-python
+
+# BGE-M3 embeddings (CPU) — powers the search-agent prefilter.
+FlagEmbedding>=1.2

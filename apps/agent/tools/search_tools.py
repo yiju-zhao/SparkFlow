@@ -1,18 +1,14 @@
 """Search tools for the search agent.
 
-Each tool searches one source type:
-- search_web: Tavily web search with optional domain filtering
-- search_publications: Full-text search on SparkFlow publication DB
-- search_wechat: Full-text search on WeChat article DB
+Only the web tool remains here — wechat and publication searches now go through
+the deterministic pgvector prefilter + latent title/body pipeline defined
+directly in graphs/search_agent.py, not as LLM-callable tools.
 """
 
 import json
 import os
 
-import httpx
 from langchain_core.tools import tool
-
-SPARKFLOW_API_URL = os.getenv("SPARKFLOW_API_URL", "http://localhost:3001")
 
 
 @tool
@@ -56,89 +52,9 @@ def search_web(query: str, domains: list[str] | None = None) -> str:
         return json.dumps({"error": str(e)})
 
 
-@tool
-def search_publications(query: str, limit: int = 20) -> str:
-    """Search the academic publication database for papers matching the query.
-
-    Args:
-        query: Search keywords — use technical terms, paper concepts, or method names.
-        limit: Maximum number of results to return.
-    """
-    try:
-        res = httpx.post(
-            f"{SPARKFLOW_API_URL}/api/explore/search/publications",
-            json={"query": query, "limit": limit},
-            timeout=30,
-        )
-        if not res.is_success:
-            return json.dumps({"error": f"Search failed: {res.status_code}"})
-        data = res.json()
-        # Format for the agent
-        results = []
-        for pub in data:
-            results.append(
-                {
-                    "id": pub.get("id", ""),
-                    "title": pub.get("title", ""),
-                    "snippet": pub.get("abstract", ""),
-                    "meta": " · ".join(
-                        filter(None, [pub.get("venue"), str(pub.get("year", ""))])
-                    ),
-                    "url": pub.get("pdfUrl", ""),
-                    "authors": pub.get("authors", []),
-                    "rank": pub.get("rank", 0),
-                }
-            )
-        return json.dumps(results, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"error": str(e)})
-
-
-@tool
-def search_wechat(query: str, limit: int = 20) -> str:
-    """Search the WeChat article database for articles matching the query.
-
-    Args:
-        query: Search keywords — can be Chinese or English terms.
-        limit: Maximum number of results to return.
-    """
-    try:
-        res = httpx.post(
-            f"{SPARKFLOW_API_URL}/api/explore/search/wechat",
-            json={"query": query, "limit": limit},
-            timeout=30,
-        )
-        if not res.is_success:
-            return json.dumps({"error": f"Search failed: {res.status_code}"})
-        data = res.json()
-        results = []
-        for article in data:
-            publish_time = article.get("publish_time", "")
-            if publish_time:
-                publish_time = publish_time[:10]  # Just the date part
-            results.append(
-                {
-                    "id": str(article.get("id", "")),
-                    "title": article.get("title", ""),
-                    "snippet": article.get("content_text", ""),
-                    "meta": " · ".join(
-                        filter(
-                            None,
-                            ["WeChat", article.get("source_name", ""), publish_time],
-                        )
-                    ),
-                    "url": article.get("original_url", ""),
-                    "rank": article.get("rank", 0),
-                }
-            )
-        return json.dumps(results, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"error": str(e)})
-
-
-# Tool lookup by source type
+# Tool lookup by source type. Only `web` has LLM-callable tools now.
 SEARCH_TOOLS_BY_TYPE = {
     "web": [search_web],
-    "publication": [search_publications],
-    "wechat": [search_wechat],
+    "publication": [],
+    "wechat": [],
 }

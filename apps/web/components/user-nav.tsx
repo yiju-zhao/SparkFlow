@@ -15,7 +15,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings, Shield } from "lucide-react";
+import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings, Shield, Loader2 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -38,6 +38,15 @@ export function UserNav({ user }: UserNavProps) {
   // Avoid hydration mismatch for theme
   const [mounted, setMounted] = useState(false);
   useEffect(() => queueMicrotask(() => setMounted(true)), []);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = (e: Event) => {
+    e.preventDefault();
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    // Redirect to login (lighter than landing page) for faster perceived logout.
+    signOut({ callbackUrl: `/${locale}/login` });
+  };
 
   const fallbackContent = user.name ? (
     user.name.charAt(0).toUpperCase()
@@ -111,9 +120,16 @@ export function UserNav({ user }: UserNavProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut({ callbackUrl: `/${locale}` })}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>{t("signOut")}</span>
+        <DropdownMenuItem
+          disabled={isSigningOut}
+          onSelect={handleSignOut}
+        >
+          {isSigningOut ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="mr-2 h-4 w-4" />
+          )}
+          <span>{isSigningOut ? `${t("signOut")}...` : t("signOut")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
