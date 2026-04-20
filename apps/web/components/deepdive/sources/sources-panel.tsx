@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, memo } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
-import { FileText, Plus, Loader2, ArrowLeft, X } from "lucide-react";
+import { FileText, Plus, Loader2, ArrowLeft, X, Globe, FileCode } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { deleteSource } from "@/lib/actions/sources";
@@ -95,25 +95,23 @@ export function SourcesPanel({
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="px-6 pt-3 pb-1 flex items-center justify-between">
-        <span className="px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">
+    <div className="flex h-full flex-col bg-card">
+      {/* Header: eyebrow + full-width Add Source primary button */}
+      <div className="px-5 pt-5 pb-3 space-y-3">
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Sources
         </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
+        <button
           onClick={() => setIsDialogOpen(true)}
-          title="Add Source"
+          className="w-full h-9 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold inline-flex items-center justify-center gap-2 transition-colors hover:bg-accent-red-hover active:scale-[0.99]"
         >
           <Plus className="h-4 w-4" />
-        </Button>
+          Add Source
+        </button>
       </div>
 
       {/* Sources List */}
-      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+      <div className="flex-1 overflow-y-auto px-5 pb-6">
         {liveSources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <FileText className="h-8 w-8 text-muted-foreground/50" />
@@ -224,16 +222,24 @@ const SourceItem = memo(function SourceItem({
     });
   };
 
+  const typePill =
+    source.sourceType === "DOCUMENT"
+      ? { icon: FileText, label: "PDF", className: "bg-[#FEECEC] text-destructive" }
+      : source.sourceType === "WEBPAGE"
+        ? { icon: Globe, label: "Web", className: "bg-accent text-accent-foreground" }
+        : { icon: FileCode, label: "Doc", className: "bg-accent text-accent-foreground" };
+  const TypeIcon = typePill.icon;
+
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${
+      className={`group relative flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card px-3 py-3 transition-all duration-150 hover:border-[#CBD0DB] hover:bg-surface-hover ${
         isPending ? "opacity-50" : ""
       }`}
       onClick={onSelect}
     >
       {/* Delete Badge - hover visible */}
       <button
-        className="absolute -top-2 -right-2 h-4.5 w-4.5 rounded-full bg-accent-red flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
         onClick={(e) => {
           e.stopPropagation();
           handleDelete(e);
@@ -243,12 +249,20 @@ const SourceItem = memo(function SourceItem({
         <X className="h-3 w-3 text-white" />
       </button>
 
+      {/* Type icon pill */}
+      <span
+        className={`shrink-0 mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded ${typePill.className}`}
+        aria-label={typePill.label}
+      >
+        <TypeIcon className="h-3.5 w-3.5" />
+      </span>
+
       <div className="min-w-0 flex-1">
-        <span className="truncate block text-[13px] font-semibold dark:font-medium leading-tight">
+        <span className="truncate block text-[13px] font-semibold leading-tight text-foreground">
           {source.title}
         </span>
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span>{source.sourceType === "DOCUMENT" ? "PDF" : "Web"}</span>
+        <div className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+          <span>{typePill.label}</span>
           <span>•</span>
           {relativeTime && <span suppressHydrationWarning>{relativeTime}</span>}
         </div>
@@ -417,7 +431,7 @@ function SourceContentView({ source, onBack }: { source: Source; onBack: () => v
 
             {/* TOC Dropdown */}
             {showToc && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-background shadow-lg">
+              <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-[14px] border border-border bg-card shadow-[0_4px_12px_rgba(14,17,22,0.08)]">
                 <div className="p-3">
                   <h3 className="mb-2 text-xs font-semibold">Table of Contents</h3>
                   <nav className="max-h-96 space-y-1 overflow-y-auto">

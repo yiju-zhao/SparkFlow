@@ -9,8 +9,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -42,75 +42,56 @@
 }
 
 :root {
-  /* Huawei Design System - Light Mode */
-  --background: oklch(1 0 0);
-  /* #FFFFFF */
-  --foreground: oklch(0 0 0);
-  /* #000000 */
+  /* Sparkflow Design System - Light Mode
+     One electric blue #0F5FFE · hairline #E3E5EC · off-white canvas · Inter + JetBrains Mono */
+  --background: #f5f6fb;
+  --foreground: #0e1116;
 
-  --card: oklch(1 0 0);
-  /* #FFFFFF */
-  --card-foreground: oklch(0.118 0 0);
-  /* #1E1E1E */
+  --card: #ffffff;
+  --card-foreground: #0e1116;
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
+  --popover: #ffffff;
+  --popover-foreground: #0e1116;
 
-  /* Primary - Black/White for strong contrast */
-  --primary: oklch(0 0 0);
-  /* #000000 */
-  --primary-foreground: oklch(1 0 0);
-  /* #FFFFFF */
+  /* Primary is the brand blue — replaces the prior black primary */
+  --primary: #0f5ffe;
+  --primary-foreground: #ffffff;
 
-  /* Secondary - Light gray backgrounds */
-  --secondary: oklch(0.961 0 0);
-  /* #F5F5F5 */
-  --secondary-foreground: oklch(0 0 0);
+  /* Secondary / Muted — soft cool neutrals for zebra rows and disabled states */
+  --secondary: #f9fafc;
+  --secondary-foreground: #0e1116;
 
-  /* Muted - For disabled/secondary text */
-  --muted: oklch(0.961 0 0);
-  /* #F5F5F5 */
-  --muted-foreground: oklch(0.4 0 0);
-  /* #666666 */
+  --muted: #f9fafc;
+  --muted-foreground: #5b6070;
 
-  /* Accent - Huawei Red */
-  --accent-red: oklch(0.44 0.19 16);
-  /* #CE0E2D */
-  --accent-red-hover: oklch(0.34 0.19 16);
-  /* #A20A22 */
-  --accent: oklch(0.961 0 0);
-  --accent-foreground: oklch(0 0 0);
+  /* Accent = soft-blue badge background; accent-foreground = ink-blue for on-badge text */
+  --accent-red: #0f5ffe;
+  --accent-red-hover: #0b4ed6;
+  --accent: #ebf2ff;
+  --accent-foreground: #0b3ab0;
 
-  /* Destructive - Keep red for errors */
-  --destructive: oklch(0.602 0.245 27.325);
-  --destructive-foreground: oklch(1 0 0);
+  /* Destructive remains red (semantic) */
+  --destructive: #c0332b;
+  --destructive-foreground: #ffffff;
 
-  /* Borders - Light gray */
-  --border: oklch(0.89 0 0);
-  /* #E3E3E3 */
-  --input: oklch(0.89 0 0);
-  --ring: oklch(0 0 0);
+  /* Hairline borders, blue focus ring */
+  --border: #e3e5ec;
+  --input: #e3e5ec;
+  --ring: #0f5ffe;
 
-  /* Border Radius System */
-  --radius: 0.5rem;
-  /* 8px - default */
+  --radius: 0.625rem;
+  /* 10px card radius per design system */
 
-  /* Notebook Design Tokens */
-  --accent-primary: oklch(0.44 0.19 16);
-  /* Huawei Red accent for light mode (matches accent-red) */
+  /* Notebook Design Tokens — remapped so existing class names pick up the new palette */
+  --accent-primary: #0f5ffe;
   --surface-elevated: #ffffff;
-  /* Card/raised surface */
-  --surface-hover: #f0f0f0;
-  /* Card hover */
-  --divider: #0a0a0a;
-  /* Swiss-style bold black borders */
-  --outline: #0a0a0a;
-  /* Swiss-style bold black button borders */
+  --surface-hover: #f9fafc;
+  --divider: #e3e5ec;
+  --outline: #e3e5ec;
 
-  /* Chunk Highlight Colors */
+  /* Chunk Highlight Colors — amber/indigo is semantic, leave alone */
   --highlight-bg: oklch(0.92 0.12 95 / 0.6);
   --highlight-border: oklch(0.7 0.15 85);
-  /* Light Mode: Vibrant Amber Border */
 }
 
 .dark {
@@ -151,19 +132,13 @@
   --ring: oklch(0.4 0.06 265);
   /* Focus ring matching theme */
 
-  /* Notebook Design Tokens */
-  --accent-red: #ff3b30;
-  /* Updated to match .pen design (was #CE0E2D) */
-  --accent-primary: #ff3b30;
-  /* User bubble in dark mode */
+  /* Notebook Design Tokens — brighter blue for dark surfaces, thin dividers */
+  --accent-red: #3c7bff;
+  --accent-primary: #3c7bff;
   --surface-elevated: #1a1a1a;
-  /* Card/raised surface */
   --surface-hover: #252525;
-  /* Card hover */
-  --divider: #2a2a2a;
-  /* Panel borders - matches .pen design */
-  --outline: #3a3a3a;
-  /* Button borders - matches .pen design */
+  --divider: #2a2e36;
+  --outline: #2a2e36;
 
   --highlight-bg: oklch(0.35 0.1 265 / 0.5);
   --highlight-border: oklch(0.6 0.15 250);

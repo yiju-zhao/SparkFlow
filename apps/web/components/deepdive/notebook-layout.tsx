@@ -263,26 +263,32 @@ function NotebookLayoutInner({
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           >
             {/* Tab Bar */}
-            <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-1">
+            <div className="shrink-0 flex items-center gap-6 px-6 h-12 border-b border-divider bg-card">
               <button
-                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                className={`relative h-full inline-flex items-center text-[13px] font-medium transition-colors ${
                   rightTab === "wiki"
-                    ? "text-foreground bg-accent/20"
+                    ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 onClick={() => setRightTab("wiki")}
               >
                 Wiki
+                {rightTab === "wiki" && (
+                  <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" />
+                )}
               </button>
               <button
-                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                className={`relative h-full inline-flex items-center text-[13px] font-medium transition-colors ${
                   rightTab === "notes"
-                    ? "text-foreground bg-accent/20"
+                    ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 onClick={() => setRightTab("notes")}
               >
                 Notes
+                {rightTab === "notes" && (
+                  <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" />
+                )}
               </button>
             </div>
 

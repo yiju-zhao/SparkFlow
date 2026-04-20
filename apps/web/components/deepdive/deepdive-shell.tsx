@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { UserNav } from "@/components/user-nav";
-import { Compass, Globe } from "lucide-react";
+import { BookOpen, ChevronRight, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -48,55 +48,49 @@ export function DeepdiveShell({ children, user, breadcrumb }: DeepdiveShellProps
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="shrink-0 border-b-2 border-border bg-background">
-        <div className="flex h-16 w-full items-center justify-between px-6">
-          {/* Left: Logo or Breadcrumb */}
-          <div className="flex items-center gap-2.5">
-            {breadcrumb ? (
-              <div className="flex items-center gap-2 text-base">
-                <Link
-                  href={`/${locale}`}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  SparkFlow
-                </Link>
-                <span className="text-muted-foreground">/</span>
+      <header className="shrink-0 border-b border-border bg-card">
+        <div className="flex h-14 w-full items-center justify-between px-6">
+          {/* Left: Wordmark + DEEPDIVE tag + optional breadcrumb */}
+          <div className="flex items-center gap-3">
+            <Link href={`/${locale}`} className="flex items-center gap-2">
+              <span className="text-[15px] font-semibold tracking-tight text-foreground">
+                SPARKFLOW
+              </span>
+              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent-foreground">
+                DEEPDIVE
+              </span>
+            </Link>
+            {breadcrumb && (
+              <div className="flex items-center gap-2 pl-3 text-[13px] text-muted-foreground">
+                <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
                 <Link
                   href={`/${locale}/deepdive`}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="transition-colors hover:text-foreground"
                 >
                   deepdive
                 </Link>
-                <span className="text-muted-foreground">/</span>
+                <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
                 {breadcrumb.href ? (
                   <Link
                     href={`/${locale}${breadcrumb.href}`}
-                    className="text-foreground font-medium hover:underline"
+                    className="truncate max-w-60 font-medium text-foreground hover:underline"
                   >
                     {breadcrumb.label}
                   </Link>
                 ) : (
-                  <span className="text-foreground font-medium truncate max-w-48">
+                  <span className="truncate max-w-60 font-medium text-foreground">
                     {breadcrumb.label}
                   </span>
                 )}
               </div>
-            ) : (
-              <Link href={`/${locale}`} className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red">
-                  <span className="text-base font-bold text-white">S</span>
-                </div>
-                <span className="text-lg font-semibold">SparkFlow</span>
-              </Link>
             )}
           </div>
 
-          {/* Right: Language Switcher + Explore link + User */}
+          {/* Right: Language Switcher + Research Hub + User */}
           <div className="flex items-center gap-3">
-            {/* Language Switcher */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="h-8 w-8">
                   <Globe className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -115,9 +109,9 @@ export function DeepdiveShell({ children, user, breadcrumb }: DeepdiveShellProps
             </DropdownMenu>
             <Link
               href={`/${locale}/explore`}
-              className="group flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-mono font-bold uppercase tracking-widest transition-all hover:bg-muted"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-accent-red-hover"
             >
-              <Compass className="h-4 w-4 text-[#00D084] transition-transform group-hover:scale-110" />
+              <BookOpen className="h-3.5 w-3.5" />
               <span>{t("researchHub")}</span>
             </Link>
             {user && <UserNav user={user} />}
