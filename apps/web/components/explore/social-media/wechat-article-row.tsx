@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { useLocale } from "next-intl";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { WechatArticleSummary } from "@/lib/wechat/queries";
 
 interface Props {
@@ -43,14 +45,22 @@ export function WechatArticleRow({
   article,
   index = 0,
 }: Props & { index?: number }) {
-  const locale = useLocale();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const publishedAt = article.publish_time ? new Date(article.publish_time) : null;
   const rel = publishedAt ? relativeTimeLabel(publishedAt) : null;
   const tag = impactTag(article.id, index);
 
+  const href = (() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("article", String(article.id));
+    return `${pathname}?${params.toString()}`;
+  })();
+
   return (
     <Link
-      href={`/${locale}/explore/social-media/wechat/${article.id}`}
+      href={href}
+      scroll={false}
       className="group bg-sf-surface border border-sf-line rounded-[10px] overflow-hidden hover:border-sf-accent transition-all duration-300 flex flex-col md:flex-row"
     >
       {/* Cover — left */}

@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { setRequestLocale } from "next-intl/server";
-import { getWechatArticles, getWechatSources } from "@/lib/wechat/queries";
+import {
+  getRelatedWechatArticles,
+  getWechatArticle,
+  getWechatArticles,
+  getWechatSources,
+} from "@/lib/wechat/queries";
 import { parseWechatArticleFilters, WECHAT_PAGE_SIZE } from "@/lib/wechat/filters";
 import { EmptyState } from "@/components/explore/shared";
 import { WechatArticleRow } from "@/components/explore/social-media/wechat-article-row";
+import { WechatArticleModal } from "@/components/explore/social-media/wechat-article-modal";
 import { WechatSourcesChips } from "./_components/wechat-filter-bar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -18,10 +24,18 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
   const searchParamsResolved = await searchParams;
   const filters = parseWechatArticleFilters(searchParamsResolved);
 
-  const [{ articles, total }, sources] = await Promise.all([
+  const articleParam = searchParamsResolved.article;
+  const articleId = typeof articleParam === "string" ? parseInt(articleParam, 10) : NaN;
+
+  const [{ articles, total }, sources, modalArticle] = await Promise.all([
     getWechatArticles(filters),
     getWechatSources(),
+    Number.isFinite(articleId) ? getWechatArticle(articleId) : Promise.resolve(null),
   ]);
+
+  const related = modalArticle
+    ? await getRelatedWechatArticles(modalArticle.source_id, modalArticle.id, 4)
+    : [];
 
   const totalPages = Math.max(1, Math.ceil(total / WECHAT_PAGE_SIZE));
   const pageStart = total === 0 ? 0 : filters.page * WECHAT_PAGE_SIZE + 1;
@@ -171,6 +185,8 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
           </div>
         </div>
       )}
+
+      {modalArticle && <WechatArticleModal article={modalArticle} related={related} />}
     </div>
   );
 }
