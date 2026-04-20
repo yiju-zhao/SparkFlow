@@ -1,5 +1,5 @@
 import { getInstances } from "@/lib/actions/admin";
-import { SessionList } from "./components/session-list";
+import { SessionList } from "./_components/session-list";
 
 export default async function SessionsPage() {
   const instances = await getInstances();

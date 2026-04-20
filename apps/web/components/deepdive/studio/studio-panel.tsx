@@ -78,34 +78,31 @@ export function StudioPanel({
       ) : (
         <>
           {/* Header */}
-          <div className="px-6 pt-3 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
-              <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
-                NOTES
-              </h2>
-            </div>
+          <div className="px-5 py-3 flex items-center justify-between border-b border-sf-line bg-sf-surface shrink-0">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-sf-ink-4">
+              Notes
+            </span>
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
+              className="h-7 w-7 p-0 rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink transition-colors"
               onClick={() => setIsCreateDialogOpen(true)}
               title="New Note"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
             </Button>
           </div>
 
           {/* Notes List */}
-          <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+          <div className="flex-1 overflow-y-auto p-3 bg-sf-bg">
             {sortedNotes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <StickyNote className="h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm text-muted-foreground">No notes yet</p>
-                <p className="text-xs text-muted-foreground">Save insights from your research</p>
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <StickyNote className="h-8 w-8 text-sf-ink-4/50" />
+                <p className="mt-2 text-sm text-sf-ink-3">No notes yet</p>
+                <p className="text-xs text-sf-ink-4">Save insights from your research</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 {sortedNotes.map((note) => (
                   <NoteCard key={note.id} note={note} onSelect={() => onSelectNote(note)} />
                 ))}
@@ -150,17 +147,19 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
   return (
     <div
       onClick={onSelect}
-      className={`group relative cursor-pointer rounded-[4px] bg-surface-elevated p-3 transition-all duration-200 border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-divider ${
+      className={`group relative cursor-pointer rounded-[10px] bg-sf-surface p-3 transition-colors border border-sf-line ${
         isPending ? "opacity-50" : ""
-      } hover:bg-surface-hover`}
+      } hover:border-sf-line-strong hover:bg-sf-bg-alt`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            {note.isPinned && <Pin className="h-3 w-3 shrink-0 text-accent-red" />}
-            <h3 className="line-clamp-1 text-[13px] font-medium leading-tight">{note.title}</h3>
+            {note.isPinned && <Pin className="h-3 w-3 shrink-0 text-sf-accent" />}
+            <h3 className="line-clamp-1 text-[13px] font-semibold text-sf-ink leading-tight">
+              {note.title}
+            </h3>
           </div>
-          <div className="mt-1 h-[28px] overflow-hidden text-[12px] text-muted-foreground/70">
+          <div className="mt-1 h-[28px] overflow-hidden text-[12px] text-sf-ink-4">
             <Markdown className="text-[12px] [&_p]:mb-0 [&_p]:leading-tight">
               {note.content}
             </Markdown>
@@ -172,10 +171,10 @@ function NoteCard({ note, onSelect }: NoteCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-full bg-background/90 border border-border/40 shadow-sm"
+                className="h-7 w-7 rounded-full bg-sf-surface border border-sf-line"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreVertical className="h-4 w-4" />
+                <MoreVertical className="h-4 w-4 text-sf-ink-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
@@ -250,9 +249,9 @@ function NoteViewer({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-divider px-4 py-2">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
+      <div className="flex items-center justify-between border-b border-sf-line px-4 py-2.5 bg-sf-surface shrink-0">
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-[6px] hover:bg-sf-bg-alt" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 text-sf-ink-3" />
         </Button>
         <div className="flex items-center gap-1">
           {isEditing ? (
@@ -260,7 +259,7 @@ function NoteViewer({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 text-xs rounded-[6px]"
                 onClick={onBack}
                 disabled={isPending}
               >
@@ -269,7 +268,7 @@ function NoteViewer({
               </Button>
               <Button
                 size="sm"
-                className="h-7 bg-accent-red text-xs hover:bg-accent-red-hover"
+                className="h-7 text-xs rounded-[6px] bg-sf-accent hover:bg-sf-accent-ink text-white"
                 onClick={handleSave}
                 disabled={isPending}
               >
@@ -278,7 +277,7 @@ function NoteViewer({
               </Button>
             </>
           ) : (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onEdit}>
+            <Button variant="ghost" size="sm" className="h-7 text-xs rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink" onClick={onEdit}>
               <Pencil className="mr-1 h-3.5 w-3.5" />
               Edit
             </Button>
@@ -306,8 +305,8 @@ function NoteViewer({
         ) : (
           <div>
             <div className="mb-4 flex items-center gap-2">
-              {note.isPinned && <Pin className="h-4 w-4 text-accent-red" />}
-              <h2 className="truncate text-sm font-medium" title={note.title}>
+              {note.isPinned && <Pin className="h-4 w-4 text-sf-accent" />}
+              <h2 className="truncate text-sm font-semibold text-sf-ink" title={note.title}>
                 {note.title}
               </h2>
             </div>

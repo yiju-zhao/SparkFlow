@@ -1,5 +1,5 @@
 import { getInstances } from "@/lib/actions/admin";
-import { PublicationList } from "./components/publication-list";
+import { PublicationList } from "./_components/publication-list";
 
 export default async function PublicationsPage() {
   const instances = await getInstances();

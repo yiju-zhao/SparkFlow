@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Providers } from "../providers";
-import { ScrollbarAutoHide } from "./scrollbar-autohide";
+import { ScrollbarAutoHide } from "./_components/scrollbar-autohide";
 import "../globals.css";
 import { routing } from "@/src/i18n/routing";
 

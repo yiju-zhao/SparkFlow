@@ -12,8 +12,8 @@ export interface SparkflowLockupProps {
 
 const sizeMap = {
   sm: { word: "text-[15px]", tag: "text-[9px] px-1.5 py-[2px]", glyph: "h-4 w-4" },
-  md: { word: "text-[18px]", tag: "text-[10px] px-1.5 py-[3px]", glyph: "h-5 w-5" },
-  lg: { word: "text-[22px]", tag: "text-[11px] px-2 py-[3px]", glyph: "h-6 w-6" },
+  md: { word: "text-[20px]", tag: "text-[11px] px-[7px] py-[3px]", glyph: "h-5 w-5" },
+  lg: { word: "text-[24px]", tag: "text-[12px] px-2 py-[3px]", glyph: "h-6 w-6" },
 };
 
 export function SparkflowLockup({

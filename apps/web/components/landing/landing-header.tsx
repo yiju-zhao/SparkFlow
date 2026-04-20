@@ -101,7 +101,7 @@ export function LandingHeader({
         >
           <SparkflowLockup
             tag={productTag}
-            size={variant === "explore" ? "sm" : "md"}
+            size={variant === "explore" ? "md" : "md"}
             withGlyph={variant === "landing"}
           />
         </Link>
@@ -197,18 +197,10 @@ export function LandingHeader({
           {isLoggedIn ? (
             <>
               <Button size="sm" asChild>
-                <Link href={deepdiveHref}>
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    aria-hidden
-                  >
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
+                <Link
+                  href={deepdiveHref}
+                  className="font-black uppercase tracking-[0.1em]"
+                >
                   DeepDive
                 </Link>
               </Button>
@@ -217,7 +209,7 @@ export function LandingHeader({
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>
-                <Link href={`/${locale}/login`}>{t("login") || "Log in"}</Link>
+                <Link href={`/${locale}/login`}>Log in</Link>
               </Button>
               <Button size="sm" asChild>
                 <Link href={`/${locale}/signup`}>{t("signUp")}</Link>

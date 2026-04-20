@@ -6,15 +6,13 @@ import {
   getFilterOptions,
 } from "@/lib/explore/queries";
 import { parsePublicationFilters, PAGE_SIZE } from "@/lib/explore/filters";
+import { EmptyState, StatusToggles } from "@/components/explore/shared";
 import {
-  FilterBar,
-  Pagination,
-  EmptyState,
-  StatusToggles,
-  type FilterConfig,
-} from "@/components/explore/shared";
-import { Button } from "@/components/ui/button";
-import { FileText, Search } from "lucide-react";
+  PublicationsFilterBar,
+  type PublicationsFilterConfig,
+} from "@/components/explore/conferences/publications-filter-bar";
+import { PublicationRow } from "@/components/explore/conferences/publication-row";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -41,138 +39,195 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
     countries: globalOptions.countries,
   };
 
-  const filterConfigs: FilterConfig[] = [
+  const filterConfigs: PublicationsFilterConfig[] = [
     {
       key: "venue",
       label: tFilters("venue"),
+      defaultLabel: "All Venues",
       options: filterOptions.venues.map((v) => ({ value: v.id, label: v.name })),
     },
     {
       key: "year",
       label: tFilters("year"),
+      defaultLabel: "All Years",
       options: filterOptions.years.map((y) => ({ value: y.toString(), label: y.toString() })),
     },
     {
       key: "topic",
       label: tFilters("topic"),
+      defaultLabel: "All Topics",
       options: filterOptions.topics.map((tp) => ({ value: tp, label: tp })),
     },
     {
       key: "status",
       label: tFilters("status"),
+      defaultLabel: "All Statuses",
       options: filterOptions.statuses.map((s) => ({ value: s, label: s })),
     },
     {
       key: "affiliation",
       label: tFilters("organization"),
+      defaultLabel: "All Orgs",
       options: filterOptions.affiliations.map((a) => ({ value: a, label: a })),
     },
     {
       key: "country",
       label: tFilters("country"),
+      defaultLabel: "All Countries",
       options: filterOptions.countries.map((c) => ({ value: c, label: c })),
     },
   ];
 
-  const totalPages = Math.ceil(result.total / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+  const pageStart = result.total === 0 ? 0 : result.page * PAGE_SIZE + 1;
+  const pageEnd = Math.min(result.total, pageStart + result.data.length - 1);
+  const currentPage = result.page + 1; // 1-indexed for display
+
+  const searchPlaceholder = `Search ${result.total.toLocaleString()}+ publications…`;
+
+  // Build 1-indexed condensed page list like: 1 2 3 … last
+  const paginationPages: (number | "ellipsis")[] = (() => {
+    const pages: (number | "ellipsis")[] = [];
+    if (totalPages <= 6) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1, 2, 3);
+      if (currentPage > 4 && currentPage < totalPages - 2) {
+        pages.push("ellipsis");
+        pages.push(currentPage);
+        pages.push("ellipsis");
+      } else {
+        pages.push("ellipsis");
+      }
+      pages.push(totalPages);
+    }
+    return pages;
+  })();
+
+  const pageHref = (page0: number, extra?: Record<string, string>) => {
+    const params = new URLSearchParams();
+    Object.entries(searchParamsResolved).forEach(([k, v]) => {
+      if (typeof v === "string") params.set(k, v);
+    });
+    params.set("page", String(page0));
+    if (extra) Object.entries(extra).forEach(([k, v]) => params.set(k, v));
+    return `?${params.toString()}`;
+  };
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Header */}
-      <header className="flex flex-col gap-3 border-b border-sf-line pb-6">
-        <p className="sf-eyebrow">{t("publications.breadcrumb")}</p>
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="sf-h1">{t("publications.title")}</h1>
-            <p className="sf-meta mt-2">
-              {t("publications.found", { count: result.total.toLocaleString() })}
-            </p>
+    <div className="flex flex-col">
+      {/* Full-bleed header band — pseudo-element paints a 100vw white stripe
+          that extends upward to sit flush against the fixed app bar. */}
+      <section
+        className="relative isolate -mt-24 pt-28 pb-8 mb-10
+          before:content-[''] before:absolute before:inset-0 before:left-1/2
+          before:-translate-x-1/2 before:w-screen before:bg-sf-surface
+          before:border-b before:border-sf-line before:-z-10"
+      >
+        <div className="space-y-6">
+          {/* Title row */}
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-[28px] md:text-[32px] font-extrabold text-sf-ink tracking-[-0.02em] leading-[1.05]">
+                {t("publications.title")}
+              </h1>
+              <p className="text-sf-ink-3 text-sm mt-1.5">
+                {t("publications.found", { count: result.total.toLocaleString() })}
+              </p>
+            </div>
+          </div>
+
+          {/* Search + filter chips */}
+          <PublicationsFilterBar
+            filters={filterConfigs}
+            searchPlaceholder={searchPlaceholder}
+          />
+
+          {/* Status toggles (reject/withdrawal) */}
+          <StatusToggles />
+        </div>
+      </section>
+
+      {/* Results */}
+      <section className="flex flex-col gap-4">
+        {result.data.length === 0 ? (
+          <EmptyState title={t("empty.title")} description={t("empty.description")} />
+        ) : (
+          result.data.map((pub) => (
+            <PublicationRow key={pub.id} locale={locale} pub={pub} />
+          ))
+        )}
+      </section>
+
+      {/* Pagination footer */}
+      {result.total > 0 && (
+        <div className="mt-12 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-sm text-sf-ink-3 font-medium">
+            Showing{" "}
+            <span className="text-sf-ink font-bold tabular-nums">
+              {pageStart}-{pageEnd}
+            </span>{" "}
+            of{" "}
+            <span className="text-sf-ink font-bold tabular-nums">
+              {result.total.toLocaleString()}
+            </span>{" "}
+            publications
+          </div>
+
+          <nav className="flex items-center gap-2" aria-label="Pagination">
+            <Link
+              href={pageHref(Math.max(0, result.page - 1))}
+              aria-disabled={result.page === 0}
+              className={`w-10 h-10 flex items-center justify-center border border-sf-line-strong rounded-[6px] transition-colors ${
+                result.page === 0
+                  ? "text-sf-ink-4 opacity-50 pointer-events-none"
+                  : "text-sf-ink-3 hover:bg-sf-bg-alt"
+              }`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+            {paginationPages.map((p, idx) =>
+              p === "ellipsis" ? (
+                <span
+                  key={`e-${idx}`}
+                  className="px-2 text-sf-ink-4 font-mono select-none"
+                >
+                  …
+                </span>
+              ) : (
+                <Link
+                  key={p}
+                  href={pageHref(p - 1)}
+                  aria-current={p === currentPage ? "page" : undefined}
+                  className={`w-10 h-10 flex items-center justify-center font-medium text-sm rounded-[6px] transition-colors ${
+                    p === currentPage
+                      ? "bg-sf-accent text-white font-bold"
+                      : "border border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt"
+                  }`}
+                >
+                  {p}
+                </Link>
+              ),
+            )}
+            <Link
+              href={pageHref(Math.min(totalPages - 1, result.page + 1))}
+              aria-disabled={currentPage === totalPages}
+              className={`w-10 h-10 flex items-center justify-center border border-sf-line-strong rounded-[6px] transition-colors ${
+                currentPage === totalPages
+                  ? "text-sf-ink-4 opacity-50 pointer-events-none"
+                  : "text-sf-ink-3 hover:bg-sf-bg-alt"
+              }`}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </nav>
+
+          <div className="text-sm font-medium text-sf-ink-3">
+            Page{" "}
+            <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
+            <span className="text-sf-ink font-bold tabular-nums">{totalPages}</span>
           </div>
         </div>
-      </header>
-
-      {/* Search bar (visual only — search is via the FilterBar selects) */}
-      <div className="sf-card p-3.5 flex items-center gap-3">
-        <Search className="h-4 w-4 text-sf-ink-4" />
-        <span className="text-sm text-sf-ink-4">
-          Search across {result.total.toLocaleString()}+ publications — refine with the filters below.
-        </span>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3">
-        <FilterBar filters={filterConfigs} />
-        <StatusToggles />
-      </div>
-
-      {result.data.length === 0 ? (
-        <EmptyState title={t("empty.title")} description={t("empty.description")} />
-      ) : (
-        <>
-          <div className="flex flex-col gap-2">
-            {result.data.map((pub) => (
-              <article
-                key={pub.id}
-                className="sf-card card-hoverable relative flex items-start justify-between gap-5 p-5"
-              >
-                <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="sf-badge sf-badge-soft">
-                      {pub.instance.venue.name} {pub.instance.year}
-                    </span>
-                    {pub.status && <span className="sf-badge sf-badge-muted">{pub.status}</span>}
-                    {pub.researchTopic && (
-                      <span className="sf-badge sf-badge-muted">{pub.researchTopic}</span>
-                    )}
-                  </div>
-
-                  <h3 className="text-[17px] font-semibold text-sf-ink leading-snug">
-                    <Link
-                      href={`/${locale}/explore/conferences/publications/${pub.id}`}
-                      className="after:absolute after:inset-0 after:content-[''] hover:text-sf-accent transition-colors"
-                    >
-                      {pub.title}
-                    </Link>
-                  </h3>
-
-                  <p className="text-sm text-sf-ink-3 truncate">
-                    {pub.authors.slice(0, 3).join(", ")}
-                    {pub.authors.length > 3 && ` +${pub.authors.length - 3} others`}
-                  </p>
-
-                  {pub.pdfUrl && (
-                    <div className="mt-1 flex items-center gap-2 relative z-10">
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-3.5 w-3.5" />
-                          View PDF
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {pub.rating != null && (
-                  <div className="text-right shrink-0">
-                    <div className="font-extrabold text-sf-accent text-[28px] leading-none tabular-nums">
-                      {pub.rating.toFixed(1)}
-                    </div>
-                    <div className="sf-eyebrow mt-2">Impact</div>
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-
-          <div className="sf-card">
-            <Pagination
-              currentPage={result.page}
-              totalPages={totalPages}
-              totalItems={result.total}
-              pageSize={PAGE_SIZE}
-            />
-          </div>
-        </>
       )}
     </div>
   );

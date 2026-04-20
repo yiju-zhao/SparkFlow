@@ -12,6 +12,9 @@ export interface ConferenceCard {
   name: string;
   year: number;
   venue: { id: string; name: string };
+  startDate: Date | null;
+  endDate: Date | null;
+  location: string | null;
   publicationCount: number;
   sessionCount: number;
   topTopics: string[];

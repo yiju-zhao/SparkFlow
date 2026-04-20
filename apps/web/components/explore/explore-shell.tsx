@@ -62,8 +62,9 @@ const useExploreNavLinks = (): NavLink[] => {
     },
     {
       label: t("socialMedia.title"),
-      href: `/${locale}/explore/social-media/wechat`,
+      href: `/${locale}/explore/social-media`,
       children: [
+        { label: t("overview"), href: `/${locale}/explore/social-media` },
         { label: t("socialMedia.wechat.title"), href: `/${locale}/explore/social-media/wechat` },
       ],
     },

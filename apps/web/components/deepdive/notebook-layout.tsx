@@ -9,6 +9,7 @@ import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
+import { BookOpen, NotebookPen } from "lucide-react";
 
 import type { Source, Note, Notebook } from "@prisma/client";
 import type { GraphData } from "@/lib/services/graph-service";
@@ -146,6 +147,16 @@ function NotebookLayoutInner({
     }
   }, []);
 
+  // Widen / restore the right panel when a wiki page is opened or closed,
+  // mirroring handleSelectNote's width-snapping.
+  const handleWikiPageSelectionChange = useCallback((hasSelection: boolean) => {
+    if (hasSelection) {
+      setRightWidth(RIGHT_CONTENT_WIDTH);
+    } else {
+      setRightWidth(RIGHT_DEFAULT_WIDTH);
+    }
+  }, []);
+
   // Handle citation click — placeholder for future wiki-based navigation
   const handleCitationNavigate = useCallback(async () => {
     // TODO: Implement wiki-based citation navigation
@@ -262,32 +273,32 @@ function NotebookLayoutInner({
             animate={{ width: rightWidth }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           >
-            {/* Tab Bar — pill toggle (blue-filled active) */}
-            <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-2 border-b border-sf-line bg-sf-surface">
-              <div className="inline-flex gap-1 rounded-md border border-sf-line bg-sf-bg p-1">
-                <button
-                  type="button"
-                  className={`rounded-[6px] px-3 py-1 text-[12px] font-semibold transition-colors ${
-                    rightTab === "wiki"
-                      ? "bg-sf-accent text-white"
-                      : "text-sf-ink-3 hover:text-sf-ink-2"
-                  }`}
-                  onClick={() => setRightTab("wiki")}
-                >
-                  Wiki
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-[6px] px-3 py-1 text-[12px] font-semibold transition-colors ${
-                    rightTab === "notes"
-                      ? "bg-sf-accent text-white"
-                      : "text-sf-ink-3 hover:text-sf-ink-2"
-                  }`}
-                  onClick={() => setRightTab("notes")}
-                >
-                  Notes
-                </button>
-              </div>
+            {/* Tab Bar — underline-active (matches Stitch mockup) */}
+            <div className="shrink-0 bg-sf-surface border-b border-sf-line flex h-12 px-2 pt-2">
+              <button
+                type="button"
+                className={`flex-1 flex items-center justify-center gap-2 border-b-2 text-sm font-semibold transition-colors ${
+                  rightTab === "wiki"
+                    ? "border-sf-accent text-sf-accent"
+                    : "border-transparent text-sf-ink-3 hover:bg-sf-bg-alt"
+                }`}
+                onClick={() => setRightTab("wiki")}
+              >
+                <BookOpen className="h-4 w-4" strokeWidth={1.75} />
+                Wiki
+              </button>
+              <button
+                type="button"
+                className={`flex-1 flex items-center justify-center gap-2 border-b-2 text-sm font-semibold transition-colors ${
+                  rightTab === "notes"
+                    ? "border-sf-accent text-sf-accent"
+                    : "border-transparent text-sf-ink-3 hover:bg-sf-bg-alt"
+                }`}
+                onClick={() => setRightTab("notes")}
+              >
+                <NotebookPen className="h-4 w-4" strokeWidth={1.75} />
+                Notes
+              </button>
             </div>
 
             {/* Tab Content */}
@@ -301,6 +312,7 @@ function NotebookLayoutInner({
                   onSourceClick={handleSourceNavigate}
                   navigateToSlug={wikiNavigateSlug}
                   onNavigateComplete={() => setWikiNavigateSlug(null)}
+                  onPageSelectionChange={handleWikiPageSelectionChange}
                 />
               ) : (
                 <StudioPanel

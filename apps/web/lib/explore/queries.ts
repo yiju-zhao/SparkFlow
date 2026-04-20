@@ -402,6 +402,9 @@ export const getConferences = cache(
         id: true,
         name: true,
         year: true,
+        startDate: true,
+        endDate: true,
+        location: true,
         venue: { select: { id: true, name: true } },
         _count: {
           select: {
@@ -432,6 +435,9 @@ export const getConferences = cache(
           name: inst.name,
           year: inst.year,
           venue: inst.venue,
+          startDate: inst.startDate,
+          endDate: inst.endDate,
+          location: inst.location,
           publicationCount: inst._count.publications,
           sessionCount: inst._count.sessions,
           topTopics: topTopicsResult
