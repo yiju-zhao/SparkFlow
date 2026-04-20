@@ -7,12 +7,6 @@ import {
   FileText,
   Lightbulb,
   Pencil,
-  Users,
-  ChevronRight,
-  ChevronDown,
-  Wrench,
-  Database,
-  User,
   RefreshCw,
   Maximize2,
 } from "lucide-react";
@@ -69,16 +63,9 @@ interface WikiPanelProps {
   /** Set externally (e.g. from chat wiki links) to navigate to a page */
   navigateToSlug?: string | null;
   onNavigateComplete?: () => void;
+  /** Fired when the panel enters or leaves the page-detail view. */
+  onPageSelectionChange?: (hasSelection: boolean) => void;
 }
-
-const ENTITY_TYPE_ICONS: Record<string, typeof FileText> = {
-  entity: Users,
-  concept: Lightbulb,
-  method: Wrench,
-  person: User,
-  dataset: Database,
-  tool: Wrench,
-};
 
 const CONFIDENCE_LABELS: Record<string, string> = {
   EXTRACTED: "✓",
@@ -185,6 +172,7 @@ export function WikiPanel({
   onSourceClick,
   navigateToSlug,
   onNavigateComplete,
+  onPageSelectionChange,
 }: WikiPanelProps) {
   // Build source ID → title map for resolving [source:id] references
   const sourceMap = useMemo(() => {
@@ -291,6 +279,11 @@ export function WikiPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigateToSlug]);
 
+  // Notify parent so the right rail can widen on page open and restore on close.
+  useEffect(() => {
+    onPageSelectionChange?.(selectedSlug !== null);
+  }, [selectedSlug, onPageSelectionChange]);
+
   if (selectedSlug) {
     return (
       <WikiPageView
@@ -305,37 +298,37 @@ export function WikiPanel({
   }
 
   return (
-    <div ref={splitContainerRef} className="flex h-full flex-col">
+    <div ref={splitContainerRef} className="flex h-full flex-col bg-sf-bg">
       {/* === TOP: Pages List === */}
-      <div className="flex flex-col overflow-hidden" style={{ height: `${topPercent}%` }}>
-        <div className="px-6 pt-3 pb-2 flex items-center justify-between relative shrink-0">
-          <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">
-            Knowledge Base
-          </span>
-          <div className="flex items-center gap-1">
-            <HealthCheckButton notebookId={notebookId} />
-            <span className="text-[11px] text-muted-foreground">
+      <div
+        className="flex flex-col overflow-hidden"
+        style={{ height: `${topPercent}%` }}
+      >
+        <div className="px-5 py-3 flex items-center justify-between border-b border-sf-line bg-sf-surface shrink-0">
+          <div className="flex items-baseline gap-3 min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-sf-ink-4 whitespace-nowrap">
+              Knowledge Base
+            </span>
+            <span className="text-[11px] font-mono tabular-nums text-sf-ink-4 whitespace-nowrap">
               {communities.length} topics · {totalEntities} entities
             </span>
           </div>
+          <HealthCheckButton notebookId={notebookId} />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-2">
+        <div className="flex-1 overflow-y-auto bg-sf-bg">
           {communities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <Lightbulb className="h-6 w-6 text-muted-foreground/50" />
-              <p className="mt-2 text-xs text-muted-foreground">
-                Add sources to discover knowledge
-              </p>
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Lightbulb className="h-6 w-6 text-sf-ink-4" />
+              <p className="mt-2 text-xs text-sf-ink-4">Add sources to discover knowledge</p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="flex flex-col gap-2 p-3">
               {communities.map((community) => (
                 <CommunityItem
                   key={community.slug}
                   community={community}
                   graphData={liveGraphData}
-                  onSelectPage={() => setSelectedSlug(community.slug)}
                   onSelectEntity={(nodeId) => setSelectedSlug(resolveSlug(nodeId))}
                 />
               ))}
@@ -352,22 +345,25 @@ export function WikiPanel({
       />
 
       {/* === BOTTOM: Graph === */}
-      <div className="flex flex-col overflow-hidden" style={{ height: `${100 - topPercent}%` }}>
-        <div className="px-6 pt-1 pb-1 shrink-0 flex items-center justify-between">
-          <span className="text-[10px] font-semibold tracking-[2px] uppercase font-mono text-muted-foreground">
-            Graph
+      <div
+        className="flex flex-col overflow-hidden bg-sf-surface"
+        style={{ height: `${100 - topPercent}%` }}
+      >
+        <div className="px-5 py-3 border-b border-sf-line flex items-center justify-between shrink-0">
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-sf-ink-4">
+            Relationship Graph
           </span>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt"
               onClick={handleRefreshGraph}
               disabled={isRefreshingGraph}
               title="Refresh graph"
             >
               <RefreshCw
-                className={`h-3 w-3 text-muted-foreground ${
+                className={`h-3.5 w-3.5 text-sf-ink-3 ${
                   isRefreshingGraph ? "animate-spin" : ""
                 }`}
               />
@@ -375,15 +371,15 @@ export function WikiPanel({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt"
               onClick={() => setIsGraphFullscreen(true)}
               title="Expand graph"
             >
-              <Maximize2 className="h-3 w-3 text-muted-foreground" />
+              <Maximize2 className="h-3.5 w-3.5 text-sf-ink-3" />
             </Button>
           </div>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 bg-sf-surface-muted">
           <GraphView
             graphData={liveGraphData}
             onNodeClick={(slug) => setSelectedSlug(resolveSlug(slug))}
@@ -398,21 +394,21 @@ export function WikiPanel({
           className="w-[95vw] max-w-[95vw] h-[90vh] p-0 sm:max-w-[95vw] gap-0 flex flex-col"
         >
           <DialogTitle className="sr-only">Knowledge Graph</DialogTitle>
-          <div className="px-4 py-2 border-b border-divider flex items-center justify-between shrink-0">
-            <span className="text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">
-              Knowledge Graph
+          <div className="px-5 py-3 border-b border-sf-line flex items-center justify-between shrink-0 bg-sf-surface">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-sf-ink-4">
+              Relationship Graph
             </span>
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt"
                 onClick={handleRefreshGraph}
                 disabled={isRefreshingGraph}
                 title="Refresh graph"
               >
                 <RefreshCw
-                  className={`h-3.5 w-3.5 text-muted-foreground ${
+                  className={`h-3.5 w-3.5 text-sf-ink-3 ${
                     isRefreshingGraph ? "animate-spin" : ""
                   }`}
                 />
@@ -420,9 +416,10 @@ export function WikiPanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="h-7 w-7 p-0 rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink"
                 onClick={() => setIsGraphFullscreen(false)}
                 title="Close"
+                aria-label="Close"
               >
                 <span className="text-lg leading-none">×</span>
               </Button>
@@ -446,12 +443,10 @@ export function WikiPanel({
 const CommunityItem = memo(function CommunityItem({
   community,
   graphData,
-  onSelectPage,
   onSelectEntity,
 }: {
   community: CommunityInfo;
   graphData: GraphData | null;
-  onSelectPage: () => void;
   onSelectEntity: (nodeId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -464,69 +459,85 @@ const CommunityItem = memo(function CommunityItem({
     return map;
   }, [graphData]);
 
-  const meta = [
-    `${community.nodes.length} entities`,
-    `${community.edges.length} relations`,
-    community.sourceCount > 0 ? `${community.sourceCount} sources` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
-    <div className="rounded-[4px] border border-divider dark:border-0 bg-surface-elevated overflow-hidden">
+    <div
+      className={`rounded-[10px] border transition-colors overflow-hidden ${
+        expanded
+          ? "bg-sf-accent border-sf-accent text-white"
+          : "bg-sf-surface border-sf-line hover:border-sf-line-strong text-sf-ink"
+      }`}
+    >
       {/* Community header */}
-      <div className="flex items-center gap-1">
-        <button
-          className="shrink-0 h-8 w-8 flex items-center justify-center hover:bg-surface-hover transition-colors rounded-[4px]"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          )}
-        </button>
-        <button
-          className="flex-1 min-w-0 text-left py-2 pr-3 hover:text-accent-red transition-colors"
-          onClick={onSelectPage}
-        >
-          <span className="truncate text-[13px] font-medium leading-tight block">
+      <button
+        className="w-full text-left px-3.5 py-2.5 flex justify-between items-center cursor-pointer"
+        onClick={() => {
+          setExpanded(!expanded);
+        }}
+      >
+        <div className="min-w-0 flex-1 pr-3">
+          <h4
+            className={`text-[13.5px] font-bold tracking-tight truncate leading-tight ${
+              expanded ? "text-white" : "text-sf-ink"
+            }`}
+          >
             {community.title}
-          </span>
-          <span className="text-[10px] text-muted-foreground">{meta}</span>
-        </button>
-      </div>
+          </h4>
+          <p
+            className={`text-[11px] leading-tight mt-0.5 font-mono tabular-nums ${
+              expanded ? "text-white/75" : "text-sf-ink-4"
+            }`}
+          >
+            {community.sourceCount > 0 ? `${community.sourceCount} sources` : "No sources yet"}
+          </p>
+        </div>
+        <div
+          className={`flex gap-2.5 text-[10px] font-bold tabular-nums shrink-0 ${
+            expanded ? "text-white/70" : "text-sf-ink-4"
+          }`}
+        >
+          <div className="flex items-baseline gap-1">
+            <span className="text-[13px]">{community.nodes.length}</span>
+            <span className="text-[9px] tracking-[0.12em]">ENT</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[13px]">{community.edges.length}</span>
+            <span className="text-[9px] tracking-[0.12em]">REL</span>
+          </div>
+        </div>
+      </button>
 
-      {/* Expanded: entities + relationships */}
+      {/* Expanded: entities + relationships (on solid blue card) */}
       {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-divider/50">
+        <div className="px-3.5 pb-3.5 space-y-3.5">
           {/* Entities */}
           {community.nodes.length > 0 && (
-            <div className="mb-2">
-              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">
+            <div>
+              <span className="text-[10px] font-bold text-white/70 uppercase tracking-[0.18em] block mb-2">
                 Entities
               </span>
-              <div className="mt-1 space-y-0.5">
+              <div className="flex flex-col gap-1">
                 {community.nodes.map((node) => {
-                  const Icon = ENTITY_TYPE_ICONS[node.type] || FileText;
+                  const sourceRefCount = node.sourceRefs?.length ?? 0;
                   return (
                     <button
                       key={node.id}
-                      className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-[4px] hover:bg-surface-hover transition-colors"
+                      className="w-full text-left flex items-center gap-2 px-2.5 py-2 bg-white/10 hover:bg-white/15 transition-colors rounded-[8px] border border-white/10"
                       onClick={() => onSelectEntity(node.id)}
                     >
-                      <Icon className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <span className="text-[12px] font-medium block truncate">{node.label}</span>
-                        {node.summary && (
-                          <span className="text-[10px] text-muted-foreground line-clamp-1">
-                            {node.summary}
-                          </span>
-                        )}
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <span className="text-[13px] font-semibold truncate text-white">
+                          {node.label}
+                        </span>
+                        <span className="text-[9px] bg-white/20 text-white px-1.5 py-px font-bold rounded-[3px] uppercase tracking-[0.08em]">
+                          {node.type}
+                        </span>
                       </div>
-                      <span className="text-[9px] text-muted-foreground shrink-0 mt-0.5">
-                        {node.type}
-                      </span>
+                      {sourceRefCount > 0 && (
+                        <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono tabular-nums text-white/70">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/70" aria-hidden />
+                          {sourceRefCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -537,25 +548,30 @@ const CommunityItem = memo(function CommunityItem({
           {/* Relationships */}
           {community.edges.length > 0 && (
             <div>
-              <span className="text-[9px] font-semibold tracking-[1.5px] uppercase text-muted-foreground">
+              <span className="text-[10px] font-bold text-white/70 uppercase tracking-[0.18em] block mb-2">
                 Relationships
               </span>
-              <div className="mt-1 space-y-0.5">
+              <div className="flex flex-col gap-1">
                 {community.edges.map((edge, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground"
+                    className="flex items-center justify-between text-[11px] px-2.5 py-1.5 bg-white/10 hover:bg-white/15 transition-colors rounded-[6px]"
                   >
-                    <span className="font-medium text-foreground truncate shrink-0 max-w-20">
-                      {nodeMap.get(edge.source) || edge.source}
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted shrink-0">
-                      {edge.relation.replace(/_/g, " ")}
-                    </span>
-                    <span className="font-medium text-foreground truncate shrink-0 max-w-20">
-                      {nodeMap.get(edge.target) || edge.target}
-                    </span>
-                    <span className="text-[9px] shrink-0" title={edge.confidence}>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="font-semibold text-white truncate">
+                        {nodeMap.get(edge.source) || edge.source}
+                      </span>
+                      <span className="text-[9px] font-bold text-white/90 px-2 py-0.5 rounded-full uppercase bg-white/15 whitespace-nowrap tracking-[0.08em]">
+                        {edge.relation.replace(/_/g, " ")}
+                      </span>
+                      <span className="font-semibold text-white truncate">
+                        {nodeMap.get(edge.target) || edge.target}
+                      </span>
+                    </div>
+                    <span
+                      className="text-[10px] shrink-0 text-white/70 ml-2 font-mono"
+                      title={edge.confidence}
+                    >
                       {CONFIDENCE_LABELS[edge.confidence] || ""}
                     </span>
                   </div>
@@ -638,21 +654,24 @@ function WikiPageView({
   }, [page?.sourceRefs, sourceMap]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="px-6 pt-3 pb-3">
+    <div className="flex h-full flex-col bg-sf-surface">
+      <div className="px-5 pt-4 pb-3 border-b border-sf-line shrink-0">
         <div className="flex items-center gap-2">
           <button
             onClick={onBack}
-            className="h-7 w-7 flex items-center justify-center rounded-[4px] hover:bg-accent/80 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink transition-colors"
+            aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <h2 className="text-[13px] font-semibold truncate">{page?.title || slug}</h2>
+          <h2 className="text-sm font-bold text-sf-ink truncate flex-1 min-w-0">
+            {page?.title || slug}
+          </h2>
           {page && !isEditing && page.pageType !== "INDEX" && page.pageType !== "LOG" && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0"
+              className="h-7 w-7 p-0 rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink"
               onClick={handleStartEdit}
               title="Edit"
             >
@@ -664,14 +683,14 @@ function WikiPageView({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs"
+                className="h-7 px-3 text-xs rounded-[6px]"
                 onClick={() => setIsEditing(false)}
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                className="h-7 px-2 text-xs bg-accent-red hover:bg-accent-red-hover text-white"
+                className="h-7 px-3 text-xs rounded-[6px] bg-sf-accent hover:bg-sf-accent-ink text-white"
                 onClick={handleSave}
                 disabled={isSaving}
               >
@@ -681,30 +700,30 @@ function WikiPageView({
           )}
         </div>
         {sourceTitles.length > 0 && (
-          <p className="mt-0.5 ml-9 text-[10px] text-muted-foreground">
+          <p className="mt-1 ml-9 text-[11px] font-mono tabular-nums text-sf-ink-4">
             {sourceTitles.length} source{sourceTitles.length > 1 ? "s" : ""}
           </p>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-5 py-5">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <span className="text-sm text-muted-foreground">Loading...</span>
+            <span className="text-sm text-sf-ink-4">Loading…</span>
           </div>
         ) : isError ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-sm text-muted-foreground">Page &quot;{slug}&quot; not found</p>
-            <p className="text-xs text-muted-foreground mt-1">
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <p className="text-sm text-sf-ink-3">Page &quot;{slug}&quot; not found</p>
+            <p className="text-xs text-sf-ink-4 mt-1">
               This entity exists in the graph but doesn&apos;t have its own page yet
             </p>
-            <Button variant="ghost" size="sm" className="mt-3 text-xs" onClick={onBack}>
+            <Button variant="ghost" size="sm" className="mt-3 text-xs rounded-[6px]" onClick={onBack}>
               Go back
             </Button>
           </div>
         ) : isEditing ? (
           <textarea
-            className="w-full h-full min-h-64 resize-none bg-transparent text-sm font-mono leading-relaxed outline-none"
+            className="w-full h-full min-h-64 resize-none bg-transparent text-sm font-mono leading-relaxed text-sf-ink outline-none"
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
           />
@@ -716,19 +735,19 @@ function WikiPageView({
               onSourceClick={onSourceClick}
             />
             {sourceTitles.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-divider">
-                <h4 className="text-[10px] font-semibold tracking-[2px] uppercase text-muted-foreground mb-2">
+              <div className="mt-6 pt-4 border-t border-sf-line">
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.18em] text-sf-ink-4 mb-3">
                   Related Sources
                 </h4>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1.5">
                   {sourceTitles.map(({ id, title }) => (
                     <button
                       key={id}
-                      className="flex items-center gap-2 w-full text-left rounded-[4px] px-3 py-2 text-[12px] bg-surface-elevated hover:bg-surface-hover transition-colors border border-divider dark:border-0"
+                      className="flex items-center gap-2 w-full text-left rounded-[8px] px-3 py-2 text-xs bg-sf-surface hover:bg-sf-bg-alt transition-colors border border-sf-line"
                       onClick={() => onSourceClick?.(id)}
                     >
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="truncate">{title}</span>
+                      <FileText className="h-3.5 w-3.5 text-sf-ink-4 shrink-0" />
+                      <span className="truncate text-sf-ink-2 font-medium">{title}</span>
                     </button>
                   ))}
                 </div>
@@ -736,7 +755,7 @@ function WikiPageView({
             )}
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No content</p>
+          <p className="text-sm text-sf-ink-4">No content</p>
         )}
       </div>
     </div>

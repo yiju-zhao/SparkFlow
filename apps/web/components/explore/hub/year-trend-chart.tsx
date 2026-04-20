@@ -41,19 +41,23 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
         axisTick: { show: false },
         axisLine: { show: false },
         axisLabel: {
-          color: theme === "dark" ? "#a1a1aa" : "#71717a",
+          color: theme === "dark" ? "#9aa0b7" : "#8A8F9C",
+          fontFamily: "var(--font-mono)",
+          fontSize: 11,
         },
       },
       yAxis: {
         type: "value",
         splitLine: {
           lineStyle: {
-            color: theme === "dark" ? "#27272a" : "#e4e4e7",
+            color: theme === "dark" ? "#272d40" : "#E3E5EC",
             type: "dashed",
           },
         },
         axisLabel: {
-          color: theme === "dark" ? "#a1a1aa" : "#71717a",
+          color: theme === "dark" ? "#9aa0b7" : "#8A8F9C",
+          fontFamily: "var(--font-mono)",
+          fontSize: 11,
         },
       },
       series: [
@@ -61,10 +65,13 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
           data: data.map((d) => d.conferences),
           type: "bar",
           itemStyle: {
-            borderRadius: [4, 4, 0, 0],
-            color: theme === "dark" ? "#fafafa" : "#09090b",
+            borderRadius: [3, 3, 0, 0],
+            color: "#0F5FFE",
           },
-          barMaxWidth: 40,
+          emphasis: {
+            itemStyle: { color: "#0A49CC" },
+          },
+          barMaxWidth: 28,
         },
       ],
     };
@@ -73,9 +80,9 @@ export function YearTrendChart({ data }: YearTrendChartProps) {
   const chartRef = useECharts({ option });
 
   return (
-    <div className="bg-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold mb-4">{t("conferencesByYear")}</h3>
-      <div className="h-65">
+    <div className="sf-card">
+      <h3 className="sf-row-label">{t("conferencesByYear")}</h3>
+      <div className="h-65 mt-3">
         {hasData ? (
           <div ref={chartRef} className="w-full h-full" />
         ) : (

@@ -63,31 +63,43 @@ export function FilterBar({ filters, className }: FilterBarProps) {
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-3 ${className} ${isPending ? "opacity-70" : ""}`}
+      className={`flex flex-wrap items-center gap-2 ${className ?? ""} ${isPending ? "opacity-70" : ""}`}
     >
-      {filters.map((filter) => (
-        <Select
-          key={filter.key}
-          value={searchParams.get(filter.key) || "all"}
-          onValueChange={(value) => updateFilter(filter.key, value)}
-        >
-          <SelectTrigger className="w-45">
-            <SelectValue placeholder={filter.placeholder || filter.label} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{filter.label}</SelectItem>
-            {filter.options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ))}
+      {filters.map((filter) => {
+        const active = searchParams.get(filter.key) && searchParams.get(filter.key) !== "all";
+        return (
+          <Select
+            key={filter.key}
+            value={searchParams.get(filter.key) || "all"}
+            onValueChange={(value) => updateFilter(filter.key, value)}
+          >
+            <SelectTrigger
+              className={`h-9 w-auto min-w-36 gap-2 rounded-md border-sf-line-strong bg-sf-surface px-3 text-[13px] font-medium ${
+                active ? "border-sf-accent text-sf-accent" : "text-sf-ink-2"
+              }`}
+            >
+              <SelectValue placeholder={filter.placeholder || filter.label} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{filter.label}: All</SelectItem>
+              {filter.options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      })}
 
       {hasActiveFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10">
-          <X className="h-4 w-4 mr-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearAllFilters}
+          className="h-9 text-sf-accent hover:text-sf-accent-ink"
+        >
+          <X className="h-3.5 w-3.5" />
           {t("clear")}
         </Button>
       )}

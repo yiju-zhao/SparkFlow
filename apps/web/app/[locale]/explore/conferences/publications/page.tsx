@@ -1,5 +1,3 @@
-// apps/web/app/explore/publications/page.tsx
-
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
@@ -8,16 +6,13 @@ import {
   getFilterOptions,
 } from "@/lib/explore/queries";
 import { parsePublicationFilters, PAGE_SIZE } from "@/lib/explore/filters";
+import { EmptyState, StatusToggles } from "@/components/explore/shared";
 import {
-  FilterBar,
-  Pagination,
-  EmptyState,
-  StatusToggles,
-  type FilterConfig,
-} from "@/components/explore/shared";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+  PublicationsFilterBar,
+  type PublicationsFilterConfig,
+} from "@/components/explore/conferences/publications-filter-bar";
+import { PublicationRow } from "@/components/explore/conferences/publication-row";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -32,158 +27,205 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
   const t = await getTranslations("explore");
   const tFilters = await getTranslations("explore.filters");
 
-  // Parallel fetch (follows async-parallel best practice)
   const [result, filteredOptions, globalOptions] = await Promise.all([
     getPublications(filters),
     getFilteredPublicationOptions(filters),
     getFilterOptions(),
   ]);
 
-  // Use cascading options for venue/year/topic/status, global for affiliations/countries
   const filterOptions = {
     ...filteredOptions,
     affiliations: globalOptions.affiliations,
     countries: globalOptions.countries,
   };
 
-  const filterConfigs: FilterConfig[] = [
+  const filterConfigs: PublicationsFilterConfig[] = [
     {
       key: "venue",
       label: tFilters("venue"),
-      options: filterOptions.venues.map((v) => ({
-        value: v.id,
-        label: v.name,
-      })),
+      defaultLabel: "All Venues",
+      options: filterOptions.venues.map((v) => ({ value: v.id, label: v.name })),
     },
     {
       key: "year",
       label: tFilters("year"),
-      options: filterOptions.years.map((y) => ({
-        value: y.toString(),
-        label: y.toString(),
-      })),
+      defaultLabel: "All Years",
+      options: filterOptions.years.map((y) => ({ value: y.toString(), label: y.toString() })),
     },
     {
       key: "topic",
       label: tFilters("topic"),
+      defaultLabel: "All Topics",
       options: filterOptions.topics.map((tp) => ({ value: tp, label: tp })),
     },
     {
       key: "status",
       label: tFilters("status"),
+      defaultLabel: "All Statuses",
       options: filterOptions.statuses.map((s) => ({ value: s, label: s })),
     },
     {
       key: "affiliation",
       label: tFilters("organization"),
+      defaultLabel: "All Orgs",
       options: filterOptions.affiliations.map((a) => ({ value: a, label: a })),
     },
     {
       key: "country",
       label: tFilters("country"),
+      defaultLabel: "All Countries",
       options: filterOptions.countries.map((c) => ({ value: c, label: c })),
     },
   ];
 
-  const totalPages = Math.ceil(result.total / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+  const pageStart = result.total === 0 ? 0 : result.page * PAGE_SIZE + 1;
+  const pageEnd = Math.min(result.total, pageStart + result.data.length - 1);
+  const currentPage = result.page + 1; // 1-indexed for display
+
+  const searchPlaceholder = `Search ${result.total.toLocaleString()}+ publications…`;
+
+  // Build 1-indexed condensed page list like: 1 2 3 … last
+  const paginationPages: (number | "ellipsis")[] = (() => {
+    const pages: (number | "ellipsis")[] = [];
+    if (totalPages <= 6) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1, 2, 3);
+      if (currentPage > 4 && currentPage < totalPages - 2) {
+        pages.push("ellipsis");
+        pages.push(currentPage);
+        pages.push("ellipsis");
+      } else {
+        pages.push("ellipsis");
+      }
+      pages.push(totalPages);
+    }
+    return pages;
+  })();
+
+  const pageHref = (page0: number, extra?: Record<string, string>) => {
+    const params = new URLSearchParams();
+    Object.entries(searchParamsResolved).forEach(([k, v]) => {
+      if (typeof v === "string") params.set(k, v);
+    });
+    params.set("page", String(page0));
+    if (extra) Object.entries(extra).forEach(([k, v]) => params.set(k, v));
+    return `?${params.toString()}`;
+  };
 
   return (
-    <div className="flex flex-col gap-10">
-      {/* Title Section */}
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">{t("publications.breadcrumb")}</p>
-        <h1 className="text-4xl font-bold tracking-tight">{t("publications.title")}</h1>
-        <p className="text-muted-foreground mt-2">
-          {t("publications.found", { count: result.total.toLocaleString() })}
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="space-y-3">
-        <FilterBar filters={filterConfigs} />
-        <StatusToggles />
-      </div>
-
-      {result.data.length === 0 ? (
-        <EmptyState title={t("empty.title")} description={t("empty.description")} />
-      ) : (
-        <div className="bg-card rounded-lg">
-          {/* Publication List */}
-          <div className="divide-y divide-border">
-            {result.data.map((pub) => (
-              <div
-                key={pub.id}
-                className="relative px-5 py-3 hover:bg-muted/30 transition-colors first:rounded-t-lg last:rounded-b-lg"
-              >
-                <div className="flex flex-col gap-1">
-                  {/* Row 1: Venue+Year + Title + PDF/Rating */}
-                  <div className="flex items-center gap-3">
-                    <span className="shrink-0 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                      {pub.instance.venue.name} {pub.instance.year}
-                    </span>
-                    <h3 className="font-medium truncate flex-1 min-w-0">
-                      <Link
-                        href={`/explore/publications/${pub.id}`}
-                        className="after:absolute after:inset-0"
-                      >
-                        {pub.title}
-                      </Link>
-                    </h3>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {pub.pdfUrl && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 p-0 z-20 relative"
-                          asChild
-                        >
-                          <a href={pub.pdfUrl} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-3.5 w-3.5" />
-                            <span className="sr-only">PDF</span>
-                          </a>
-                        </Button>
-                      )}
-                      {pub.rating && (
-                        <Badge variant="secondary" className="tabular-nums">
-                          {pub.rating.toFixed(1)}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Row 2: Authors + Status + Topic */}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="truncate">
-                      {pub.authors.slice(0, 3).join(", ")}
-                      {pub.authors.length > 3 && ` +${pub.authors.length - 3}`}
-                    </span>
-                    {pub.status && (
-                      <Badge variant="secondary" className="shrink-0">
-                        {pub.status}
-                      </Badge>
-                    )}
-                    {pub.researchTopic && (
-                      <Badge
-                        variant="outline"
-                        className="h-5 px-1.5 text-[10px] font-medium pointer-events-none shrink-0 ml-auto"
-                      >
-                        {pub.researchTopic}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+    <div className="flex flex-col">
+      {/* Full-bleed header band — pseudo-element paints a 100vw white stripe
+          that extends upward to sit flush against the fixed app bar. */}
+      <section
+        className="relative isolate -mt-24 pt-28 pb-8 mb-10
+          before:content-[''] before:absolute before:inset-0 before:left-1/2
+          before:-translate-x-1/2 before:w-screen before:bg-sf-surface
+          before:border-b before:border-sf-line before:-z-10"
+      >
+        <div className="space-y-6">
+          {/* Title row */}
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-[28px] md:text-[32px] font-extrabold text-sf-ink tracking-[-0.02em] leading-[1.05]">
+                {t("publications.title")}
+              </h1>
+              <p className="text-sf-ink-3 text-sm mt-1.5">
+                {t("publications.found", { count: result.total.toLocaleString() })}
+              </p>
+            </div>
           </div>
 
-          {/* Pagination */}
-          <div className="border-t border-border p-5">
-            <Pagination
-              currentPage={result.page}
-              totalPages={totalPages}
-              totalItems={result.total}
-              pageSize={PAGE_SIZE}
-            />
+          {/* Search + filter chips */}
+          <PublicationsFilterBar
+            filters={filterConfigs}
+            searchPlaceholder={searchPlaceholder}
+          />
+
+          {/* Status toggles (reject/withdrawal) */}
+          <StatusToggles />
+        </div>
+      </section>
+
+      {/* Results */}
+      <section className="flex flex-col gap-4">
+        {result.data.length === 0 ? (
+          <EmptyState title={t("empty.title")} description={t("empty.description")} />
+        ) : (
+          result.data.map((pub) => (
+            <PublicationRow key={pub.id} locale={locale} pub={pub} />
+          ))
+        )}
+      </section>
+
+      {/* Pagination footer */}
+      {result.total > 0 && (
+        <div className="mt-12 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-sm text-sf-ink-3 font-medium">
+            Showing{" "}
+            <span className="text-sf-ink font-bold tabular-nums">
+              {pageStart}-{pageEnd}
+            </span>{" "}
+            of{" "}
+            <span className="text-sf-ink font-bold tabular-nums">
+              {result.total.toLocaleString()}
+            </span>{" "}
+            publications
+          </div>
+
+          <nav className="flex items-center gap-2" aria-label="Pagination">
+            <Link
+              href={pageHref(Math.max(0, result.page - 1))}
+              aria-disabled={result.page === 0}
+              className={`w-10 h-10 flex items-center justify-center border border-sf-line-strong rounded-[6px] transition-colors ${
+                result.page === 0
+                  ? "text-sf-ink-4 opacity-50 pointer-events-none"
+                  : "text-sf-ink-3 hover:bg-sf-bg-alt"
+              }`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+            {paginationPages.map((p, idx) =>
+              p === "ellipsis" ? (
+                <span
+                  key={`e-${idx}`}
+                  className="px-2 text-sf-ink-4 font-mono select-none"
+                >
+                  …
+                </span>
+              ) : (
+                <Link
+                  key={p}
+                  href={pageHref(p - 1)}
+                  aria-current={p === currentPage ? "page" : undefined}
+                  className={`w-10 h-10 flex items-center justify-center font-medium text-sm rounded-[6px] transition-colors ${
+                    p === currentPage
+                      ? "bg-sf-accent text-white font-bold"
+                      : "border border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt"
+                  }`}
+                >
+                  {p}
+                </Link>
+              ),
+            )}
+            <Link
+              href={pageHref(Math.min(totalPages - 1, result.page + 1))}
+              aria-disabled={currentPage === totalPages}
+              className={`w-10 h-10 flex items-center justify-center border border-sf-line-strong rounded-[6px] transition-colors ${
+                currentPage === totalPages
+                  ? "text-sf-ink-4 opacity-50 pointer-events-none"
+                  : "text-sf-ink-3 hover:bg-sf-bg-alt"
+              }`}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </nav>
+
+          <div className="text-sm font-medium text-sf-ink-3">
+            Page{" "}
+            <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
+            <span className="text-sf-ink font-bold tabular-nums">{totalPages}</span>
           </div>
         </div>
       )}

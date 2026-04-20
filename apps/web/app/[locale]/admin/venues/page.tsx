@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { getVenues } from "@/lib/actions/admin";
-import { VenueForm } from "./components/venue-form";
+import { VenueForm } from "./_components/venue-form";
 
 export default async function VenuesPage() {
   const venues = await getVenues();

@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { getInstances, getVenues } from "@/lib/actions/admin";
 import publicationSample from "@/lib/import/examples/publications-sample.json";
 import sessionSample from "@/lib/import/examples/sessions-sample.json";
-import { FormatGuideDialog } from "./components/format-guide-dialog";
-import { InstanceForm } from "./components/instance-form";
+import { FormatGuideDialog } from "./_components/format-guide-dialog";
+import { InstanceForm } from "./_components/instance-form";
 
 export default async function InstancesPage() {
   const [instances, venues] = await Promise.all([getInstances(), getVenues()]);

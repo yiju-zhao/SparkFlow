@@ -6,168 +6,211 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+ * Sparkflow Design System — tokens surfaced to Tailwind
+ * Source of truth: the HTML design system bundle (v1.0, April 2026).
+ * Keep semantic names (primary, background, …) so shadcn/ui
+ * primitives inherit without rewiring.
+ * ============================================================ */
 @theme inline {
+  /* Surfaces */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Actions */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-accent-red: var(--accent-red);
-  --color-accent-red-hover: var(--accent-red-hover);
-  --color-accent-primary: var(--accent-primary);
-  --color-surface-elevated: var(--surface-elevated);
-  --color-surface-hover: var(--surface-hover);
-  --color-divider: var(--divider);
-  --color-outline: var(--outline);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 1rem;
+
+  /* Lines / focus */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Sparkflow-specific surfaces — opt-in class names */
+  --color-sf-bg: var(--sf-bg);
+  --color-sf-bg-alt: var(--sf-bg-alt);
+  --color-sf-surface: var(--sf-surface);
+  --color-sf-surface-muted: var(--sf-surface-muted);
+  --color-sf-ink: var(--sf-ink);
+  --color-sf-ink-2: var(--sf-ink-2);
+  --color-sf-ink-3: var(--sf-ink-3);
+  --color-sf-ink-4: var(--sf-ink-4);
+  --color-sf-line: var(--sf-line);
+  --color-sf-line-strong: var(--sf-line-strong);
+  --color-sf-accent: var(--sf-accent);
+  --color-sf-accent-ink: var(--sf-accent-ink);
+  --color-sf-accent-soft: var(--sf-accent-soft);
+  --color-sf-black: var(--sf-black);
+  --color-sf-success: var(--sf-success);
+  --color-sf-success-soft: var(--sf-success-soft);
+  --color-sf-warn: var(--sf-warn);
+  --color-sf-warn-soft: var(--sf-warn-soft);
+  --color-sf-danger: var(--sf-danger);
+  --color-sf-danger-soft: var(--sf-danger-soft);
+
+  /* Legacy aliases still referenced in legacy components — map to new values */
+  --color-accent-red: var(--sf-accent);
+  --color-accent-red-hover: var(--sf-accent-ink);
+  --color-accent-primary: var(--sf-accent);
+  --color-surface-elevated: var(--sf-surface);
+  --color-surface-hover: var(--sf-surface-muted);
+  --color-divider: var(--sf-line);
+  --color-outline: var(--sf-line-strong);
+
+  /* Typography */
+  --font-sans:
+    var(--font-sparkflow-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono:
+    var(--font-sparkflow-mono), ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  /* Radius scale — 6 / 10 / 14 / pill */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-full: 9999px;
 }
 
+/* ============================================================
+ * Light mode — the canonical Sparkflow palette
+ * ============================================================ */
 :root {
-  /* Huawei Design System - Light Mode */
-  --background: oklch(1 0 0);
-  /* #FFFFFF */
-  --foreground: oklch(0 0 0);
-  /* #000000 */
+  /* Raw Sparkflow tokens (exact hex values from the design system) */
+  --sf-bg: #f5f6fb;
+  --sf-bg-alt: #eef0f7;
+  --sf-surface: #ffffff;
+  --sf-surface-muted: #f9fafc;
+  --sf-ink: #0e1116;
+  --sf-ink-2: #242831;
+  --sf-ink-3: #5b6070;
+  --sf-ink-4: #8a8f9c;
+  --sf-line: #e3e5ec;
+  --sf-line-strong: #cfd3dc;
+  --sf-accent: #0f5ffe;
+  --sf-accent-ink: #0a49cc;
+  --sf-accent-soft: #e6eeff;
+  --sf-black: #111317;
+  --sf-success: #128a4b;
+  --sf-success-soft: #dff5e6;
+  --sf-warn: #b2551b;
+  --sf-warn-soft: #ffe7d6;
+  --sf-danger: #c0332b;
+  --sf-danger-soft: #fbe3e1;
 
-  --card: oklch(1 0 0);
-  /* #FFFFFF */
-  --card-foreground: oklch(0.118 0 0);
-  /* #1E1E1E */
+  /* Shadows — borders do the work; shadow is a whisper */
+  --sf-shadow-1: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --sf-shadow-2: 0 6px 20px -8px rgba(16, 24, 40, 0.12), 0 2px 6px rgba(16, 24, 40, 0.05);
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
+  /* shadcn/ui semantic aliases */
+  --background: var(--sf-bg);
+  --foreground: var(--sf-ink);
 
-  /* Primary - Black/White for strong contrast */
-  --primary: oklch(0 0 0);
-  /* #000000 */
-  --primary-foreground: oklch(1 0 0);
-  /* #FFFFFF */
+  --card: var(--sf-surface);
+  --card-foreground: var(--sf-ink);
 
-  /* Secondary - Light gray backgrounds */
-  --secondary: oklch(0.961 0 0);
-  /* #F5F5F5 */
-  --secondary-foreground: oklch(0 0 0);
+  --popover: var(--sf-surface);
+  --popover-foreground: var(--sf-ink);
 
-  /* Muted - For disabled/secondary text */
-  --muted: oklch(0.961 0 0);
-  /* #F5F5F5 */
-  --muted-foreground: oklch(0.4 0 0);
-  /* #666666 */
+  /* Primary = accent blue → all default buttons become electric blue */
+  --primary: var(--sf-accent);
+  --primary-foreground: #ffffff;
 
-  /* Accent - Huawei Red */
-  --accent-red: oklch(0.44 0.19 16);
-  /* #CE0E2D */
-  --accent-red-hover: oklch(0.34 0.19 16);
-  /* #A20A22 */
-  --accent: oklch(0.961 0 0);
-  --accent-foreground: oklch(0 0 0);
+  /* Secondary = bordered white card — neutral action */
+  --secondary: var(--sf-surface);
+  --secondary-foreground: var(--sf-ink);
 
-  /* Destructive - Keep red for errors */
-  --destructive: oklch(0.602 0.245 27.325);
-  --destructive-foreground: oklch(1 0 0);
+  --muted: var(--sf-surface-muted);
+  --muted-foreground: var(--sf-ink-3);
 
-  /* Borders - Light gray */
-  --border: oklch(0.89 0 0);
-  /* #E3E3E3 */
-  --input: oklch(0.89 0 0);
-  --ring: oklch(0 0 0);
+  /* Accent hover surface (soft blue) */
+  --accent: var(--sf-accent-soft);
+  --accent-foreground: var(--sf-accent-ink);
 
-  /* Border Radius System */
-  --radius: 0.5rem;
-  /* 8px - default */
+  --destructive: var(--sf-danger);
+  --destructive-foreground: #ffffff;
 
-  /* Notebook Design Tokens */
-  --accent-primary: oklch(0.44 0.19 16);
-  /* Huawei Red accent for light mode (matches accent-red) */
-  --surface-elevated: #ffffff;
-  /* Card/raised surface */
-  --surface-hover: #f0f0f0;
-  /* Card hover */
-  --divider: #0a0a0a;
-  /* Swiss-style bold black borders */
-  --outline: #0a0a0a;
-  /* Swiss-style bold black button borders */
+  --border: var(--sf-line);
+  --input: var(--sf-line-strong);
+  --ring: var(--sf-accent);
 
-  /* Chunk Highlight Colors */
+  /* Card radius — 10px default */
+  --radius: 0.625rem;
+
+  /* Chunk highlight colours preserved */
   --highlight-bg: oklch(0.92 0.12 95 / 0.6);
   --highlight-border: oklch(0.7 0.15 85);
-  /* Light Mode: Vibrant Amber Border */
 }
 
+/* ============================================================
+ * Dark mode — kept from legacy obsidian theme but rewired
+ * so the accent is the Sparkflow blue, not Huawei red.
+ * ============================================================ */
 .dark {
-  /* Premium Obsidian/Slate Theme */
-  --background: oklch(0.12 0.02 265);
-  /* Deep obsidian base */
-  --foreground: oklch(0.88 0.01 265);
-  /* Softened white (was 0.98) */
+  --sf-bg: #0e1320;
+  --sf-bg-alt: #141a2a;
+  --sf-surface: #171c2b;
+  --sf-surface-muted: #1f2638;
+  --sf-ink: #e6ebfa;
+  --sf-ink-2: #c8cde0;
+  --sf-ink-3: #9aa0b7;
+  --sf-ink-4: #6e7591;
+  --sf-line: #272d40;
+  --sf-line-strong: #3b4260;
+  --sf-accent: #4e86ff;
+  --sf-accent-ink: #79a2ff;
+  --sf-accent-soft: #1b2a57;
+  --sf-black: #06080f;
+  --sf-success: #36c27c;
+  --sf-success-soft: #163023;
+  --sf-warn: #e89559;
+  --sf-warn-soft: #3b2414;
+  --sf-danger: #ff6b5e;
+  --sf-danger-soft: #3a1914;
 
-  --card: oklch(0.16 0.025 265);
-  /* Distinct surface but clearly related */
-  --card-foreground: oklch(0.88 0.01 265);
+  --background: var(--sf-bg);
+  --foreground: var(--sf-ink);
 
-  --popover: oklch(0.16 0.025 265);
-  --popover-foreground: oklch(0.88 0.01 265);
+  --card: var(--sf-surface);
+  --card-foreground: var(--sf-ink);
 
-  --primary: oklch(0.88 0.01 265);
-  --primary-foreground: oklch(0.12 0.02 265);
+  --popover: var(--sf-surface);
+  --popover-foreground: var(--sf-ink);
 
-  --secondary: oklch(0.22 0.035 265);
-  /* Lighter interactive surface */
-  --secondary-foreground: oklch(0.88 0.01 265);
+  --primary: var(--sf-accent);
+  --primary-foreground: #06080f;
 
-  --muted: oklch(0.22 0.035 265);
-  --muted-foreground: oklch(0.65 0.02 265);
+  --secondary: var(--sf-surface);
+  --secondary-foreground: var(--sf-ink);
 
-  --accent: oklch(0.22 0.035 265);
-  --accent-foreground: oklch(0.88 0.01 265);
+  --muted: var(--sf-surface-muted);
+  --muted-foreground: var(--sf-ink-3);
 
-  --destructive: oklch(0.55 0.22 25);
-  /* Adjusted red for dark mode ease */
-  --destructive-foreground: oklch(0.88 0.01 265);
+  --accent: var(--sf-accent-soft);
+  --accent-foreground: var(--sf-accent-ink);
 
-  --border: oklch(0.28 0.03 265);
-  /* Much more obvious border (Solid Lighter Slate) */
-  --input: oklch(0.28 0.03 265);
-  /* Matching border for inputs */
-  --ring: oklch(0.4 0.06 265);
-  /* Focus ring matching theme */
+  --destructive: var(--sf-danger);
+  --destructive-foreground: #06080f;
 
-  /* Notebook Design Tokens */
-  --accent-red: #ff3b30;
-  /* Updated to match .pen design (was #CE0E2D) */
-  --accent-primary: #ff3b30;
-  /* User bubble in dark mode */
-  --surface-elevated: #1a1a1a;
-  /* Card/raised surface */
-  --surface-hover: #252525;
-  /* Card hover */
-  --divider: #2a2a2a;
-  /* Panel borders - matches .pen design */
-  --outline: #3a3a3a;
-  /* Button borders - matches .pen design */
+  --border: var(--sf-line);
+  --input: var(--sf-line-strong);
+  --ring: var(--sf-accent);
 
   --highlight-bg: oklch(0.35 0.1 265 / 0.5);
   --highlight-border: oklch(0.6 0.15 250);
-  /* Dark Mode: Luminous Indigo Border */
 }
 
 @layer base {
@@ -178,19 +221,17 @@
     width: 100%;
   }
 
-  /* Overlay Scrollbar - always present but transparent, visible while scrolling */
-  /* This prevents layout shift when scrollbar appears/disappears */
   * {
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
   }
 
   [data-scrolling] {
-    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    scrollbar-color: rgba(16, 17, 23, 0.18) transparent;
   }
 
   .dark [data-scrolling] {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: rgba(230, 235, 250, 0.22) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -208,11 +249,11 @@
   }
 
   [data-scrolling]::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(16, 17, 23, 0.18);
   }
 
   .dark [data-scrolling]::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(230, 235, 250, 0.22);
   }
 
   * {
@@ -223,33 +264,383 @@
     @apply bg-background text-foreground font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-feature-settings:
+      "ss01",
+      "cv11",
+      "tnum" 0;
+  }
+
+  /* Numerals that should align in tables / deltas use tabular figures. */
+  .tabular-nums,
+  .mono,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--sf-ink);
   }
 }
 
-/* Huawei Shadow System */
+/* ============================================================
+ * Sparkflow primitives — used directly in refined pages
+ * ============================================================ */
+@layer components {
+  /* Eyebrow — uppercase label above a heading, +0.18em tracked */
+  .sf-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--sf-ink-4);
+  }
+
+  .sf-row-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sf-ink-4);
+  }
+
+  /* Display & section headings */
+  .sf-display {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    font-size: clamp(42px, 6vw, 64px);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: var(--sf-ink);
+  }
+  .sf-display em {
+    font-style: normal;
+    color: var(--sf-accent);
+  }
+  .sf-h1 {
+    font-weight: 800;
+    font-size: 40px;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--sf-ink);
+  }
+  .sf-h2 {
+    font-weight: 700;
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--sf-ink);
+  }
+  .sf-h3 {
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 1.3;
+    color: var(--sf-ink);
+  }
+  .sf-lede {
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--sf-ink-3);
+    max-width: 64ch;
+  }
+  .sf-meta {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--sf-ink-3);
+  }
+
+  /* Card contract: 1px line · 10px radius · 20px pad · white fill · no shadow */
+  .sf-card {
+    background: var(--sf-surface);
+    border: 1px solid var(--sf-line);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .sf-card-tight {
+    padding: 16px;
+  }
+  .sf-card-dark {
+    background: var(--sf-black);
+    border-color: var(--sf-black);
+    color: #ffffff;
+  }
+  .sf-card-dark :is(h1, h2, h3, h4) {
+    color: #ffffff;
+  }
+
+  /* Stat card */
+  .sf-stat {
+    background: var(--sf-surface);
+    border: 1px solid var(--sf-line);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .sf-stat-value {
+    font-weight: 800;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--sf-ink);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .sf-stat-delta {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sf-accent);
+  }
+  .sf-stat-delta.is-down {
+    color: var(--sf-danger);
+  }
+  .sf-stat-note {
+    font-size: 12px;
+    color: var(--sf-ink-4);
+    margin-top: 4px;
+  }
+
+  /* Keyline list */
+  .sf-keyline {
+    background: var(--sf-surface);
+    border: 1px solid var(--sf-line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .sf-keyline-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--sf-line);
+    font-size: 13px;
+  }
+  .sf-keyline-row:first-child {
+    border-top: 0;
+  }
+  .sf-keyline-row .time {
+    font-family: var(--font-mono);
+    color: var(--sf-accent);
+    font-size: 12px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .sf-keyline-row .title {
+    font-weight: 600;
+    color: var(--sf-ink);
+  }
+  .sf-keyline-row .meta {
+    color: var(--sf-ink-4);
+    font-size: 12px;
+  }
+
+  /* Badge — uppercase pill, 11/14, +0.08em tracked */
+  .sf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .sf-badge-blue {
+    background: var(--sf-accent);
+    color: #ffffff;
+  }
+  .sf-badge-black {
+    background: var(--sf-black);
+    color: #ffffff;
+  }
+  .sf-badge-soft {
+    background: var(--sf-accent-soft);
+    color: var(--sf-accent-ink);
+  }
+  .sf-badge-muted {
+    background: #edeef2;
+    color: var(--sf-ink-3);
+  }
+  .sf-badge-success {
+    background: var(--sf-success-soft);
+    color: var(--sf-success);
+  }
+  .sf-badge-warn {
+    background: var(--sf-warn-soft);
+    color: var(--sf-warn);
+  }
+  .sf-badge-danger {
+    background: var(--sf-danger-soft);
+    color: var(--sf-danger);
+  }
+  .sf-badge > .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+  }
+
+  /* Brand lockup */
+  .sf-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: var(--sf-ink);
+    font-size: 18px;
+  }
+  .sf-lockup-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    background: var(--sf-accent);
+    color: #ffffff;
+    padding: 3px 6px;
+    border-radius: 3px;
+  }
+  .sf-lockup-tag.is-inverse {
+    background: #ffffff;
+    color: var(--sf-black);
+  }
+
+  /* App bar (top nav) */
+  .sf-appbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--sf-surface);
+    border-bottom: 1px solid var(--sf-line);
+    padding: 12px 24px;
+  }
+  .sf-appbar nav a {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--sf-ink-3);
+    padding: 4px 0;
+    border-bottom: 2px solid transparent;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .sf-appbar nav a.is-active {
+    color: var(--sf-accent);
+    border-bottom-color: var(--sf-accent);
+    font-weight: 600;
+  }
+  .sf-appbar nav a:hover {
+    color: var(--sf-ink-2);
+  }
+
+  /* Side nav (settings) */
+  .sf-sidenav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: var(--sf-ink-2);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .sf-sidenav-item:hover {
+    background: var(--sf-surface);
+  }
+  .sf-sidenav-item.is-active {
+    background: var(--sf-black);
+    color: #ffffff;
+  }
+
+  /* Progress-bar ranking row */
+  .sf-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 12px;
+  }
+  .sf-rank-row .pn {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sf-ink-3);
+    width: 170px;
+    flex-shrink: 0;
+  }
+  .sf-rank-row .track {
+    flex: 1;
+    height: 6px;
+    background: #e8eaf1;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .sf-rank-row .fill {
+    height: 100%;
+    background: var(--sf-accent);
+  }
+  .sf-rank-row .v {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--sf-ink-3);
+    width: 44px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Info callout (accent-soft with left border) */
+  .sf-callout {
+    background: var(--sf-accent-soft);
+    border-left: 3px solid var(--sf-accent);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: var(--sf-accent-ink);
+  }
+
+  /* Icon tile — soft blue / dark variant */
+  .sf-icon-tile {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--sf-accent-soft);
+    color: var(--sf-accent);
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .sf-icon-tile.is-dark {
+    background: var(--sf-black);
+    color: #ffffff;
+  }
+}
+
+/* ============================================================
+ * Legacy component shims kept so old components still work.
+ * Shadows reduced to near-nothing — borders carry the page.
+ * ============================================================ */
 .shadow-huawei-subtle {
-  box-shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.01);
+  box-shadow: var(--sf-shadow-1);
 }
-
 .shadow-huawei-sm {
-  box-shadow: 0 8px 12px 0 rgba(0, 0, 0, 0.08);
+  box-shadow: var(--sf-shadow-1);
 }
-
 .shadow-huawei-md {
-  box-shadow: 0 12px 20px 0 rgba(0, 0, 0, 0.12);
+  box-shadow: var(--sf-shadow-2);
 }
-
 .shadow-huawei-lg {
-  box-shadow: 0 16px 24px 0 rgba(0, 0, 0, 0.16);
+  box-shadow: var(--sf-shadow-2);
 }
 
-/* Huawei Entry Animations */
+/* Motion — reveal on scroll, sweep accent */
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(40px);
+    transform: translateY(24px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -261,11 +652,9 @@
     transform: translateX(-100%);
     opacity: 0;
   }
-
   50% {
     opacity: 1;
   }
-
   100% {
     transform: translateX(100%);
     opacity: 0;
@@ -273,26 +662,27 @@
 }
 
 .animate-slide-up {
-  animation: slideUp 600ms ease-out forwards;
+  animation: slideUp 560ms cubic-bezier(0.2, 0.65, 0.25, 1) forwards;
 }
 
 .animate-sweep {
   animation: sweep 3s ease-in-out infinite;
 }
 
-/* Huawei Card Hover Effect */
 .card-hoverable {
   transition:
-    box-shadow 300ms ease-out,
-    transform 300ms ease-out;
+    border-color 220ms ease,
+    transform 220ms ease,
+    box-shadow 220ms ease;
 }
 
 .card-hoverable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 20px 0 rgba(0, 0, 0, 0.12);
+  border-color: var(--sf-line-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--sf-shadow-2);
 }
 
-/* Text truncation utilities */
+/* Line clamp utilities (kept) */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -300,26 +690,21 @@
   overflow: hidden;
 }
 
-/* Scrollbar utilities */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 
-/* Chunk highlight animation for citation navigation */
-/* Stay solid for 95% of duration (57s), then fade over last 5% (3s) */
+/* Chunk highlight animation preserved */
 @keyframes highlight-fade {
   0%,
   95% {
     background-color: var(--highlight-bg);
     box-shadow: 0 0 0 2px var(--highlight-bg);
-    /* Subtle bleed for visibility */
   }
-
   100% {
     background-color: transparent;
     box-shadow: none;
@@ -330,27 +715,18 @@
   animation: highlight-fade 60s ease-out forwards;
   border-radius: 4px;
   padding: 1px 3px;
-
-  /* Format Emphasis - Reinforced */
   font-weight: 500 !important;
   border-bottom: 2px solid var(--highlight-border) !important;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   display: inline;
-  /* Ensure exact decoration behavior */
 }
 
-/* ============================================================
- * Source HTML render (MinerU-style blocks + page dividers)
- * Used by SourceHtmlView via content-list-to-html builder.
- * ============================================================ */
+/* MinerU source-render blocks preserved */
 .md-block {
   margin: 0.5rem 0;
 }
 
-/* Block-type semantic coloring — primary content uses inherited color,
- * "noise" content (page structure: headers, footers, numbers, asides,
- * footnotes) is visually de-emphasized. */
 .md-block-page_header,
 .md-block-header,
 .md-block-page_footer,
@@ -378,7 +754,6 @@
   font-style: italic;
 }
 
-/* Block layout helpers */
 .md-block-image,
 .md-block-chart {
   display: flex;
@@ -392,9 +767,6 @@
   height: auto;
 }
 
-/* Equation blocks — keep as block-level so KaTeX \tag{} can right-align properly.
- * Flex centering collapses KaTeX's internal layout and causes the tag to overlap
- * with the equation body. */
 .md-block-equation_interline,
 .md-block-equation {
   margin: 1rem 0;
@@ -412,7 +784,6 @@
   margin: 0.25rem 0 0.75rem;
 }
 
-/* Page divider — subtle horizontal rule with centered page label */
 .md-page-divider {
   position: relative;
   text-align: center;

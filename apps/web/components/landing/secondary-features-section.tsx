@@ -1,7 +1,6 @@
 "use client";
 
-import { FileSearch, Globe, GraduationCap, Calendar, FileText, Moon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { FileSearch, Globe, GraduationCap, Calendar, FileText, KeyRound } from "lucide-react";
 import { SectionReveal } from "./section-reveal";
 
 const features = [
@@ -9,69 +8,60 @@ const features = [
     icon: FileSearch,
     title: "Smart Document Parsing",
     description:
-      "Automatically parse PDFs, extract text, tables, and images with Agentic AI-powered document understanding.",
+      "MinerU parses PDFs and extracts text, tables, and images with AI-powered document understanding.",
   },
   {
     icon: Globe,
     title: "Web Page Import",
     description:
-      "Crawl and import any webpage as a research source. Content is cleaned, chunked, and made searchable.",
+      "Crawl any webpage into the notebook. Content is cleaned, chunked, and made searchable.",
   },
   {
     icon: GraduationCap,
     title: "Academic Search",
-    description:
-      "Search across conferences and publications to find papers relevant to your research topics.",
+    description: "Query conferences and publications to surface papers relevant to your topic.",
   },
   {
     icon: Calendar,
     title: "Conference Tracking",
-    description:
-      "Browse conference sessions, track schedules, and discover presentations aligned with your interests.",
+    description: "Browse sessions, track schedules, and discover presentations aligned with your interests.",
   },
   {
     icon: FileText,
-    title: "Citation-Backed Agentic AI",
-    description:
-      "Every Agentic AI response includes precise citations back to your source materials for full traceability.",
+    title: "Citation-Backed AI",
+    description: "Every answer includes precise citations back to the original source material.",
   },
   {
-    icon: Moon,
-    title: "Dark Mode",
-    description:
-      "A premium dark theme designed for late-night research sessions with reduced eye strain.",
+    icon: KeyRound,
+    title: "Bring Your Own Key",
+    description: "Plug in OpenAI, Anthropic, Gemini, or a compatible API. Keys encrypted at rest.",
   },
 ];
 
 export function SecondaryFeaturesSection() {
   return (
-    <section className="bg-secondary px-6 py-24">
-      <div className="mx-auto max-w-6xl">
+    <section className="bg-sf-bg px-6 py-24">
+      <div className="mx-auto max-w-[1200px]">
         <SectionReveal>
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything You Need
-            </h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground">
-              A complete toolkit for modern research workflows
+          <div className="mb-12 max-w-3xl">
+            <p className="sf-eyebrow">COMPLETE TOOLKIT</p>
+            <h2 className="sf-h1 mt-2">Everything you need for modern research</h2>
+            <p className="sf-lede mt-4">
+              Tuned for quiet, data-dense workflows — no visual noise between you and the paper.
             </p>
           </div>
         </SectionReveal>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, i) => (
-            <SectionReveal key={feature.title} delay={i * 0.1}>
-              <Card className="card-hoverable h-full border-border">
-                <CardContent className="p-6 pt-6">
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10">
-                    <feature.icon className="h-5 w-5 text-accent-red" />
-                  </div>
-                  <h3 className="mb-2 text-base font-semibold">{feature.title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
+            <SectionReveal key={feature.title} delay={i * 0.08}>
+              <div className="sf-card card-hoverable h-full">
+                <div className="sf-icon-tile mb-5">
+                  <feature.icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                </div>
+                <h3 className="sf-h3 mb-2 text-[17px]">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-sf-ink-3">{feature.description}</p>
+              </div>
             </SectionReveal>
           ))}
         </div>

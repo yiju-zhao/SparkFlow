@@ -1,9 +1,7 @@
-// apps/web/components/explore/hub/recent-conferences.tsx
-
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { RecentConferenceItem } from "@/lib/explore/types";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -28,50 +26,28 @@ interface RecentConferencesProps {
 }
 
 export function RecentConferences({ conferences }: RecentConferencesProps) {
+  const locale = useLocale();
   const t = useTranslations("explore.status");
   const tExplore = useTranslations("explore");
 
   function getStatus(startDate: Date | null, endDate: Date | null) {
     const now = new Date();
-
-    if (startDate && startDate > now) {
-      return {
-        label: t("upcoming"),
-        statusCode: "UPCOMING",
-        colorClass: "text-emerald-500",
-      };
-    }
-    if (endDate && endDate < now) {
-      return {
-        label: t("completed"),
-        statusCode: "COMPLETED",
-        colorClass: "text-muted-foreground",
-      };
-    }
-    if (startDate || endDate) {
-      return {
-        label: t("ongoing"),
-        statusCode: "ONGOING",
-        colorClass: "text-blue-500",
-      };
-    }
-    return {
-      label: t("scheduled"),
-      statusCode: "SCHEDULED",
-      colorClass: "text-muted-foreground",
-    };
+    if (startDate && startDate > now) return { label: t("upcoming"), badge: "sf-badge-soft" };
+    if (endDate && endDate < now) return { label: t("completed"), badge: "sf-badge-muted" };
+    if (startDate || endDate) return { label: t("ongoing"), badge: "sf-badge-success" };
+    return { label: t("scheduled"), badge: "sf-badge-muted" };
   }
 
   if (!conferences.length) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-card px-6 py-8 text-sm text-muted-foreground">
+      <div className="sf-card border-dashed text-sf-ink-4 text-sm py-8">
         {tExplore("noRecentConferences")}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div className="sf-keyline">
       {conferences.map((conference) => {
         const dateLabel = formatDateRange(
           conference.startDate,
@@ -83,51 +59,25 @@ export function RecentConferences({ conferences }: RecentConferencesProps) {
         return (
           <Link
             key={conference.id}
-            href={`/explore/conferences/${conference.id}`}
-            className="flex items-center justify-between gap-6 px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors group"
+            href={`/${locale}/explore/conferences/${conference.id}`}
+            className="sf-keyline-row group hover:bg-sf-surface-muted transition-colors"
           >
-            <div className="flex items-center gap-5 min-w-0">
-              {/* ID / Year Column */}
-              <div className="w-12.5 shrink-0">
-                <span className="font-mono text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-                  #{conference.year}
-                </span>
-              </div>
-
-              {/* Info Column */}
-              <div className="flex flex-col gap-1 min-w-0">
-                <p className="font-mono text-[13px] font-medium text-foreground truncate">
-                  {conference.name}
-                </p>
-                <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-                  <span>{dateLabel}</span>
-                  {conference.location && (
-                    <>
-                      <span>•</span>
-                      <span>{conference.location}</span>
-                    </>
-                  )}
-                </div>
+            <span className="time w-16">#{conference.year}</span>
+            <div className="flex-1 min-w-0">
+              <div className="title truncate">{conference.name}</div>
+              <div className="meta mt-0.5 truncate">
+                {dateLabel}
+                {conference.location ? ` · ${conference.location}` : ""}
               </div>
             </div>
-
-            <div className="flex items-center gap-8">
-              {/* Status Column */}
-              <div className="hidden sm:block">
-                <span className={`font-mono text-[10px] font-semibold ${status.colorClass}`}>
-                  [{status.statusCode}]
-                </span>
-              </div>
-
-              {/* Stats Column */}
-              <div className="w-32 text-right font-mono">
-                <p className="text-[12px] font-semibold text-foreground">
-                  {conference.sessionCount} {tExplore("stats.sessions")}
-                </p>
-                <p className="text-[12px] font-semibold text-foreground">
-                  {conference.publicationCount} {tExplore("stats.publications")}
-                </p>
-              </div>
+            <span className={`sf-badge ${status.badge}`}>{status.label}</span>
+            <div className="text-right hidden sm:block">
+              <p className="font-mono tabular-nums text-[12px] font-semibold text-sf-ink">
+                {conference.sessionCount} {tExplore("stats.sessions")}
+              </p>
+              <p className="font-mono tabular-nums text-[12px] font-semibold text-sf-ink">
+                {conference.publicationCount} {tExplore("stats.publications")}
+              </p>
             </div>
           </Link>
         );

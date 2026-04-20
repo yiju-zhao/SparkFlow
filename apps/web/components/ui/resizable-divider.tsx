@@ -64,8 +64,8 @@ export function ResizableDivider({
   return (
     <motion.div
       className={`
-        relative
-        ${isVertical ? "w-2" : "h-2"}
+        group relative bg-sf-surface
+        ${isVertical ? "w-1.5" : "h-1.5"}
         ${isVertical ? "cursor-col-resize" : "cursor-row-resize"}
         shrink-0
         self-stretch
@@ -80,11 +80,16 @@ export function ResizableDivider({
       }}
       data-dragging={isDragging}
     >
+      {/* Hairline — sf-line at rest, sf-line-strong on hover, sf-accent while dragging */}
       <div
         className={`
-          absolute
-          ${isVertical ? "left-1/2 -translate-x-1/2 w-px top-0 bottom-0" : "top-1/2 -translate-y-1/2 h-px left-0 right-0"}
-          bg-divider
+          absolute transition-[background-color,width,height] duration-150
+          ${
+            isVertical
+              ? `left-1/2 -translate-x-1/2 top-0 bottom-0 ${isDragging ? "w-[2px]" : "w-px group-hover:w-[2px]"}`
+              : `top-1/2 -translate-y-1/2 left-0 right-0 ${isDragging ? "h-[2px]" : "h-px group-hover:h-[2px]"}`
+          }
+          ${isDragging ? "bg-sf-accent" : "bg-sf-line group-hover:bg-sf-accent"}
         `}
       />
     </motion.div>

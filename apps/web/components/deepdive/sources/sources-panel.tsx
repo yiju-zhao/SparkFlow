@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, memo } from "react";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
-import { FileText, Plus, Loader2, ArrowLeft, X } from "lucide-react";
+import { FileText, Plus, Loader2, ArrowLeft, X, Globe, FileCode, File } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { deleteSource } from "@/lib/actions/sources";
@@ -95,30 +95,25 @@ export function SourcesPanel({
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="px-6 pt-3 pb-1 flex items-center justify-between">
-        <span className="px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono text-foreground">
-          Sources
-        </span>
+    <div className="flex h-full flex-col bg-sf-surface">
+      {/* Primary CTA — one blue primary per view (Sparkflow DS §07) */}
+      <div className="p-5">
         <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
           onClick={() => setIsDialogOpen(true)}
-          title="Add Source"
+          className="w-full h-11 gap-2 font-semibold rounded-[10px] bg-sf-accent text-white hover:bg-sf-accent-ink active:scale-[0.98] transition-all shadow-none"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" strokeWidth={2.25} />
+          Add Source
         </Button>
       </div>
 
       {/* Sources List */}
-      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 pb-6">
         {liveSources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <FileText className="h-8 w-8 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">No sources yet</p>
-            <p className="text-xs text-muted-foreground">Add documents or webpages</p>
+            <FileText className="h-8 w-8 text-sf-ink-4/50" />
+            <p className="mt-2 text-sm text-sf-ink-3">No sources yet</p>
+            <p className="text-xs text-sf-ink-4">Add documents or webpages</p>
           </div>
         ) : (
           <>
@@ -148,7 +143,7 @@ export function SourcesPanel({
                   />
                 );
               })}
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1">
               {liveSources.map((source) => (
                 <SourceItem
                   key={source.id}
@@ -189,6 +184,21 @@ function WikiIngestStatus({ metadata }: { metadata: Record<string, unknown> | nu
   );
 }
 
+function sourceTypeMeta(source: Source) {
+  const url = (source.url ?? "").toLowerCase();
+  const title = (source.title ?? "").toLowerCase();
+  if (source.sourceType === "WEBPAGE") {
+    return { icon: Globe, color: "text-sf-accent", label: "Web URL" };
+  }
+  if (title.endsWith(".md") || title.endsWith(".markdown") || url.endsWith(".md")) {
+    return { icon: FileCode, color: "text-sf-accent", label: "Markdown" };
+  }
+  if (title.endsWith(".pdf") || url.endsWith(".pdf")) {
+    return { icon: FileText, color: "text-sf-danger", label: "PDF" };
+  }
+  return { icon: File, color: "text-sf-ink-3", label: "File" };
+}
+
 const SourceItem = memo(function SourceItem({
   source,
   onSelect,
@@ -199,6 +209,9 @@ const SourceItem = memo(function SourceItem({
   const [isPending, startTransition] = useTransition();
   const relativeTime = useRelativeTime(new Date(source.createdAt));
   const queryClient = useQueryClient();
+  const meta = sourceTypeMeta(source);
+  const Icon = meta.icon;
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     startTransition(async () => {
@@ -207,9 +220,6 @@ const SourceItem = memo(function SourceItem({
         (current) => (current || []).filter((item) => item.id !== source.id),
       );
       await deleteSource(source.id);
-      // Graph/wiki cleanup runs inside deleteSource, so by the time it
-      // resolves the updated data is persisted — invalidate all three queries
-      // so the UI reflects the change without a manual refresh.
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["notebook-sources", source.notebookId],
@@ -226,14 +236,52 @@ const SourceItem = memo(function SourceItem({
 
   return (
     <div
-      className={`group relative cursor-pointer rounded-[4px] px-4 py-3 transition-all duration-200 bg-surface-elevated hover:bg-surface-hover border-2 border-divider border-l-4 border-l-divider dark:border-0 dark:border-l-4 dark:border-l-accent-red ${
+      className={`group relative cursor-pointer flex items-center gap-3 p-3 rounded-[10px] border border-transparent text-sf-ink-3 hover:border-sf-line hover:bg-sf-bg-alt transition-all ${
         isPending ? "opacity-50" : ""
       }`}
       onClick={onSelect}
     >
-      {/* Delete Badge - hover visible */}
+      {/* Source type icon */}
+      <Icon
+        className={`${meta.color} h-[22px] w-[22px] shrink-0`}
+        strokeWidth={1.75}
+        aria-hidden
+      />
+
+      {/* Title + meta */}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-sf-ink leading-tight">
+          {source.title}
+        </p>
+        <p className="mt-0.5 text-[11px] text-sf-ink-4 font-mono tabular-nums">
+          <span className="font-sans uppercase tracking-[0.08em] font-semibold text-sf-ink-3">
+            {meta.label}
+          </span>
+          {relativeTime && (
+            <>
+              {" · "}
+              <span suppressHydrationWarning>{relativeTime}</span>
+            </>
+          )}
+        </p>
+        {source.status === "PROCESSING" && (
+          <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-sf-warn">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Processing…
+          </div>
+        )}
+        {source.status === "PARTIAL" && (
+          <p className="mt-1 text-[11px] text-sf-warn">Preview only</p>
+        )}
+        {source.status === "FAILED" && source.errorMessage && (
+          <p className="mt-1 text-xs text-sf-danger line-clamp-2">{source.errorMessage}</p>
+        )}
+        <WikiIngestStatus metadata={source.metadata as Record<string, unknown> | null} />
+      </div>
+
+      {/* Hover delete button */}
       <button
-        className="absolute -top-2 -right-2 h-4.5 w-4.5 rounded-full bg-accent-red flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        className="absolute top-2 right-2 h-5 w-5 rounded-full bg-sf-danger flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={(e) => {
           e.stopPropagation();
           handleDelete(e);
@@ -242,32 +290,6 @@ const SourceItem = memo(function SourceItem({
       >
         <X className="h-3 w-3 text-white" />
       </button>
-
-      <div className="min-w-0 flex-1">
-        <span className="truncate block text-[13px] font-semibold dark:font-medium leading-tight">
-          {source.title}
-        </span>
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span>{source.sourceType === "DOCUMENT" ? "PDF" : "Web"}</span>
-          <span>•</span>
-          {relativeTime && <span suppressHydrationWarning>{relativeTime}</span>}
-        </div>
-        {source.status === "PROCESSING" && (
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300">
-            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-1 dark:bg-amber-900/50">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Processing...
-            </span>
-          </div>
-        )}
-        {source.status === "PARTIAL" && (
-          <p className="mt-1 text-[11px] text-yellow-600 dark:text-yellow-400">Preview only</p>
-        )}
-        {source.status === "FAILED" && source.errorMessage && (
-          <p className="mt-1 text-xs text-destructive">{source.errorMessage}</p>
-        )}
-        <WikiIngestStatus metadata={source.metadata as Record<string, unknown> | null} />
-      </div>
     </div>
   );
 });
@@ -382,13 +404,13 @@ function SourceContentView({ source, onBack }: { source: Source; onBack: () => v
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Header with back button and TOC button */}
-      <div className="flex items-center gap-2 border-b border-divider px-4 py-2">
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
+      <div className="flex items-center gap-2 border-b border-sf-line px-4 py-2.5 bg-sf-surface shrink-0">
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 text-sf-ink-3" />
         </Button>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-medium">{source.title}</h2>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <h2 className="truncate text-sm font-semibold text-sf-ink">{source.title}</h2>
+          <div className="flex items-center gap-2 text-xs text-sf-ink-4">
             {source.sourceType === "WEBPAGE" && source.url && (
               <a
                 href={source.url}

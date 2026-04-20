@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { UserTable } from "./user-table";
+import { UserTable } from "./_components/user-table";
 
 export default async function AdminUsersPage() {
   const session = await auth();

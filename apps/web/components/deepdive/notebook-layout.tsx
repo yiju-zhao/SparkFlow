@@ -9,6 +9,7 @@ import { StudioPanel } from "@/components/deepdive/studio/studio-panel";
 import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
+import { BookOpen, NotebookPen } from "lucide-react";
 
 import type { Source, Note, Notebook } from "@prisma/client";
 import type { GraphData } from "@/lib/services/graph-service";
@@ -146,6 +147,16 @@ function NotebookLayoutInner({
     }
   }, []);
 
+  // Widen / restore the right panel when a wiki page is opened or closed,
+  // mirroring handleSelectNote's width-snapping.
+  const handleWikiPageSelectionChange = useCallback((hasSelection: boolean) => {
+    if (hasSelection) {
+      setRightWidth(RIGHT_CONTENT_WIDTH);
+    } else {
+      setRightWidth(RIGHT_DEFAULT_WIDTH);
+    }
+  }, []);
+
   // Handle citation click — placeholder for future wiki-based navigation
   const handleCitationNavigate = useCallback(async () => {
     // TODO: Implement wiki-based citation navigation
@@ -191,7 +202,7 @@ function NotebookLayoutInner({
   const rightCollapsed = rightWidth === 0;
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden bg-sf-bg">
       {/* Sources Panel (Left) - Collapsible */}
       {sourcesCollapsed ? (
         <CollapsedGripStrip side="left" onExpand={handleSourcesExpand} />
@@ -262,26 +273,30 @@ function NotebookLayoutInner({
             animate={{ width: rightWidth }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           >
-            {/* Tab Bar */}
-            <div className="shrink-0 flex items-center gap-1 px-4 pt-3 pb-1">
+            {/* Tab Bar — underline-active (matches Stitch mockup) */}
+            <div className="shrink-0 bg-sf-surface border-b border-sf-line flex h-12 px-2 pt-2">
               <button
-                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                type="button"
+                className={`flex-1 flex items-center justify-center gap-2 border-b-2 text-sm font-semibold transition-colors ${
                   rightTab === "wiki"
-                    ? "text-foreground bg-accent/20"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-sf-accent text-sf-accent"
+                    : "border-transparent text-sf-ink-3 hover:bg-sf-bg-alt"
                 }`}
                 onClick={() => setRightTab("wiki")}
               >
+                <BookOpen className="h-4 w-4" strokeWidth={1.75} />
                 Wiki
               </button>
               <button
-                className={`px-3 py-1 text-[11px] font-semibold tracking-[2px] uppercase font-mono rounded-[4px] transition-colors ${
+                type="button"
+                className={`flex-1 flex items-center justify-center gap-2 border-b-2 text-sm font-semibold transition-colors ${
                   rightTab === "notes"
-                    ? "text-foreground bg-accent/20"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-sf-accent text-sf-accent"
+                    : "border-transparent text-sf-ink-3 hover:bg-sf-bg-alt"
                 }`}
                 onClick={() => setRightTab("notes")}
               >
+                <NotebookPen className="h-4 w-4" strokeWidth={1.75} />
                 Notes
               </button>
             </div>
@@ -297,6 +312,7 @@ function NotebookLayoutInner({
                   onSourceClick={handleSourceNavigate}
                   navigateToSlug={wikiNavigateSlug}
                   onNavigateComplete={() => setWikiNavigateSlug(null)}
+                  onPageSelectionChange={handleWikiPageSelectionChange}
                 />
               ) : (
                 <StudioPanel

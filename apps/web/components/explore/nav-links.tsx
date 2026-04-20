@@ -3,31 +3,32 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navLinks = [
-  { href: "/explore/conferences", label: "conferences" },
-  { href: "/explore/publications", label: "publications" },
-  { href: "/explore/sessions", label: "sessions" },
-  { href: "/explore/toolbox", label: "toolbox" },
-] as const;
+type NavLinkDef = { href: string; label: string; exact?: boolean };
+const navLinks: NavLinkDef[] = [
+  { href: "/explore", label: "Overview", exact: true },
+  { href: "/explore/conferences", label: "Conferences" },
+  { href: "/explore/social-media", label: "Social Insights" },
+  { href: "/explore/toolbox", label: "Toolbox" },
+];
 
 export default function ExploreNavLinks() {
   const pathname = usePathname();
 
   return (
     <>
-      {navLinks.map(({ href, label }) => {
-        const isActive = pathname.startsWith(href);
+      {navLinks.map(({ href, label, exact }) => {
+        const localeAwarePath = pathname.replace(/^\/(en|zh)(?=\/|$)/, "") || "/";
+        const isActive = exact ? localeAwarePath === href : localeAwarePath.startsWith(href);
         return (
           <Link
             key={href}
             href={href}
-            className={`relative flex items-center justify-center text-sm transition-all ${
-              isActive ? "font-medium opacity-100" : "opacity-60 hover:opacity-100"
+            className={`text-[13.5px] leading-none transition-colors border-b-2 pb-1 pt-1 ${
+              isActive
+                ? "text-sf-accent border-sf-accent font-semibold"
+                : "text-sf-ink-3 border-transparent font-medium hover:text-sf-ink-2"
             }`}
           >
-            {isActive && (
-              <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#00D084]" />
-            )}
             {label}
           </Link>
         );

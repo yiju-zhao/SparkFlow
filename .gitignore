@@ -5,6 +5,9 @@
 .env.production
 .env*.local
 
+# Git worktrees
+.worktrees/
+
 # AI/Agent assistants
 .claude/
 .serena/

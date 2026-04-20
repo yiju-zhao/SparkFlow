@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createNotebook } from "@/lib/actions/notebooks";
 import Link from "next/link";
 
-export function CreateNotebookDialog() {
+export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } = {}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -56,10 +56,12 @@ export function CreateNotebookDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-accent-red hover:bg-accent-red-hover">
-          <Plus className="h-4 w-4" />
-          New Notebook
-        </Button>
+        {trigger ?? (
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Notebook
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -84,7 +86,7 @@ export function CreateNotebookDialog() {
                 Cancel
               </Button>
               <Link href="/settings">
-                <Button className="bg-accent-red hover:bg-accent-red-hover">Go to Settings</Button>
+                <Button>Go to Settings</Button>
               </Link>
             </div>
           </div>
@@ -127,7 +129,6 @@ export function CreateNotebookDialog() {
               </Button>
               <Button
                 type="submit"
-                className="bg-accent-red hover:bg-accent-red-hover"
                 disabled={isPending || !name.trim() || hasApiKey === null}
               >
                 {hasApiKey === null ? "Checking..." : isPending ? "Creating..." : "Create"}

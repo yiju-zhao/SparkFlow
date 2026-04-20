@@ -42,7 +42,7 @@ export function HealthCheckButton({ notebookId }: { notebookId: string }) {
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 w-7 p-0 rounded-[4px] hover:bg-accent/80 transition-colors"
+        className="h-7 w-7 p-0 rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink transition-colors"
         onClick={runCheck}
         disabled={isLoading}
         title="Health Check"
@@ -50,7 +50,7 @@ export function HealthCheckButton({ notebookId }: { notebookId: string }) {
         {isLoading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
-          <Activity className="h-3.5 w-3.5" />
+          <Activity className="h-3.5 w-3.5" strokeWidth={1.75} />
         )}
       </Button>
 

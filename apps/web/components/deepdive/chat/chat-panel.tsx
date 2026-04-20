@@ -5,15 +5,17 @@ import Link from "next/link";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import type { Message } from "@langchain/langgraph-sdk";
 import {
-  Send,
+  SendHorizontal,
   Loader2,
-  Sparkles,
   Plus,
   Trash2,
   StickyNote,
   Copy,
   Check,
   BookOpen,
+  MessageCircle,
+  History,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +59,15 @@ interface ModelSettings {
 }
 
 const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL;
+
+// Spark-diamond glyph from Sparkflow Design System (brand lockup).
+function SparkDiamond({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z" fill="currentColor" />
+    </svg>
+  );
+}
 
 // Stable default props to avoid creating new arrays on each render
 const EMPTY_SESSIONS: ChatSession[] = [];
@@ -577,38 +588,40 @@ export function ChatPanel({
   }, [displayMessages]);
 
   return (
-    <div className="flex h-full min-w-0 flex-col relative overflow-hidden bg-background dark:bg-transparent">
-      {/* Header - transparent, content scrolls behind */}
-      <div className="px-6 pt-3 pb-3 flex items-center justify-between absolute top-0 left-0 right-0 z-10">
-        <div className="flex items-center gap-3 bg-white dark:bg-background rounded-[4px] px-3 py-1.5">
-          <div className="h-0.5 w-6 bg-accent-primary dark:bg-accent-red" />
-          <h2 className="text-[11px] font-semibold tracking-[3px] text-foreground uppercase font-mono">
-            DIALOGUE
-          </h2>
+    <div className="flex h-full min-w-0 flex-col relative overflow-hidden bg-sf-surface">
+      {/* Header — Sparkflow Design System split-workspace archetype */}
+      <div className="h-12 shrink-0 flex items-center justify-between px-6 border-b border-sf-line bg-sf-surface">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="h-5 w-5 text-sf-accent" strokeWidth={1.75} />
+          <h2 className="font-semibold text-sf-ink">Notebook Chat</h2>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="h-1 flex-1" />
-          <button
-            className="h-7 px-3 text-[11px] font-semibold tracking-[3px] uppercase font-mono text-muted-foreground rounded-[4px] bg-white dark:bg-surface-elevated border-2 dark:border border-outline dark:border-[#333333] hover:opacity-80 transition-opacity"
-            onClick={() => setShowHistory(!showHistory)}
-          >
-            {showHistory ? "CLOSE" : "HISTORY"}
-          </button>
+        <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 rounded-[4px] bg-white dark:bg-surface-elevated hover:opacity-80 transition-opacity"
+            className="h-8 w-8 rounded-[6px] hover:bg-sf-bg-alt"
+            onClick={() => setShowHistory(!showHistory)}
+            title={showHistory ? "Close history" : "Chat history"}
+            aria-label="Chat history"
+          >
+            <History className="h-4 w-4" strokeWidth={1.75} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 rounded-[6px] hover:bg-sf-bg-alt"
             onClick={handleNewChat}
             title="New Chat"
+            aria-label="New chat"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" strokeWidth={1.75} />
           </Button>
         </div>
       </div>
 
       {/* History Panel */}
       {showHistory && (
-        <div className="absolute top-10 right-2 z-10 w-64 max-h-80 overflow-y-auto rounded-lg border border-border bg-background shadow-lg">
+        <div className="absolute top-14 right-2 z-10 w-64 max-h-80 overflow-y-auto rounded-lg border border-sf-line bg-sf-surface shadow-lg">
           <div className="p-2">
             <h3 className="text-xs font-medium text-muted-foreground mb-2">Recent Chats</h3>
             {sessions.length === 0 ? (
@@ -646,7 +659,7 @@ export function ChatPanel({
       {/* Messages - using stream.messages directly */}
       <div
         ref={messagesContainerRef}
-        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 pt-14 space-y-4"
+        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6 space-y-8"
         style={{
           contentVisibility: "auto",
           containIntrinsicSize: "auto 500px",
@@ -654,8 +667,8 @@ export function ChatPanel({
       >
         {filteredMessages.length === 0 && (
           <div className="flex h-full items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <Sparkles className="mx-auto h-8 w-8 mb-2 opacity-50" />
+            <div className="text-center text-sf-ink-4">
+              <SparkDiamond className="mx-auto h-8 w-8 mb-2 text-sf-accent/50" />
               <p className="text-sm">Start a conversation</p>
             </div>
           </div>
@@ -678,38 +691,42 @@ export function ChatPanel({
             const hasInProgressToolCalls = inProgressToolCalls.length > 0;
 
             return (
-              <div
-                key={messageKey}
-                className={`group flex ${isUser ? "justify-end" : "justify-start"} px-2`}
-              >
-                <div
-                  className={`relative rounded-[4px] transition-all duration-200 ${
-                    isUser
-                      ? "bg-accent-primary text-white px-4 py-3 border-none w-fit max-w-[85%]"
-                      : "w-full p-5 bg-white dark:bg-transparent"
-                  }`}
-                >
-                  {isUser ? (
-                    <p className="text-[13px] font-normal leading-relaxed whitespace-pre-wrap">
-                      {content}
-                    </p>
-                  ) : hasInProgressToolCalls ? (
-                    // Tool call indicator (only for in-progress calls)
-                    <div className="flex items-center gap-4">
-                      <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
-                      <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground/60 uppercase">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>
-                          CONSULTING {inProgressToolCalls.map((tc) => tc.name).join(", ")}...
-                        </span>
+              <div key={messageKey} className="group">
+                {isUser ? (
+                  /* USER message — blue bubble, right-aligned, avatar on right */
+                  <div className="flex flex-row-reverse gap-4 max-w-2xl ml-auto">
+                    <div className="w-8 h-8 rounded-full bg-sf-accent flex-shrink-0 flex items-center justify-center border border-white/20">
+                      <User className="h-4 w-4 text-white" strokeWidth={2} />
+                    </div>
+                    <div className="space-y-1 flex flex-col items-end">
+                      <p className="text-[10px] font-bold text-sf-accent uppercase tracking-[0.18em] mr-1">
+                        You
+                      </p>
+                      <div className="bg-sf-accent text-white p-4 rounded-2xl rounded-tr-none shadow-sm">
+                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{content}</p>
                       </div>
                     </div>
-                  ) : (
-                    // Final AI response - accent bar + text column
-                    <div className="flex flex-col gap-0">
-                      <div className="flex gap-4">
-                        <div className="w-1 self-stretch rounded-[4px] bg-accent-primary shrink-0" />
-                        <div className="min-w-0 flex-1">
+                  </div>
+                ) : (
+                  /* AI message — slate bubble, left-aligned, avatar on left */
+                  <div className="flex gap-4 max-w-3xl relative">
+                    <div className="w-8 h-8 rounded-full bg-sf-accent-soft border border-sf-accent/30 flex-shrink-0 flex items-center justify-center text-sf-accent">
+                      <SparkDiamond className="h-4 w-4" />
+                    </div>
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-sf-accent uppercase tracking-[0.18em] ml-1">
+                        DeepDive
+                      </p>
+                      <div className="bg-sf-bg-alt border border-sf-line p-4 rounded-2xl rounded-tl-none">
+                        {hasInProgressToolCalls ? (
+                          <div className="flex items-center gap-2 text-xs font-bold tracking-[0.14em] text-sf-ink-4 uppercase">
+                            <Loader2 className="h-3 w-3 animate-spin text-sf-accent" />
+                            <span>
+                              Consulting {inProgressToolCalls.map((tc) => tc.name).join(", ")}…
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="min-w-0 flex-1">
                           <div
                             className="overflow-x-auto"
                             onClick={(e) => {
@@ -727,7 +744,7 @@ export function ChatPanel({
                               }
                             }}
                           >
-                            <Markdown className="text-[13px] leading-relaxed text-foreground/90 prose-p:mb-3 last:prose-p:mb-0">
+                            <Markdown className="text-[15px] leading-relaxed text-sf-ink-2 prose-p:mb-3 last:prose-p:mb-0">
                               {content.replace(
                                 /\[\[([a-zA-Z0-9_-]+)\]\]/g,
                                 (_, slug) =>
@@ -736,7 +753,7 @@ export function ChatPanel({
                             </Markdown>
                             <style>{`
                               wiki-link {
-                                color: var(--color-accent-red, #CE0E2D);
+                                color: #0F5FFE;
                                 cursor: pointer;
                                 text-decoration: underline;
                                 text-decoration-style: dotted;
@@ -748,42 +765,40 @@ export function ChatPanel({
                               }
                             `}</style>
                           </div>
-                        </div>
+                          </div>
+                        )}
                       </div>
                       {!stream.isLoading && content && (
-                        <div className="mt-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-sf-surface border border-sf-line-strong text-sf-ink-3 text-[11px] font-semibold hover:bg-sf-bg-alt hover:text-sf-ink-2 transition-colors rounded-[6px] shadow-sm"
                             onClick={() => handleSaveToNotes(messageKey, content)}
                             disabled={savingNoteId === messageKey}
                           >
                             {savingNoteId === messageKey ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <StickyNote className="h-3.5 w-3.5" />
                             )}
-                            <span>ADD TO NOTES</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
+                            Add to Note
+                          </button>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-sf-surface border border-sf-line-strong text-sf-ink-3 text-[11px] font-semibold hover:bg-sf-bg-alt hover:text-sf-ink-2 transition-colors rounded-[6px] shadow-sm"
                             onClick={() => handleSaveToWiki(messageKey, content)}
                             disabled={savingWikiId === messageKey}
                           >
                             {savingWikiId === messageKey ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <BookOpen className="h-3.5 w-3.5" />
                             )}
-                            <span>ADD TO WIKI</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 px-3 text-[10px] font-bold tracking-widest text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-full uppercase"
+                            Add to Wiki
+                          </button>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-sf-surface border border-sf-line-strong text-sf-ink-3 text-[11px] font-semibold hover:bg-sf-bg-alt hover:text-sf-ink-2 transition-colors rounded-[6px] shadow-sm"
                             onClick={() => handleCopy(messageKey, content)}
                           >
                             {copiedMessageId === messageKey ? (
@@ -791,13 +806,13 @@ export function ChatPanel({
                             ) : (
                               <Copy className="h-3.5 w-3.5" />
                             )}
-                            <span>{copiedMessageId === messageKey ? "COPIED" : "COPY"}</span>
-                          </Button>
+                            {copiedMessageId === messageKey ? "Copied" : "Copy"}
+                          </button>
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -805,8 +820,8 @@ export function ChatPanel({
         {/* Loading indicator */}
         {stream.isLoading ? (
           <div className="flex justify-start">
-            <div className="bg-muted rounded-lg px-3 py-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="rounded-[10px] bg-sf-bg-alt px-3 py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-sf-accent" />
             </div>
           </div>
         ) : null}
@@ -814,7 +829,7 @@ export function ChatPanel({
         {/* Error display */}
         {stream.error ? (
           <div className="flex justify-start">
-            <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2">
+            <div className="rounded-[10px] bg-sf-danger-soft text-sf-danger px-3 py-2 border border-sf-danger/20">
               <p className="text-sm">
                 Error: {stream.error instanceof Error ? stream.error.message : String(stream.error)}
               </p>
@@ -841,33 +856,40 @@ export function ChatPanel({
           </p>
         </div>
       )}
-      <div className="flex items-start px-6 py-3 gap-3" style={{ minHeight: inputHeight }}>
-        <form onSubmit={handleSubmit} className="flex flex-1 items-start gap-3">
+      {/* Input — white card with circular blue send (Sparkflow DS card + primary contract) */}
+      <div className="px-6 py-4 bg-sf-surface flex">
+        <form
+          onSubmit={handleSubmit}
+          className="relative w-full flex rounded-[10px] border border-sf-line bg-sf-surface focus-within:border-sf-accent focus-within:ring-2 focus-within:ring-sf-accent-soft transition-colors"
+        >
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => {
               setInput(e.target.value);
-              // Auto-resize to fit content
               const el = e.target;
+              const target = Math.max(inputHeight - 32, 52);
               el.style.height = "auto";
-              el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+              el.style.height = `${Math.max(el.scrollHeight, target)}px`;
             }}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about your sources..."
-            className="min-h-10 max-h-30 resize-none flex-1 border-0 shadow-none rounded-none bg-transparent focus-visible:ring-0 overflow-hidden"
+            style={{ height: Math.max(inputHeight - 32, 52) }}
+            className="w-full flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:border-0 py-3.5 pl-4 pr-14 text-[15px] resize-none rounded-[10px] text-sf-ink placeholder:text-sf-ink-4 shadow-none"
             disabled={stream.isLoading}
             rows={1}
           />
           <button
             type="submit"
             disabled={!input.trim() || stream.isLoading}
-            className="h-8 w-8 flex items-center justify-center rounded-[4px] bg-accent-primary dark:bg-surface-elevated dark:border dark:border-outline text-white disabled:opacity-50 transition-opacity shrink-0"
+            className="absolute right-2 bottom-2 h-9 w-9 flex items-center justify-center rounded-full bg-sf-accent text-white hover:bg-sf-accent-ink disabled:bg-sf-line-strong disabled:text-white/70 transition-colors"
+            title="Send"
+            aria-label="Send message"
           >
             {stream.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <SendHorizontal className="h-4 w-4" strokeWidth={2.25} />
             )}
           </button>
         </form>

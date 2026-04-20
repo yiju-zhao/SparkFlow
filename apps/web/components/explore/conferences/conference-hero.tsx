@@ -1,9 +1,8 @@
-// apps/web/components/explore/conferences/conference-hero.tsx
-
 "use client";
 
 import { useState } from "react";
-import { Calendar, MapPin, Globe, ArrowUpRight, Download, Loader2 } from "lucide-react";
+import { ArrowUpRight, Download, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { ConferenceDetail } from "@/lib/explore/types";
 
 interface ConferenceHeroProps {
@@ -33,10 +32,11 @@ export function ConferenceHero({ conference }: ConferenceHeroProps) {
       setExporting(false);
     }
   };
+
   const formatDate = (date: Date | null) => {
     if (!date) return null;
     return new Intl.DateTimeFormat("en-US", {
-      month: "long",
+      month: "short",
       day: "numeric",
       year: "numeric",
     }).format(new Date(date));
@@ -50,58 +50,77 @@ export function ConferenceHero({ conference }: ConferenceHeroProps) {
         : null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <header className="flex flex-col gap-6 border-b border-sf-line pb-8">
       {/* Breadcrumb */}
-      <p className="text-sm text-muted-foreground">
-        ~/research-hub/conferences/{conference.venue.name.toLowerCase()}/{conference.year}
+      <p className="sf-eyebrow">
+        HUB · CONFERENCES · {conference.venue.name.toUpperCase()} {conference.year}
       </p>
 
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight mb-4">{conference.name}</h1>
-        {conference.summary && (
-          <p className="text-muted-foreground leading-relaxed max-w-3xl">{conference.summary}</p>
-        )}
-      </div>
-
-      {/* Metadata pills */}
-      <div className="flex flex-wrap items-center gap-3">
-        {dateRange && (
-          <div className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            {dateRange}
+      {/* Title row with actions on right */}
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="max-w-[68ch]">
+          <h1 className="sf-h1">{conference.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-sf-ink-3">
+            {dateRange && <span className="font-mono tabular-nums text-[13px]">{dateRange}</span>}
+            {conference.location && (
+              <>
+                <span className="text-sf-line-strong">·</span>
+                <span>📍 {conference.location}</span>
+              </>
+            )}
+            {conference.website && (
+              <>
+                <span className="text-sf-line-strong">·</span>
+                <a
+                  href={conference.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sf-accent hover:text-sf-accent-ink transition-colors"
+                >
+                  Official website
+                  <ArrowUpRight className="h-3 w-3" />
+                </a>
+              </>
+            )}
           </div>
-        )}
-        {conference.location && (
-          <div className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm">
-            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-            {conference.location}
-          </div>
-        )}
-        {conference.website && (
-          <a
-            href={conference.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors group"
-          >
-            <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-            Official Website
-            <ArrowUpRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </a>
-        )}
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm hover:bg-muted/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {exporting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-          ) : (
-            <Download className="h-3.5 w-3.5 text-muted-foreground" />
+          {conference.summary && (
+            <p className="sf-lede mt-4 text-[15px]">{conference.summary}</p>
           )}
-          {exporting ? "Exporting..." : "Export to Excel"}
-        </button>
+        </div>
+
+        <div className="flex shrink-0 gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="bg-sf-black text-white hover:bg-sf-black/85"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            {exporting ? "Exporting…" : "Export to Excel"}
+          </Button>
+          <Button size="sm" asChild>
+            <a href={`/deepdive?venue=${conference.venue.id}&year=${conference.year}`}>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              DeepDive
+            </a>
+          </Button>
+        </div>
       </div>
-    </div>
+    </header>
   );
 }

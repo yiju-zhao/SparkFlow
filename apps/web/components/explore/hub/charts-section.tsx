@@ -7,9 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function ChartSkeleton() {
   return (
-    <div className="bg-card rounded-lg p-6">
-      <Skeleton className="h-6 w-48 mb-4" />
-      <Skeleton className="h-75 w-full" />
+    <div className="sf-card">
+      <Skeleton className="h-5 w-40 mb-4" />
+      <Skeleton className="h-65 w-full" />
     </div>
   );
 }
