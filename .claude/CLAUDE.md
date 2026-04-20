@@ -130,7 +130,7 @@ Backend (`apps/agent/.env`):
 - PageIndex: `PAGEINDEX_MODEL`, `PAGEINDEX_API_KEY`, `SPARKFLOW_API_URL`
 - DB: `CHECKPOINT_DB_URL`, `DATABASE_URL`
 - Hub: `TOOLBOX_SERVER_URL` (port 5000), `MCP_SERVER_URL`, `HUB_MODEL_PROVIDER/NAME`
-- Observability: `LANGSMITH_API_KEY`, `ENABLE_PROMPT_OPTIMIZER`
+- Observability: `LANGSMITH_API_KEY`
 
 See `.env.example` in each app.
 
