@@ -33,25 +33,25 @@ export function isRunning(): boolean {
   return current.state === "running";
 }
 
-const REPO_ROOT = path.resolve(process.cwd(), "../..");
-const SCRIPT_PATH = path.join(
-  REPO_ROOT,
-  "apps/agent/scripts/backfill_wechat_embeddings.py",
-);
-const LOG_DIR = path.join(REPO_ROOT, "apps/agent/.logs");
-
 export async function startBackfill(mode: "incremental" | "full"): Promise<JobStatus> {
   if (isRunning()) {
     return getJobStatus();
   }
 
-  await mkdir(LOG_DIR, { recursive: true });
+  // Resolve paths lazily inside the handler (not at module scope) and hint
+  // the bundler to skip tracing through `process.cwd()` — otherwise NFT
+  // evaluates the dynamic path and pulls the whole monorepo into the bundle.
+  const repoRoot = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "../..");
+  const scriptPath = path.join(repoRoot, "apps/agent/scripts/backfill_wechat_embeddings.py");
+  const logDir = path.join(repoRoot, "apps/agent/.logs");
+
+  await mkdir(logDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const logFile = path.join(LOG_DIR, `wechat-embed-${stamp}.log`);
+  const logFile = path.join(logDir, `wechat-embed-${stamp}.log`);
   const logStream = createWriteStream(logFile, { flags: "a" });
 
   const python = process.env.PYTHON_BIN || "python3";
-  const args = [SCRIPT_PATH];
+  const args = [scriptPath];
   if (mode === "full") args.push("--full");
 
   current = {
@@ -64,7 +64,7 @@ export async function startBackfill(mode: "incremental" | "full"): Promise<JobSt
   };
 
   const child = spawn(python, args, {
-    cwd: REPO_ROOT,
+    cwd: repoRoot,
     env: { ...process.env },
     detached: true,
     stdio: ["ignore", "pipe", "pipe"],
