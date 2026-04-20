@@ -1,6 +1,6 @@
 # SparkFlow
 
-[![Version](https://img.shields.io/badge/version-0.5.0--beta-blue.svg)](https://github.com/yiju-zhao/SparkFlow)
+[![Version](https://img.shields.io/badge/version-1.0.0--beta-blue.svg)](https://github.com/yiju-zhao/SparkFlow)
 
 AI-powered research platform with generative UI, RAG notebooks, and conference discovery.
 
