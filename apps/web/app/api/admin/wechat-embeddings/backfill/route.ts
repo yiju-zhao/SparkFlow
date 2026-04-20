@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/actions/admin";
-import {
-  getJobStatus,
-  isRunning,
-  startBackfill,
-} from "@/lib/services/wechat-embedding-job";
+import type * as WechatEmbeddingJob from "@/lib/services/wechat-embedding-job";
+
+// Lazy-load the service so Next.js file tracing doesn't follow its
+// `path.resolve(process.cwd(), ...)` usage out of the app root and pull
+// next.config.ts (and the rest of the monorepo) into the server bundle.
+async function loadService(): Promise<typeof WechatEmbeddingJob> {
+  return import(/* turbopackIgnore: true */ "@/lib/services/wechat-embedding-job");
+}
 
 // GET  — return current/last backfill job status (logFile path etc.)
 // POST — kick off a new backfill. Body: { mode?: "incremental" | "full" }
@@ -14,11 +17,13 @@ import {
 // or repeated POSTs with mode=incremental from a scheduler.
 export async function GET() {
   await requireAdminUser();
+  const { getJobStatus } = await loadService();
   return NextResponse.json(getJobStatus());
 }
 
 export async function POST(req: NextRequest) {
   await requireAdminUser();
+  const { getJobStatus, isRunning, startBackfill } = await loadService();
 
   if (isRunning()) {
     return NextResponse.json(

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
@@ -8,17 +8,17 @@ import { ScrollbarAutoHide } from "./_components/scrollbar-autohide";
 import "../globals.css";
 import { routing } from "@/src/i18n/routing";
 
-const interSans = Inter({
-  subsets: ["latin"],
+const interSans = localFont({
+  src: "../../public/fonts/inter-latin-wght-normal.woff2",
   variable: "--font-sparkflow-sans",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: "100 900",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+const jetbrainsMono = localFont({
+  src: "../../public/fonts/jetbrains-mono-latin-wght-normal.woff2",
   variable: "--font-sparkflow-mono",
-  weight: ["400", "500", "600"],
+  weight: "100 800",
   display: "swap",
 });
 
