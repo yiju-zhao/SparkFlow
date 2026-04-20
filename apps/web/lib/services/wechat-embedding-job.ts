@@ -33,17 +33,38 @@ export function isRunning(): boolean {
   return current.state === "running";
 }
 
+function resolveBackfillPaths(): { scriptPath: string; logDir: string; cwd: string } {
+  const scriptEnv = process.env.WECHAT_BACKFILL_SCRIPT;
+  const logDirEnv = process.env.WECHAT_BACKFILL_LOG_DIR;
+  const cwdEnv = process.env.WECHAT_BACKFILL_CWD;
+  if (scriptEnv && logDirEnv && cwdEnv) {
+    return { scriptPath: scriptEnv, logDir: logDirEnv, cwd: cwdEnv };
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "wechat-embedding-job: WECHAT_BACKFILL_SCRIPT, WECHAT_BACKFILL_LOG_DIR, " +
+        "and WECHAT_BACKFILL_CWD must all be set in production.",
+    );
+  }
+  // Dev fallback — walk up from apps/web to the monorepo root. The parent
+  // segment is constructed at runtime so Next.js file tracing cannot follow
+  // it out of the app (otherwise it pulls the whole monorepo into the bundle).
+  const up = String.fromCharCode(46, 46);
+  const repoRoot = path.resolve(process.cwd(), up, up);
+  return {
+    scriptPath:
+      scriptEnv ?? path.join(repoRoot, "apps/agent/scripts/backfill_wechat_embeddings.py"),
+    logDir: logDirEnv ?? path.join(repoRoot, "apps/agent/.logs"),
+    cwd: cwdEnv ?? repoRoot,
+  };
+}
+
 export async function startBackfill(mode: "incremental" | "full"): Promise<JobStatus> {
   if (isRunning()) {
     return getJobStatus();
   }
 
-  // Resolve paths lazily inside the handler (not at module scope) and hint
-  // the bundler to skip tracing through `process.cwd()` — otherwise NFT
-  // evaluates the dynamic path and pulls the whole monorepo into the bundle.
-  const repoRoot = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "../..");
-  const scriptPath = path.join(repoRoot, "apps/agent/scripts/backfill_wechat_embeddings.py");
-  const logDir = path.join(repoRoot, "apps/agent/.logs");
+  const { scriptPath, logDir, cwd } = resolveBackfillPaths();
 
   await mkdir(logDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -64,7 +85,7 @@ export async function startBackfill(mode: "incremental" | "full"): Promise<JobSt
   };
 
   const child = spawn(python, args, {
-    cwd: repoRoot,
+    cwd,
     env: { ...process.env },
     detached: true,
     stdio: ["ignore", "pipe", "pipe"],
