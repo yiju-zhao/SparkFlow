@@ -331,7 +331,16 @@
         "addToNotebook": "Add to Notebook",
         "allSources": "All Sources",
         "noArticles": "No articles found",
-        "noArticlesDesc": "Try adjusting your filters or check back later"
+        "noArticlesDesc": "Try adjusting your filters or check back later",
+        "close": "Close",
+        "readingNow": "Reading Now",
+        "copyLink": "Copy Link",
+        "linkCopied": "Copied",
+        "readTime": "{minutes} min read",
+        "byAuthor": "By",
+        "enjoyedThis": "Enjoyed this read?",
+        "exploreMore": "Explore more from this account.",
+        "moreFrom": "More from {source}"
       }
     }
   },

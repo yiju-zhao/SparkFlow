@@ -120,6 +120,25 @@ export async function getWechatArticle(id: number): Promise<WechatArticleDetail 
   };
 }
 
+export async function getRelatedWechatArticles(
+  sourceId: number,
+  excludeId: number,
+  limit = 4,
+): Promise<WechatArticleSummary[]> {
+  if (!wechatPool) return [];
+  const result = await wechatPool.query(
+    `SELECT a.id, a.title, a.author, a.publish_time, a.cover_url,
+            s.name as source_name, a.source_id
+     FROM wechat_articles.articles a
+     JOIN wechat_articles.sources s ON s.id = a.source_id
+     WHERE a.source_id = $1 AND a.id <> $2
+     ORDER BY a.publish_time DESC NULLS LAST
+     LIMIT $3`,
+    [sourceId, excludeId, limit],
+  );
+  return result.rows;
+}
+
 export async function getWechatImage(
   id: number,
 ): Promise<{ data: Buffer; mime_type: string } | null> {

@@ -6,6 +6,7 @@
 //
 // Override PORT via env: `PORT=3001 pm2 restart sparkflow-web --update-env`.
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const path = require("node:path");
 
 module.exports = {

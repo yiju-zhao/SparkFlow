@@ -331,7 +331,16 @@
         "addToNotebook": "添加到笔记本",
         "allSources": "全部公众号",
         "noArticles": "未找到文章",
-        "noArticlesDesc": "请尝试调整筛选条件或稍后再试"
+        "noArticlesDesc": "请尝试调整筛选条件或稍后再试",
+        "close": "关闭",
+        "readingNow": "正在阅读",
+        "copyLink": "复制链接",
+        "linkCopied": "已复制",
+        "readTime": "{minutes} 分钟阅读",
+        "byAuthor": "作者：",
+        "enjoyedThis": "喜欢这篇文章？",
+        "exploreMore": "从该来源探索更多内容。",
+        "moreFrom": "更多来自 {source}"
       }
     }
   },

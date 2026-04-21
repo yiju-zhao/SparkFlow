@@ -18,7 +18,7 @@ export function WechatArticleCard({ article }: WechatArticleCardProps) {
 
   return (
     <Link
-      href={`/${locale}/explore/social-media/wechat/${article.id}`}
+      href={`/${locale}/explore/social-media/wechat?article=${article.id}`}
       className="group sf-card card-hoverable p-0 overflow-hidden flex flex-col"
     >
       <div className="relative h-44 w-full bg-sf-bg-alt overflow-hidden">

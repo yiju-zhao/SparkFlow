@@ -455,7 +455,7 @@ function FeaturedSocialCard({
     : null;
   return (
     <Link
-      href={`/${locale}/explore/social-media/wechat/${article.id}`}
+      href={`/${locale}/explore/social-media/wechat?article=${article.id}`}
       className="relative group overflow-hidden rounded-[10px] border border-sf-line h-[440px] flex items-end"
     >
       {article.cover_url ? (
@@ -530,7 +530,7 @@ function SideArticleCard({
     : null;
   return (
     <Link
-      href={`/${locale}/explore/social-media/wechat/${article.id}`}
+      href={`/${locale}/explore/social-media/wechat?article=${article.id}`}
       className="sf-card card-hoverable p-0 relative overflow-hidden flex flex-col"
     >
       {article.cover_url && (
@@ -603,7 +603,7 @@ function SocialArticleCard({
     : null;
   return (
     <Link
-      href={`/${locale}/explore/social-media/wechat/${article.id}`}
+      href={`/${locale}/explore/social-media/wechat?article=${article.id}`}
       className="group border border-sf-line bg-sf-surface rounded-[10px] overflow-hidden hover:border-sf-line-strong transition-colors"
     >
       <div className="aspect-[16/10] border-b border-sf-line overflow-hidden bg-sf-bg-alt">

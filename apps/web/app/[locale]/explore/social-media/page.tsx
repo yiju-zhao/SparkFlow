@@ -118,7 +118,7 @@ function WechatPreviewCard({
     : null;
   return (
     <Link
-      href={`/${locale}/explore/social-media/wechat/${article.id}`}
+      href={`/${locale}/explore/social-media/wechat?article=${article.id}`}
       className="group bg-sf-surface border border-sf-line overflow-hidden flex flex-col rounded-[10px] hover:border-sf-line-strong hover:shadow-[0_12px_32px_-16px_rgba(16,24,40,0.16)] transition-all"
     >
       <div className="aspect-video w-full overflow-hidden bg-sf-bg-alt">
