@@ -23,6 +23,7 @@ invalidated when ``mark_compressed(session_id)`` is called.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -38,6 +39,7 @@ class PromptBuilder:
             # apps/agent/hermes/prompt_builder.py → apps/agent/prompts/
             prompts_root = Path(__file__).resolve().parent.parent / "prompts"
         self.prompts_root = Path(prompts_root)
+        self._cached_system_prompts: dict[str, str] = {}
 
     # ---- public API --------------------------------------------------
 
@@ -58,6 +60,66 @@ class PromptBuilder:
             parts.append(hint)
         parts.append(self._read(surface_prompt_path))
         return "\n\n".join(p for p in parts if p)
+
+    def build(
+        self,
+        *,
+        surface_prompt_path: str,
+        model_provider: str,
+        model_name: str,
+        user_id: str,
+        session_id: str,
+        notebook_id: str | None = None,
+        context_refs: list = (),
+        skip_memory: bool = False,
+        skip_skills: bool = False,
+        extra_caller_system: str | None = None,
+    ) -> str:
+        """Full 9-layer system prompt. Cached per ``session_id``."""
+
+        cached = self._cached_system_prompts.get(session_id)
+        if cached is not None:
+            return cached
+
+        parts: list[str] = []
+        parts.append(self._read("base_identity.md"))                           # 1
+        parts.append(self._read("tool_use_enforcement.md"))                    # 2
+        hint = self._model_hint(model_provider)                                # 3
+        if hint:
+            parts.append(hint)
+        if extra_caller_system:                                                # 4
+            parts.append(extra_caller_system.strip())
+        if not skip_memory:                                                    # 5
+            mem = self._memory_snippet(user_id=user_id, notebook_id=notebook_id)
+            if mem:
+                parts.append(mem)
+        if not skip_skills:                                                    # 6
+            skills = self._skills_snippet(surface_path=surface_prompt_path)
+            if skills:
+                parts.append(skills)
+        parts.append(self._read(surface_prompt_path))                          # 7
+        for ref in context_refs:                                               # 8
+            rendered = ref.render()
+            if rendered:
+                parts.append(rendered.strip())
+        parts.append(self._session_metadata(                                   # 9
+            session_id=session_id,
+            model_provider=model_provider,
+            model_name=model_name,
+            surface_prompt_path=surface_prompt_path,
+        ))
+
+        out = "\n\n".join(p for p in parts if p)
+        self._cached_system_prompts[session_id] = out
+        return out
+
+    def mark_compressed(self, session_id: str) -> None:
+        """Invalidate the cache for ``session_id``. Call this after context
+        compression rewrites the message history (so the next turn rebuilds
+        the system prompt with fresh memory/skills snapshots).
+        """
+
+        self._cached_system_prompts.pop(session_id, None)
 
     # ---- private helpers ---------------------------------------------
 
@@ -80,3 +142,33 @@ class PromptBuilder:
         if not hint_path.exists():
             return ""
         return hint_path.read_text(encoding="utf-8").strip()
+
+    # ---- P1 no-op hooks (filled in P3) ------------------------------
+
+    def _memory_snippet(self, *, user_id: str, notebook_id: str | None) -> str:
+        """P1: return empty. P3 loads UserMemory + NotebookMemory from Prisma
+        and renders as a ``## Memory`` section, plus a usage guide."""
+
+        return ""
+
+    def _skills_snippet(self, *, surface_path: str) -> str:
+        """P1: return empty. P3 scans ``~/.sparkflow/skills/*.md`` and renders
+        the index as a ``## Skills`` section with progressive disclosure."""
+
+        return ""
+
+    def _session_metadata(
+        self,
+        *,
+        session_id: str,
+        model_provider: str,
+        model_name: str,
+        surface_prompt_path: str,
+    ) -> str:
+        return (
+            "## Session Metadata\n\n"
+            f"- session_id: `{session_id}`\n"
+            f"- surface: `{surface_prompt_path}`\n"
+            f"- model: `{model_provider}/{model_name}`\n"
+            f"- timestamp: `{datetime.now(timezone.utc).isoformat()}`"
+        )
