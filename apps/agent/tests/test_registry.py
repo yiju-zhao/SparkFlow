@@ -160,3 +160,24 @@ def test_is_frontend():
     assert reg.is_frontend("backend_tool") is False
     with pytest.raises(KeyError):
         reg.is_frontend("unknown")
+
+
+def test_get_tools_preserves_registration_order():
+    reg = ToolRegistry()
+    t1, t2, t3 = object(), object(), object()
+    reg.register(name="a", toolset="x", tool=t1)
+    reg.register(name="b", toolset="x", tool=t2)
+    reg.register(name="c", toolset="x", tool=t3)
+    assert reg.get_tools(toolset={"x"}) == [t1, t2, t3]
+
+
+def test_get_tools_check_fn_truthy_non_bool_is_normalized():
+    reg = ToolRegistry()
+    t_truthy_int = object()
+    t_falsy_str = object()
+    t_none = object()
+    reg.register(name="a", toolset="x", tool=t_truthy_int, check_fn=lambda: 1)
+    reg.register(name="b", toolset="x", tool=t_falsy_str, check_fn=lambda: "")
+    reg.register(name="c", toolset="x", tool=t_none, check_fn=lambda: None)
+    # Only the truthy-int tool survives; "" and None are treated as unavailable.
+    assert reg.get_tools(toolset={"x"}) == [t_truthy_int]
