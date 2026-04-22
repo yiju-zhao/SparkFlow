@@ -75,20 +75,24 @@
 │  • hub (研究助理) │  │  • matcher        │  └───────────────────┘
 │  • deep_research  │  │  • daily_digest   │
 │                   │  └───────────────────┘
-│  共享 harness：    │           ▲
-│  registry         │           │
-│  prompt_builder   │  ┌────────┴─────────────┐
-│  memory (Prisma)  │  │  Jobs —— cron / CI   │
-│  skills           │  │  apps/agent/jobs/    │
-└───────────────────┘  │  纯 ETL，无 LLM       │
-                       │  • backfill_wechat_  │
-                       │    embeddings        │
-                       │  • backfill_         │
-                       │    publication_      │
-                       │    embeddings        │
-                       │  • run_daily_digest  │
-                       │    (可选 cron 触发器) │
-                       └──────────────────────┘
+│  共享 harness：    │
+│  registry         │
+│  prompt_builder   │
+│  memory (Prisma)  │
+│  skills           │
+└───────────────────┘
+
+┌──────────────────────────┐
+│  Jobs —— cron / CI       │   ← repo 根 /jobs/（不在 apps/ 下）
+│  /jobs/                  │   非 service；一次性脚本；cron 触发
+│  纯 ETL / 触发器，无 LLM │   import apps/agent/embeddings 走 sys.path
+│  • backfill_wechat_      │
+│    embeddings.py         │
+│  • backfill_publication_ │
+│    embeddings.py         │
+│  • run_daily_digest.sh   │
+│    (可选 cron 触发 HTTP) │
+└──────────────────────────┘
 ```
 
 ### 4.2 关键规则
@@ -96,7 +100,7 @@
 1. **Agent = LangGraph loop + harness primitives**（registry / prompt_builder / memory / skills 的 consumer）
 2. **Workflow = deterministic composition of semops operators**；**全部 Python**，住 `apps/agent/workflows/`（见 §7 论证）
 3. **Operator = pure semantic primitive**；`apps/semops` 只维护定义 + RPC，**不做 workflow 编排**
-4. **Job = 无 LLM 的数据管道 / cron 触发器**；`apps/agent/jobs/`
+4. **Job = 无 LLM 的数据管道 / cron 触发器**；**repo 根 `/jobs/`**（不是 service，不在 `apps/` 下）
 
 ### 4.3 目录结构
 
@@ -132,10 +136,6 @@ apps/agent/
 │   ├── search.py                #   pgvector prefilter → sem_rank
 │   ├── matcher.py               #   从 apps/semops 迁来
 │   └── daily_digest.py          #   从 apps/web/lib/services/digest/ 迁来（见 §11）
-├── jobs/                        # ↘ cron-driven，无 LLM
-│   ├── backfill_wechat_embeddings.py       # 从 scripts/ 搬
-│   ├── backfill_publication_embeddings.py  # 从 scripts/ 搬
-│   └── run_daily_digest.py                 # 可选：cron 触发 workflow HTTP 的薄 wrapper
 ├── tools/                       # ↘ 全部在模块顶层 registry.register(...)
 │   ├── __init__.py
 │   ├── wiki.py                  #   wiki_search / wiki_navigate / source_read / source_list
@@ -167,12 +167,24 @@ apps/agent/
 │       └── matcher_rank.md
 ├── config/
 │   └── surfaces.py              #   SurfaceConfig dataclass 定义
-├── embeddings/                  #   不动
-├── scripts/                     #   保留给一次性诊断脚本（跟 jobs/ 区分）
+├── embeddings/                  #   不动（BGE-M3 包装；jobs/ 也从这里 import）
+├── scripts/                     #   保留给一次性开发者诊断脚本
 ├── langgraph.json               #   精简：只注册 graphs/surface.py 一个 graph，按 surface 参数激活
 ├── pyproject.toml               #   清理（见 §13 依赖变更）
 └── README.md                    #   更新
 ```
+
+**Repo 根新增 `/jobs/`**（独立于 `apps/`）：
+
+```
+jobs/                            # ↘ cron / CI 触发的一次性脚本，非 service
+├── backfill_wechat_embeddings.py       # 从 apps/agent/scripts/ 搬
+├── backfill_publication_embeddings.py  # 从 apps/agent/scripts/ 搬
+├── run_daily_digest.sh                 # 可选：curl Python workflow endpoint 的薄 shell 脚本
+└── README.md                           # 各脚本触发方式、cron 示例
+```
+
+各脚本开头 `sys.path.insert(0, str(REPO_ROOT / "apps" / "agent"))`，复用 `apps/agent/embeddings/bge_m3.py`（现有 `apps/agent/scripts/backfill_wechat_embeddings.py` 已经是这个模式，仅调整 ROOT 计算）。
 
 ## 5. Harness 核心模块契约
 
@@ -536,17 +548,20 @@ Workflow 是确定性流水线，**不**让 LLM 选工具。LLM 调用只通过 
 
 纯 semantic operator library + 薄 RPC 壳。对外契约 `/api/operators/*` 不变。port 2025 保留，作为所有 workflow / ingest 的"算子后端"。
 
-## 9. Jobs 层（非 LLM）
+## 9. Jobs 层（非 LLM，非 service）
 
-`apps/agent/jobs/`：
+**位置**：repo 根 `/jobs/`——不在 `apps/` 下。语义：**cron/CI 触发的一次性脚本**，不是 long-running service，不应被误认为"apps/agent 的一部分"。
 
 | 文件 | 来源 | 触发 |
 |---|---|---|
-| `backfill_wechat_embeddings.py` | `scripts/backfill_wechat_embeddings.py` 迁移 | cron（`python -m apps.agent.jobs.backfill_wechat_embeddings`） + admin HTTP（`/api/admin/wechat-embeddings/backfill`，已存在） |
-| `backfill_publication_embeddings.py` | `scripts/backfill_publication_embeddings.py` 迁移 | cron |
-| `run_daily_digest.py`（可选） | 新增 | cron，薄 curl wrapper；也可直接 cron 配 `curl -X POST {agent_url}/v1/workflows/daily_digest/...` |
+| `jobs/backfill_wechat_embeddings.py` | `apps/agent/scripts/backfill_wechat_embeddings.py` 迁移 | cron（`python jobs/backfill_wechat_embeddings.py`） + admin HTTP（`/api/admin/wechat-embeddings/backfill`，已存在；路由 handler 相应改调新路径） |
+| `jobs/backfill_publication_embeddings.py` | `apps/agent/scripts/backfill_publication_embeddings.py` 迁移 | cron |
+| `jobs/run_daily_digest.sh`（可选） | 新增 | cron；`curl -X POST {agent_url}/v1/workflows/daily_digest/...` |
+| `jobs/README.md` | 新增 | 每个脚本的触发示例、crontab 片段、env 要求 |
 
-`scripts/` 保留给一次性诊断 / dev 工具。
+**依赖**：脚本开头 `sys.path.insert(0, str(REPO_ROOT / "apps" / "agent"))` 以 import `embeddings.bge_m3` 等模块。ROOT 路径从 `Path(__file__).resolve().parent.parent` 计算（从 `/jobs/` 到 repo 根是 1 层）。
+
+`apps/agent/scripts/` 保留给一次性开发者诊断 / dev 工具——**不**放 cron 会跑的东西。
 
 ## 10. 分阶段迁移（P1 – P6）
 
@@ -756,7 +771,7 @@ async def generate_section(req: DigestGenerateRequest) -> None:
 - [ ] `apps/semops` 瘦身后 `/api/operators/*` 契约不变；`tests/test_semantic_operators.py` 全绿
 - [ ] `apps/agent/workflows/matcher/*` 取代原 `apps/semops` matcher；`/explore/toolbox/matcher` e2e 通过
 - [ ] `apps/agent/workflows/daily_digest.py` 走通 e2e；`/digest` 页面生成行为与原 2026-04-21 spec 一致
-- [ ] `apps/agent/jobs/backfill_*_embeddings.py` cron 调度不受影响（原 `scripts/` 搬来后路径变化仅需更新 cron 配置）
+- [ ] `jobs/backfill_*_embeddings.py` cron 调度不受影响（脚本从 `apps/agent/scripts/` 搬到 repo 根 `/jobs/`，cron 配置与 admin HTTP 路由 handler 同步更新）
 
 ## 16. 术语表
 
@@ -766,7 +781,7 @@ async def generate_section(req: DigestGenerateRequest) -> None:
 | **surface** | 用户可见的 agent 配置（notebook / hub / deep_research）。技术上是 `SurfaceConfig` dataclass；由同一个 `graphs/surface.py` 参数化生成 |
 | **workflow** | 非-agent 的确定性 LLM 编排，消费 `apps/semops` 语义算子。全部 Python，住 `apps/agent/workflows/` |
 | **operator** | `apps/semops` 里的 semantic 原语（sem_rank / sem_filter / sem_map / sem_agg）。纯函数式 |
-| **job** | 无 LLM 的 cron / batch 触发器（embedding backfill 等）。`apps/agent/jobs/` |
+| **job** | 无 LLM 的 cron / batch 触发器（embedding backfill 等）。repo 根 `/jobs/`（不在 `apps/` 下，非 service） |
 | **SOUL** | Agent 身份 prompt，对应 `prompts/base_identity.md`（Hermes 术语） |
 | **frontend tool** | `registry.register(frontend=True)` 的工具：LLM 吐 tool call 后由 CopilotKit 直接渲染成 React 组件，不回灌 LLM |
 | **context ref** | `PromptBuilder` 注入第三方内容（wiki / page context / web search context）的抽象 |
