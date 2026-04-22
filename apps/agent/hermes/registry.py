@@ -13,9 +13,12 @@ requests can safely call ``get_tools`` / ``get_entry``.
 
 from __future__ import annotations
 
+import ast
+import importlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -135,3 +138,73 @@ class ToolRegistry:
 
 # Module-level singleton. Tools register themselves against this instance.
 registry = ToolRegistry()
+
+
+_DISCOVER_EXEMPT_FILENAMES = {"__init__.py", "registry.py", "mcp_tool.py"}
+
+
+def _module_registers_tools_at_top_level(path: Path) -> bool:
+    """AST-check: does this .py file have a top-level ``registry.register(...)``
+    call? Calls inside function/class bodies don't count — we only want files
+    whose module import triggers the registration side-effect.
+    """
+
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (SyntaxError, OSError):
+        return False
+    for node in tree.body:
+        if not isinstance(node, ast.Expr):
+            continue
+        call = node.value
+        if not isinstance(call, ast.Call):
+            continue
+        func = call.func
+        # matches: registry.register(...), some_alias.register(...)
+        if isinstance(func, ast.Attribute) and func.attr == "register":
+            return True
+    return False
+
+
+def discover_builtin_tools(
+    *,
+    tools_dir: Path | None = None,
+    package: str = "tools",
+) -> list[str]:
+    """Import all .py files under ``tools_dir`` whose module top level calls
+    ``registry.register(...)``. Returns the list of imported module names.
+
+    ``package`` is the Python package prefix used to build the module name
+    (e.g. ``"tools"`` → ``"tools.wiki"``). For tests, fixtures use a custom
+    package to avoid polluting the production ``tools`` namespace.
+    """
+
+    if tools_dir is None:
+        tools_dir = Path(__file__).resolve().parent.parent / "tools"
+    if not tools_dir.exists() or not tools_dir.is_dir():
+        return []
+
+    imported: list[str] = []
+    for py in sorted(tools_dir.glob("*.py")):
+        if py.name in _DISCOVER_EXEMPT_FILENAMES:
+            continue
+        if not _module_registers_tools_at_top_level(py):
+            continue
+        module_name = f"{package}.{py.stem}"
+        importlib.import_module(module_name)
+        imported.append(module_name)
+
+    # Recurse one level into subdirs that are Python packages
+    for sub in sorted(tools_dir.iterdir()):
+        if not (sub.is_dir() and (sub / "__init__.py").exists()):
+            continue
+        for py in sorted(sub.glob("*.py")):
+            if py.name in _DISCOVER_EXEMPT_FILENAMES:
+                continue
+            if not _module_registers_tools_at_top_level(py):
+                continue
+            module_name = f"{package}.{sub.name}.{py.stem}"
+            importlib.import_module(module_name)
+            imported.append(module_name)
+
+    return imported
