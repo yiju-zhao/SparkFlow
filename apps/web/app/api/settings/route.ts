@@ -24,8 +24,8 @@ export async function GET() {
       wikiModelName: true,
       searchModelProvider: true,
       searchModelName: true,
-      matcherModelProvider: true,
-      matcherModelName: true,
+      semopsModelProvider: true,
+      semopsModelName: true,
       apiKeys: true,
       wechatExcludedSourceIds: true,
     },
@@ -55,8 +55,8 @@ export async function GET() {
     wikiModelName: settings?.wikiModelName || defaults.wikiModel,
     searchModelProvider: settings?.searchModelProvider || defaults.provider,
     searchModelName: settings?.searchModelName || defaults.searchModel,
-    matcherModelProvider: settings?.matcherModelProvider || defaults.provider,
-    matcherModelName: settings?.matcherModelName || defaults.matcherModel,
+    semopsModelProvider: settings?.semopsModelProvider || defaults.provider,
+    semopsModelName: settings?.semopsModelName || defaults.semopsModel,
     apiKeyStatus,
     wechatExcludedSourceIds: settings?.wechatExcludedSourceIds || [],
   });
@@ -77,8 +77,8 @@ export async function POST(request: Request) {
     wikiModelName,
     searchModelProvider,
     searchModelName,
-    matcherModelProvider,
-    matcherModelName,
+    semopsModelProvider,
+    semopsModelName,
     apiKeys: apiKeysUpdate,
     wechatExcludedSourceIds,
   } = body;
@@ -91,8 +91,8 @@ export async function POST(request: Request) {
   if (wikiModelName) updateData.wikiModelName = wikiModelName;
   if (searchModelProvider) updateData.searchModelProvider = searchModelProvider;
   if (searchModelName) updateData.searchModelName = searchModelName;
-  if (matcherModelProvider) updateData.matcherModelProvider = matcherModelProvider;
-  if (matcherModelName) updateData.matcherModelName = matcherModelName;
+  if (semopsModelProvider) updateData.semopsModelProvider = semopsModelProvider;
+  if (semopsModelName) updateData.semopsModelName = semopsModelName;
 
   if (wechatExcludedSourceIds !== undefined) {
     updateData.wechatExcludedSourceIds = wechatExcludedSourceIds;
@@ -146,8 +146,8 @@ export async function POST(request: Request) {
       wikiModelName: wikiModelName || defaults.wikiModel,
       searchModelProvider: searchModelProvider || defaults.provider,
       searchModelName: searchModelName || defaults.searchModel,
-      matcherModelProvider: matcherModelProvider || defaults.provider,
-      matcherModelName: matcherModelName || defaults.matcherModel,
+      semopsModelProvider: semopsModelProvider || defaults.provider,
+      semopsModelName: semopsModelName || defaults.semopsModel,
       ...(updateData.apiKeys ? { apiKeys: updateData.apiKeys as string } : {}),
       ...(wechatExcludedSourceIds ? { wechatExcludedSourceIds } : {}),
     },
@@ -160,8 +160,8 @@ export async function POST(request: Request) {
     wikiModelName: settings.wikiModelName,
     searchModelProvider: settings.searchModelProvider,
     searchModelName: settings.searchModelName,
-    matcherModelProvider: settings.matcherModelProvider,
-    matcherModelName: settings.matcherModelName,
+    semopsModelProvider: settings.semopsModelProvider,
+    semopsModelName: settings.semopsModelName,
     wechatExcludedSourceIds: settings.wechatExcludedSourceIds,
   });
 }

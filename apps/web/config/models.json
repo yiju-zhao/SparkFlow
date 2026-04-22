@@ -132,7 +132,7 @@
     "chatModel": "gemini-2.5-flash",
     "wikiModel": "gemini-2.5-flash",
     "searchModel": "gemini-2.5-flash",
-    "matcherModel": "gemini-2.5-flash"
+    "semopsModel": "gemini-2.5-flash"
   },
   "recommendations": {
     "chat": "Fast models work best: Gemini 2.5 Flash, GPT-4.1 Mini, DeepSeek Chat. For complex research, try Gemini 3.1 Pro or GPT-5.4.",

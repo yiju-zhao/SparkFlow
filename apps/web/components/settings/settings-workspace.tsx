@@ -55,7 +55,7 @@ interface ModelsConfig {
     chatModel: string;
     wikiModel: string;
     searchModel: string;
-    matcherModel: string;
+    semopsModel: string;
   };
   recommendations?: {
     chat?: string;
@@ -72,8 +72,8 @@ interface InitialSettings {
   wikiModelName: string;
   searchModelProvider: string;
   searchModelName: string;
-  matcherModelProvider: string;
-  matcherModelName: string;
+  semopsModelProvider: string;
+  semopsModelName: string;
 }
 
 interface ApiKeyStatus {
@@ -358,10 +358,10 @@ function AiModelsSection({
   );
   const [searchModel, setSearchModel] = useState(initialSettings?.searchModelName || "gpt-4o-mini");
   const [matcherProvider, setMatcherProvider] = useState(
-    initialSettings?.matcherModelProvider || "openai",
+    initialSettings?.semopsModelProvider || "openai",
   );
   const [matcherModel, setMatcherModel] = useState(
-    initialSettings?.matcherModelName || "gpt-4o-mini",
+    initialSettings?.semopsModelName || "gpt-4o-mini",
   );
 
   const baselineRef = useRef(initialSettings);
@@ -408,8 +408,8 @@ function AiModelsSection({
     baselineRef.current?.wikiModelName !== wikiModel ||
     baselineRef.current?.searchModelProvider !== searchProvider ||
     baselineRef.current?.searchModelName !== searchModel ||
-    baselineRef.current?.matcherModelProvider !== matcherProvider ||
-    baselineRef.current?.matcherModelName !== matcherModel;
+    baselineRef.current?.semopsModelProvider !== matcherProvider ||
+    baselineRef.current?.semopsModelName !== matcherModel;
 
   const handleDiscard = () => {
     const b = baselineRef.current;
@@ -420,8 +420,8 @@ function AiModelsSection({
     setWikiModel(b.wikiModelName);
     setSearchProvider(b.searchModelProvider);
     setSearchModel(b.searchModelName);
-    setMatcherProvider(b.matcherModelProvider);
-    setMatcherModel(b.matcherModelName);
+    setMatcherProvider(b.semopsModelProvider);
+    setMatcherModel(b.semopsModelName);
   };
 
   const handleSave = async () => {
@@ -434,8 +434,8 @@ function AiModelsSection({
         wikiModelName: wikiModel,
         searchModelProvider: searchProvider,
         searchModelName: searchModel,
-        matcherModelProvider: matcherProvider,
-        matcherModelName: matcherModel,
+        semopsModelProvider: matcherProvider,
+        semopsModelName: matcherModel,
       };
       const res = await fetch("/api/settings", {
         method: "POST",

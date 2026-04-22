@@ -64,9 +64,9 @@ model UserSettings {
   // Deepdive — Source search agent model
   searchModelProvider  String   @default("openai")
   searchModelName      String   @default("gpt-4o-mini")
-  // Research Hub — Matcher agent model
-  matcherModelProvider String  @default("openai")
-  matcherModelName    String   @default("gpt-4o-mini")
+  // Research Hub — SemOps agent model (formerly matcher)
+  semopsModelProvider String  @default("openai")
+  semopsModelName    String   @default("gpt-4o-mini")
   // BYOK — encrypted JSON blob of API keys per provider
   apiKeys             String?  @db.Text
   // WeChat — excluded source IDs for Add Source search (empty = all)

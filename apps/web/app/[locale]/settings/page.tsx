@@ -20,8 +20,8 @@ export default async function SettingsPage() {
         wikiModelName: true,
         searchModelProvider: true,
         searchModelName: true,
-        matcherModelProvider: true,
-        matcherModelName: true,
+        semopsModelProvider: true,
+        semopsModelName: true,
       },
     }),
     prisma.user.findUnique({

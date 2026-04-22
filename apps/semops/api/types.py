@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class MatchJobStatus(str, Enum):
@@ -81,3 +81,53 @@ class JobProgressResponse(BaseModel):
     error_message: Optional[str] = None
     query_count: int
     match_count: int
+
+
+# ---------------------------------------------------------------------------
+# Operators API — POST /api/operators/rank
+# ---------------------------------------------------------------------------
+
+
+class RankCandidate(BaseModel):
+    """A single candidate passed to SemanticOperators.rank.
+
+    Only ``id`` and ``match_text`` are required; arbitrary additional fields
+    (e.g. ``title``, ``abstract``) are preserved via ``extra="allow"`` so they
+    round-trip through the response.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    match_text: str
+
+
+class RankRequest(BaseModel):
+    """Request body for POST /api/operators/rank."""
+
+    candidates: list[RankCandidate]
+    query_text: str
+    top_k: int = 50
+    search_k: int = 350
+    include_reasons: bool = True
+
+
+class RankResultItem(BaseModel):
+    """A single ranked result.
+
+    Mirrors ``RankCandidate``'s extra-passthrough semantics so any fields the
+    semantic operator attached (beyond ``recommendation_reason``) survive.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    match_text: str
+    recommendation_reason: Optional[str] = None
+
+
+class RankResponse(BaseModel):
+    """Response body for POST /api/operators/rank."""
+
+    results: list[RankResultItem]
+    count: int

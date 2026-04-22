@@ -14,6 +14,8 @@ import pandas as pd
 from lotus.models import LM, SentenceTransformersRM
 from lotus.vector_store import FaissVS
 
+from services.semantic_operators import SemanticOperators
+
 logger = logging.getLogger(__name__)
 
 
@@ -127,7 +129,7 @@ class LotusMatcher:
         logger.info(f"Running pipeline for query: {query_name}")
         logger.info(f"  Input: {len(df)} items, search_k={search_k}, top_k={top_k}")
 
-        # Step 1: Build semantic index
+        # Step 1: Build semantic index (stays in LotusMatcher so we index exactly once).
         if progress_callback:
             progress_callback(10, "Building semantic index...")
 
@@ -137,47 +139,57 @@ class LotusMatcher:
         else:
             df = df.sem_index("match_text", "/tmp/lotus_index")
 
-        # Step 2: sem_search - embedding pre-filter
-        if progress_callback:
-            progress_callback(30, f"Finding top {search_k} candidates...")
+        # Step 2+: Delegate sem_search / sem_topk / sem_map to SemanticOperators.
+        # Closures capture the pre-indexed `df` so indexing happens once above.
+        def _search(cands, q, k):
+            # Intentionally ignores `cands` and searches the pre-indexed `df`;
+            # sem_search must run against the indexed frame, not a rebuilt one.
+            out = df.sem_search("match_text", q, K=k)
+            logger.info(f"  sem_search: {len(out)} candidates")
+            return out.to_dict("records")
 
-        candidates = df.sem_search("match_text", query_text, K=search_k)
-        logger.info(f"  sem_search: {len(candidates)} candidates")
+        def _topk(cands, q, k):
+            instruction = (
+                f"Given the following query:\n{q}\n\n"
+                f"Rank the items by relevance to this query. "
+                f"An item is more relevant if its {{match_text}} directly addresses, "
+                f"provides insights into, or offers solutions for the query's needs."
+            )
+            out = pd.DataFrame(cands).sem_topk(instruction, K=k)
+            logger.info(f"  sem_topk: {len(out)} matches")
+            return out.to_dict("records")
 
-        # Step 3: sem_topk - LLM-based ranking
-        if progress_callback:
-            progress_callback(50, f"Ranking to top {top_k}...")
-
-        topk_instruction = (
-            f"Given the following query:\n{query_text}\n\n"
-            f"Rank the items by relevance to this query. "
-            f"An item is more relevant if its {{match_text}} directly addresses, "
-            f"provides insights into, or offers solutions for the query's needs."
-        )
-        top_matches = candidates.sem_topk(topk_instruction, K=top_k)
-        logger.info(f"  sem_topk: {len(top_matches)} matches")
-
-        # Step 4: sem_map - generate reasons (optional)
-        if include_reasons:
-            if progress_callback:
-                progress_callback(70, "Generating recommendation reasons...")
-
-            reason_instruction = (
-                f"Given the query:\n{query_text}\n\n"
+        def _map(cands, q):
+            instruction = (
+                f"Given the query:\n{q}\n\n"
                 f"For the item described by: {{match_text}}\n\n"
                 f"请用中文写出2-3句简洁的推荐理由，说明为什么该条目与查询相关。要具体说明。"
                 f"(Write a concise recommendation reason in Chinese, 2-3 sentences, "
                 f"explaining why this item is relevant to the query. Be specific.)"
             )
-            top_matches = top_matches.sem_map(
-                reason_instruction, suffix="recommendation_reason"
+            out = pd.DataFrame(cands).sem_map(
+                instruction, suffix="recommendation_reason"
             )
             logger.info("  sem_map: Reasons generated")
+            return out.to_dict("records")
+
+        ops = SemanticOperators(search_fn=_search, topk_fn=_topk, map_fn=_map)
+
+        if progress_callback:
+            progress_callback(50, f"Ranking: sem_search → sem_topk → sem_map...")
+
+        ranked = ops.rank(
+            candidates=df.to_dict("records"),
+            query_text=query_text,
+            top_k=top_k,
+            search_k=search_k,
+            include_reasons=include_reasons,
+        )
 
         if progress_callback:
             progress_callback(100, "Complete")
 
-        return top_matches.reset_index(drop=True)
+        return pd.DataFrame(ranked).reset_index(drop=True)
 
     def print_usage(self):
         """Print total LLM usage statistics."""
