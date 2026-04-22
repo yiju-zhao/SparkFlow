@@ -48,3 +48,27 @@ def test_discover_nonexistent_dir_returns_empty(tmp_path):
     # tmp_path is empty
     imported = discover_builtin_tools(tools_dir=tmp_path, package="test.empty")
     assert imported == []
+
+
+def test_echo_tool_is_discovered_from_production_tools_dir():
+    """The real apps/agent/tools/ directory must include _echo.py after P1."""
+    _clear_fixture_imports()
+    # Clear any prior registration so the discovery side-effect is observable
+    global_registry._tools.pop("echo", None)
+
+    imported = discover_builtin_tools()  # use default tools_dir
+    assert "tools._echo" in imported
+    entry = global_registry.get_entry("echo")
+    assert entry.name == "echo"
+    assert entry.toolset == "_test"
+    # The tool itself is a LangChain BaseTool instance
+    from langchain_core.tools import BaseTool
+    assert isinstance(entry.tool, BaseTool)
+
+
+def test_echo_tool_invocation_returns_input():
+    from hermes.registry import registry as global_registry
+
+    entry = global_registry.get_entry("echo")
+    result = entry.tool.invoke({"text": "hello"})
+    assert result == "hello"
