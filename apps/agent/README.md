@@ -29,3 +29,31 @@ langgraph dev --host 0.0.0.0 --port 2024
 ## Model Configuration
 - DeepDive defaults: `config/rag_agent.py`
 - Hub defaults: `config/hub_agent.py`
+
+## Hermes Harness (P1)
+
+`apps/agent/hermes/` is the shared primitives layer used by all agent surfaces
+and workflows (see `docs/superpowers/specs/2026-04-22-hermes-harness-design.md`
+for the architecture and `docs/superpowers/plans/2026-04-22-hermes-harness-p1.md`
+for this phase's plan).
+
+- `registry.py` — central tool registry + AST-based auto-discovery.
+- `prompt_builder.py` — 9-layer system prompt assembly with per-session cache.
+- `context/references.py` — context-ref injectors (wiki / sources / page / web).
+
+### Running tests
+
+```bash
+cd apps/agent
+uv pip install --python .venv/bin/python -e '.[dev]'   # first time only
+.venv/bin/python -m pytest -v
+```
+
+### Current status
+
+- P1 (2026-04-22): primitives skeleton — lands here. No surfaces refactored yet; the three legacy LangGraph graphs (`rag_agent`, `hub_agent`, `search_agent`) remain in production.
+- P2: notebook + hub surfaces on shared harness.
+- P3: memory + skills.
+- P4: search workflow + deep-research surface.
+- P5: matcher workflow out of apps/semops.
+- P6: digest orchestrator from Node to Python.
