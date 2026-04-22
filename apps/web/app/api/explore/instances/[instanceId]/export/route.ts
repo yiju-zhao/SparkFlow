@@ -75,102 +75,109 @@ export async function GET(
       }),
     ]);
 
-    // Build Excel workbook with ExcelJS
-    const { Workbook } = await import("exceljs");
-    const workbook = new Workbook();
+    // Build Excel workbook with SheetJS
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
 
     // --- Publications sheet ---
-    const pubSheet = workbook.addWorksheet("Publications");
-    pubSheet.columns = [
-      { header: "Title", key: "title", width: 50 },
-      { header: "Authors", key: "authors", width: 40 },
-      { header: "Abstract", key: "abstract", width: 80 },
-      { header: "Summary", key: "summary", width: 80 },
-      { header: "Affiliations", key: "affiliations", width: 40 },
-      { header: "Countries", key: "countries", width: 25 },
-      { header: "Keywords", key: "keywords", width: 35 },
-      { header: "Research Topic", key: "researchTopic", width: 25 },
-      { header: "Rating", key: "rating", width: 10 },
-      { header: "Status", key: "status", width: 15 },
-      { header: "DOI", key: "doi", width: 30 },
-      { header: "PDF URL", key: "pdfUrl", width: 40 },
-      { header: "GitHub URL", key: "githubUrl", width: 40 },
-      { header: "Website URL", key: "websiteUrl", width: 40 },
+    const pubHeaders = [
+      "Title",
+      "Authors",
+      "Abstract",
+      "Summary",
+      "Affiliations",
+      "Countries",
+      "Keywords",
+      "Research Topic",
+      "Rating",
+      "Status",
+      "DOI",
+      "PDF URL",
+      "GitHub URL",
+      "Website URL",
     ];
-
+    const pubRows: unknown[][] = [pubHeaders];
     for (const pub of publications) {
-      pubSheet.addRow({
-        title: pub.title,
-        authors: pub.authors.join("; "),
-        abstract: pub.abstract,
-        summary: pub.summary,
-        affiliations: pub.affiliations.join("; "),
-        countries: pub.countries.join("; "),
-        keywords: pub.keywords.join("; "),
-        researchTopic: pub.researchTopic,
-        rating: pub.rating,
-        status: pub.status,
-        doi: pub.doi,
-        pdfUrl: pub.pdfUrl,
-        githubUrl: pub.githubUrl,
-        websiteUrl: pub.websiteUrl,
-      });
+      pubRows.push([
+        pub.title,
+        pub.authors.join("; "),
+        pub.abstract,
+        pub.summary,
+        pub.affiliations.join("; "),
+        pub.countries.join("; "),
+        pub.keywords.join("; "),
+        pub.researchTopic,
+        pub.rating,
+        pub.status,
+        pub.doi,
+        pub.pdfUrl,
+        pub.githubUrl,
+        pub.websiteUrl,
+      ]);
     }
-
-    // Bold header row
-    pubSheet.getRow(1).font = { bold: true };
+    const pubSheet = XLSX.utils.aoa_to_sheet(pubRows);
+    pubSheet["!cols"] = [
+      { wch: 50 }, { wch: 40 }, { wch: 80 }, { wch: 80 }, { wch: 40 }, { wch: 25 },
+      { wch: 35 }, { wch: 25 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 40 },
+      { wch: 40 }, { wch: 40 },
+    ];
+    XLSX.utils.book_append_sheet(wb, pubSheet, "Publications");
 
     // --- Sessions sheet ---
-    const sessSheet = workbook.addWorksheet("Sessions");
-    sessSheet.columns = [
-      { header: "Title", key: "title", width: 50 },
-      { header: "Type", key: "type", width: 20 },
-      { header: "Date", key: "date", width: 15 },
-      { header: "Start Time", key: "startTime", width: 12 },
-      { header: "End Time", key: "endTime", width: 12 },
-      { header: "Location", key: "location", width: 25 },
-      { header: "Speaker", key: "speaker", width: 40 },
-      { header: "Abstract", key: "abstract", width: 80 },
-      { header: "Overview", key: "overview", width: 80 },
-      { header: "Transcript", key: "transcript", width: 80 },
-      { header: "Session URL", key: "sessionUrl", width: 40 },
-      { header: "Topics", key: "topic", width: 35 },
-      { header: "Affiliations", key: "affiliation", width: 40 },
-      { header: "Technologies", key: "technology", width: 35 },
-      { header: "Format", key: "sessionFormat", width: 15 },
-      { header: "Has Recording", key: "hasRecording", width: 15 },
-      { header: "Intended Audience", key: "intendedAudience", width: 25 },
+    const sessHeaders = [
+      "Title",
+      "Type",
+      "Date",
+      "Start Time",
+      "End Time",
+      "Location",
+      "Speaker",
+      "Abstract",
+      "Overview",
+      "Transcript",
+      "Session URL",
+      "Topics",
+      "Affiliations",
+      "Technologies",
+      "Format",
+      "Has Recording",
+      "Intended Audience",
     ];
-
+    const sessRows: unknown[][] = [sessHeaders];
     for (const sess of sessions) {
-      sessSheet.addRow({
-        title: sess.title,
-        type: sess.type,
-        date: sess.date ? new Intl.DateTimeFormat("en-CA").format(new Date(sess.date)) : null,
-        startTime: sess.startTime,
-        endTime: sess.endTime,
-        location: sess.location,
-        speaker: sess.speaker.join("; "),
-        abstract: sess.abstract,
-        overview: sess.overview,
-        transcript: sess.transcript,
-        sessionUrl: sess.sessionUrl,
-        topic: sess.topic.join("; "),
-        affiliation: sess.affiliation.join("; "),
-        technology: sess.technology.join("; "),
-        sessionFormat: sess.sessionFormat,
-        hasRecording: sess.hasRecording ? "Yes" : "No",
-        intendedAudience: sess.intendedAudience,
-      });
+      sessRows.push([
+        sess.title,
+        sess.type,
+        sess.date ? new Intl.DateTimeFormat("en-CA").format(new Date(sess.date)) : null,
+        sess.startTime,
+        sess.endTime,
+        sess.location,
+        sess.speaker.join("; "),
+        sess.abstract,
+        sess.overview,
+        sess.transcript,
+        sess.sessionUrl,
+        sess.topic.join("; "),
+        sess.affiliation.join("; "),
+        sess.technology.join("; "),
+        sess.sessionFormat,
+        sess.hasRecording ? "Yes" : "No",
+        sess.intendedAudience,
+      ]);
     }
-
-    sessSheet.getRow(1).font = { bold: true };
+    const sessSheet = XLSX.utils.aoa_to_sheet(sessRows);
+    sessSheet["!cols"] = [
+      { wch: 50 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 25 },
+      { wch: 40 }, { wch: 80 }, { wch: 80 }, { wch: 80 }, { wch: 40 }, { wch: 35 },
+      { wch: 40 }, { wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+    ];
+    XLSX.utils.book_append_sheet(wb, sessSheet, "Sessions");
 
     // Write to buffer and return
-    const buffer = await workbook.xlsx.writeBuffer();
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
     const filename = `${instance.venue.name.toLowerCase()}-${instance.year}.xlsx`;
 
-    return new Response(buffer as ArrayBuffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${filename}"`,
