@@ -25,19 +25,25 @@ interface UploadStepProps {
 }
 
 async function parseExcelFile(file: File): Promise<ParsedQuery[]> {
-  const { Workbook } = await import("exceljs");
+  const XLSX = await import("xlsx");
   const buffer = await file.arrayBuffer();
-  const workbook = new Workbook();
-  await workbook.xlsx.load(buffer);
-  const worksheet = workbook.worksheets[0];
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!worksheet) return [];
+
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
 
   const queries: ParsedQuery[] = [];
-  worksheet.eachRow((row, rowNumber) => {
-    const bu = String(row.getCell(1).value ?? "").trim();
-    const query = String(row.getCell(2).value ?? "").trim();
+  rows.forEach((row, idx) => {
+    const bu = String(row[0] ?? "").trim();
+    const query = String(row[1] ?? "").trim();
     if (!query || query.toLowerCase() === "query") return;
     if (!bu) return;
-    queries.push({ id: uuidv4(), bu, query, rowIndex: rowNumber });
+    queries.push({ id: uuidv4(), bu, query, rowIndex: idx + 1 });
   });
 
   return queries;
