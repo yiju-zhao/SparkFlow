@@ -10,7 +10,7 @@ SparkFlow is an AI-powered research platform with generative UI, RAG notebooks, 
 |-----|-------|------|---------|
 | `apps/web` | Next.js 16, React 19, Prisma 7, Tailwind 4 | 3001 | Frontend |
 | `apps/agent` | LangGraph, LangChain, Python | 2024 | AI agents (RAG + Hub) |
-| `apps/matcher` | Python FastAPI | 2025 | Standalone matcher service |
+| `apps/semops` | Python FastAPI | 2025 | SemanticOperators + matcher jobs (renamed from `apps/matcher` in PR #67) |
 | `apps/mcp-server` | Python (Flask) | 3108 | MCP server |
 | `apps/toolbox` | YAML config | — | Prebuilt tool definitions |
 
@@ -112,7 +112,7 @@ The hub agent uses a tool execution loop with conditional routing: backend tool 
 |---------|------|---------|
 | PostgreSQL | 5433 | Primary database (via Prisma) |
 | MinerU | 8000 | PDF-to-image extraction (local or API mode) |
-| Matcher | 2025 | Query matching service |
+| Semops | 2025 | SemanticOperators + matcher jobs service |
 | MCP Server | 3108 | Model Context Protocol server |
 
 ## Environment
@@ -136,8 +136,8 @@ See `.env.example` in each app.
 
 ## Rules
 
-1. Plan before coding — write to `tasks/todo.md`, get approval first
+1. Plan before coding — present a design and get approval before implementation. Design docs, plans, and task notes can live under `docs/`, `tasks/`, or `designs/` (all tracked in git); in-session task tracking uses the TaskCreate tool, not a file.
 2. Keep changes minimal — only touch relevant code
 3. No temporary fixes — find root causes
-4. **Never commit or force-push files/directories listed in `.gitignore`** — this includes `docs/`, `tasks/`, `designs/`, `.claude/`, `.superpowers/`, and any `*.bak` files. If a previously tracked file needs to be ignored, use `git rm --cached` to untrack it first.
+4. **Never commit or force-push files listed in `.gitignore`** — this includes `.claude/`, `.superpowers/`, `.env*`, and any `*.bak` files. If a previously tracked file needs to be ignored, use `git rm --cached` to untrack it first.
 5. **After completing work, use `/claude-md-improver` to update CLAUDE.md files with current state, patterns, and learnings at the appropriate target level (root, package, or feature)**

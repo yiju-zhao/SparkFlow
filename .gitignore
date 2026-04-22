@@ -16,15 +16,7 @@
 .agents/
 .sisyphus/
 .superpowers/
-superpowers/
-
-# Documentation, planning, and tasks
-docs/
-tasks/
-plan/
-todo.md
-designs/
-design/
+/superpowers/
 
 # Dependencies
 node_modules/
