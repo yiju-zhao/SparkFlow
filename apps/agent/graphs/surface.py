@@ -37,3 +37,19 @@ def build_graph(config: SurfaceConfig):
     )
     graph.add_edge("tools", "llm_call")
     return graph.compile()
+
+
+# ---------------------------------------------------------------------------
+# Module-level compiled graphs for langgraph.json (Task 10 registers them).
+# Discover and register all tools at import time so the registry is populated
+# before LangGraph constructs the graphs.
+# ---------------------------------------------------------------------------
+from hermes.registry import discover_builtin_tools as _discover_builtin_tools
+from surfaces.notebook import NOTEBOOK
+from surfaces.hub import HUB
+
+
+_discover_builtin_tools()
+
+notebook_graph = build_graph(NOTEBOOK)
+hub_graph = build_graph(HUB)
