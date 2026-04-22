@@ -97,6 +97,41 @@ class ToolRegistry:
 
         return self._tools[name]
 
+    def get_tools(self, *, toolset: set[str]) -> list[Any]:
+        """Return LangChain tool objects whose toolset is in ``toolset`` and
+        whose ``check_fn`` (if any) returns True.
+
+        ``check_fn`` is called at most once per call, cached on the local
+        ``check_results`` map. Returns tools in the order they were registered.
+        """
+
+        check_results: dict[Callable[[], bool], bool] = {}
+        out: list[Any] = []
+        for name, entry in self._tools.items():
+            if entry.toolset not in toolset:
+                continue
+            if entry.check_fn is not None:
+                if entry.check_fn not in check_results:
+                    try:
+                        check_results[entry.check_fn] = bool(entry.check_fn())
+                    except Exception:
+                        logger.exception(
+                            "check_fn raised for tool %r; treating as unavailable", name
+                        )
+                        check_results[entry.check_fn] = False
+                if not check_results[entry.check_fn]:
+                    continue
+            out.append(entry.tool)
+        return out
+
+    def is_frontend(self, name: str) -> bool:
+        """Return True if the tool is a frontend/UI passthrough.
+
+        Raises ``KeyError`` if the tool is not registered.
+        """
+
+        return self._tools[name].frontend
+
 
 # Module-level singleton. Tools register themselves against this instance.
 registry = ToolRegistry()
