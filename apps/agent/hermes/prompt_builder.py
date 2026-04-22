@@ -27,7 +27,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-_OPENAI_HINT_FAMILIES = {"openai", "gpt", "codex", "deepseek"}  # OpenAI-style SDK usage
+_OPENAI_HINT_FAMILIES = {
+    # OpenAI-compatible APIs — all accept tool_persistence / verification hints
+    "openai", "gpt", "codex",
+    "deepseek", "glm", "zhipu", "minimax", "kimi", "moonshot",
+    "custom",
+}
 _GOOGLE_HINT_FAMILIES = {"google", "gemini"}
 
 
@@ -65,6 +70,7 @@ class PromptBuilder:
         self,
         *,
         surface_prompt_path: str,
+        surface: str = "",
         model_provider: str,
         model_name: str,
         user_id: str,
@@ -104,6 +110,7 @@ class PromptBuilder:
                 parts.append(rendered.strip())
         parts.append(self._session_metadata(                                   # 9
             session_id=session_id,
+            surface=surface,
             model_provider=model_provider,
             model_name=model_name,
             surface_prompt_path=surface_prompt_path,
@@ -161,14 +168,16 @@ class PromptBuilder:
         self,
         *,
         session_id: str,
+        surface: str,
         model_provider: str,
         model_name: str,
         surface_prompt_path: str,
     ) -> str:
+        surface_label = surface or surface_prompt_path
         return (
             "## Session Metadata\n\n"
             f"- session_id: `{session_id}`\n"
-            f"- surface: `{surface_prompt_path}`\n"
+            f"- surface: `{surface_label}`\n"
             f"- model: `{model_provider}/{model_name}`\n"
             f"- timestamp: `{datetime.now(timezone.utc).isoformat()}`"
         )

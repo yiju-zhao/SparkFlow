@@ -50,3 +50,21 @@ def test_context_ref_is_a_protocol():
         return ref.render()
 
     assert _takes(_Custom()) == "custom"
+
+
+def test_notebook_sources_ref_renders_header_when_notebook_id_present():
+    ref = NotebookSourcesRef(_FakeCtx(notebook_id="nb_42"))
+    out = ref.render()
+    assert "Notebook Sources" in out
+    assert "nb_42" in out
+
+
+def test_web_search_context_ref_returns_empty_in_p1():
+    # P1 stub always returns empty; P4 will replace with real search history.
+    # The explicit test locks the current contract so P4 sees a failing baseline.
+    from hermes.context.references import WebSearchContextRef
+
+    class _Empty:
+        pass
+
+    assert WebSearchContextRef(_Empty()).render() == ""
