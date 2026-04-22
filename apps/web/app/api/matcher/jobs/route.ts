@@ -9,7 +9,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const MATCHER_API_URL = process.env.MATCHER_API_URL || "http://localhost:2025";
+const SEMOPS_API_URL =
+  process.env.SEMOPS_API_URL ||
+  process.env.MATCHER_API_URL ||
+  "http://localhost:2025";
 
 // Convert camelCase to snake_case for matcher service
 function toSnakeCase(str: string): string {
@@ -67,16 +70,16 @@ export async function POST(request: NextRequest) {
     const userSettings = await prisma.userSettings.findUnique({
       where: { userId: session.user.id },
       select: {
-        matcherModelProvider: true,
-        matcherModelName: true,
+        semopsModelProvider: true,
+        semopsModelName: true,
       },
     });
 
     // Use user settings or defaults
     const modelProvider =
-      userSettings?.matcherModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "openai";
+      userSettings?.semopsModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "openai";
     const modelName =
-      userSettings?.matcherModelName || process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini";
+      userSettings?.semopsModelName || process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini";
 
     // Fetch target data from database
     let targetData: Record<string, unknown>[] = [];
@@ -156,7 +159,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[Matcher Jobs] Sending to matcher - model:", modelProvider, modelName);
 
-    const response = await fetch(`${MATCHER_API_URL}/api/jobs`, {
+    const response = await fetch(`${SEMOPS_API_URL}/api/jobs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

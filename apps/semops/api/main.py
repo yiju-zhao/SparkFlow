@@ -1,5 +1,5 @@
 """
-Query Matcher Service - FastAPI Application
+SemOps Service - FastAPI Application
 
 Matches user queries against conference sessions/publications using LOTUS semantic operators.
 """
@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import jobs
+from api.routes import jobs, operators
 from services.lotus_matcher import LotusMatcher
 
 
@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Query Matcher Service",
+    title="SemOps Service",
     description="Semantic matching service for conference sessions and publications",
     version="1.0.0",
     lifespan=lifespan,
@@ -42,9 +42,10 @@ app.add_middleware(
 
 # Include routers
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
+app.include_router(operators.router, prefix="/api/operators", tags=["operators"])
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "matcher"}
+    return {"status": "healthy", "service": "semops"}

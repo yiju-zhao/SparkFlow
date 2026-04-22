@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Query Matcher Service Entry Point
+SemOps Service Entry Point
 
 Run with: uvicorn main:app --host 0.0.0.0 --port 2025
 """

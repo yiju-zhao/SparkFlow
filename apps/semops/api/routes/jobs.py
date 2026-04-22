@@ -1,5 +1,5 @@
 """
-Job management routes for the matcher service.
+Job management routes for the semops service.
 """
 
 import asyncio

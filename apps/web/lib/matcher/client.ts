@@ -6,12 +6,15 @@
 
 import type { CreateMatchJobInput, JobProgress, MatchJob } from "./types";
 
-const MATCHER_API_URL = process.env.NEXT_PUBLIC_MATCHER_API_URL || "http://localhost:2025";
+const SEMOPS_API_URL =
+  process.env.NEXT_PUBLIC_SEMOPS_API_URL ||
+  process.env.NEXT_PUBLIC_MATCHER_API_URL ||
+  "http://localhost:2025";
 
 class MatcherClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = MATCHER_API_URL) {
+  constructor(baseUrl: string = SEMOPS_API_URL) {
     this.baseUrl = baseUrl;
   }
 
