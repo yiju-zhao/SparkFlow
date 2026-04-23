@@ -22,6 +22,17 @@ enum UserRole {
   ADMIN
 }
 
+enum DigestSourceType {
+  WECHAT
+}
+
+enum DigestStatus {
+  GENERATING
+  COMPLETED
+  EMPTY
+  FAILED
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -32,11 +43,12 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Relations
-  notebooks Notebook[]
-  notes     Note[]
-  sessions  Session[]
-  settings  UserSettings?
-  memories  UserMemory[]
+  notebooks    Notebook[]
+  notes        Note[]
+  sessions     Session[]
+  settings     UserSettings?
+  memories     UserMemory[]
+  dailyDigests DailyDigest[]
 
   @@map("users")
 }
@@ -72,6 +84,8 @@ model UserSettings {
   apiKeys             String?  @db.Text
   // WeChat — excluded source IDs for Add Source search (empty = all)
   wechatExcludedSourceIds Int[]   @default([])
+  // Daily Digest — user query + source configuration
+  digestConfig        Json     @default("{}")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -500,4 +514,40 @@ model NotebookMemory {
 
   @@index([notebookId, category])
   @@map("notebook_memory")
+}
+
+// ============================================
+// Daily Digest
+// ============================================
+
+model DailyDigest {
+  id          String          @id @default(cuid())
+  userId      String
+  digestDate  DateTime        @db.Date
+  generatedAt DateTime        @default(now())
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections    DigestSection[]
+
+  @@unique([userId, digestDate])
+  @@index([userId, digestDate(sort: Desc)])
+  @@map("daily_digest")
+}
+
+model DigestSection {
+  id            String            @id @default(cuid())
+  digestId      String
+  sourceType    DigestSourceType
+  status        DigestStatus      @default(GENERATING)
+  items         Json              @default("[]")
+  candidatePool Int               @default(0)
+  modelUsed     String?
+  error         String?
+  startedAt     DateTime          @default(now())
+  completedAt   DateTime?
+
+  digest        DailyDigest       @relation(fields: [digestId], references: [id], onDelete: Cascade)
+
+  @@unique([digestId, sourceType])
+  @@map("digest_section")
 }
