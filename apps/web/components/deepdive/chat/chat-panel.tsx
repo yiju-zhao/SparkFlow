@@ -32,6 +32,7 @@ interface PreloadedMessage {
 
 interface ChatPanelProps {
   notebookId: string;
+  userId: string;
   sources?: Source[];
   initialSessions?: ChatSession[];
   initialMessages?: PreloadedMessage[];
@@ -76,6 +77,7 @@ const EMPTY_SOURCES: Source[] = [];
 
 export function ChatPanel({
   notebookId,
+  userId,
   sources = EMPTY_SOURCES,
   initialSessions = EMPTY_SESSIONS,
   initialMessages = EMPTY_MESSAGES,
@@ -484,36 +486,16 @@ export function ChatPanel({
       }
       setStreamSessionId(targetSessionId ?? null);
 
-      // Fetch wiki content in a single request
-      let wikiContent = "";
-      try {
-        const wikiRes = await fetch(`/api/notebooks/${notebookId}/wiki?withContent=true`);
-        if (wikiRes.ok) {
-          const { pages } = (await wikiRes.json()) as {
-            pages?: Array<{ pageType: string; content?: string; title: string }>;
-          };
-          wikiContent = (pages || [])
-            .filter((p): p is typeof p & { content: string } => p.pageType !== "LOG" && !!p.content)
-            .slice(0, 10)
-            .map((p) => `## ${p.title}\n\n${p.content}`)
-            .join("\n\n---\n\n");
-        }
-      } catch {
-        // Wiki fetch failed — agent will work without it
-      }
-
-      // Submit to LangGraph with wiki knowledge injected
       stream.submit(
         { messages: [{ type: "human", content: message }] },
         {
           context: {
-            notebook_id: notebookId,
-            wiki_content: wikiContent,
-            wiki_schema: {},
             model_provider: modelSettings.modelProvider,
             model_name: modelSettings.modelName,
-            api_key: (resolvedKey !== "pending" && resolvedKey?.apiKey) || "",
-            base_url: (resolvedKey !== "pending" && resolvedKey?.baseUrl) || "",
+            user_id: userId,
+            session_id: targetSessionId!,
+            notebook_id: notebookId,
+            api_key: (resolvedKey !== "pending" && resolvedKey?.apiKey) || null,
           },
         },
       );
