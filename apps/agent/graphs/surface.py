@@ -11,7 +11,7 @@ from __future__ import annotations
 from langgraph.graph import END, START, MessagesState, StateGraph
 
 from config.surfaces import SurfaceConfig
-from graphs.common import make_llm_call, make_tool_node
+from graphs.common import SurfaceRuntimeContext, make_llm_call, make_tool_node
 
 
 def _should_continue(state: MessagesState) -> str:
@@ -28,7 +28,7 @@ def build_graph(config: SurfaceConfig):
     via ``langgraph.json``.
     """
 
-    graph = StateGraph(MessagesState)
+    graph = StateGraph(MessagesState, context_schema=SurfaceRuntimeContext)
     graph.add_node("llm_call", make_llm_call(config))
     graph.add_node("tools", make_tool_node(config))
     graph.add_edge(START, "llm_call")
