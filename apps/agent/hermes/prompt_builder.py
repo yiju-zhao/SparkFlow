@@ -27,6 +27,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+_memory_store = None
+
+
+def _get_memory_store():
+    """Lazy singleton so importing this module doesn't require DATABASE_URL.
+
+    Tests monkeypatch this function to inject a fake store.
+    """
+    global _memory_store
+    if _memory_store is None:
+        from hermes.memory.store import MemoryStore
+        _memory_store = MemoryStore()
+    return _memory_store
+
+
 _OPENAI_HINT_FAMILIES = {
     # OpenAI-compatible APIs — all accept tool_persistence / verification hints
     "openai", "gpt", "codex",
@@ -153,10 +168,46 @@ class PromptBuilder:
     # ---- P1 no-op hooks (filled in P3) ------------------------------
 
     def _memory_snippet(self, *, user_id: str, notebook_id: str | None) -> str:
-        """P1: return empty. P3 loads UserMemory + NotebookMemory from Prisma
-        and renders as a ``## Memory`` section, plus a usage guide."""
+        """Render a ``## Memory`` block for the system prompt.
 
-        return ""
+        Reads user-level memory (always) and notebook-level memory (when
+        ``notebook_id`` is provided). On any error (DB unreachable, etc.)
+        returns an empty string so the prompt build still succeeds.
+        """
+
+        if not user_id:
+            return ""
+
+        try:
+            store = _get_memory_store()
+            user_rows = store.read_user(user_id=user_id) or []
+            notebook_rows = (
+                store.read_notebook(notebook_id=notebook_id) if notebook_id else []
+            )
+        except Exception:  # noqa: BLE001
+            return ""
+
+        if not user_rows and not notebook_rows:
+            return ""
+
+        lines: list[str] = ["## Memory\n"]
+        lines.append(
+            "Use `memory_read(...)` to retrieve a specific category; "
+            "use `memory_write(...)` only for facts that will matter in future sessions.\n"
+        )
+
+        if user_rows:
+            lines.append("### User memory\n")
+            for row in user_rows:
+                lines.append(f"- [{row.get('category', '-')}] {row.get('content', '')}")
+            lines.append("")
+
+        if notebook_rows:
+            lines.append("### Notebook memory\n")
+            for row in notebook_rows:
+                lines.append(f"- [{row.get('category', '-')}] {row.get('content', '')}")
+
+        return "\n".join(lines).strip()
 
     def _skills_snippet(self, *, surface_path: str) -> str:
         """P1: return empty. P3 scans ``~/.sparkflow/skills/*.md`` and renders

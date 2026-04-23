@@ -245,3 +245,64 @@ def test_build_mark_compressed_invalidates_cache():
     assert "s_evict" in pb._cached_system_prompts
     pb.mark_compressed("s_evict")
     assert "s_evict" not in pb._cached_system_prompts
+
+
+def test_memory_snippet_returns_empty_when_no_user_id():
+    pb = PromptBuilder()
+    assert pb._memory_snippet(user_id="", notebook_id=None) == ""
+
+
+def test_memory_snippet_returns_empty_when_store_unavailable(monkeypatch):
+    """DB unreachable → empty snippet; prompt build must still succeed."""
+    from hermes import prompt_builder as pb_mod
+
+    class _BoomStore:
+        def read_user(self, **kw):
+            raise RuntimeError("DATABASE_URL unset")
+
+        def read_notebook(self, **kw):
+            raise RuntimeError("DATABASE_URL unset")
+
+    monkeypatch.setattr(pb_mod, "_get_memory_store", lambda: _BoomStore())
+
+    pb = PromptBuilder()
+    assert pb._memory_snippet(user_id="u1", notebook_id=None) == ""
+
+
+def test_memory_snippet_renders_user_memories(monkeypatch):
+    from hermes import prompt_builder as pb_mod
+
+    class _FakeStore:
+        def read_user(self, *, user_id, category=None, limit=50):
+            return [
+                {"id": "m1", "category": "preference", "content": "prefers bullets"},
+                {"id": "m2", "category": "fact", "content": "uses gpt-4o"},
+            ]
+
+        def read_notebook(self, **kw):
+            return []
+
+    monkeypatch.setattr(pb_mod, "_get_memory_store", lambda: _FakeStore())
+
+    pb = PromptBuilder()
+    out = pb._memory_snippet(user_id="u1", notebook_id=None)
+    assert "## Memory" in out
+    assert "prefers bullets" in out
+    assert "uses gpt-4o" in out
+
+
+def test_memory_snippet_includes_notebook_memories(monkeypatch):
+    from hermes import prompt_builder as pb_mod
+
+    class _FakeStore:
+        def read_user(self, **kw):
+            return []
+
+        def read_notebook(self, *, notebook_id, category=None, limit=50):
+            return [{"id": "n1", "category": "fact", "content": "topic: diffusion models"}]
+
+    monkeypatch.setattr(pb_mod, "_get_memory_store", lambda: _FakeStore())
+
+    pb = PromptBuilder()
+    out = pb._memory_snippet(user_id="u1", notebook_id="nb_1")
+    assert "topic: diffusion models" in out
