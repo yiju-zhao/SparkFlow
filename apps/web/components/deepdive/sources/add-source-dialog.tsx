@@ -21,10 +21,16 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   addWebpageSource,
-  uploadDocumentSource,
+  uploadDocumentsBatch,
+  addWebpageSourcesBatch,
   addPublicationSource,
   addWechatSource,
 } from "@/lib/actions/sources";
+import {
+  MAX_SOURCES_PER_NOTEBOOK,
+  SOURCE_LIMIT_ERROR_PREFIX,
+} from "@/lib/constants/sources";
+import { collectFilesFromDataTransfer } from "@/lib/utils/file-tree";
 import type { Source } from "@prisma/client";
 import type { SourceSearchType, SearchResult, SearchStatusResponse } from "@/lib/types/search";
 
@@ -80,9 +86,31 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const [isPending, startTransition] = useTransition();
   const [urlsText, setUrlsText] = useState("");
   const [showWebsites, setShowWebsites] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const getCurrentSourceCount = useCallback(() => {
+    return (
+      queryClient.getQueryData<Source[]>(["notebook-sources", notebookId])?.length ?? 0
+    );
+  }, [queryClient, notebookId]);
+
+  const currentCount = getCurrentSourceCount();
+  const remainingSlots = Math.max(0, MAX_SOURCES_PER_NOTEBOOK - currentCount);
+  const isLimitReached = remainingSlots === 0;
+
+  const formatServerError = (err: unknown): string => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.startsWith(SOURCE_LIMIT_ERROR_PREFIX)) {
+      // "SOURCE_LIMIT_REACHED: X slot(s) remaining, tried to add Y"
+      const rest = msg.slice(SOURCE_LIMIT_ERROR_PREFIX.length).replace(/^[:\s]+/, "");
+      return `Source limit reached — ${rest}. Delete some sources to add more.`;
+    }
+    return msg;
+  };
 
   const resetSearch = useCallback(() => {
     setResults([]);
@@ -194,8 +222,18 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   };
 
   const handleAddSelected = () => {
+    setUploadError(null);
     const selectedResults = results.filter((r) => selected.has(r.id));
     if (selectedResults.length === 0) return;
+
+    const count = getCurrentSourceCount();
+    const available = Math.max(0, MAX_SOURCES_PER_NOTEBOOK - count);
+    if (selectedResults.length > available) {
+      setUploadError(
+        `Source limit reached — only ${available} slot${available === 1 ? "" : "s"} remaining, tried to add ${selectedResults.length}. Trim the selection or delete existing sources.`,
+      );
+      return;
+    }
 
     startTransition(async () => {
       for (const result of selectedResults) {
@@ -246,25 +284,59 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
 
   const ALLOWED_UPLOAD_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt", "txt", "md"];
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) {
-      alert(
-        `Unsupported file type ".${ext}". Allowed: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => "." + e).join(", ")}`,
-      );
-      e.target.value = "";
-      return;
+  const partitionFilesByExtension = (files: File[]) => {
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) {
+        accepted.push(file);
+      } else {
+        rejected.push(file.name);
+      }
     }
-    handleFileUpload(file);
+    return { accepted, rejected };
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    handleFilesUpload(files);
+  };
+
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    handleFilesUpload(files);
+  };
+
+  const handleFilesUpload = (files: File[]) => {
+    setUploadError(null);
+    const { accepted, rejected } = partitionFilesByExtension(files);
+
+    if (accepted.length === 0) {
+      setUploadError(
+        `No supported files. Allowed: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => "." + e).join(", ")}${
+          rejected.length > 0 ? ` (skipped: ${rejected.slice(0, 5).join(", ")}${rejected.length > 5 ? "…" : ""})` : ""
+        }`,
+      );
+      return;
+    }
+
+    const count = getCurrentSourceCount();
+    const available = Math.max(0, MAX_SOURCES_PER_NOTEBOOK - count);
+    if (accepted.length > available) {
+      setUploadError(
+        `Source limit reached — only ${available} slot${available === 1 ? "" : "s"} remaining, tried to add ${accepted.length}. Trim the selection or delete existing sources.`,
+      );
+      return;
+    }
+
     startTransition(async () => {
-      const tempId = `optimistic-${Date.now()}`;
-      const optimistic: Source = {
-        id: tempId,
+      const optimistic: Source[] = accepted.map((file, idx) => ({
+        id: `optimistic-${Date.now()}-${idx}-${file.name}`,
         notebookId,
         title: file.name,
         sourceType: "DOCUMENT",
@@ -277,80 +349,99 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
         metadata: {},
         createdAt: new Date(),
         updatedAt: new Date(),
-      };
+      }));
 
       queryClient.setQueryData<Source[] | undefined>(
         ["notebook-sources", notebookId],
-        (current) => [optimistic, ...(current || [])],
+        (current) => [...optimistic, ...(current || [])],
       );
       onOpenChange(false);
 
       try {
         const formData = new FormData();
-        formData.append("file", file);
-        await uploadDocumentSource(notebookId, formData);
+        for (const file of accepted) formData.append("file", file);
+        await uploadDocumentsBatch(notebookId, formData);
+        if (rejected.length > 0) {
+          console.warn(
+            `[AddSource] Skipped ${rejected.length} unsupported file(s): ${rejected.join(", ")}`,
+          );
+        }
+      } catch (err) {
+        console.error("[AddSource] Batch upload failed:", err);
+        setUploadError(formatServerError(err));
       } finally {
         await queryClient.invalidateQueries({
           queryKey: ["notebook-sources", notebookId],
         });
-        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     });
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFileUpload(file);
-    }
+    void (async () => {
+      const files = await collectFilesFromDataTransfer(e.dataTransfer);
+      if (files.length === 0) return;
+      handleFilesUpload(files);
+    })();
   };
 
   const handleWebsitesInsert = () => {
-    const urls = urlsText
-      .split(/[\s\n]+/)
-      .map((u) => u.trim())
-      .filter((u) => u && (u.startsWith("http://") || u.startsWith("https://")));
+    setUploadError(null);
+    const urls = Array.from(
+      new Set(
+        urlsText
+          .split(/[\s\n]+/)
+          .map((u) => u.trim())
+          .filter((u) => u && (u.startsWith("http://") || u.startsWith("https://"))),
+      ),
+    );
     if (urls.length === 0) return;
 
+    const count = getCurrentSourceCount();
+    const available = Math.max(0, MAX_SOURCES_PER_NOTEBOOK - count);
+    if (urls.length > available) {
+      setUploadError(
+        `Source limit reached — only ${available} slot${available === 1 ? "" : "s"} remaining, tried to add ${urls.length}. Trim the list or delete existing sources.`,
+      );
+      return;
+    }
+
     startTransition(async () => {
-      for (const singleUrl of urls) {
-        const tempId = `optimistic-${Date.now()}-${singleUrl}`;
-        const optimistic: Source = {
-          id: tempId,
-          notebookId,
-          title: singleUrl,
-          sourceType: "WEBPAGE",
-          url: singleUrl,
-          status: "PROCESSING",
-          markdown: null,
-          html: null,
-          fileKey: null,
-          errorMessage: null,
-          metadata: {},
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+      const optimistic: Source[] = urls.map((singleUrl, idx) => ({
+        id: `optimistic-${Date.now()}-${idx}-${singleUrl}`,
+        notebookId,
+        title: singleUrl,
+        sourceType: "WEBPAGE",
+        url: singleUrl,
+        status: "PROCESSING",
+        markdown: null,
+        html: null,
+        fileKey: null,
+        errorMessage: null,
+        metadata: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
 
-        queryClient.setQueryData<Source[] | undefined>(
-          ["notebook-sources", notebookId],
-          (current) => [optimistic, ...(current || [])],
-        );
+      queryClient.setQueryData<Source[] | undefined>(
+        ["notebook-sources", notebookId],
+        (current) => [...optimistic, ...(current || [])],
+      );
 
-        try {
-          await addWebpageSource(notebookId, singleUrl);
-        } catch (err) {
-          console.error(`[AddSource] Failed to add ${singleUrl}:`, err);
-        }
+      try {
+        await addWebpageSourcesBatch(notebookId, urls);
+        onOpenChange(false);
+        setUrlsText("");
+        setShowWebsites(false);
+      } catch (err) {
+        console.error("[AddSource] Batch URL insert failed:", err);
+        setUploadError(formatServerError(err));
+      } finally {
+        await queryClient.invalidateQueries({
+          queryKey: ["notebook-sources", notebookId],
+        });
       }
-
-      await queryClient.invalidateQueries({
-        queryKey: ["notebook-sources", notebookId],
-      });
-
-      onOpenChange(false);
-      setUrlsText("");
-      setShowWebsites(false);
     });
   };
 
@@ -364,6 +455,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
         if (!v) {
           resetSearch();
           setQuery("");
+          setUploadError(null);
         }
       }}
     >
@@ -379,11 +471,17 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                 onClick={() => {
                   setShowWebsites(false);
                   setUrlsText("");
+                  setUploadError(null);
                 }}
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
               <h3 className="text-base font-semibold">Website URLs</h3>
+              <span
+                className={`ml-auto text-xs tabular-nums ${isLimitReached ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {currentCount} / {MAX_SOURCES_PER_NOTEBOOK}
+              </span>
             </div>
 
             <p className="text-sm text-muted-foreground mb-3">
@@ -395,9 +493,9 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
               placeholder="Paste any links"
               value={urlsText}
               onChange={(e) => setUrlsText(e.target.value)}
-              disabled={isPending}
+              disabled={isPending || isLimitReached}
               autoFocus
-              className="w-full min-h-40 p-4 border-2 border-border rounded-xl text-sm bg-transparent outline-none resize-y placeholder:text-muted-foreground focus:border-primary transition-colors"
+              className="w-full min-h-40 p-4 border-2 border-border rounded-xl text-sm bg-transparent outline-none resize-y placeholder:text-muted-foreground focus:border-primary transition-colors disabled:opacity-60"
             />
 
             {/* Hints */}
@@ -405,11 +503,23 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
               <li>To add multiple URLs, separate with a space or new line.</li>
               <li>Only the visible text on the website will be imported.</li>
               <li>Paid articles are not supported.</li>
+              <li>
+                Up to {MAX_SOURCES_PER_NOTEBOOK} sources per notebook ({remainingSlots} remaining).
+              </li>
             </ul>
+
+            {uploadError && (
+              <div className="mt-3 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                {uploadError}
+              </div>
+            )}
 
             {/* Insert Button */}
             <div className="flex justify-end mt-4">
-              <Button disabled={isPending || !urlsText.trim()} onClick={handleWebsitesInsert}>
+              <Button
+                disabled={isPending || isLimitReached || !urlsText.trim()}
+                onClick={handleWebsitesInsert}
+              >
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -426,8 +536,13 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
             {/* Search Section */}
             <div className="p-6 pb-4">
               {/* Close Button Row */}
-              <div className="flex justify-end -mt-2 -mr-2 mb-2">
-                <DialogClose className="h-7 w-7 rounded-full hover:bg-muted flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground">
+              <div className="flex items-center -mt-2 -mr-2 mb-2">
+                <span
+                  className={`text-xs tabular-nums ${isLimitReached ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {currentCount} / {MAX_SOURCES_PER_NOTEBOOK} sources
+                </span>
+                <DialogClose className="ml-auto h-7 w-7 rounded-full hover:bg-muted flex items-center justify-center transition-colors text-muted-foreground hover:text-foreground">
                   <X className="h-4 w-4" />
                   <span className="sr-only">Close</span>
                 </DialogClose>
@@ -556,35 +671,79 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
               <>
                 {/* Drop Zone */}
                 <div
-                  className="mx-6 my-4 p-8 border-2 border-dashed border-border rounded-xl text-center cursor-pointer hover:border-foreground/30 transition-colors"
+                  className={`mx-6 my-4 p-8 border-2 border-dashed border-border rounded-xl text-center transition-colors ${
+                    isLimitReached
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer hover:border-foreground/30"
+                  }`}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={isLimitReached ? (e) => e.preventDefault() : handleDrop}
+                  onClick={() => {
+                    if (isLimitReached) return;
+                    fileInputRef.current?.click();
+                  }}
                 >
-                  <p className="text-lg text-muted-foreground">or drop your files</p>
+                  <p className="text-lg text-muted-foreground">
+                    or drop your files or folders
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">pdf, docx, txt, md</p>
                 </div>
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   // Keep in sync with ALLOWED_EXTENSIONS in lib/actions/sources.ts
                   className="hidden"
                   accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md"
                   onChange={handleFileSelect}
                 />
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  multiple
+                  // webkitdirectory is not in React's typed prop set; pass as string.
+                  {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+                  className="hidden"
+                  onChange={handleFolderSelect}
+                />
+
+                {uploadError && (
+                  <div className="mx-6 -mt-2 mb-3 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                    {uploadError}
+                  </div>
+                )}
+
+                {isLimitReached && !uploadError && (
+                  <div className="mx-6 -mt-2 mb-3 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2">
+                    Source limit reached ({MAX_SOURCES_PER_NOTEBOOK}/{MAX_SOURCES_PER_NOTEBOOK}). Delete some sources to add more.
+                  </div>
+                )}
 
                 {/* Bottom Actions */}
-                <div className="flex gap-2.5 px-6 pb-6">
+                <div className="grid grid-cols-3 gap-2.5 px-6 pb-6">
                   <button
-                    className="flex-1 flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors"
+                    disabled={isLimitReached}
+                    className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-4 w-4" />
                     Upload files
                   </button>
                   <button
-                    className="flex-1 flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors"
-                    onClick={() => setShowWebsites(true)}
+                    disabled={isLimitReached}
+                    className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => folderInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload folder
+                  </button>
+                  <button
+                    disabled={isLimitReached}
+                    className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setUploadError(null);
+                      setShowWebsites(true);
+                    }}
                   >
                     <Link className="h-4 w-4" />
                     Websites
@@ -652,10 +811,16 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                   </div>
                 )}
 
+                {uploadError && (
+                  <div className="mt-3 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                    {uploadError}
+                  </div>
+                )}
+
                 {results.length > 0 && (
                   <div className="flex justify-end mt-4 pb-2">
                     <Button
-                      disabled={selected.size === 0 || isPending}
+                      disabled={selected.size === 0 || isPending || isLimitReached}
                       onClick={handleAddSelected}
                       className="bg-foreground text-background hover:bg-foreground/90"
                     >
