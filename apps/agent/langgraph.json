@@ -3,7 +3,6 @@
         "."
     ],
     "graphs": {
-        "agent": "./graphs/rag_agent.py:agent",
         "hub": "./graphs/surface.py:hub_graph",
         "notebook": "./graphs/surface.py:notebook_graph",
         "deep_research": "./graphs/surface.py:deep_research_graph"
