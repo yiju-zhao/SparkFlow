@@ -86,6 +86,7 @@ export async function removeSourceFromWiki(
   notebookId: string,
   sourceId: string,
   sourceTitle: string,
+  userId: string,
 ): Promise<{ pagesDeleted: number; pagesUpdated: number }> {
   const existingGraph = await prisma.notebookGraph.findUnique({
     where: { notebookId },
@@ -123,7 +124,12 @@ export async function removeSourceFromWiki(
   // 5. Regenerate wiki pages from new communities
   let pagesWritten = 0;
   if (cleaned.nodes.length > 0) {
-    const slugs = await generateWikiPages(notebookId, graphWithCommunities, communities);
+    const slugs = await generateWikiPages(
+      notebookId,
+      graphWithCommunities,
+      communities,
+      userId,
+    );
     pagesWritten = slugs.length;
   } else {
     await prisma.wikiPage.upsert({

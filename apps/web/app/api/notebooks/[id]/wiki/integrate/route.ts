@@ -25,7 +25,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   try {
-    const result = await integrateWikiPage(notebookId, slug, page.content, page.sourceRefs);
+    const result = await integrateWikiPage(
+      notebookId,
+      slug,
+      page.content,
+      page.sourceRefs,
+      session.user.id,
+    );
     return NextResponse.json(result);
   } catch (error) {
     console.error("Wiki integrate failed:", error);

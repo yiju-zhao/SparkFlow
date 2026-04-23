@@ -6,32 +6,30 @@
 import prisma from "@/lib/prisma";
 import modelsConfig from "@/config/models.json";
 
-// Resolve wiki model + API key for a user
-async function resolveWikiClient(userId?: string) {
+// Resolve wiki model + API key for a user. BYOK is required: all users
+// (including admins) configure their own keys via Settings. There is no
+// admin env fallback — if the caller omits userId or the user hasn't
+// configured a key, this throws and the ingest pipeline surfaces the
+// error to the client.
+async function resolveWikiClient(userId: string) {
   const { default: OpenAI } = await import("openai");
-  let model = modelsConfig.defaults.wikiModel;
-  let openaiConfig: { apiKey?: string; baseURL?: string } = {};
+  const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
 
-  if (userId) {
-    // Fetch user's wiki model preference
-    const settings = await prisma.userSettings.findUnique({
-      where: { userId },
-      select: { wikiModelProvider: true, wikiModelName: true },
-    });
-    if (settings?.wikiModelName) model = settings.wikiModelName;
-    const provider = settings?.wikiModelProvider || modelsConfig.defaults.provider;
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { wikiModelProvider: true, wikiModelName: true },
+  });
+  const model = settings?.wikiModelName || modelsConfig.defaults.wikiModel;
+  const provider = settings?.wikiModelProvider || modelsConfig.defaults.provider;
 
-    // Resolve API key
-    try {
-      const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
-      const resolved = await resolveApiKey(userId, provider);
-      openaiConfig = { apiKey: resolved.apiKey, baseURL: resolved.baseUrl };
-    } catch {
-      // Fall through to default
-    }
-  }
+  // Throws if the user hasn't set an API key for this provider; the
+  // error message points them at /settings, which is the desired UX.
+  const resolved = await resolveApiKey(userId, provider);
 
-  return { client: new OpenAI(openaiConfig), model };
+  return {
+    client: new OpenAI({ apiKey: resolved.apiKey, baseURL: resolved.baseUrl }),
+    model,
+  };
 }
 
 // ============================================================
@@ -80,7 +78,7 @@ export async function extractGraph(
   sourceTitle: string,
   sourceId: string,
   existingNodeLabels: string[],
-  userId?: string,
+  userId: string,
 ): Promise<ExtractionResult> {
   const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
@@ -267,7 +265,7 @@ export async function generateWikiPages(
   notebookId: string,
   graphData: GraphData,
   communities: CommunityMap,
-  userId?: string,
+  userId: string,
 ): Promise<string[]> {
   const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
@@ -422,7 +420,7 @@ export async function integrateWikiPage(
   pageSlug: string,
   pageContent: string,
   sourceRefs: string[],
-  userId?: string,
+  userId: string,
 ): Promise<{ nodesAdded: number; edgesAdded: number }> {
   const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
@@ -528,7 +526,7 @@ export async function runGraphPipeline(
   sourceId: string,
   sourceContent: string,
   sourceTitle: string,
-  userId?: string,
+  userId: string,
 ): Promise<{
   nodesAdded: number;
   edgesAdded: number;
