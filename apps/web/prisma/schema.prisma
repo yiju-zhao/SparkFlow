@@ -36,6 +36,7 @@ model User {
   notes     Note[]
   sessions  Session[]
   settings  UserSettings?
+  memories  UserMemory[]
 
   @@map("users")
 }
@@ -101,6 +102,7 @@ model Notebook {
   notes        Note[]
   wikiPages    WikiPage[]
   graph        NotebookGraph?
+  memories     NotebookMemory[]
 
   // Unique constraint: one notebook name per user
   @@unique([userId, name])
@@ -466,4 +468,36 @@ model MatchJob {
   @@index([userId])
   @@index([status])
   @@map("match_jobs")
+}
+
+// ============================================
+// User & Notebook Memory
+// ============================================
+
+model UserMemory {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String   // "profile" | "preference" | "fact" | "feedback"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+  @@map("user_memory")
+}
+
+model NotebookMemory {
+  id         String   @id @default(cuid())
+  notebookId String
+  category   String
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@index([notebookId, category])
+  @@map("notebook_memory")
 }
