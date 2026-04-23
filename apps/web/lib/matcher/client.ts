@@ -6,15 +6,14 @@
 
 import type { CreateMatchJobInput, JobProgress, MatchJob } from "./types";
 
-const SEMOPS_API_URL =
-  process.env.NEXT_PUBLIC_SEMOPS_API_URL ||
-  process.env.NEXT_PUBLIC_MATCHER_API_URL ||
-  "http://localhost:2025";
+const WORKFLOWS_API_URL =
+  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
+  "http://localhost:2027";
 
 class MatcherClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = SEMOPS_API_URL) {
+  constructor(baseUrl: string = WORKFLOWS_API_URL) {
     this.baseUrl = baseUrl;
   }
 
@@ -113,7 +112,7 @@ class MatcherClient {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`);
+      const response = await fetch(`${this.baseUrl}/v1/workflows/matcher/jobs`);
       return response.ok;
     } catch {
       return false;
