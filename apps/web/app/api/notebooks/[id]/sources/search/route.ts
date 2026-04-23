@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
 import type { SearchRequest, SearchResult, SearchStatusResponse } from "@/lib/types/search";
-import { getWikiContextForSearch } from "@/lib/services/wiki-context";
 import modelsConfig from "@/config/models.json";
 
 // In-memory task store (sufficient for single-server)
@@ -81,29 +80,19 @@ async function performSearch(
   if (!task) return;
 
   try {
-    // Fetch wiki context for the notebook (domain awareness)
-    const wikiContext = await getWikiContextForSearch(notebookId);
-
-    // Call the search agent for all source types
-    const agentUrl = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "http://localhost:2024";
-    const response = await fetch(`${agentUrl}/runs`, {
+    // Call the search workflow endpoint for all source types
+    const workflowsUrl = process.env.WORKFLOWS_API_URL || "http://localhost:2027";
+    const response = await fetch(`${workflowsUrl}/v1/workflows/search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        assistant_id: "search",
-        input: {
-          messages: [{ role: "user", content: query }],
-          iteration: 0,
-        },
-        config: {
-          configurable: {
-            source_type: sourceType,
-            domains: domains || [],
-            wiki_context: wikiContext,
-            model_provider: modelProvider,
-            model_name: modelName,
-          },
-        },
+        query,
+        source_type: sourceType,
+        notebook_id: notebookId,
+        domains: domains || [],
+        model_provider: modelProvider || "openai",
+        model_name: modelName || "gpt-4o-mini",
+        top_k: 10,
       }),
     });
 
@@ -111,30 +100,19 @@ async function performSearch(
 
     if (response.ok) {
       const data = await response.json();
-      // The agent's last message should be a JSON array of results
-      const lastMessage = data?.output?.messages?.slice(-1)?.[0];
-      const content = typeof lastMessage === "string" ? lastMessage : lastMessage?.content;
-      if (content) {
-        try {
-          // Strip markdown code fences if the LLM wrapped them
-          const cleaned = content
-            .replace(/^```(?:json)?\s*/i, "")
-            .replace(/\s*```$/i, "")
-            .trim();
-          const parsed = JSON.parse(cleaned);
-          if (Array.isArray(parsed)) {
-            results = parsed.map((r: Record<string, unknown>) => ({
-              id: (r.id as string | undefined) || (r.url as string | undefined) || "",
-              title: (r.title as string | undefined) || "Untitled",
-              snippet: (r.snippet as string | undefined) || "",
-              meta: (r.meta as string | undefined) || "",
-              url: (r.url as string | undefined) || undefined,
-              sourceType: sourceType as SearchResult["sourceType"],
-            }));
-          }
-        } catch {
-          // Agent returned non-JSON, leave results empty
-        }
+      // The workflow returns { items, reasons } directly (no streaming, no langgraph envelope)
+      const items = data?.items || [];
+      const reasons = data?.reasons || {};
+
+      if (Array.isArray(items)) {
+        results = items.map((item: Record<string, unknown>) => ({
+          id: (item.id as string | undefined) || (item.url as string | undefined) || "",
+          title: (item.title as string | undefined) || "Untitled",
+          snippet: (item.snippet as string | undefined) || (item.content as string | undefined) || "",
+          meta: reasons[(item.id as string) || (item.url as string) || ""] || (item.meta as string | undefined) || "",
+          url: (item.url as string | undefined) || undefined,
+          sourceType: sourceType as SearchResult["sourceType"],
+        }));
       }
     }
 
