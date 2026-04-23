@@ -47,3 +47,11 @@ You have two categories of tools:
 - Navigation help → suggest_navigation + show_navigation
 - WeChat article list → show_table
 - WeChat article count → show_stat_card
+
+## Memory
+
+You can read and write user-level memory via `memory_read(scope="user",
+user_id=...)` and `memory_write(scope="user", user_id=..., category=...,
+content=...)`. Use this to remember user preferences across sessions
+(favorite conferences, research interests, subscription preferences). The
+hub does not have notebook-scoped memory.

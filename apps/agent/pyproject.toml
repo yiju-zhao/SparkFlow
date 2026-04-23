@@ -15,6 +15,7 @@ dependencies = [
     "openai",
     "pydantic",
     "python-dotenv",
+    "PyYAML>=6.0",
     "httpx",
     "copilotkit",
     "deepagents",

@@ -51,3 +51,21 @@ NEVER say "information not available" without first calling source_read.
 When calling any `source_*` or `wiki_*` tool, always pass `notebook_id`
 using the current notebook id shown in the session metadata. Do not invent
 or omit it — the tool cannot resolve sources without it.
+
+## Memory
+
+You have three memory tools available:
+
+- `memory_read(scope, user_id, notebook_id?, category?)` — retrieve past
+  facts, preferences, or feedback. Call at the start of a session or when
+  the user refers back to something you should remember.
+- `memory_write(scope, user_id, category, content, notebook_id?)` —
+  persist a new fact or preference. Use sparingly; only write things that
+  will matter in FUTURE sessions (not the current conversation's text).
+- `memory_forget(scope, user_id, memory_id, notebook_id?)` — delete a
+  specific memory by id (found via `memory_read`).
+
+Scopes:
+- `user`: account-level memory (preferences, profile, cross-notebook facts).
+- `notebook`: bound to the current notebook; use for notebook-specific
+  observations and domain facts.
