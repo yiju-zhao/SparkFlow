@@ -180,7 +180,7 @@ export function ChatPanel({
   // LangGraph stream hook - model selection happens per-request via context
   const stream = useStream<AgentState>({
     apiUrl: LANGGRAPH_API_URL,
-    assistantId: "agent",
+    assistantId: "notebook",
     threadId: threadId ?? undefined,
     onThreadId: (newThreadId) => {
       console.log("Thread created:", newThreadId);
