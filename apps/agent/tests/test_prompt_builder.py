@@ -306,3 +306,44 @@ def test_memory_snippet_includes_notebook_memories(monkeypatch):
     pb = PromptBuilder()
     out = pb._memory_snippet(user_id="u1", notebook_id="nb_1")
     assert "topic: diffusion models" in out
+
+
+def test_skills_snippet_empty_when_no_skills_dir(monkeypatch):
+    from hermes import prompt_builder as pb_mod
+
+    class _EmptyIndex:
+        def render_snippet(self, *, surface, toolset):
+            return ""
+
+    monkeypatch.setattr(pb_mod, "_get_skills_index", lambda: _EmptyIndex())
+
+    pb = PromptBuilder()
+    assert pb._skills_snippet(surface_path="surfaces/notebook.md") == ""
+
+
+def test_skills_snippet_renders_when_skills_available(monkeypatch):
+    from hermes import prompt_builder as pb_mod
+
+    class _FakeIndex:
+        def render_snippet(self, *, surface, toolset):
+            return f"## Skills\n- **example** — for {surface}"
+
+    monkeypatch.setattr(pb_mod, "_get_skills_index", lambda: _FakeIndex())
+
+    pb = PromptBuilder()
+    out = pb._skills_snippet(surface_path="surfaces/notebook.md")
+    assert "## Skills" in out
+    assert "notebook" in out  # surface name threaded through
+
+
+def test_skills_snippet_returns_empty_on_exception(monkeypatch):
+    from hermes import prompt_builder as pb_mod
+
+    class _BoomIndex:
+        def render_snippet(self, *, surface, toolset):
+            raise RuntimeError("disk read failed")
+
+    monkeypatch.setattr(pb_mod, "_get_skills_index", lambda: _BoomIndex())
+
+    pb = PromptBuilder()
+    assert pb._skills_snippet(surface_path="surfaces/notebook.md") == ""

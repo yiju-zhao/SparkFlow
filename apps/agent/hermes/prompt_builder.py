@@ -42,6 +42,18 @@ def _get_memory_store():
     return _memory_store
 
 
+_skills_index = None
+
+
+def _get_skills_index():
+    """Lazy singleton — tests monkeypatch this to inject a fake index."""
+    global _skills_index
+    if _skills_index is None:
+        from hermes.skills.index import SkillsIndex
+        _skills_index = SkillsIndex()
+    return _skills_index
+
+
 _OPENAI_HINT_FAMILIES = {
     # OpenAI-compatible APIs — all accept tool_persistence / verification hints
     "openai", "gpt", "codex",
@@ -210,10 +222,24 @@ class PromptBuilder:
         return "\n".join(lines).strip()
 
     def _skills_snippet(self, *, surface_path: str) -> str:
-        """P1: return empty. P3 scans ``~/.sparkflow/skills/*.md`` and renders
-        the index as a ``## Skills`` section with progressive disclosure."""
+        """Render the ``## Skills`` block (layer 6 of the prompt).
 
-        return ""
+        Surface name is derived from ``surface_path`` (last path segment
+        without ``.md`` extension). Toolset filtering is NOT performed
+        here — ``PromptBuilder`` doesn't know the surface's toolset at
+        this layer, so the index shows all skills applicable to the
+        surface (empty toolset disables tools_required filter in
+        SkillsIndex).
+        """
+
+        # "surfaces/notebook.md" → "notebook"
+        surface_name = surface_path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+
+        try:
+            idx = _get_skills_index()
+            return idx.render_snippet(surface=surface_name, toolset=set())
+        except Exception:  # noqa: BLE001
+            return ""
 
     def _session_metadata(
         self,
