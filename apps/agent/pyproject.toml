@@ -22,6 +22,9 @@ dependencies = [
     "tavily-python",
     # BGE-M3 embeddings (CPU) — drives the search-agent prefilter.
     "FlagEmbedding>=1.2",
+    # Workflow server
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
 ]
 
 [build-system]
