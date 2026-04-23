@@ -106,7 +106,7 @@ function SessionCard({ session, color }: SessionCardProps) {
       className="sf-card card-hoverable p-0 overflow-hidden"
       style={{ borderLeftWidth: 3, borderLeftColor: color }}
     >
-      <Link href={`/explore/sessions/${session.id}`} className="block p-4 space-y-2.5">
+      <Link href={`/explore/conferences/sessions/${session.id}`} className="block p-4 space-y-2.5">
         <div className="flex items-start justify-between gap-2">
           {session.type && (
             <span className="sf-badge sf-badge-muted">{session.type}</span>
