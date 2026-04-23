@@ -66,14 +66,17 @@ interface ModelsConfig {
 }
 
 interface InitialSettings {
-  modelProvider: string;
-  modelName: string;
-  wikiModelProvider: string;
-  wikiModelName: string;
-  searchModelProvider: string;
-  searchModelName: string;
-  semopsModelProvider: string;
-  semopsModelName: string;
+  // BYOK mandate: fields are null when the user hasn't picked yet.
+  // The Settings UI renders empty Select placeholders; consumers
+  // (chat, search, wiki ingest, digest, matcher) 400 on null.
+  modelProvider: string | null;
+  modelName: string | null;
+  wikiModelProvider: string | null;
+  wikiModelName: string | null;
+  searchModelProvider: string | null;
+  searchModelName: string | null;
+  semopsModelProvider: string | null;
+  semopsModelName: string | null;
 }
 
 interface ApiKeyStatus {
@@ -349,20 +352,20 @@ function AiModelsSection({
   initialSettings?: InitialSettings;
   config: ModelsConfig | null;
 }) {
-  const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider || "openai");
-  const [chatModel, setChatModel] = useState(initialSettings?.modelName || "gpt-4o-mini");
-  const [wikiProvider, setWikiProvider] = useState(initialSettings?.wikiModelProvider || "openai");
-  const [wikiModel, setWikiModel] = useState(initialSettings?.wikiModelName || "gpt-4o-mini");
+  // Empty string = "not picked yet" (renders as a placeholder).
+  // BYOK mandate: Save is disabled until all 8 slots are filled.
+  const [chatProvider, setChatProvider] = useState(initialSettings?.modelProvider ?? "");
+  const [chatModel, setChatModel] = useState(initialSettings?.modelName ?? "");
+  const [wikiProvider, setWikiProvider] = useState(initialSettings?.wikiModelProvider ?? "");
+  const [wikiModel, setWikiModel] = useState(initialSettings?.wikiModelName ?? "");
   const [searchProvider, setSearchProvider] = useState(
-    initialSettings?.searchModelProvider || "openai",
+    initialSettings?.searchModelProvider ?? "",
   );
-  const [searchModel, setSearchModel] = useState(initialSettings?.searchModelName || "gpt-4o-mini");
+  const [searchModel, setSearchModel] = useState(initialSettings?.searchModelName ?? "");
   const [matcherProvider, setMatcherProvider] = useState(
-    initialSettings?.semopsModelProvider || "openai",
+    initialSettings?.semopsModelProvider ?? "",
   );
-  const [matcherModel, setMatcherModel] = useState(
-    initialSettings?.semopsModelName || "gpt-4o-mini",
-  );
+  const [matcherModel, setMatcherModel] = useState(initialSettings?.semopsModelName ?? "");
 
   const baselineRef = useRef(initialSettings);
   const [isSaving, setIsSaving] = useState(false);
@@ -401,27 +404,40 @@ function AiModelsSection({
     if (ids.length > 0 && !ids.includes(matcherModel)) setMatcherModel(ids[0]);
   }, [matcherProvider, getModelIds, matcherModel]);
 
+  // Normalize null → "" so a never-configured user is NOT treated as dirty
+  // and Discard doesn't widen the state to nullable.
+  const b = baselineRef.current;
   const isDirty =
-    baselineRef.current?.modelProvider !== chatProvider ||
-    baselineRef.current?.modelName !== chatModel ||
-    baselineRef.current?.wikiModelProvider !== wikiProvider ||
-    baselineRef.current?.wikiModelName !== wikiModel ||
-    baselineRef.current?.searchModelProvider !== searchProvider ||
-    baselineRef.current?.searchModelName !== searchModel ||
-    baselineRef.current?.semopsModelProvider !== matcherProvider ||
-    baselineRef.current?.semopsModelName !== matcherModel;
+    (b?.modelProvider ?? "") !== chatProvider ||
+    (b?.modelName ?? "") !== chatModel ||
+    (b?.wikiModelProvider ?? "") !== wikiProvider ||
+    (b?.wikiModelName ?? "") !== wikiModel ||
+    (b?.searchModelProvider ?? "") !== searchProvider ||
+    (b?.searchModelName ?? "") !== searchModel ||
+    (b?.semopsModelProvider ?? "") !== matcherProvider ||
+    (b?.semopsModelName ?? "") !== matcherModel;
+
+  // Save is gated: user must pick all 8 slots (4 provider+model pairs).
+  const allPicked =
+    !!chatProvider &&
+    !!chatModel &&
+    !!wikiProvider &&
+    !!wikiModel &&
+    !!searchProvider &&
+    !!searchModel &&
+    !!matcherProvider &&
+    !!matcherModel;
 
   const handleDiscard = () => {
-    const b = baselineRef.current;
     if (!b) return;
-    setChatProvider(b.modelProvider);
-    setChatModel(b.modelName);
-    setWikiProvider(b.wikiModelProvider);
-    setWikiModel(b.wikiModelName);
-    setSearchProvider(b.searchModelProvider);
-    setSearchModel(b.searchModelName);
-    setMatcherProvider(b.semopsModelProvider);
-    setMatcherModel(b.semopsModelName);
+    setChatProvider(b.modelProvider ?? "");
+    setChatModel(b.modelName ?? "");
+    setWikiProvider(b.wikiModelProvider ?? "");
+    setWikiModel(b.wikiModelName ?? "");
+    setSearchProvider(b.searchModelProvider ?? "");
+    setSearchModel(b.searchModelName ?? "");
+    setMatcherProvider(b.semopsModelProvider ?? "");
+    setMatcherModel(b.semopsModelName ?? "");
   };
 
   const handleSave = async () => {
@@ -519,7 +535,8 @@ function AiModelsSection({
         label="AI Models"
         onDiscard={handleDiscard}
         onSave={handleSave}
-        disabled={!config}
+        disabled={!config || !allPicked}
+        disabledReason={!allPicked ? "Pick a provider + model for every slot" : undefined}
       />
     </>
   );
@@ -581,7 +598,7 @@ function ModelRow({
       <div className="grid grid-cols-2 gap-3 w-[420px]">
         <Select value={provider} onValueChange={onProviderChange}>
           <SelectTrigger className="h-9 rounded-[6px] border-sf-line-strong text-sm bg-sf-surface">
-            <SelectValue />
+            <SelectValue placeholder="Select provider" />
           </SelectTrigger>
           <SelectContent>
             {providerOptions.map((p) => (
@@ -591,10 +608,14 @@ function ModelRow({
             ))}
           </SelectContent>
         </Select>
-        <Select value={model} onValueChange={onModelChange} disabled={models.length === 0}>
+        <Select
+          value={model}
+          onValueChange={onModelChange}
+          disabled={!provider || models.length === 0}
+        >
           <SelectTrigger className="h-9 rounded-[6px] border-sf-line-strong text-sm bg-sf-surface">
-            <SelectValue>
-              {models.find((m) => m.id === model)?.label || model}
+            <SelectValue placeholder={provider ? "Select model" : "Pick provider first"}>
+              {model ? models.find((m) => m.id === model)?.label || model : undefined}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -621,6 +642,7 @@ function SaveFooter({
   onDiscard,
   onSave,
   disabled,
+  disabledReason,
 }: {
   dirty: boolean;
   saving: boolean;
@@ -629,6 +651,7 @@ function SaveFooter({
   onDiscard: () => void;
   onSave: () => void;
   disabled?: boolean;
+  disabledReason?: string;
 }) {
   return (
     <div
@@ -638,7 +661,11 @@ function SaveFooter({
     >
       <div className="mx-auto max-w-[1040px] px-10 py-3 flex items-center justify-between">
         <p className="text-[12px] text-sf-ink-3 font-mono">
-          {saved ? "Saved" : `Unsaved changes in ${label}`}
+          {saved
+            ? "Saved"
+            : disabled && disabledReason
+              ? disabledReason
+              : `Unsaved changes in ${label}`}
         </p>
         <div className="flex items-center gap-2">
           <Button

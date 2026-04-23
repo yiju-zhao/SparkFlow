@@ -16,7 +16,7 @@ import prisma from "@/lib/prisma";
 export async function ingestSourceToWiki(
   notebookId: string,
   sourceId: string,
-  userId?: string,
+  userId: string,
 ): Promise<{ pagesWritten: number; pages: string[] }> {
   const source = await prisma.source.findUnique({
     where: { id: sourceId },

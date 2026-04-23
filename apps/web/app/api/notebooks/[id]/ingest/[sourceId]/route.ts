@@ -14,7 +14,7 @@ export async function POST(
   const { id: notebookId, sourceId } = await params;
 
   try {
-    const result = await ingestSourceToWiki(notebookId, sourceId);
+    const result = await ingestSourceToWiki(notebookId, sourceId, session.user.id);
     return NextResponse.json({
       success: true,
       pagesWritten: result.pagesWritten,
