@@ -47,9 +47,11 @@ def build_graph(config: SurfaceConfig):
 from hermes.registry import discover_builtin_tools as _discover_builtin_tools
 from surfaces.notebook import NOTEBOOK
 from surfaces.hub import HUB
+from surfaces.deep_research import DEEP_RESEARCH
 
 
 _discover_builtin_tools()
 
 notebook_graph = build_graph(NOTEBOOK)
 hub_graph = build_graph(HUB)
+deep_research_graph = build_graph(DEEP_RESEARCH)
