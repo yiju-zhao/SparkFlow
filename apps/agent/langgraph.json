@@ -5,8 +5,8 @@
     "graphs": {
         "agent": "./graphs/rag_agent.py:agent",
         "hub": "./graphs/surface.py:hub_graph",
-        "search": "./graphs/search_agent.py:agent",
-        "notebook": "./graphs/surface.py:notebook_graph"
+        "notebook": "./graphs/surface.py:notebook_graph",
+        "deep_research": "./graphs/surface.py:deep_research_graph"
     },
     "env": ".env",
     "image_distro": "wolfi"
