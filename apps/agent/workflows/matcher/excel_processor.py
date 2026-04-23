@@ -19,24 +19,49 @@ logger = logging.getLogger(__name__)
 
 
 class ExcelProcessor:
-    """Process Excel files for queries and results."""
+    """Process Excel files for queries and results.
+
+    Chinese-to-English translation uses the user's BYOK model (passed at
+    construction time). Previously this went through a local Xinference
+    server; Xinference was retired in favor of the model picked in
+    Settings → Research Hub → SemOps.
+    """
+
+    def __init__(
+        self,
+        *,
+        model_provider: str | None = None,
+        model_name: str | None = None,
+        api_key: str | None = None,
+        api_base: str | None = None,
+    ):
+        self._model_provider = model_provider
+        self._model_name = model_name
+        self._api_key = api_key
+        self._api_base = api_base
 
     def _translate_to_english(self, text: str) -> str:
         """
-        Translate text to English using the Xinference LLM.
+        Translate text to English using the caller's BYOK LLM.
 
-        Returns the original text if it's empty or translation fails.
+        Returns the original text if empty, if credentials are missing,
+        or if the API call fails.
         """
         if not text or not text.strip():
             return text
+        if not self._api_key or not self._model_name:
+            logger.warning(
+                "ExcelProcessor._translate_to_english called without BYOK credentials; "
+                "returning text unchanged."
+            )
+            return text
         try:
             client = OpenAI(
-                api_key=os.getenv("XINFERENCE_API_KEY", "not-needed"),
-                base_url=os.getenv("XINFERENCE_BASE_URL", "http://localhost:9997/v1"),
+                api_key=self._api_key,
+                base_url=self._api_base,
             )
-            model = os.getenv("XINFERENCE_MODEL", "Qwen3-Instruct")
             response = client.chat.completions.create(
-                model=model,
+                model=self._model_name,
                 messages=[
                     {
                         "role": "system",

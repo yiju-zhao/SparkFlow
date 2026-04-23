@@ -83,6 +83,8 @@ async def create_job(
         job_store=job_store,
         model_provider=req.model_provider,
         model_name=req.model_name,
+        api_key=req.api_key,
+        api_base=req.api_base,
     )
     background_tasks.add_task(job_runner.run_job, job_id, target_data)
 

@@ -102,22 +102,48 @@ async def _semops_rank(
     top_k: int,
     provider: str,
     model: str,
-    api_key: str | None,
+    api_key: str,
+    api_base: str | None = None,
 ) -> dict[str, Any]:
-    model_config: dict[str, Any] = {"provider": provider, "model": model}
-    if api_key:
-        model_config["api_key"] = api_key
+    """POST to semops /api/operators/rank.
+
+    The semops contract requires each candidate to carry a ``match_text``
+    field and the request to carry a ``query_text`` field. Callers may
+    pass candidates keyed by ``text``; this function renames that to
+    ``match_text`` before sending.
+
+    ``api_key`` is required — semops has no env-key fallback. Callers
+    must resolve the user's BYOK before invoking.
+    """
+
+    normalized: list[dict[str, Any]] = []
+    for c in candidates:
+        if "match_text" in c:
+            normalized.append(c)
+        elif "text" in c:
+            renamed = dict(c)
+            renamed["match_text"] = renamed.pop("text")
+            normalized.append(renamed)
+        else:
+            normalized.append(c)  # let semops' validator complain
+
+    lm_config: dict[str, Any] = {
+        "provider": provider,
+        "model": model,
+        "api_key": api_key,
+    }
+    if api_base:
+        lm_config["api_base"] = api_base
 
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(
             f"{SEMOPS_API_URL}/api/operators/rank",
             json={
-                "candidates": candidates,
-                "text_field": "text",
-                "query": query,
+                "candidates": normalized,
+                "query_text": query,
                 "top_k": top_k,
                 "include_reasons": True,
-                "model_config": model_config,
+                "lm_config": lm_config,
             },
         )
         resp.raise_for_status()

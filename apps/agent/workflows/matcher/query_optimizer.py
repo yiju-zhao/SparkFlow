@@ -55,6 +55,8 @@ class QueryOptimizer:
         excel_processor: ExcelProcessor | None = None,
         model_provider: str = "google",
         model_name: str = "gemini-2.5-flash",
+        api_key: str | None = None,
+        api_base: str | None = None,
     ):
         self.excel_processor = excel_processor or ExcelProcessor()
         self.enabled = (
@@ -62,18 +64,28 @@ class QueryOptimizer:
         )
         self.model_provider = model_provider
         self.model_name = model_name
+        self.api_base = api_base
         self._client: genai.Client | None = None
 
-        # Only set API key for Google provider
-        if model_provider == "google":
-            self.api_key = os.getenv("GOOGLE_API_KEY")
+        # BYOK only — no env fallback. If the caller wanted query
+        # optimization they must pass an api_key for a supported provider.
+        if model_provider == "google" and api_key:
+            self.api_key = api_key
         else:
-            # For OpenAI, we'd need to implement that support
-            # For now, fall back to deterministic merge
+            # Non-Google providers are not supported for LLM-based
+            # optimization yet; the matcher falls back to deterministic
+            # merge, which doesn't need a key.
             self.api_key = None
-            logger.warning(
-                f"Query optimizer only supports Google Gemini. Provider '{model_provider}' will use deterministic merge."
-            )
+            if model_provider != "google":
+                logger.warning(
+                    "Query optimizer only supports Google Gemini. "
+                    f"Provider '{model_provider}' will use deterministic merge."
+                )
+            elif not api_key:
+                logger.warning(
+                    "Google provider selected but no BYOK key provided; "
+                    "query optimizer will fall back to deterministic merge."
+                )
 
     def optimize_queries(
         self,

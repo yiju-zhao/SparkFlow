@@ -102,6 +102,26 @@ class RankCandidate(BaseModel):
     match_text: str
 
 
+class OperatorModelConfig(BaseModel):
+    """Per-request LLM credentials + model selection for LOTUS.
+
+    Callers (apps/agent workflows) resolve the user's BYOK via
+    ``resolveApiKey`` and forward the result here. The apps/semops service
+    does NOT carry its own provider keys — missing BYOK is a 401 at the
+    Node layer before the request ever reaches this endpoint.
+
+    ``provider`` is the BYOK provider id ("openai", "google", "deepseek",
+    "glm", "minimax", "kimi", "custom"). ``api_base`` is only needed for
+    OpenAI-compatible endpoints that aren't api.openai.com (deepseek, glm,
+    minimax, kimi, custom).
+    """
+
+    provider: str
+    model: str
+    api_key: str
+    api_base: Optional[str] = None
+
+
 class RankRequest(BaseModel):
     """Request body for POST /api/operators/rank."""
 
@@ -110,6 +130,10 @@ class RankRequest(BaseModel):
     top_k: int = 50
     search_k: int = 350
     include_reasons: bool = True
+    # Per-request LOTUS LM config. Required — no admin fallback.
+    # JSON key is ``lm_config`` to avoid colliding with Pydantic v2's
+    # reserved ``model_config`` class-attribute name.
+    lm_config: OperatorModelConfig
 
 
 class RankResultItem(BaseModel):

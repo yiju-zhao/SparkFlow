@@ -1,13 +1,12 @@
 """
 Semantic operator routes.
 
-Exposes ``SemanticOperators`` primitives directly — bypassing the
-``LotusMatcher`` job/pipeline machinery. The frontend uses these to invoke
-individual semantic ops (rank, map, ...) as building blocks.
+Exposes ``SemanticOperators`` primitives directly. Workflow callers
+(apps/agent/workflows/{search,matcher,daily_digest}) invoke these over
+HTTP, passing per-request BYOK credentials in ``lm_config``.
 """
 
 import logging
-import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -23,7 +22,9 @@ def get_operators(request: Request) -> SemanticOperators:
     """Return a per-process ``SemanticOperators`` instance.
 
     Reusing one instance keeps any real-LOTUS state (default search/topk/map
-    closures, lazy imports) warm across requests.
+    closures, lazy imports) warm across requests. LOTUS's LM is (re)configured
+    inside ``SemanticOperators.rank`` per request using the caller's
+    ``lm_config``.
     """
     ops = getattr(request.app.state, "operators", None)
     if ops is None:
@@ -40,23 +41,15 @@ async def rank(
 ):
     """Run ``SemanticOperators.rank`` and return up to ``top_k`` results."""
     logger.info(
-        "rank request: query_len=%d candidates=%d top_k=%d search_k=%d include_reasons=%s",
+        "rank request: provider=%s model=%s query_len=%d candidates=%d top_k=%d search_k=%d include_reasons=%s",
+        req.lm_config.provider,
+        req.lm_config.model,
         len(req.query_text),
         len(req.candidates),
         req.top_k,
         req.search_k,
         req.include_reasons,
     )
-
-    # LOTUS must be configured before the first real sem_* op fires. The
-    # matcher's configure() is idempotent (guarded by self._configured), so
-    # calling it here is cheap on repeated requests. We skip it under pytest
-    # to keep tests hermetic — configure() talks to Xinference which isn't
-    # available in the test environment.
-    if not os.getenv("PYTEST_CURRENT_TEST"):
-        matcher = getattr(request.app.state, "matcher", None)
-        if matcher is not None:
-            matcher.configure()
 
     candidates_dicts = [c.model_dump() for c in req.candidates]
 
@@ -67,6 +60,7 @@ async def rank(
             top_k=req.top_k,
             search_k=req.search_k,
             include_reasons=req.include_reasons,
+            lm_config=req.lm_config.model_dump(),
         )
     except ValueError as e:
         # SemanticOperators raises ValueError for empty candidates. Translate

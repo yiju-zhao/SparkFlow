@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveApiKey } from "@/lib/services/api-key-resolver";
 
 const WORKFLOWS_API_URL =
   process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       includeReasons,
     });
 
-    // Fetch user's matcher model settings
+    // Fetch user's matcher model settings. BYOK is required (no env fallback).
     const userSettings = await prisma.userSettings.findUnique({
       where: { userId: session.user.id },
       select: {
@@ -74,11 +75,33 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Use user settings or defaults
-    const modelProvider =
-      userSettings?.semopsModelProvider || process.env.DEFAULT_MODEL_PROVIDER || "openai";
-    const modelName =
-      userSettings?.semopsModelName || process.env.DEFAULT_MODEL_NAME || "gpt-4o-mini";
+    if (!userSettings?.semopsModelProvider || !userSettings.semopsModelName) {
+      return NextResponse.json(
+        {
+          error:
+            "Matcher model is not configured. Open Settings → Research Hub → SemOps model to pick one.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const modelProvider = userSettings.semopsModelProvider;
+    const modelName = userSettings.semopsModelName;
+
+    // Resolve the BYOK credential for this provider. resolveApiKey throws
+    // if the user hasn't configured a key — surface that to the client.
+    let apiKey: string;
+    let apiBase: string | undefined;
+    try {
+      const resolved = await resolveApiKey(session.user.id, modelProvider);
+      apiKey = resolved.apiKey;
+      apiBase = resolved.baseUrl;
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : String(err) },
+        { status: 400 },
+      );
+    }
 
     // Fetch target data from database
     let targetData: Record<string, unknown>[] = [];
@@ -154,6 +177,8 @@ export async function POST(request: NextRequest) {
         modelName,
       }),
       user_id: session.user.id,
+      api_key: apiKey,
+      api_base: apiBase ?? null,
     };
 
     console.log("[Matcher Jobs] Sending to matcher - model:", modelProvider, modelName);

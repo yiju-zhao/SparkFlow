@@ -27,19 +27,27 @@ class JobRunner:
         matcher: LotusMatcher,
         excel_processor: ExcelProcessor,
         job_store: JobStore,
-        model_provider: str = "google",
-        model_name: str = "gemini-2.5-flash",
+        model_provider: str,
+        model_name: str,
+        api_key: str,
+        api_base: str | None = None,
     ):
-        self.matcher = matcher  # Uses Xinference (local LLM) for LOTUS
+        self.matcher = matcher
         self.excel_processor = excel_processor
         self.job_store = job_store
-        # Model settings for query optimizer only (LOTUS always uses Xinference)
+        # Per-job model + BYOK — threaded down into LotusMatcher.run_pipeline
+        # (forwarded to semops as lm_config) and into ExcelProcessor
+        # (used for Chinese→English translation during query optimization).
         self.model_provider = model_provider
         self.model_name = model_name
+        self.api_key = api_key
+        self.api_base = api_base
         self.query_optimizer = QueryOptimizer(
             excel_processor=excel_processor,
             model_provider=model_provider,
             model_name=model_name,
+            api_key=api_key,
+            api_base=api_base,
         )
 
     def run_job(self, job_id: str, target_data: list[dict]):
@@ -175,7 +183,8 @@ class JobRunner:
                 def progress_callback(pct, msg):
                     pass
 
-                # Run LOTUS pipeline with optimized English query
+                # Run LOTUS pipeline with optimized English query.
+                # BYOK credentials are forwarded all the way down to semops.
                 matches_df = self.matcher.run_pipeline(
                     df=target_df,
                     query_text=query_text,
@@ -185,6 +194,10 @@ class JobRunner:
                     include_reasons=include_reasons,
                     index_dir=index_dir,
                     progress_callback=progress_callback,
+                    model_provider=self.model_provider,
+                    model_name=self.model_name,
+                    api_key=self.api_key,
+                    api_base=self.api_base,
                 )
 
                 # Add metadata columns

@@ -91,6 +91,11 @@ class LotusMatcher:
         include_reasons: bool = True,
         index_dir: str | None = None,
         progress_callback: Callable[[int, str], None] | None = None,
+        *,
+        model_provider: str,
+        model_name: str,
+        api_key: str,
+        api_base: str | None = None,
     ) -> pd.DataFrame:
         """
         Run the full LOTUS matching pipeline via the semops HTTP endpoint.
@@ -126,6 +131,10 @@ class LotusMatcher:
             top_k=top_k,
             search_k=search_k,
             include_reasons=include_reasons,
+            model_provider=model_provider,
+            model_name=model_name,
+            api_key=api_key,
+            api_base=api_base,
         )
 
         if progress_callback:
@@ -145,8 +154,25 @@ def _rank_via_semops(
     top_k: int,
     search_k: int,
     include_reasons: bool,
+    model_provider: str,
+    model_name: str,
+    api_key: str,
+    api_base: str | None = None,
 ) -> list[dict]:
-    """POST candidates to semops /api/operators/rank and return ranked results."""
+    """POST candidates to semops /api/operators/rank and return ranked results.
+
+    ``api_key`` is required — semops has no admin/env fallback. The LM
+    config is threaded through as ``lm_config`` on the request body and
+    used per-request by semops to configure LOTUS.
+    """
+    lm_config: dict = {
+        "provider": model_provider,
+        "model": model_name,
+        "api_key": api_key,
+    }
+    if api_base:
+        lm_config["api_base"] = api_base
+
     with httpx.Client(timeout=120) as client:
         resp = client.post(
             f"{SEMOPS_API_URL}/api/operators/rank",
@@ -156,6 +182,7 @@ def _rank_via_semops(
                 "top_k": top_k,
                 "search_k": search_k,
                 "include_reasons": include_reasons,
+                "lm_config": lm_config,
             },
         )
         resp.raise_for_status()
