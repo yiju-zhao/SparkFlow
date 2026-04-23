@@ -1,16 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { processWebpage } from "@/lib/services/source-processors/webpage-processor";
 import { processTextDocument } from "@/lib/services/source-processors/text-processor";
 import { processMineruDocument } from "@/lib/services/source-processors/mineru-processor";
 import type { ProcessingContext } from "@/lib/services/source-processors/types";
+import {
+  MAX_SOURCES_PER_NOTEBOOK,
+  formatSourceLimitError,
+} from "@/lib/constants/sources";
 
 const MINERU_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt"];
 const TEXT_EXTENSIONS = ["txt", "md"];
 const ALLOWED_EXTENSIONS = [...MINERU_EXTENSIONS, ...TEXT_EXTENSIONS];
+
+type PrismaLike = Prisma.TransactionClient | typeof prisma;
+
+async function assertSourceCapacity(
+  tx: PrismaLike,
+  notebookId: string,
+  adding: number,
+) {
+  if (adding <= 0) return;
+  const current = await tx.source.count({ where: { notebookId } });
+  if (current + adding > MAX_SOURCES_PER_NOTEBOOK) {
+    const remaining = Math.max(0, MAX_SOURCES_PER_NOTEBOOK - current);
+    throw new Error(formatSourceLimitError(remaining, adding));
+  }
+}
 
 export async function getSources(notebookId: string) {
   const session = await auth();
@@ -48,6 +68,8 @@ export async function addWebpageSource(notebookId: string, url: string, title?: 
     throw new Error("Notebook not found");
   }
 
+  await assertSourceCapacity(prisma, notebookId, 1);
+
   // Create source with PROCESSING status
   const source = await prisma.source.create({
     data: {
@@ -70,70 +92,6 @@ export async function addWebpageSource(notebookId: string, url: string, title?: 
   };
 
   processWebpage(url, title, context)
-    .catch(console.error)
-    .finally(() => {
-      try {
-        revalidatePath(`/deepdive/${notebookId}`);
-      } catch {
-        // Ignore revalidation errors in background context
-      }
-    });
-
-  return source;
-}
-
-export async function uploadDocumentSource(notebookId: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  // Verify notebook ownership
-  const notebook = await prisma.notebook.findFirst({
-    where: { id: notebookId, userId: session.user.id },
-  });
-
-  if (!notebook) {
-    throw new Error("Notebook not found");
-  }
-
-  const file = formData.get("file") as File;
-  if (!file) {
-    throw new Error("No file provided");
-  }
-
-  const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
-  if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
-    throw new Error(
-      `Unsupported file type ".${fileExtension}". Allowed: ${ALLOWED_EXTENSIONS.map((e) => "." + e).join(", ")}`,
-    );
-  }
-
-  const source = await prisma.source.create({
-    data: {
-      notebookId,
-      title: file.name,
-      sourceType: "DOCUMENT",
-      status: "PROCESSING",
-    },
-  });
-
-  revalidatePath(`/deepdive/${notebookId}`);
-
-  const context: ProcessingContext = {
-    sourceId: source.id,
-    notebookId,
-    userId: session.user.id,
-  };
-
-  const processDocument = async () => {
-    if (TEXT_EXTENSIONS.includes(fileExtension)) {
-      return processTextDocument(file, context);
-    }
-    return processMineruDocument(file, context);
-  };
-
-  processDocument()
     .catch(console.error)
     .finally(() => {
       try {
@@ -170,6 +128,8 @@ export async function addPublicationSource(notebookId: string, publicationId: st
   if (!publication.pdfUrl) {
     throw new Error("Publication has no PDF URL");
   }
+
+  await assertSourceCapacity(prisma, notebookId, 1);
 
   // Create source with PROCESSING status
   const source = await prisma.source.create({
@@ -242,6 +202,8 @@ export async function addWechatSource(notebookId: string, articleId: number) {
   if (!article) {
     throw new Error("WeChat article not found");
   }
+
+  await assertSourceCapacity(prisma, notebookId, 1);
 
   // Create source with PROCESSING status
   const source = await prisma.source.create({
@@ -393,6 +355,161 @@ export async function addWechatSource(notebookId: string, articleId: number) {
   })();
 
   return source;
+}
+
+export async function uploadDocumentsBatch(notebookId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const notebook = await prisma.notebook.findFirst({
+    where: { id: notebookId, userId: session.user.id },
+  });
+  if (!notebook) {
+    throw new Error("Notebook not found");
+  }
+
+  const allFiles = formData.getAll("file").filter((v): v is File => v instanceof File);
+  if (allFiles.length === 0) {
+    throw new Error("No files provided");
+  }
+
+  const accepted: { file: File; extension: string }[] = [];
+  const skipped: string[] = [];
+  for (const file of allFiles) {
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (ALLOWED_EXTENSIONS.includes(ext)) {
+      accepted.push({ file, extension: ext });
+    } else {
+      skipped.push(file.name);
+    }
+  }
+
+  if (accepted.length === 0) {
+    throw new Error(
+      `No supported files. Allowed: ${ALLOWED_EXTENSIONS.map((e) => "." + e).join(", ")}`,
+    );
+  }
+
+  const created = await prisma.$transaction(async (tx) => {
+    await assertSourceCapacity(tx, notebookId, accepted.length);
+    return tx.source.createManyAndReturn({
+      data: accepted.map(({ file }) => ({
+        notebookId,
+        title: file.name,
+        sourceType: "DOCUMENT" as const,
+        status: "PROCESSING" as const,
+      })),
+    });
+  });
+
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  const userId = session.user.id;
+  for (let i = 0; i < created.length; i++) {
+    const source = created[i];
+    const { file, extension } = accepted[i];
+    const context: ProcessingContext = {
+      sourceId: source.id,
+      notebookId,
+      userId,
+    };
+    const processDocument = async () => {
+      if (TEXT_EXTENSIONS.includes(extension)) {
+        return processTextDocument(file, context);
+      }
+      return processMineruDocument(file, context);
+    };
+    processDocument()
+      .catch(console.error)
+      .finally(() => {
+        try {
+          revalidatePath(`/deepdive/${notebookId}`);
+        } catch {
+          // Ignore revalidation errors in background context
+        }
+      });
+  }
+
+  return { sources: created, skipped };
+}
+
+export async function addWebpageSourcesBatch(notebookId: string, urls: string[]) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const notebook = await prisma.notebook.findFirst({
+    where: { id: notebookId, userId: session.user.id },
+  });
+  if (!notebook) {
+    throw new Error("Notebook not found");
+  }
+
+  const seen = new Set<string>();
+  const accepted: string[] = [];
+  const skipped: string[] = [];
+  for (const raw of urls) {
+    const trimmed = raw?.trim();
+    if (!trimmed) continue;
+    if (!/^https?:\/\//i.test(trimmed)) {
+      skipped.push(trimmed);
+      continue;
+    }
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    accepted.push(trimmed);
+  }
+
+  if (accepted.length === 0) {
+    throw new Error("No valid URLs provided");
+  }
+
+  const created = await prisma.$transaction(async (tx) => {
+    await assertSourceCapacity(tx, notebookId, accepted.length);
+    return tx.source.createManyAndReturn({
+      data: accepted.map((url) => {
+        let hostname = url;
+        try {
+          hostname = new URL(url).hostname;
+        } catch {
+          // fall back to raw url
+        }
+        return {
+          notebookId,
+          title: hostname,
+          sourceType: "WEBPAGE" as const,
+          url,
+          status: "PROCESSING" as const,
+        };
+      }),
+    });
+  });
+
+  revalidatePath(`/deepdive/${notebookId}`);
+
+  const userId = session.user.id;
+  for (const source of created) {
+    if (!source.url) continue;
+    const context: ProcessingContext = {
+      sourceId: source.id,
+      notebookId,
+      userId,
+    };
+    processWebpage(source.url, undefined, context)
+      .catch(console.error)
+      .finally(() => {
+        try {
+          revalidatePath(`/deepdive/${notebookId}`);
+        } catch {
+          // Ignore revalidation errors in background context
+        }
+      });
+  }
+
+  return { sources: created, skipped };
 }
 
 export async function deleteSource(sourceId: string) {
