@@ -4,13 +4,11 @@
  */
 
 import prisma from "@/lib/prisma";
-import modelsConfig from "@/config/models.json";
 
 // Resolve wiki model + API key for a user. BYOK is required: all users
-// (including admins) configure their own keys via Settings. There is no
-// admin env fallback — if the caller omits userId or the user hasn't
-// configured a key, this throws and the ingest pipeline surfaces the
-// error to the client.
+// (including admins) configure their own keys via Settings. If the user
+// hasn't picked a wiki model OR hasn't set an API key for that provider,
+// this throws — the ingest pipeline surfaces the error to the client.
 async function resolveWikiClient(userId: string) {
   const { default: OpenAI } = await import("openai");
   const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
@@ -19,16 +17,20 @@ async function resolveWikiClient(userId: string) {
     where: { userId },
     select: { wikiModelProvider: true, wikiModelName: true },
   });
-  const model = settings?.wikiModelName || modelsConfig.defaults.wikiModel;
-  const provider = settings?.wikiModelProvider || modelsConfig.defaults.provider;
 
-  // Throws if the user hasn't set an API key for this provider; the
-  // error message points them at /settings, which is the desired UX.
-  const resolved = await resolveApiKey(userId, provider);
+  if (!settings?.wikiModelProvider || !settings.wikiModelName) {
+    throw new Error(
+      "Wiki model is not configured. Open Settings → Deepdive → Wiki generation model to pick one.",
+    );
+  }
+
+  // resolveApiKey throws if the user hasn't configured a BYOK key for
+  // this provider; the error message points them at /settings.
+  const resolved = await resolveApiKey(userId, settings.wikiModelProvider);
 
   return {
     client: new OpenAI({ apiKey: resolved.apiKey, baseURL: resolved.baseUrl }),
-    model,
+    model: settings.wikiModelName,
   };
 }
 

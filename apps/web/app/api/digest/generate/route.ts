@@ -113,17 +113,32 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Resolve API key ───────────────────────────────────────────────────────
-  const modelProvider = userSettings?.semopsModelProvider ?? "openai";
-  const modelName = userSettings?.semopsModelName ?? "gpt-4o-mini";
+  // ── Resolve model + API key ─────────────────────────────────────────────
+  // BYOK is required. Reject early if either the model hasn't been picked
+  // or the user hasn't configured a key for it. Semops has no env fallback.
+  if (!userSettings?.semopsModelProvider || !userSettings.semopsModelName) {
+    return NextResponse.json(
+      {
+        error:
+          "Digest model is not configured. Open Settings → Research Hub → SemOps model to pick one.",
+      },
+      { status: 400 },
+    );
+  }
+  const modelProvider = userSettings.semopsModelProvider;
+  const modelName = userSettings.semopsModelName;
 
-  let resolvedApiKey: string | null = null;
+  let resolvedApiKey: string;
+  let resolvedApiBase: string | undefined;
   try {
     const resolved = await resolveApiKey(userId, modelProvider);
     resolvedApiKey = resolved.apiKey;
-  } catch {
-    // Key may not be set — Python workflow will fall back to its own env keys
-    resolvedApiKey = null;
+    resolvedApiBase = resolved.baseUrl;
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 400 },
+    );
   }
 
   // ── Transaction: upsert DailyDigest, create new DigestSections ───────────
@@ -191,6 +206,7 @@ export async function POST(request: NextRequest) {
       model_provider: modelProvider,
       model_name: modelName,
       api_key: resolvedApiKey,
+      api_base: resolvedApiBase ?? null,
     };
 
     // Fire and forget — do not await

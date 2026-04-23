@@ -31,13 +31,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
   }
 
-  // Fetch user's search model preference
+  // Fetch user's search model preference. BYOK is required — no
+  // system default fallback. If the user hasn't picked a source-search
+  // model in Settings, reject the request with a clear message.
   const userSettings = await prisma.userSettings.findUnique({
     where: { userId: session.user.id },
     select: { searchModelProvider: true, searchModelName: true },
   });
-  const searchModelProvider = userSettings?.searchModelProvider || modelsConfig.defaults.provider;
-  const searchModelName = userSettings?.searchModelName || modelsConfig.defaults.searchModel;
+  if (!userSettings?.searchModelProvider || !userSettings.searchModelName) {
+    return NextResponse.json(
+      {
+        error:
+          "Source search model is not configured. Open Settings → Deepdive → Source search model to pick one.",
+      },
+      { status: 400 },
+    );
+  }
+  const searchModelProvider = userSettings.searchModelProvider;
+  const searchModelName = userSettings.searchModelName;
 
   const taskId = uuidv4();
   searchTasks.set(taskId, {
