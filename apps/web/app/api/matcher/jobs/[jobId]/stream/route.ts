@@ -6,10 +6,9 @@
 
 import { NextRequest } from "next/server";
 
-const SEMOPS_API_URL =
-  process.env.SEMOPS_API_URL ||
-  process.env.MATCHER_API_URL ||
-  "http://localhost:2025";
+const WORKFLOWS_API_URL =
+  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
+  "http://localhost:2027";
 
 export async function GET(
   request: NextRequest,
@@ -18,7 +17,7 @@ export async function GET(
   const { jobId } = await params;
 
   // Connect to matcher service SSE endpoint
-  const response = await fetch(`${SEMOPS_API_URL}/api/jobs/${jobId}/stream`, {
+  const response = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs/${jobId}/stream`, {
     headers: {
       Accept: "text/event-stream",
     },
