@@ -245,6 +245,7 @@ function NotebookLayoutInner({
       >
         <ChatPanel
           notebookId={notebook.id}
+          userId={notebook.userId}
           sources={sources}
           initialSessions={initialChatSessions}
           initialMessages={initialMessages}
