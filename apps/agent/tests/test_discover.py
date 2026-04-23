@@ -56,6 +56,12 @@ def test_echo_tool_is_discovered_from_production_tools_dir():
     # Clear any prior registration so the discovery side-effect is observable
     global_registry._tools.pop("echo", None)
 
+    # Clear cached tools modules so discover_builtin_tools() will re-import them
+    # (necessary after Task 9 which discovers tools at graphs/surface.py import time)
+    for mod in list(sys.modules):
+        if mod.startswith("tools.") and not mod.startswith("tools.mcp_tool"):
+            del sys.modules[mod]
+
     imported = discover_builtin_tools()  # use default tools_dir
     assert "tools._echo" in imported
     entry = global_registry.get_entry("echo")
