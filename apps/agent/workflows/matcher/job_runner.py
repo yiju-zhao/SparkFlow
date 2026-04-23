@@ -11,10 +11,10 @@ from datetime import datetime
 
 import pandas as pd
 
-from services.excel_processor import ExcelProcessor
-from services.lotus_matcher import LotusMatcher
-from services.query_optimizer import QueryOptimizer
-from tools.job_store import JobStore
+from workflows.matcher.excel_processor import ExcelProcessor
+from workflows.matcher.lotus import LotusMatcher
+from workflows.matcher.query_optimizer import QueryOptimizer
+from workflows.matcher.job_store import JobStore
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,8 @@
 """
-Job management routes for the semops service.
+Matcher job management routes.
+
+Ported from apps/semops/api/routes/jobs.py. Mounted at
+/v1/workflows/matcher/jobs on the apps/agent FastAPI server.
 """
 
 import asyncio
@@ -10,16 +13,16 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
-from api.types import (
+from server.matcher_types import (
     CreateMatchJobRequest,
     JobProgressResponse,
     MatchJobResponse,
     MatchJobStatus,
     MatchTargetType,
 )
-from services.excel_processor import ExcelProcessor
-from services.job_runner import JobRunner
-from tools.job_store import JobStore
+from workflows.matcher.excel_processor import ExcelProcessor
+from workflows.matcher.job_runner import JobRunner
+from workflows.matcher.job_store import JobStore
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +33,7 @@ def get_job_store() -> JobStore:
     return JobStore()
 
 
-@router.post("", response_model=MatchJobResponse)
+@router.post("/jobs", response_model=MatchJobResponse)
 async def create_job(
     req: CreateMatchJobRequest,
     background_tasks: BackgroundTasks,
@@ -72,8 +75,10 @@ async def create_job(
     )
 
     # Start background processing
+    from workflows.matcher.lotus import LotusMatcher
+
     job_runner = JobRunner(
-        matcher=request.app.state.matcher,
+        matcher=LotusMatcher(),
         excel_processor=ExcelProcessor(),
         job_store=job_store,
         model_provider=req.model_provider,
@@ -86,7 +91,7 @@ async def create_job(
     return _job_to_response(job)
 
 
-@router.get("/{job_id}", response_model=MatchJobResponse)
+@router.get("/jobs/{job_id}", response_model=MatchJobResponse)
 async def get_job(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
@@ -98,7 +103,7 @@ async def get_job(
     return _job_to_response(job)
 
 
-@router.get("/{job_id}/progress", response_model=JobProgressResponse)
+@router.get("/jobs/{job_id}/progress", response_model=JobProgressResponse)
 async def get_job_progress(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
@@ -118,7 +123,7 @@ async def get_job_progress(
     )
 
 
-@router.get("/{job_id}/stream")
+@router.get("/jobs/{job_id}/stream")
 async def stream_job_progress(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
@@ -167,7 +172,7 @@ async def stream_job_progress(
     )
 
 
-@router.delete("/{job_id}")
+@router.delete("/jobs/{job_id}")
 async def cancel_job(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
@@ -187,7 +192,7 @@ async def cancel_job(
     return {"message": "Job cancelled"}
 
 
-@router.get("/{job_id}/download")
+@router.get("/jobs/{job_id}/download")
 async def download_results(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),

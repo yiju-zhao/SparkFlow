@@ -9,10 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const SEMOPS_API_URL =
-  process.env.SEMOPS_API_URL ||
-  process.env.MATCHER_API_URL ||
-  "http://localhost:2025";
+const WORKFLOWS_API_URL =
+  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
+  "http://localhost:2027";
 
 // Convert camelCase to snake_case for matcher service
 function toSnakeCase(str: string): string {
@@ -159,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[Matcher Jobs] Sending to matcher - model:", modelProvider, modelName);
 
-    const response = await fetch(`${SEMOPS_API_URL}/api/jobs`, {
+    const response = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

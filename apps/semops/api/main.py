@@ -1,34 +1,22 @@
 """
 SemOps Service - FastAPI Application
 
-Matches user queries against conference sessions/publications using LOTUS semantic operators.
+Pure semantic-operator library. Exposes `/api/operators/*` for workflow
+callers (apps/agent/workflows) to invoke LOTUS-backed semantic primitives.
+Matcher-specific orchestration moved to apps/agent/workflows/matcher/
+in the P5 refactor.
 """
-
-import os
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import jobs, operators
-from services.lotus_matcher import LotusMatcher
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Initialize services on startup."""
-    # Initialize LOTUS matcher (lazy - will configure on first use)
-    app.state.matcher = LotusMatcher()
-    yield
-    # Cleanup on shutdown
-    app.state.matcher = None
+from api.routes import operators
 
 
 app = FastAPI(
     title="SemOps Service",
-    description="Semantic matching service for conference sessions and publications",
-    version="1.0.0",
-    lifespan=lifespan,
+    description="Semantic operator library (sem_rank etc.) backing SparkFlow workflows",
+    version="2.0.0",
 )
 
 # CORS configuration
@@ -40,8 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
+# Routers
 app.include_router(operators.router, prefix="/api/operators", tags=["operators"])
 
 

@@ -10,9 +10,12 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from server.routes.matcher_jobs import router as matcher_jobs_router
 from workflows.search import SearchRequest, SearchResponse, run as run_search
 
 app = FastAPI(title="SparkFlow Workflows", version="0.1.0")
+
+app.include_router(matcher_jobs_router, prefix="/v1/workflows/matcher")
 
 
 @app.get("/v1/healthz")

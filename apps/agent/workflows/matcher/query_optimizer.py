@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 from google import genai
 
-from services.excel_processor import ExcelProcessor
+from workflows.matcher.excel_processor import ExcelProcessor
 
 logger = logging.getLogger(__name__)
 
