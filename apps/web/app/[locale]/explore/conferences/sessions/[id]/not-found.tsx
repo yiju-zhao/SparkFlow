@@ -13,7 +13,7 @@ export default function SessionNotFound() {
         This session may have been removed or doesn&apos;t exist.
       </p>
       <Button asChild className="mt-4">
-        <Link href="/explore/sessions">Browse all sessions</Link>
+        <Link href="/explore/conferences/sessions">Browse all sessions</Link>
       </Button>
     </div>
   );

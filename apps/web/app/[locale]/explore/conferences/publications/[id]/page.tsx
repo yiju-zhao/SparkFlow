@@ -201,7 +201,7 @@ export default async function PublicationDetailPage({ params }: PageProps) {
                   <div className="flex items-center gap-3">
                     <h3 className="font-medium truncate flex-1 min-w-0">
                       <Link
-                        href={`/explore/sessions/${session.id}`}
+                        href={`/explore/conferences/sessions/${session.id}`}
                         className="after:absolute after:inset-0"
                       >
                         {session.title}
