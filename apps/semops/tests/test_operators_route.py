@@ -3,9 +3,9 @@
 Strategy
 --------
 We patch ``SemanticOperators.rank`` at the class level (via ``mocker.patch.object``
-or ``monkeypatch``) so no real LOTUS call is ever made. The route's
-``configure()`` ceremony is gated on ``PYTEST_CURRENT_TEST`` — pytest sets that
-env var automatically, so tests never trigger Xinference.
+or ``monkeypatch``) so no real LOTUS call is ever made. The rank() implementation
+also skips LOTUS LM configuration when ``PYTEST_CURRENT_TEST`` is set (pytest
+does this automatically), so the lock-and-configure ceremony is inert here.
 """
 
 from __future__ import annotations
@@ -45,6 +45,11 @@ def rank_body():
         "top_k": 2,
         "search_k": 3,
         "include_reasons": True,
+        "lm_config": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "sk-fake-test-key",
+        },
     }
 
 
@@ -147,3 +152,9 @@ def test_rank_passes_kwargs_through(client, monkeypatch, rank_body):
     assert captured["top_k"] == rank_body["top_k"]
     assert captured["search_k"] == rank_body["search_k"]
     assert captured["include_reasons"] == rank_body["include_reasons"]
+
+    # lm_config is forwarded as a plain dict (not a Pydantic model).
+    assert isinstance(captured.get("lm_config"), dict)
+    assert captured["lm_config"]["provider"] == rank_body["lm_config"]["provider"]
+    assert captured["lm_config"]["model"] == rank_body["lm_config"]["model"]
+    assert captured["lm_config"]["api_key"] == rank_body["lm_config"]["api_key"]

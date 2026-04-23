@@ -1,10 +1,13 @@
 /**
  * Context for processing a source document.
+ *
+ * ``userId`` is required because wiki ingest (invoked from each processor)
+ * resolves BYOK credentials per-user — there is no admin env fallback.
  */
 export interface ProcessingContext {
   sourceId: string;
   notebookId: string;
-  userId?: string; // for BYOK key resolution
+  userId: string;
 }
 
 /**

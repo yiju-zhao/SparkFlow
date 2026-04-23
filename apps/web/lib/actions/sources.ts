@@ -538,7 +538,12 @@ export async function deleteSource(sourceId: string) {
   // client can invalidate its queries with the updated data in one shot.
   try {
     const { removeSourceFromWiki } = await import("@/lib/services/wiki-ingest");
-    const result = await removeSourceFromWiki(notebookId, sourceId, sourceTitle);
+    const result = await removeSourceFromWiki(
+      notebookId,
+      sourceId,
+      sourceTitle,
+      session.user.id,
+    );
     console.log(
       `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`,
     );

@@ -11,7 +11,7 @@ Patching strategy
 We patch ``server.routes.matcher_jobs.JobRunner`` at the module boundary so
 that the route's ``JobRunner(matcher=..., ...)`` constructor and the
 ``background_tasks.add_task(job_runner.run_job, ...)`` call are captured
-without running any real LOTUS / Xinference / QueryOptimizer logic.
+without running any real LOTUS / semops / QueryOptimizer logic.
 
 Singleton reset
 ---------------
@@ -92,6 +92,10 @@ def valid_job_request() -> dict:
         "include_reasons": True,
         "model_provider": "google",
         "model_name": "gemini-2.5-flash",
+        # BYOK is required by CreateMatchJobRequest — tests pass a dummy
+        # value; JobRunner is mocked at the route boundary so no real
+        # semops/LOTUS call fires.
+        "api_key": "fake-test-key",
     }
 
 

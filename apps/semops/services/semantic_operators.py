@@ -1,30 +1,93 @@
 """Semantic operators: a DI-friendly wrapper over LOTUS sem_search / sem_topk / sem_map.
 
-Task 3 of the semops refactor. This module encapsulates the three LOTUS
-operations used by the matching pipeline (embedding pre-filter, LLM rerank,
-optional Chinese reason generation) behind a single ``SemanticOperators.rank``
-entrypoint.
+This module encapsulates the three LOTUS operations used by the matching
+pipeline (embedding pre-filter, LLM rerank, optional Chinese reason
+generation) behind a single ``SemanticOperators.rank`` entrypoint.
+
+Per-request LLM configuration
+-----------------------------
+LOTUS uses a module-level ``lotus.settings.lm`` global, shared across
+threads in the process. To support per-request BYOK credentials without
+races, production ``rank()`` calls serialize through ``_LOTUS_LOCK`` and
+(re)configure the LM only when the caller's
+``(provider, model, api_key, api_base)`` tuple differs from the last
+configured one.
+
+This serializes concurrent ``rank`` requests across the whole process —
+acceptable for current traffic (matcher + digest, low concurrency). When
+traffic grows, callers can batch requests that share BYOK, or we can move
+LOTUS to a thread-local settings fork.
 
 Dependency injection
 --------------------
-The three operators are injected at construction time. Passing ``None`` (or
-omitting the argument) causes the default real-LOTUS wrapper to be used lazily:
-LOTUS is only configured and invoked inside ``rank()`` when the default path
-is taken, so constructing ``SemanticOperators()`` with no args in a test
-environment (no LM configured) does not raise.
-
-Task 4 will refactor ``LotusMatcher.run_pipeline`` to delegate its three
-operator calls here; DataFrame plumbing (``sem_index``, progress callbacks,
-text-column building) remains in ``LotusMatcher``.
+Tests inject deterministic ``search_fn`` / ``topk_fn`` / ``map_fn`` stubs at
+construction time; those bypass the LOTUS config path entirely. Production
+calls leave all three ``None`` and pass a non-empty ``lm_config`` dict.
 """
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+import logging
+import os
+import threading
+from typing import Any, Callable, Optional
+
+logger = logging.getLogger(__name__)
 
 SearchFn = Callable[[list[dict], str, int], list[dict]]
 TopkFn = Callable[[list[dict], str, int], list[dict]]
 MapFn = Callable[[list[dict], str], list[dict]]
+
+
+# Serialize all real-LOTUS rank() calls in this process. See module docstring.
+_LOTUS_LOCK = threading.Lock()
+_LAST_LM_KEY: Optional[tuple[str, ...]] = None
+
+
+def _configure_lotus_lm(
+    *,
+    provider: str,
+    model: str,
+    api_key: str,
+    api_base: Optional[str],
+) -> None:
+    """Reconfigure ``lotus.settings.lm`` for this request, if different from last.
+
+    Caller must hold ``_LOTUS_LOCK``.
+    """
+    global _LAST_LM_KEY
+
+    # Cache key uses only a prefix of api_key so a rotation is picked up
+    # without logging the full secret.
+    key: tuple[str, ...] = (
+        provider,
+        model,
+        api_key[:6] if api_key else "",
+        api_base or "",
+    )
+    if _LAST_LM_KEY == key:
+        return
+
+    import lotus  # type: ignore
+    from lotus.models import LM  # type: ignore
+
+    lm_kwargs: dict[str, Any] = {
+        "model": f"{provider}/{model}",
+        "api_key": api_key,
+        "max_batch_size": 5,
+        "max_tokens": 4096,
+    }
+    if api_base:
+        lm_kwargs["api_base"] = api_base
+
+    lotus.settings.configure(lm=LM(**lm_kwargs))
+    _LAST_LM_KEY = key
+    logger.info(
+        "LOTUS LM reconfigured: provider=%s model=%s api_base=%s",
+        provider,
+        model,
+        api_base or "<default>",
+    )
 
 
 class SemanticOperators:
@@ -53,6 +116,7 @@ class SemanticOperators:
         top_k: int = 50,
         search_k: int = 350,
         include_reasons: bool = True,
+        lm_config: Optional[dict[str, Any]] = None,
     ) -> list[dict]:
         """Rank ``candidates`` by relevance to ``query_text``.
 
@@ -61,6 +125,11 @@ class SemanticOperators:
             2. topk_fn(shortlist, query_text, top_k)       — LLM rerank
             3. map_fn(topk, query_text)                    — optional reasons
 
+        ``lm_config`` is the per-request LOTUS LM configuration dict with
+        keys ``provider``, ``model``, ``api_key``, optional ``api_base``.
+        Required when any default (real-LOTUS) fn is used; ignored when
+        all three ops are injected (tests bypass the lock entirely).
+
         Returns up to ``top_k`` dicts, each preserving the input fields
         (``id``, ``match_text``, ...) and — when ``include_reasons`` — a
         non-empty ``recommendation_reason`` string. Empty ``candidates``
@@ -68,6 +137,56 @@ class SemanticOperators:
         """
         if not candidates:
             raise ValueError("candidates must be a non-empty list")
+
+        need_real_lotus = (
+            self._search_fn is None
+            or self._topk_fn is None
+            or (include_reasons and self._map_fn is None)
+        )
+
+        # Skip LOTUS config under pytest — tests that reach the real-LOTUS
+        # path would fail to import anyway; tests with injected fns bypass
+        # the lock because they don't need LOTUS configured.
+        if need_real_lotus and not os.getenv("PYTEST_CURRENT_TEST"):
+            if not lm_config:
+                raise ValueError(
+                    "lm_config is required when real-LOTUS operators are used. "
+                    "Callers must pass {provider, model, api_key, api_base?}."
+                )
+            with _LOTUS_LOCK:
+                _configure_lotus_lm(
+                    provider=lm_config["provider"],
+                    model=lm_config["model"],
+                    api_key=lm_config["api_key"],
+                    api_base=lm_config.get("api_base"),
+                )
+                return self._run_pipeline(
+                    candidates=candidates,
+                    query_text=query_text,
+                    top_k=top_k,
+                    search_k=search_k,
+                    include_reasons=include_reasons,
+                )
+
+        return self._run_pipeline(
+            candidates=candidates,
+            query_text=query_text,
+            top_k=top_k,
+            search_k=search_k,
+            include_reasons=include_reasons,
+        )
+
+    def _run_pipeline(
+        self,
+        *,
+        candidates: list[dict],
+        query_text: str,
+        top_k: int,
+        search_k: int,
+        include_reasons: bool,
+    ) -> list[dict]:
+        """Core pipeline — factored out so the lock/no-lock paths in
+        ``rank()`` share the same logic."""
 
         search_fn = self._search_fn or self._default_search_fn()
         topk_fn = self._topk_fn or self._default_topk_fn()
@@ -81,9 +200,7 @@ class SemanticOperators:
         if include_reasons:
             map_fn = self._map_fn or self._default_map_fn()
             ranked = map_fn(ranked, query_text)
-            ranked = [
-                self._ensure_reason(dict(item)) for item in ranked
-            ]
+            ranked = [self._ensure_reason(dict(item)) for item in ranked]
         else:
             ranked = [self._strip_reason(dict(item)) for item in ranked]
 
@@ -161,9 +278,7 @@ class SemanticOperators:
         Only invoked by the default (real-LOTUS) search path. Mirrors the
         indexing convention used by ``LotusMatcher.run_pipeline``.
         """
-        import os
-
-        import pandas as pd
+        import pandas as pd  # type: ignore
 
         df = pd.DataFrame(candidates)
         index_dir = os.getenv("LOTUS_INDEX_DIR", "/tmp/lotus_index")

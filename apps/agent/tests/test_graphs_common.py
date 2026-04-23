@@ -22,7 +22,11 @@ def _runtime(**overrides) -> _FakeRuntime:
         session_id="s_1",
         notebook_id=None,
         page_context=None,
-        api_key=None,
+        # BYOK is required by _resolve_model; tests pass a dummy key so
+        # the resolver path runs. init_chat_model is patched in the test
+        # that actually exercises the LLM call, so this value never reaches
+        # a real provider.
+        api_key="test-key",
         extra_caller_system=None,
     )
     defaults.update(overrides)

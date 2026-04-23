@@ -66,16 +66,23 @@ class SurfaceRuntimeContext:
 
 
 def _resolve_model(ctx: SurfaceRuntimeContext):
-    """Instantiate a chat model. Respects BYOK (``ctx.api_key``).
+    """Instantiate a chat model. BYOK is required.
 
-    If ``api_key`` is None, ``init_chat_model`` falls back to env vars —
-    matches the existing behavior in ``graphs/rag_agent.py``.
+    All users (including admins) must configure their own API keys via
+    Settings; there is no admin/system env-var fallback. If ``ctx.api_key``
+    is missing, raise — the frontend's ``/api/settings/resolve-key`` call
+    should have surfaced the misconfiguration before this point.
     """
 
-    kwargs: dict[str, Any] = {}
-    if ctx.api_key:
-        kwargs["api_key"] = ctx.api_key
-    return init_chat_model(f"{ctx.model_provider}:{ctx.model_name}", **kwargs)
+    if not ctx.api_key:
+        raise ValueError(
+            f"No API key configured for provider {ctx.model_provider!r}. "
+            "Open Settings and add a key for this provider."
+        )
+    return init_chat_model(
+        f"{ctx.model_provider}:{ctx.model_name}",
+        api_key=ctx.api_key,
+    )
 
 
 def make_llm_call(config: SurfaceConfig):

@@ -48,15 +48,26 @@ export async function GET() {
     }
   }
 
+  // BYOK-required: GET returns the user's actual choices (null when unset).
+  // Consumer routes reject with 400 when any required slot is null; the
+  // Settings UI uses the `suggestions` block to render hint placeholders
+  // but does NOT silently merge them as saved values.
   return NextResponse.json({
-    modelProvider: settings?.modelProvider || defaults.provider,
-    modelName: settings?.modelName || defaults.chatModel,
-    wikiModelProvider: settings?.wikiModelProvider || defaults.provider,
-    wikiModelName: settings?.wikiModelName || defaults.wikiModel,
-    searchModelProvider: settings?.searchModelProvider || defaults.provider,
-    searchModelName: settings?.searchModelName || defaults.searchModel,
-    semopsModelProvider: settings?.semopsModelProvider || defaults.provider,
-    semopsModelName: settings?.semopsModelName || defaults.semopsModel,
+    modelProvider: settings?.modelProvider ?? null,
+    modelName: settings?.modelName ?? null,
+    wikiModelProvider: settings?.wikiModelProvider ?? null,
+    wikiModelName: settings?.wikiModelName ?? null,
+    searchModelProvider: settings?.searchModelProvider ?? null,
+    searchModelName: settings?.searchModelName ?? null,
+    semopsModelProvider: settings?.semopsModelProvider ?? null,
+    semopsModelName: settings?.semopsModelName ?? null,
+    suggestions: {
+      provider: defaults.provider,
+      chatModel: defaults.chatModel,
+      wikiModel: defaults.wikiModel,
+      searchModel: defaults.searchModel,
+      semopsModel: defaults.semopsModel,
+    },
     apiKeyStatus,
     wechatExcludedSourceIds: settings?.wechatExcludedSourceIds || [],
   });

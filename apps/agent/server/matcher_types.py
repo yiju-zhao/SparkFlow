@@ -47,9 +47,12 @@ class CreateMatchJobRequest(BaseModel):
     top_k: int = 50
     search_k: int = 350
     include_reasons: bool = True
-    # Model configuration from user settings
-    model_provider: str = "google"
-    model_name: str = "gemini-2.5-flash"
+    # Model configuration + BYOK credential threaded from Next.js. Required —
+    # the apps/agent workflow layer does not carry its own API keys.
+    model_provider: str
+    model_name: str
+    api_key: str
+    api_base: Optional[str] = None
 
 
 class MatchJobResponse(BaseModel):
