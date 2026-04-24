@@ -6,17 +6,15 @@ generation) behind a single ``SemanticOperators.rank`` entrypoint.
 
 Per-request LLM configuration
 -----------------------------
-LOTUS uses a module-level ``lotus.settings.lm`` global, shared across
-threads in the process. To support per-request BYOK credentials without
-races, production ``rank()`` calls serialize through ``_LOTUS_LOCK`` and
-(re)configure the LM only when the caller's
-``(provider, model, api_key, api_base)`` tuple differs from the last
-configured one.
+LOTUS uses a module-level ``lotus.settings.lm`` global that is NOT safe to
+share across concurrent requests with different BYOK tuples. To give every
+request its own isolated global, real-LOTUS calls run inside a
+``ProcessPoolExecutor`` (spawn context) — each subprocess has its own
+``lotus.settings`` module. The worker configures the LM at entry and resets
+it in ``finally``, so BYOK credentials never leak across tenants.
 
-This serializes concurrent ``rank`` requests across the whole process —
-acceptable for current traffic (matcher + digest, low concurrency). When
-traffic grows, callers can batch requests that share BYOK, or we can move
-LOTUS to a thread-local settings fork.
+Tests with injected search_fn / topk_fn / map_fn stubs bypass the pool
+entirely — the DI path runs in-process with no LOTUS imports required.
 
 Dependency injection
 --------------------
@@ -29,7 +27,6 @@ from __future__ import annotations
 
 import logging
 import os
-import threading
 from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
@@ -37,57 +34,6 @@ logger = logging.getLogger(__name__)
 SearchFn = Callable[[list[dict], str, int], list[dict]]
 TopkFn = Callable[[list[dict], str, int], list[dict]]
 MapFn = Callable[[list[dict], str], list[dict]]
-
-
-# Serialize all real-LOTUS rank() calls in this process. See module docstring.
-_LOTUS_LOCK = threading.Lock()
-_LAST_LM_KEY: Optional[tuple[str, ...]] = None
-
-
-def _configure_lotus_lm(
-    *,
-    provider: str,
-    model: str,
-    api_key: str,
-    api_base: Optional[str],
-) -> None:
-    """Reconfigure ``lotus.settings.lm`` for this request, if different from last.
-
-    Caller must hold ``_LOTUS_LOCK``.
-    """
-    global _LAST_LM_KEY
-
-    # Cache key uses only a prefix of api_key so a rotation is picked up
-    # without logging the full secret.
-    key: tuple[str, ...] = (
-        provider,
-        model,
-        api_key[:6] if api_key else "",
-        api_base or "",
-    )
-    if _LAST_LM_KEY == key:
-        return
-
-    import lotus  # type: ignore
-    from lotus.models import LM  # type: ignore
-
-    lm_kwargs: dict[str, Any] = {
-        "model": f"{provider}/{model}",
-        "api_key": api_key,
-        "max_batch_size": 5,
-        "max_tokens": 4096,
-    }
-    if api_base:
-        lm_kwargs["api_base"] = api_base
-
-    lotus.settings.configure(lm=LM(**lm_kwargs))
-    _LAST_LM_KEY = key
-    logger.info(
-        "LOTUS LM reconfigured: provider=%s model=%s api_base=%s",
-        provider,
-        model,
-        api_base or "<default>",
-    )
 
 
 class SemanticOperators:
@@ -144,31 +90,32 @@ class SemanticOperators:
             or (include_reasons and self._map_fn is None)
         )
 
-        # Skip LOTUS config under pytest — tests that reach the real-LOTUS
-        # path would fail to import anyway; tests with injected fns bypass
-        # the lock because they don't need LOTUS configured.
-        if need_real_lotus and not os.getenv("PYTEST_CURRENT_TEST"):
-            if not lm_config:
-                raise ValueError(
-                    "lm_config is required when real-LOTUS operators are used. "
-                    "Callers must pass {provider, model, api_key, api_base?}."
-                )
-            with _LOTUS_LOCK:
-                _configure_lotus_lm(
-                    provider=lm_config["provider"],
-                    model=lm_config["model"],
-                    api_key=lm_config["api_key"],
-                    api_base=lm_config.get("api_base"),
-                )
-                return self._run_pipeline(
-                    candidates=candidates,
-                    query_text=query_text,
-                    top_k=top_k,
-                    search_k=search_k,
-                    include_reasons=include_reasons,
-                )
+        # Tests that inject all three fns bypass the pool entirely — no
+        # LOTUS imports, no subprocess cost. pytest also takes this path
+        # via the PYTEST_CURRENT_TEST env check below.
+        if not need_real_lotus or os.getenv("PYTEST_CURRENT_TEST"):
+            return self._run_pipeline(
+                candidates=candidates,
+                query_text=query_text,
+                top_k=top_k,
+                search_k=search_k,
+                include_reasons=include_reasons,
+            )
 
-        return self._run_pipeline(
+        if not lm_config:
+            raise ValueError(
+                "lm_config is required when real-LOTUS operators are used. "
+                "Callers must pass {provider, model, api_key, api_base?}."
+            )
+
+        # Dispatch to the worker pool. Each subprocess has its own
+        # lotus.settings.lm; no lock needed, no cross-tenant leakage.
+        from services._lotus_worker import run_rank
+        from services._pool import run_in_pool
+
+        return run_in_pool(
+            run_rank,
+            lm_config=lm_config,
             candidates=candidates,
             query_text=query_text,
             top_k=top_k,
