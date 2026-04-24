@@ -277,6 +277,7 @@ function NotebookLayoutInner({
             {/* Tab Bar — underline-active (matches Stitch mockup) */}
             <div className="shrink-0 bg-sf-surface border-b border-sf-line flex h-12 px-2 pt-2">
               <button
+                data-guide="wiki-panel"
                 type="button"
                 className={`flex-1 flex items-center justify-center gap-2 border-b-2 text-sm font-semibold transition-colors ${
                   rightTab === "wiki"
@@ -289,6 +290,7 @@ function NotebookLayoutInner({
                 Wiki
               </button>
               <button
+                data-guide="notes-panel"
                 type="button"
                 className={`flex-1 flex items-center justify-center gap-2 border-b-2 text-sm font-semibold transition-colors ${
                   rightTab === "notes"

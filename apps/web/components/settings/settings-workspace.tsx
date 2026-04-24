@@ -719,7 +719,7 @@ function ApiKeysSection({
         description="Connect your preferred AI model providers by securely adding your API keys below. SparkFlow never stores your keys in plain text."
       />
 
-      <div className="mb-6">
+      <div data-guide="api-keys-section" className="mb-6">
         <div className="rounded-[10px] bg-sf-accent-soft border-l-4 border-sf-accent px-4 py-3 flex items-start gap-3">
           <Info className="h-4 w-4 text-sf-accent-ink shrink-0 mt-0.5" strokeWidth={2} />
           <div>

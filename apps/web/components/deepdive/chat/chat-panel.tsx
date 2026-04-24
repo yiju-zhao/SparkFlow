@@ -839,7 +839,7 @@ export function ChatPanel({
         </div>
       )}
       {/* Input — white card with circular blue send (Sparkflow DS card + primary contract) */}
-      <div className="px-6 py-4 bg-sf-surface flex">
+      <div data-guide="chat-input" className="px-6 py-4 bg-sf-surface flex">
         <form
           onSubmit={handleSubmit}
           className="relative w-full flex rounded-[10px] border border-sf-line bg-sf-surface focus-within:border-sf-accent focus-within:ring-2 focus-within:ring-sf-accent-soft transition-colors"

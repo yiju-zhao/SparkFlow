@@ -57,7 +57,7 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button className="gap-2">
+          <Button data-guide="new-notebook-button" className="gap-2">
             <Plus className="h-4 w-4" />
             New Notebook
           </Button>

@@ -729,6 +729,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                   <Popover open={isUploadMenuOpen} onOpenChange={setIsUploadMenuOpen}>
                     <PopoverTrigger asChild>
                       <button
+                        data-guide="upload-button"
                         disabled={isLimitReached}
                         className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >

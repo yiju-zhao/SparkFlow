@@ -118,7 +118,7 @@ async function ConferencesSection({ locale }: { locale: string }) {
   const sideB = pubs[2];
 
   return (
-    <section className="mb-24">
+    <section data-guide="conferences-nav" className="mb-24">
       <SectionHeading
         number="01"
         title="Conferences / Field Reports"
@@ -383,7 +383,7 @@ async function SocialMediaSection({ locale }: { locale: string }) {
   const rest = articles.slice(3, 7);
 
   return (
-    <section className="mb-24">
+    <section data-guide="wechat-nav" className="mb-24">
       <SectionHeading
         number="02"
         title="Social Media / Industry Pulse"
@@ -731,6 +731,7 @@ function ToolboxSection({ locale }: { locale: string }) {
 function FeaturedToolCard({ locale }: { locale: string }) {
   return (
     <Link
+      data-guide="matcher-nav"
       href={`/${locale}/explore/toolbox/matcher`}
       className="relative group overflow-hidden rounded-[10px] border border-sf-line h-[440px] flex items-end"
     >

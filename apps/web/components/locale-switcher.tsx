@@ -37,7 +37,7 @@ export function LocaleSwitcher({ variant = "icon", className }: LocaleSwitcherPr
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size={variant === "icon" ? "icon" : "sm"} className={cn(className)}>
+        <Button data-guide="language-switcher" variant="ghost" size={variant === "icon" ? "icon" : "sm"} className={cn(className)}>
           <Globe className="h-4 w-4" />
           {variant === "text" && (
             <span className="ml-2">{locales[locale as keyof typeof locales]?.name || locale}</span>
