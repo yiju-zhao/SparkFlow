@@ -62,7 +62,7 @@ export function GuideDrawer() {
       modal={false}
     >
       <Dialog.Portal forceMount>
-        <Dialog.Content forceMount>
+        <Dialog.Content forceMount aria-describedby={undefined}>
           <Dialog.Title className="sr-only">{t("drawer.title")}</Dialog.Title>
           <AnimatePresence>
             {drawerOpen ? (
