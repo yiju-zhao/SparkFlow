@@ -10,6 +10,7 @@ import { useGuides } from "./guide-provider";
 export function ActiveGuidePlayer() {
   const { activeGuideId, closeGuide } = useGuides();
   const [stepIndex, setStepIndex] = useState(0);
+  const [lastSeenGuideId, setLastSeenGuideId] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("guides.tour");
@@ -17,9 +18,10 @@ export function ActiveGuidePlayer() {
 
   const guide = GUIDES.find((g) => g.id === activeGuideId) ?? null;
 
-  useEffect(() => {
+  if (activeGuideId !== lastSeenGuideId) {
+    setLastSeenGuideId(activeGuideId);
     setStepIndex(0);
-  }, [activeGuideId]);
+  }
 
   useEffect(() => {
     if (!guide) return;

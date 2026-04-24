@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import type { GuideStepPlacement } from "@/content/guides/types";
@@ -72,11 +72,11 @@ export function Spotlight({
   finishLabel,
 }: SpotlightProps) {
   const [rect, setRect] = useState<Rect | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   useLayoutEffect(() => {
     let raf = 0;
