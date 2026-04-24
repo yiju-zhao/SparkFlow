@@ -80,8 +80,21 @@ export function Spotlight({
 
   useLayoutEffect(() => {
     let raf = 0;
+    let prev: Rect | null = null;
     function update() {
-      setRect(getRect(selector));
+      const next = getRect(selector);
+      const changed =
+        (prev === null) !== (next === null) ||
+        (prev !== null &&
+          next !== null &&
+          (prev.top !== next.top ||
+            prev.left !== next.left ||
+            prev.width !== next.width ||
+            prev.height !== next.height));
+      if (changed) {
+        prev = next;
+        setRect(next);
+      }
       raf = window.requestAnimationFrame(update);
     }
     // Poll with RAF for ~1s to catch late-mounting anchors, then settle.
@@ -101,8 +114,19 @@ export function Spotlight({
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowRight" || e.key === "Enter") onNext();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditable =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable === true;
+      if (isEditable) return;
+      if (e.key === "ArrowRight" || e.key === "Enter") onNext();
       else if (e.key === "ArrowLeft" && onPrev) onPrev();
     }
     window.addEventListener("keydown", onKey);
