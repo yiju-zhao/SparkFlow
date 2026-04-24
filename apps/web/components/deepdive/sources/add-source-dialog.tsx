@@ -14,6 +14,8 @@ import {
   X,
   Check,
   ChevronDown,
+  FileText,
+  Folder,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -87,7 +89,9 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const [urlsText, setUrlsText] = useState("");
   const [showWebsites, setShowWebsites] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -298,6 +302,13 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    handleFilesUpload(files);
+  };
+
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0) return;
@@ -691,6 +702,15 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                   accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md"
                   onChange={handleFileSelect}
                 />
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  multiple
+                  // webkitdirectory is not in React's typed prop set; pass as string.
+                  {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+                  className="hidden"
+                  onChange={handleFolderSelect}
+                />
 
                 {uploadError && (
                   <div className="mx-6 -mt-2 mb-3 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
@@ -706,14 +726,50 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
 
                 {/* Bottom Actions */}
                 <div className="grid grid-cols-2 gap-2.5 px-6 pb-6">
-                  <button
-                    disabled={isLimitReached}
-                    className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload
-                  </button>
+                  <Popover open={isUploadMenuOpen} onOpenChange={setIsUploadMenuOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        disabled={isLimitReached}
+                        className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Upload
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-1" align="start">
+                      <button
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left hover:bg-accent/30 transition-colors"
+                        onClick={() => {
+                          setIsUploadMenuOpen(false);
+                          fileInputRef.current?.click();
+                        }}
+                      >
+                        <FileText className="h-5 w-5 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold">Files</div>
+                          <div className="text-xs text-muted-foreground">
+                            Pick one or multiple files
+                          </div>
+                        </div>
+                      </button>
+                      <button
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left hover:bg-accent/30 transition-colors"
+                        onClick={() => {
+                          setIsUploadMenuOpen(false);
+                          folderInputRef.current?.click();
+                        }}
+                      >
+                        <Folder className="h-5 w-5 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold">Folder</div>
+                          <div className="text-xs text-muted-foreground">
+                            Upload every file in a folder
+                          </div>
+                        </div>
+                      </button>
+                    </PopoverContent>
+                  </Popover>
                   <button
                     disabled={isLimitReached}
                     className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
