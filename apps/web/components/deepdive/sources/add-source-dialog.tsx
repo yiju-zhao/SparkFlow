@@ -105,9 +105,19 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
       setShowWebsites(false);
       setUploadError(null);
     });
+    // Fires on guide finish/close — returns the dialog's internal state to
+    // a fresh baseline so nothing the guide touched persists into the next
+    // real use.
+    const unregisterReset = registerGuideAction("reset-add-source-state", () => {
+      setShowWebsites(false);
+      setUrlsText("");
+      setUploadError(null);
+      setIsUploadMenuOpen(false);
+    });
     return () => {
       unregisterToWebsites();
       unregisterToFiles();
+      unregisterReset();
     };
   }, [registerGuideAction]);
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -9,9 +9,14 @@ export const addSourcesGuide: GuideDefinition = {
   publicOnLanding: true,
   includeInFirstRunTour: true,
   firstRunTourOrder: 2,
-  // When the guide fully closes (Finish or user-close), return the dialog to
-  // its initial closed state so the workspace is clean again.
-  onExit: { kind: "action", name: "close-add-source" },
+  // When the guide fully closes (Finish or user-close), return the page to
+  // the exact state it was in before the demo started: close the dialog AND
+  // wipe any transient state the guide changed along the way (view toggles,
+  // URL text, upload menu, error banners).
+  onExit: [
+    { kind: "action", name: "close-add-source" },
+    { kind: "action", name: "reset-add-source-state" },
+  ],
   steps: [
     // 1 — Land in a notebook workspace and point at the Add Source button.
     // Triggers run in order: goto-last-notebook navigates to the most recent
