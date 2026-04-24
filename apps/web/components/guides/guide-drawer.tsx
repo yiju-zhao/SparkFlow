@@ -62,7 +62,8 @@ export function GuideDrawer() {
       modal={false}
     >
       <Dialog.Portal forceMount>
-        <Dialog.Content asChild forceMount>
+        <Dialog.Content forceMount>
+          <Dialog.Title className="sr-only">{t("drawer.title")}</Dialog.Title>
           <AnimatePresence>
             {drawerOpen ? (
               <motion.aside
@@ -74,9 +75,9 @@ export function GuideDrawer() {
                 className="fixed top-0 right-0 bottom-0 z-40 flex w-[420px] max-w-full flex-col border-l border-border bg-background shadow-2xl"
               >
                 <header className="flex items-center justify-between border-b border-border p-4">
-                  <Dialog.Title className="flex items-center gap-2 text-sm font-semibold">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold">
                     <BookOpen className="h-4 w-4" /> {t("drawer.title")}
-                  </Dialog.Title>
+                  </h2>
                   <Dialog.Close asChild>
                     <button aria-label={t("drawer.close")} className="text-muted-foreground hover:text-foreground">
                       <X className="h-4 w-4" />
