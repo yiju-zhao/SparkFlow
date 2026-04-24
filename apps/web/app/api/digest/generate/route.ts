@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
   // ── Transaction: upsert DailyDigest, create new DigestSections ───────────
   const conflicts: DigestSourceType[] = [];
-  let digestId: string;
+  let digestId: string = "";
   const newSections: { id: string; sourceType: DigestSourceType; status: string }[] = [];
 
   await prisma.$transaction(async (tx) => {
@@ -190,10 +190,22 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  // ── Fire-and-forget: POST to Python workflow for each new section ──────────
+  // ── Enqueue one ARQ job per new section ───────────────────────────────────
   const wechatConfig = digestConfig.sources?.wechat;
   const topN = wechatConfig?.topN ?? 5;
   const subscribedSourceIds = wechatConfig?.subscribedSourceIds ?? [];
+
+  const enqueued: Array<{
+    sectionId: string;
+    sourceType: DigestSourceType;
+    jobId: string | null;
+  }> = [];
+  const enqueueErrors: Array<{
+    sectionId: string;
+    sourceType: DigestSourceType;
+    status: number;
+    detail: string;
+  }> = [];
 
   for (const section of newSections) {
     const agentPayload = {
@@ -209,34 +221,87 @@ export async function POST(request: NextRequest) {
       api_base: resolvedApiBase ?? null,
     };
 
-    const agentResp = await fetch(
-      `${WORKFLOWS_API_URL}/v1/workflows/daily_digest/sections/${section.id}/generate`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Internal-Token": process.env.INTERNAL_CALLBACK_TOKEN ?? "",
+    try {
+      const agentResp = await fetch(
+        `${WORKFLOWS_API_URL}/v1/workflows/daily_digest/sections/${section.id}/generate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Token": INTERNAL_CALLBACK_TOKEN,
+          },
+          body: JSON.stringify(agentPayload),
         },
-        body: JSON.stringify(agentPayload),
-      },
-    );
+      );
 
-    if (!agentResp.ok) {
-      console.error(
-        "[digest/generate] agent enqueue failed:",
-        agentResp.status,
-        await agentResp.text().catch(() => "(no body)"),
-      );
-      return NextResponse.json(
-        { error: "Digest enqueue failed. Try again shortly." },
-        { status: 502 },
-      );
+      if (!agentResp.ok) {
+        const detail = await agentResp.text().catch(() => "(no body)");
+        console.error(
+          "[digest/generate] agent enqueue failed:",
+          agentResp.status,
+          detail,
+        );
+        enqueueErrors.push({
+          sectionId: section.id,
+          sourceType: section.sourceType,
+          status: agentResp.status,
+          detail,
+        });
+        continue;
+      }
+
+      const agentBody = (await agentResp.json()) as { job_id?: string };
+      enqueued.push({
+        sectionId: section.id,
+        sourceType: section.sourceType,
+        jobId: agentBody.job_id ?? null,
+      });
+    } catch (err) {
+      console.error("[digest/generate] agent fetch threw:", err);
+      enqueueErrors.push({
+        sectionId: section.id,
+        sourceType: section.sourceType,
+        status: 0,
+        detail: err instanceof Error ? err.message : String(err),
+      });
     }
+  }
 
-    const agentBody = (await agentResp.json()) as { job_id?: string };
+  // If every attempt failed AND nothing was enqueued AND no prior conflicts,
+  // the client has no usable result — surface a 502. Otherwise prefer a
+  // partial-success 202 so the client can see which sections need retry.
+  if (
+    enqueued.length === 0 &&
+    enqueueErrors.length > 0 &&
+    conflicts.length === 0
+  ) {
     return NextResponse.json(
-      { accepted: true, sectionId: section.id, jobId: agentBody.job_id ?? null },
-      { status: 202 },
+      {
+        error: "Digest enqueue failed. Try again shortly.",
+        failures: enqueueErrors.map(({ sectionId, sourceType }) => ({
+          sectionId,
+          sourceType,
+        })),
+      },
+      { status: 502 },
     );
   }
+
+  return NextResponse.json(
+    {
+      accepted: true,
+      digestId,
+      enqueued,
+      conflicts,
+      ...(enqueueErrors.length > 0
+        ? {
+            failures: enqueueErrors.map(({ sectionId, sourceType }) => ({
+              sectionId,
+              sourceType,
+            })),
+          }
+        : {}),
+    },
+    { status: 202 },
+  );
 }
