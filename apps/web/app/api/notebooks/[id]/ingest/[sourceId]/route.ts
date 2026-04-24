@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
-import { ingestSourceToWiki } from "@/lib/services/wiki-ingest";
+import prisma from "@/lib/prisma";
+import { enqueueWikiIngest } from "@/lib/queue/ingest-queue";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -13,16 +14,31 @@ export async function POST(
 
   const { id: notebookId, sourceId } = await params;
 
+  // ACL: caller must own the notebook that owns this source.
+  const source = await prisma.source.findFirst({
+    where: {
+      id: sourceId,
+      notebookId,
+      notebook: { userId: session.user.id },
+    },
+    select: { id: true },
+  });
+  if (!source) {
+    return NextResponse.json({ error: "Source not found" }, { status: 404 });
+  }
+
   try {
-    const result = await ingestSourceToWiki(notebookId, sourceId, session.user.id);
-    return NextResponse.json({
-      success: true,
-      pagesWritten: result.pagesWritten,
-      pages: result.pages,
+    const jobId = await enqueueWikiIngest({
+      notebookId,
+      sourceId,
+      userId: session.user.id,
     });
+    return NextResponse.json({ accepted: true, jobId }, { status: 202 });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Ingest failed";
-    console.error("Wiki ingest failed:", errorMessage);
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    console.error("[POST ingest] enqueue failed:", error);
+    return NextResponse.json(
+      { error: "Ingest queue unavailable. Try again shortly." },
+      { status: 503 },
+    );
   }
 }
