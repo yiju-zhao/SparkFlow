@@ -45,7 +45,7 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step4.title",
       bodyKey: "guides.addSources.step4.body",
       advanceOn: "next",
-      counterLabel: "2b / 3",
+      counterLabel: "2b-1 / 3",
     },
     // 3 — Point at the Insert button. Programmatically switch to the Websites
     // view first so the button is guaranteed to be in the DOM regardless of
@@ -58,7 +58,7 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step5.title",
       bodyKey: "guides.addSources.step5.body",
       advanceOn: "next",
-      counterLabel: "3 / 3",
+      counterLabel: "2b-2 / 3",
     },
   ],
 };
