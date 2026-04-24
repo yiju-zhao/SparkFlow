@@ -317,3 +317,53 @@ def test_run_rank_resets_lotus_on_pipeline_exception(monkeypatch):
     assert len(configure_calls) == 2
     assert configure_calls[0].get("lm") is not None
     assert configure_calls[1].get("lm") is None
+
+
+def test_run_rank_swallows_exception_during_reset(monkeypatch, caplog):
+    """If lotus.settings.configure(lm=None) itself raises during reset, run_rank
+    logs the error but does not propagate it (the original pipeline result or
+    exception takes precedence)."""
+    import sys
+    from unittest.mock import MagicMock
+    import logging
+
+    reset_error = RuntimeError("reset boom")
+
+    def fake_configure(**kw):
+        if kw.get("lm") is None:
+            raise reset_error
+        # first (entry) configure call succeeds
+
+    fake_settings = MagicMock()
+    fake_settings.configure = MagicMock(side_effect=fake_configure)
+    fake_lotus = MagicMock()
+    fake_lotus.settings = fake_settings
+    fake_models = MagicMock()
+    fake_models.LM = MagicMock(return_value="FAKE_LM")
+
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    from services._lotus_worker import run_rank
+
+    caplog.set_level(logging.ERROR, logger="services._lotus_worker")
+    result = run_rank(
+        lm_config={
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "sk-test",
+            "api_base": None,
+        },
+        candidates=[{"id": "a", "match_text": "x"}],
+        query_text="q",
+        top_k=5,
+        search_k=20,
+        include_reasons=False,
+        pipeline_fn=lambda **_: [{"id": "a"}],
+    )
+
+    # Pipeline result was preserved — reset failure was swallowed.
+    assert result == [{"id": "a"}]
+    # The reset exception was logged at ERROR level.
+    error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert any("reset boom" in r.getMessage() or "raised during reset" in r.getMessage() for r in error_records)

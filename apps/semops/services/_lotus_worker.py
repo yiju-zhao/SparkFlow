@@ -81,7 +81,18 @@ def run_rank(
             include_reasons=include_reasons,
         )
     finally:
-        lotus.settings.configure(lm=None)
+        # The reset itself can theoretically raise if lotus state is corrupt.
+        # Swallow + log so the worker leaves in as clean a state as possible
+        # and the original exception (if any) still propagates.
+        try:
+            lotus.settings.configure(lm=None)
+        except Exception as reset_exc:  # noqa: BLE001
+            import os as _os
+            logger.error(
+                "lotus.settings.configure(lm=None) raised during reset (pid=%s): %s",
+                _os.getpid(),
+                reset_exc,
+            )
 
 
 def _default_pipeline(
