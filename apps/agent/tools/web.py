@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Annotated
 
 import httpx
-from langchain_core.tools import tool
+from langchain_core.tools import InjectedToolArg, tool
 
 from hermes.registry import registry
 
@@ -19,7 +20,7 @@ from hermes.registry import registry
 def search_web(
     query: str,
     domains: list[str] | None = None,
-    api_key: str | None = None,
+    api_key: Annotated[str | None, InjectedToolArg] = None,
 ) -> str:
     """Search the web for relevant pages via Tavily.
 
@@ -27,7 +28,11 @@ def search_web(
         query: Search keywords (reformulated for best results).
         domains: Optional list of domains to restrict search to
             (e.g. ["arxiv.org"]).
-        api_key: Tavily API key. If omitted, falls back to TAVILY_API_KEY env.
+
+    The `api_key` parameter is injected at call time by the workflow layer
+    (`InjectedToolArg` hides it from the LLM-visible tool schema so the model
+    cannot hallucinate or echo a BYOK key). If omitted, falls back to the
+    TAVILY_API_KEY env var.
     """
     try:
         from tavily import TavilyClient  # type: ignore
@@ -55,10 +60,11 @@ def search_web(
                     "content": r.get("content", ""),
                 }
                 for r in results
-            ]
+            ],
+            ensure_ascii=False,
         )
-    except Exception as e:  # noqa: BLE001
-        return json.dumps({"error": str(e)})
+    except Exception as exc:  # noqa: BLE001
+        return json.dumps({"error": f"search_web failed: {exc}"}, ensure_ascii=False)
 
 
 @tool
