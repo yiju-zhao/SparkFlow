@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
   const subscribedSourceIds = wechatConfig?.subscribedSourceIds ?? [];
 
   for (const section of newSections) {
-    const workflowBody = {
+    const agentPayload = {
       section_id: section.id,
       source_type: section.sourceType,
       digest_date: toDateString(digestDate),
@@ -209,38 +209,34 @@ export async function POST(request: NextRequest) {
       api_base: resolvedApiBase ?? null,
     };
 
-    // Fire and forget — do not await
-    fetch(
+    const agentResp = await fetch(
       `${WORKFLOWS_API_URL}/v1/workflows/daily_digest/sections/${section.id}/generate`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Internal-Token": INTERNAL_CALLBACK_TOKEN,
+          "X-Internal-Token": process.env.INTERNAL_CALLBACK_TOKEN ?? "",
         },
-        body: JSON.stringify(workflowBody),
+        body: JSON.stringify(agentPayload),
       },
-    ).catch((err) => {
+    );
+
+    if (!agentResp.ok) {
       console.error(
-        `[digest/generate] Failed to fire workflow for section ${section.id}:`,
-        err,
+        "[digest/generate] agent enqueue failed:",
+        agentResp.status,
+        await agentResp.text().catch(() => "(no body)"),
       );
-    });
+      return NextResponse.json(
+        { error: "Digest enqueue failed. Try again shortly." },
+        { status: 502 },
+      );
+    }
+
+    const agentBody = (await agentResp.json()) as { job_id?: string };
+    return NextResponse.json(
+      { accepted: true, sectionId: section.id, jobId: agentBody.job_id ?? null },
+      { status: 202 },
+    );
   }
-
-  // ── Return 202 ────────────────────────────────────────────────────────────
-  const response: {
-    digestId: string;
-    sections: typeof newSections;
-    conflicts?: DigestSourceType[];
-  } = {
-    digestId: digestId!,
-    sections: newSections,
-  };
-
-  if (conflicts.length > 0) {
-    response.conflicts = conflicts;
-  }
-
-  return NextResponse.json(response, { status: 202 });
 }
