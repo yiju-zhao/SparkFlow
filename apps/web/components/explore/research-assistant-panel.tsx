@@ -20,7 +20,7 @@ export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
     <motion.button
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#00D084] px-5 py-3 text-sm font-medium text-white shadow-lg hover:shadow-xl transition-shadow"
+      className="fixed top-20 right-6 z-40 flex items-center gap-2 rounded-full bg-[#00D084] px-5 py-3 text-sm font-medium text-white shadow-lg hover:shadow-xl transition-shadow"
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.97 }}
     >
