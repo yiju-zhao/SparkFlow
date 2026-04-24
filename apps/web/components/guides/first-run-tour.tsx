@@ -7,6 +7,7 @@ import { GUIDES } from "@/content/guides";
 import type { GuideStep } from "@/content/guides/types";
 import { Spotlight } from "./spotlight";
 import { useFirstRunTour } from "./use-first-run-tour";
+import { useGuides } from "./guide-provider";
 
 function firstRunSteps(): Array<GuideStep & { guideId: string }> {
   return GUIDES.filter((g) => g.includeInFirstRunTour)
@@ -16,6 +17,7 @@ function firstRunSteps(): Array<GuideStep & { guideId: string }> {
 
 export function FirstRunTour() {
   const tour = useFirstRunTour();
+  const { isAuthenticated } = useGuides();
   const t = useTranslations("guides.tour");
   const tGuides = useTranslations("guides");
   const pathname = usePathname();
@@ -30,6 +32,8 @@ export function FirstRunTour() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tour.stage, tour.stepIndex]);
+
+  if (!isAuthenticated) return null;
 
   if (tour.stage === "welcome") {
     return (
