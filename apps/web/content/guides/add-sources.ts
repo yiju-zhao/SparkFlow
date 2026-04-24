@@ -9,24 +9,32 @@ export const addSourcesGuide: GuideDefinition = {
   publicOnLanding: true,
   includeInFirstRunTour: true,
   firstRunTourOrder: 2,
+  // When the guide fully closes (Finish or user-close), return the dialog to
+  // its initial closed state so the workspace is clean again.
+  onExit: { kind: "action", name: "close-add-source" },
   steps: [
     // 1 — Land in a notebook workspace and point at the Add Source button.
-    // The /deepdive list page mounts NotebookActionsRegistrar which registers
-    // `goto-last-notebook` → router.pushes into the most recent notebook.
+    // Triggers run in order: goto-last-notebook navigates to the most recent
+    // notebook; close-add-source ensures the dialog is closed (important when
+    // the user navigates BACK to step 1 from 2a).
     {
       route: "/deepdive",
-      trigger: { kind: "action", name: "goto-last-notebook" },
+      trigger: [
+        { kind: "action", name: "goto-last-notebook" },
+        { kind: "action", name: "close-add-source" },
+      ],
       selector: '[data-guide="add-source-trigger"]',
       placement: "right",
       titleKey: "guides.addSources.step2.title",
       bodyKey: "guides.addSources.step2.body",
       advanceOn: "both",
     },
-    // 2a — Open the dialog programmatically and highlight the Upload menu.
-    // Emphasize-only (advanceOn:"next") — clicking Upload opens a Popover
-    // that would otherwise hijack the ring.
+    // 2a — Open the dialog and show the file-picker view.
     {
-      trigger: { kind: "action", name: "open-add-source" },
+      trigger: [
+        { kind: "action", name: "open-add-source" },
+        { kind: "action", name: "switch-to-files" },
+      ],
       waitForSelector: { selector: '[data-guide="upload-button"]', timeoutMs: 1200 },
       selector: '[data-guide="upload-button"]',
       placement: "bottom",
@@ -34,19 +42,18 @@ export const addSourcesGuide: GuideDefinition = {
       bodyKey: "guides.addSources.step3.body",
       advanceOn: "next",
     },
-    // 2b — Alternative entry via Websites. Emphasize-only — clicking the real
-    // button switches the view, which would remove the very button we are
-    // highlighting.
+    // 2b — Highlight the Websites entry. Needs the file-picker view so the
+    // Websites button itself is in the DOM (it's part of the file-picker row).
     {
+      trigger: { kind: "action", name: "switch-to-files" },
+      waitForSelector: { selector: '[data-guide="add-source-websites"]', timeoutMs: 800 },
       selector: '[data-guide="add-source-websites"]',
       placement: "top",
       titleKey: "guides.addSources.step4.title",
       bodyKey: "guides.addSources.step4.body",
       advanceOn: "next",
     },
-    // 3 — Point at the Insert button. Programmatically switch to the Websites
-    // view first so the button is guaranteed to be in the DOM regardless of
-    // which path the user took.
+    // 3 — Switch to the Websites view and point at the Insert button.
     {
       trigger: { kind: "action", name: "switch-to-websites" },
       waitForSelector: { selector: '[data-guide="add-source-submit"]', timeoutMs: 800 },

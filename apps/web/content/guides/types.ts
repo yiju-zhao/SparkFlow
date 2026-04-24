@@ -27,8 +27,13 @@ export interface GuideStep {
   bodyKey: string;
   /** Optional route to push before showing this step, e.g. '/deepdive'. */
   route?: string;
-  /** Fired after navigation (if any) and before the step renders. */
-  trigger?: GuideTrigger;
+  /**
+   * Fired after navigation (if any) and before the step renders. When an
+   * array, triggers run in sequence — useful when a step needs several UI
+   * actions to converge on its expected state (e.g. open dialog AND switch
+   * to a specific tab).
+   */
+  trigger?: GuideTrigger | GuideTrigger[];
   /** Block rendering until this element appears (or the timeout elapses). */
   waitForSelector?: { selector: string; timeoutMs?: number };
   /**
@@ -55,6 +60,12 @@ export interface GuideDefinition {
   /** 1-indexed order within the first-run tour. Required if includeInFirstRunTour. */
   firstRunTourOrder?: number;
   steps: GuideStep[];
+  /**
+   * Fired once when the guide fully closes (Finish, Skip, or user-close).
+   * Use this to return the page to a neutral state — e.g. close a dialog
+   * the guide opened. Runs in sequence when an array.
+   */
+  onExit?: GuideTrigger | GuideTrigger[];
 }
 
 export interface GuideState {

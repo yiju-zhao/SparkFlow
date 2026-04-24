@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { GUIDES } from "@/content/guides";
+import type { GuideTrigger } from "@/content/guides/types";
 import { GuideLayer } from "./guide-layer";
 import { useGuides } from "./guide-provider";
 
@@ -12,12 +13,17 @@ import { useGuides } from "./guide-provider";
  *
  * Per step, in order:
  *   1. Navigate if `step.route` is set and we're not already there.
- *   2. Run `step.trigger` (navigate OR named action registered by a component).
+ *   2. Run `step.trigger` (navigate OR named action, or an array of either).
+ *      When an array, triggers run sequentially — steps can declare multiple
+ *      UI-state side effects (open dialog + switch tab) to converge on their
+ *      required state from any direction (forward next OR backward prev).
  *   3. Optionally wait for `step.waitForSelector` before rendering the overlay.
  *   4. Render the <GuideLayer> (soft ring + bubble, no dark mask).
  *   5. Advance when the user clicks Next OR clicks the highlighted element
  *      (controlled by `step.advanceOn`, default "both"). Click does NOT
  *      preventDefault — the real button still fires (e.g. dialog opens).
+ *   6. On Finish / Close / Skip run `guide.onExit` to return the page to a
+ *      neutral state (e.g. close the dialog the guide opened).
  */
 export function ActiveGuidePlayer() {
   const { activeGuideId, closeGuide, runGuideAction } = useGuides();
@@ -38,6 +44,28 @@ export function ActiveGuidePlayer() {
 
   const step = guide ? guide.steps[stepIndex] : null;
 
+  const runTriggers = useCallback(
+    async (triggers: GuideTrigger | GuideTrigger[] | undefined) => {
+      if (!triggers) return;
+      const list = Array.isArray(triggers) ? triggers : [triggers];
+      for (const trigger of list) {
+        if (trigger.kind === "navigate") {
+          router.push(trigger.route);
+        } else {
+          await runGuideAction(trigger.name);
+        }
+      }
+    },
+    [router, runGuideAction],
+  );
+
+  const finishGuide = useCallback(async () => {
+    if (guide?.onExit) {
+      await runTriggers(guide.onExit);
+    }
+    closeGuide();
+  }, [guide, runTriggers, closeGuide]);
+
   // Setup: navigate, run trigger, (optionally) wait for selector.
   // Runs whenever we move to a new step.
   const setupSeq = useRef(0);
@@ -52,14 +80,8 @@ export function ActiveGuidePlayer() {
       if (step.route && pathname && !pathname.includes(step.route)) {
         router.push(step.route);
       }
-      // 2. Trigger
-      if (step.trigger) {
-        if (step.trigger.kind === "navigate") {
-          router.push(step.trigger.route);
-        } else if (step.trigger.kind === "action") {
-          await runGuideAction(step.trigger.name);
-        }
-      }
+      // 2. Trigger(s) — may be a single trigger or an array run in sequence.
+      await runTriggers(step.trigger);
       // 3. waitForSelector (best-effort; if it never shows up the layer still
       //    renders a centered fallback)
       if (step.waitForSelector) {
@@ -94,14 +116,14 @@ export function ActiveGuidePlayer() {
         // Let the native click fire first, then advance.
         window.setTimeout(() => {
           if (!guide) return;
-          if (stepIndex === guide.steps.length - 1) closeGuide();
+          if (stepIndex === guide.steps.length - 1) void finishGuide();
           else setStepIndex((n) => n + 1);
         }, 80);
       }
     }
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [step, stepIndex, guide, closeGuide]);
+  }, [step, stepIndex, guide, finishGuide]);
 
   if (!guide || !step) return null;
 
@@ -116,11 +138,11 @@ export function ActiveGuidePlayer() {
       stepIndex={stepIndex}
       totalSteps={guide.steps.length}
       onNext={() => {
-        if (stepIndex === guide.steps.length - 1) closeGuide();
+        if (stepIndex === guide.steps.length - 1) void finishGuide();
         else setStepIndex(stepIndex + 1);
       }}
       onPrev={stepIndex > 0 ? () => setStepIndex(stepIndex - 1) : undefined}
-      onClose={closeGuide}
+      onClose={() => void finishGuide()}
       nextLabel={t("next")}
       prevLabel={t("prev")}
       closeLabel={t("close")}

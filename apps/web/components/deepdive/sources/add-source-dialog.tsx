@@ -93,15 +93,22 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
 
   // Expose view toggles to the guide player so the add-sources walkthrough
-  // can flip to the Websites view (where the Insert button lives) regardless
-  // of whether the user clicked the Websites button or just pressed Next.
+  // can flip the dialog into the view it expects for each step — both
+  // forward and backward navigation converge on the right state.
   const { registerGuideAction } = useGuides();
   useEffect(() => {
-    const unregister = registerGuideAction("switch-to-websites", () => {
+    const unregisterToWebsites = registerGuideAction("switch-to-websites", () => {
       setShowWebsites(true);
       setUploadError(null);
     });
-    return unregister;
+    const unregisterToFiles = registerGuideAction("switch-to-files", () => {
+      setShowWebsites(false);
+      setUploadError(null);
+    });
+    return () => {
+      unregisterToWebsites();
+      unregisterToFiles();
+    };
   }, [registerGuideAction]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
