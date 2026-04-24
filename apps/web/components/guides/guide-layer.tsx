@@ -208,6 +208,7 @@ export function GuideLayer({
       <AnimatePresence>
         <motion.div
           key="guide-layer-mobile"
+          data-guide-portal
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -226,6 +227,7 @@ export function GuideLayer({
       <AnimatePresence>
         <motion.div
           key="guide-layer-centered"
+          data-guide-portal
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
@@ -245,6 +247,7 @@ export function GuideLayer({
       {/* Ring — animated position */}
       <motion.div
         key="guide-layer-ring"
+        data-guide-portal
         initial={false}
         animate={{
           top: rect.top,
@@ -258,6 +261,7 @@ export function GuideLayer({
       {/* Bubble — also animated */}
       <motion.div
         key="guide-layer-bubble"
+        data-guide-portal
         initial={false}
         animate={{
           top: pos.top,

@@ -188,6 +188,7 @@ export function Spotlight({
       <AnimatePresence>
         <motion.div
           key="spotlight-mobile"
+          data-guide-portal
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -205,6 +206,7 @@ export function Spotlight({
     return createPortal(
       <motion.div
         key="spotlight-centered"
+        data-guide-portal
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -223,24 +225,28 @@ export function Spotlight({
     <div className="pointer-events-none fixed inset-0 z-50">
       {/* Four animated masks forming a hole. */}
       <motion.div
+        data-guide-portal
         className="pointer-events-auto fixed bg-black/55"
         animate={{ top: 0, left: 0, right: 0, height: rect.top }}
         transition={SPRING}
         onClick={onClose}
       />
       <motion.div
+        data-guide-portal
         className="pointer-events-auto fixed bg-black/55"
         animate={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }}
         transition={SPRING}
         onClick={onClose}
       />
       <motion.div
+        data-guide-portal
         className="pointer-events-auto fixed bg-black/55"
         animate={{ top: rect.top, left: 0, width: rect.left, height: rect.height }}
         transition={SPRING}
         onClick={onClose}
       />
       <motion.div
+        data-guide-portal
         className="pointer-events-auto fixed bg-black/55"
         animate={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height }}
         transition={SPRING}
@@ -248,12 +254,14 @@ export function Spotlight({
       />
       {/* Ring around the hole. */}
       <motion.div
+        data-guide-portal
         className="pointer-events-none fixed rounded-md ring-2 ring-indigo-500"
         animate={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
         transition={SPRING}
       />
       {/* Bubble. */}
       <motion.div
+        data-guide-portal
         className="pointer-events-auto fixed"
         animate={{ top: pos.top, left: pos.left, x: pos.x, y: pos.y }}
         transition={SPRING}

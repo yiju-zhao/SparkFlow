@@ -475,7 +475,19 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
         }
       }}
     >
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0" showCloseButton={false}>
+      <DialogContent
+        className="sm:max-w-[560px] p-0 gap-0"
+        showCloseButton={false}
+        onInteractOutside={(event) => {
+          // When the active guide's overlay is clicked (Next, Back, etc.),
+          // Radix would otherwise treat that as "outside the dialog" and close
+          // it. Opt out while the guide is driving this dialog.
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-guide-portal]")) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogTitle className="sr-only">Add Source</DialogTitle>
         {showWebsites ? (
           /* Websites sub-view — full takeover, no search bar */
