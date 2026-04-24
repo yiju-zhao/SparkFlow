@@ -39,7 +39,7 @@ services:
   ingest-worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
     container_name: sparkflow-ingest-worker
     command: ["npm", "run", "worker:ingest"]
     env_file: .env

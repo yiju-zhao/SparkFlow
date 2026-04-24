@@ -1,18 +1,64 @@
-# Shared image for both the Next.js web server and the ingest worker.
-# Built once, run with different commands.
-FROM node:22-bookworm-slim AS base
+# Base stage
+FROM node:20 AS base
 WORKDIR /app
-ENV NODE_ENV=production
 
-FROM base AS deps
-COPY package.json package-lock.json ./
-RUN npm install --omit=dev --ignore-scripts
+# Builder stage
+FROM base AS builder
 
-FROM base AS runtime
-COPY --from=deps /app/node_modules ./node_modules
+# Skip SSL verification for npm/prisma during build
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma
+COPY prisma/config.ts ./prisma/config.ts
+
+# Install dependencies and generate Prisma client
+RUN npm ci && npx prisma generate
+
 COPY . .
-# Prisma client is emitted to node_modules/.prisma at build time.
-RUN DATABASE_URL=postgresql://u:p@h:5432/d npx prisma generate
-# web server uses `npm start`; worker overrides the command.
+
+# Build the application
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# Development stage - keeps full node_modules for hot reload
+FROM base AS dev
+ENV NODE_ENV=development
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma/config.ts ./prisma/config.ts
+
 EXPOSE 3001
-CMD ["npm", "start"]
+ENV PORT=3001
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["npm", "run", "dev"]
+
+# Production stage - standalone output only
+FROM base AS runner
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create non-root user
+RUN groupadd -r nodejs && useradd -r -g nodejs nextjs
+
+# Copy built application
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy Prisma files and CLI for migrations
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+USER nextjs
+
+EXPOSE 3001
+ENV PORT=3001
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
