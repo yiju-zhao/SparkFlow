@@ -118,6 +118,7 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
               </label>
               <Input
                 id="name"
+                data-guide="notebook-name-field"
                 placeholder="My Research Notebook"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -130,6 +131,7 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
               </label>
               <Textarea
                 id="description"
+                data-guide="notebook-description-field"
                 placeholder="A brief description of this notebook..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -148,6 +150,7 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
               </Button>
               <Button
                 type="submit"
+                data-guide="notebook-create-button"
                 disabled={isPending || !name.trim() || hasApiKey === null}
               >
                 {hasApiKey === null ? "Checking..." : isPending ? "Creating..." : "Create"}

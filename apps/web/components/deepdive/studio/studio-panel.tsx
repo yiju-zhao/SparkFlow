@@ -99,6 +99,7 @@ export function StudioPanel({
               Notes
             </span>
             <Button
+              data-guide="notes-new-button"
               size="sm"
               variant="ghost"
               className="h-7 w-7 p-0 rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink transition-colors"
@@ -417,6 +418,7 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
             </label>
             <Input
               id="title"
+              data-guide="note-title-field"
               placeholder="Note title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -429,6 +431,7 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
             </label>
             <Textarea
               id="content"
+              data-guide="note-content-field"
               placeholder="Write your note in markdown..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -448,6 +451,7 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
             </Button>
             <Button
               type="submit"
+              data-guide="note-create-button"
               className="bg-accent-red hover:bg-accent-red-hover"
               disabled={isPending || !title.trim()}
             >

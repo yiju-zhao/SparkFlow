@@ -301,6 +301,7 @@ export function WikiPanel({
     <div ref={splitContainerRef} className="flex h-full flex-col bg-sf-bg">
       {/* === TOP: Pages List === */}
       <div
+        data-guide="wiki-pages-section"
         className="flex flex-col overflow-hidden"
         style={{ height: `${topPercent}%` }}
       >
@@ -346,6 +347,7 @@ export function WikiPanel({
 
       {/* === BOTTOM: Graph === */}
       <div
+        data-guide="wiki-graph-section"
         className="flex flex-col overflow-hidden bg-sf-surface"
         style={{ height: `${100 - topPercent}%` }}
       >
@@ -369,6 +371,7 @@ export function WikiPanel({
               />
             </Button>
             <Button
+              data-guide="wiki-graph-expand"
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt"

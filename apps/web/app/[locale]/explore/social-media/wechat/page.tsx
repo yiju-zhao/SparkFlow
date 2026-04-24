@@ -89,6 +89,7 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
                 Sort by:
               </span>
               <select
+                data-guide="wechat-sort-select"
                 className="bg-transparent border-none text-sm font-semibold text-sf-accent focus:ring-0 focus:outline-none cursor-pointer"
                 defaultValue="latest"
               >
@@ -100,7 +101,9 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
           </div>
 
           {/* Article Sources chip cluster */}
-          <WechatSourcesChips sources={sources} />
+          <div data-guide="wechat-sources-filter">
+            <WechatSourcesChips sources={sources} />
+          </div>
         </div>
       </section>
 
@@ -110,7 +113,9 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
           <EmptyState title="No articles found" description="Try different filters." icon="inbox" />
         ) : (
           articles.map((article, i) => (
-            <WechatArticleRow key={article.id} article={article} index={i} />
+            <div key={article.id} data-guide={i === 0 ? "wechat-article-row" : undefined}>
+              <WechatArticleRow article={article} index={i} />
+            </div>
           ))
         )}
       </section>

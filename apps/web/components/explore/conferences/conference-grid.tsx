@@ -20,8 +20,10 @@ export function ConferenceGrid({ conferences }: ConferenceGridProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {conferences.map((conference) => (
-        <ConferenceCard key={conference.id} conference={conference} />
+      {conferences.map((conference, i) => (
+        <div key={conference.id} data-guide={i === 0 ? "conf-card-click" : undefined}>
+          <ConferenceCard conference={conference} />
+        </div>
       ))}
     </div>
   );

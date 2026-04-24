@@ -579,6 +579,7 @@ export function ChatPanel({
         </div>
         <div className="flex items-center gap-1.5">
           <Button
+            data-guide="chat-history-button"
             variant="ghost"
             size="sm"
             className="h-8 w-8 rounded-[6px] hover:bg-sf-bg-alt"
@@ -863,6 +864,7 @@ export function ChatPanel({
           />
           <button
             type="submit"
+            data-guide="chat-send-button"
             disabled={!input.trim() || stream.isLoading}
             className="absolute right-2 bottom-2 h-9 w-9 flex items-center justify-center rounded-full bg-sf-accent text-white hover:bg-sf-accent-ink disabled:bg-sf-line-strong disabled:text-white/70 transition-colors"
             title="Send"

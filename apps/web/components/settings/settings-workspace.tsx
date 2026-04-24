@@ -265,6 +265,7 @@ function SettingsSidebar({
             <button
               key={id}
               type="button"
+              data-guide={`settings-nav-${id}`}
               onClick={() => onSelect(id)}
               className={`flex items-center gap-3 h-10 px-3 rounded-[8px] text-[13.5px] font-medium transition-colors ${
                 isActive
@@ -746,8 +747,8 @@ function ApiKeysSection({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
         {API_KEY_PROVIDERS.map((provider) => (
+          <div key={provider.id} data-guide={provider.id === "openai" ? "provider-card-openai" : undefined}>
           <ProviderKeyCard
-            key={provider.id}
             provider={provider}
             status={apiKeyStatus[provider.id]}
             onSaved={async () => {
@@ -765,6 +766,7 @@ function ApiKeysSection({
               });
             }}
           />
+          </div>
         ))}
       </div>
 
