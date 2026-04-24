@@ -11,6 +11,7 @@ import { auth } from "@/lib/auth";
 import { GuideProvider } from "@/components/guides/guide-provider";
 import { GuideDrawer } from "@/components/guides/guide-drawer";
 import { FloatingGuideButton } from "@/components/guides/floating-guide-button";
+import { FirstRunTour } from "@/components/guides/first-run-tour";
 
 const interSans = localFont({
   src: "../../public/fonts/inter-latin-wght-normal.woff2",
@@ -68,6 +69,7 @@ export default async function LocaleLayout({
               {children}
               <GuideDrawer />
               <FloatingGuideButton />
+              <FirstRunTour />
             </GuideProvider>
           </Providers>
         </NextIntlClientProvider>
