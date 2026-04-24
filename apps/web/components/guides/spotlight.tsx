@@ -72,6 +72,7 @@ export function Spotlight({
   finishLabel,
 }: SpotlightProps) {
   const [rect, setRect] = useState<Rect | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -113,6 +114,14 @@ export function Spotlight({
   }, [selector]);
 
   useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const handler = () => setIsMobile(mq.matches);
+    handler();
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         onClose();
@@ -136,6 +145,39 @@ export function Spotlight({
   if (!mounted) return null;
 
   const isLast = stepIndex === totalSteps - 1;
+
+  if (isMobile) {
+    return createPortal(
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        className="fixed right-0 bottom-0 left-0 z-50 rounded-t-xl border-t border-border bg-background p-4 shadow-xl"
+      >
+        <div className="mb-1 text-xs text-muted-foreground">
+          {stepIndex + 1} / {totalSteps}
+        </div>
+        <div className="mb-1 text-sm font-semibold">{title}</div>
+        <div className="mb-3 text-sm text-muted-foreground">{body}</div>
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={onClose} className="text-xs text-muted-foreground">
+            {closeLabel}
+          </button>
+          <div className="flex gap-2">
+            {onPrev && stepIndex > 0 ? (
+              <button type="button" onClick={onPrev} className="rounded border border-border px-3 py-1 text-xs">
+                {prevLabel}
+              </button>
+            ) : null}
+            <button type="button" onClick={onNext} className="rounded bg-indigo-500 px-3 py-1 text-xs font-medium text-white">
+              {isLast ? finishLabel : nextLabel}
+            </button>
+          </div>
+        </div>
+      </motion.div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <AnimatePresence>
