@@ -411,5 +411,37 @@
     "switch": "Switch Language",
     "en": "English",
     "zh": "中文"
+  },
+  "guides": {
+    "button": {
+      "openGuides": "Open guides"
+    },
+    "drawer": {
+      "title": "Guides",
+      "close": "Close",
+      "search": "Search guides...",
+      "replayTour": "▶ Replay first-run tour"
+    },
+    "category": {
+      "deepdive": "DeepDive",
+      "explore": "Explore",
+      "account": "Account"
+    },
+    "action": {
+      "play": "Play",
+      "read": "Read",
+      "dismiss": "Don't show again"
+    },
+    "tour": {
+      "welcomeTitle": "Welcome to SparkFlow",
+      "welcomeBody": "Take a 5-minute tour of the essentials?",
+      "start": "Start tour",
+      "skip": "Skip for now",
+      "next": "Next",
+      "prev": "Back",
+      "finish": "Finish",
+      "close": "Close",
+      "skipToast": "Reopen anytime from the ? button"
+    }
   }
 }

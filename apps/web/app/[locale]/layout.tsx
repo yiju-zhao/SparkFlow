@@ -7,6 +7,10 @@ import { Providers } from "../providers";
 import { ScrollbarAutoHide } from "./_components/scrollbar-autohide";
 import "../globals.css";
 import { routing } from "@/src/i18n/routing";
+import { auth } from "@/lib/auth";
+import { GuideProvider } from "@/components/guides/guide-provider";
+import { GuideDrawer } from "@/components/guides/guide-drawer";
+import { FloatingGuideButton } from "@/components/guides/floating-guide-button";
 
 const interSans = localFont({
   src: "../../public/fonts/inter-latin-wght-normal.woff2",
@@ -51,12 +55,21 @@ export default async function LocaleLayout({
   // Get messages for the current locale
   const messages = await getMessages();
 
+  const session = await auth();
+  const isAuthenticated = Boolean(session?.user?.id);
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${interSans.variable} ${jetbrainsMono.variable} antialiased`}>
         <ScrollbarAutoHide />
         <NextIntlClientProvider messages={messages}>
-          <Providers>{children}</Providers>
+          <Providers>
+            <GuideProvider isAuthenticated={isAuthenticated}>
+              {children}
+              <GuideDrawer />
+              <FloatingGuideButton />
+            </GuideProvider>
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

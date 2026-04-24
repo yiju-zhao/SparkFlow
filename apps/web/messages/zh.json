@@ -411,5 +411,37 @@
     "switch": "切换语言",
     "en": "English",
     "zh": "中文"
+  },
+  "guides": {
+    "button": {
+      "openGuides": "打开引导"
+    },
+    "drawer": {
+      "title": "使用引导",
+      "close": "关闭",
+      "search": "搜索引导...",
+      "replayTour": "▶ 重新运行首次引导"
+    },
+    "category": {
+      "deepdive": "DeepDive",
+      "explore": "Explore",
+      "account": "账户"
+    },
+    "action": {
+      "play": "播放演示",
+      "read": "阅读",
+      "dismiss": "不再显示"
+    },
+    "tour": {
+      "welcomeTitle": "欢迎使用 SparkFlow",
+      "welcomeBody": "用 5 分钟逛一圈?",
+      "start": "开始",
+      "skip": "稍后再说",
+      "next": "下一步",
+      "prev": "上一步",
+      "finish": "完成",
+      "close": "关闭",
+      "skipToast": "随时点右下的 ? 按钮重启"
+    }
   }
 }
