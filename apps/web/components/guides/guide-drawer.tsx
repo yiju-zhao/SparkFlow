@@ -35,11 +35,13 @@ function filterGuides(guides: GuideDefinition[], q: string, dismissed: string[])
 
 export function GuideDrawer() {
   const t = useTranslations("guides");
-  const { drawerOpen, setDrawerOpen, dismissedGuides, dismissGuide, openGuide, resetTour } = useGuides();
+  const { drawerOpen, setDrawerOpen, dismissedGuides, dismissGuide, openGuide, resetTour, isAuthenticated } = useGuides();
   const [q, setQ] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"actions" | "read">("actions");
 
-  const visible = useMemo(() => filterGuides(GUIDES, q, dismissedGuides), [q, dismissedGuides]);
+  const source = useMemo(() => (isAuthenticated ? GUIDES : GUIDES.filter((g) => g.publicOnLanding)), [isAuthenticated]);
+  const visible = useMemo(() => filterGuides(source, q, dismissedGuides), [source, q, dismissedGuides]);
   const grouped = useMemo(() => {
     const map = new Map<GuideCategory, GuideDefinition[]>();
     for (const cat of CATEGORY_ORDER) map.set(cat, []);
@@ -52,7 +54,10 @@ export function GuideDrawer() {
       open={drawerOpen}
       onOpenChange={(open) => {
         setDrawerOpen(open);
-        if (!open) setExpandedId(null);
+        if (!open) {
+          setExpandedId(null);
+          setViewMode("actions");
+        }
       }}
       modal={false}
     >
@@ -107,7 +112,15 @@ export function GuideDrawer() {
                               <button
                                 type="button"
                                 aria-expanded={expandedId === g.id}
-                                onClick={() => setExpandedId(expandedId === g.id ? null : g.id)}
+                                onClick={() => {
+                                  if (expandedId === g.id) {
+                                    setExpandedId(null);
+                                    setViewMode("actions");
+                                  } else {
+                                    setExpandedId(g.id);
+                                    setViewMode("actions");
+                                  }
+                                }}
                                 className="flex w-full items-start gap-2 px-2 py-2 text-left text-sm"
                               >
                                 {(() => {
@@ -120,34 +133,48 @@ export function GuideDrawer() {
                                 </span>
                               </button>
                               {expandedId === g.id ? (
-                                <div className="flex gap-2 border-t border-border bg-muted/10 px-2 py-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setDrawerOpen(false);
-                                      openGuide(g.id);
-                                    }}
-                                    className="flex items-center gap-1 rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600"
-                                  >
-                                    <Play className="h-3 w-3" /> {t("action.play")}
-                                  </button>
-                                  {/* TODO(Task 17): open in-drawer Read mode */}
-                                  <button
-                                    type="button"
-                                    disabled
-                                    aria-disabled="true"
-                                    className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs opacity-50 cursor-not-allowed"
-                                  >
-                                    <BookOpen className="h-3 w-3" /> {t("action.read")}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => dismissGuide(g.id)}
-                                    className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                                  >
-                                    <EyeOff className="h-3 w-3" /> {t("action.dismiss")}
-                                  </button>
-                                </div>
+                                <>
+                                  <div className="flex gap-2 border-t border-border bg-muted/10 px-2 py-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDrawerOpen(false);
+                                        openGuide(g.id);
+                                      }}
+                                      className="flex items-center gap-1 rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600"
+                                    >
+                                      <Play className="h-3 w-3" /> {t("action.play")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewMode(viewMode === "read" ? "actions" : "read")}
+                                      aria-pressed={viewMode === "read"}
+                                      className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"
+                                    >
+                                      <BookOpen className="h-3 w-3" /> {t("action.read")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => dismissGuide(g.id)}
+                                      className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                                    >
+                                      <EyeOff className="h-3 w-3" /> {t("action.dismiss")}
+                                    </button>
+                                  </div>
+                                  {viewMode === "read" ? (
+                                    <div className="space-y-3 border-t border-border bg-muted/10 px-3 py-3">
+                                      {g.steps.map((step, i) => (
+                                        <div key={i}>
+                                          <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                                            {t("drawer.step", { n: i + 1, total: g.steps.length })}
+                                          </div>
+                                          <div className="text-sm font-medium">{t(step.titleKey.replace(/^guides\./, ""))}</div>
+                                          <div className="text-sm text-muted-foreground">{t(step.bodyKey.replace(/^guides\./, ""))}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </>
                               ) : null}
                             </li>
                           ))}

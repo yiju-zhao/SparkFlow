@@ -420,7 +420,9 @@
       "title": "Guides",
       "close": "Close",
       "search": "Search guides...",
-      "replayTour": "▶ Replay first-run tour"
+      "replayTour": "▶ Replay first-run tour",
+      "step": "Step {n} / {total}",
+      "shortcutHint": "Shortcut: ? then g"
     },
     "category": {
       "deepdive": "DeepDive",
