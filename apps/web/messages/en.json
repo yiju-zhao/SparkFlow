@@ -492,8 +492,16 @@
       "title": "Add your API key",
       "summary": "Add your OpenAI / Gemini / DeepSeek key to unlock chat, wiki, and matcher.",
       "step1": {
-        "title": "Add your API key",
-        "body": "Paste a provider key here before chatting or adding sources."
+        "title": "API Keys live here",
+        "body": "In Settings, the API Keys section holds your credentials for every provider."
+      },
+      "step2": {
+        "title": "Pick a provider",
+        "body": "OpenAI, Gemini, DeepSeek, GLM, MiniMax, Kimi, or a custom endpoint. Use any or all."
+      },
+      "step3": {
+        "title": "Paste and save",
+        "body": "Open a provider card, paste your key, and click Save. Keys are encrypted at rest."
       }
     },
     "chatWithAi": {
@@ -604,12 +612,20 @@
       "title": "Language & theme",
       "summary": "Switch between English and Chinese, light and dark.",
       "step1": {
-        "title": "Language",
-        "body": "Pick English or Chinese. The whole app re-renders in the chosen locale."
+        "title": "Language switcher",
+        "body": "The globe in the top bar toggles between English and Chinese."
       },
       "step2": {
-        "title": "Theme",
-        "body": "Toggle light / dark. Your preference is saved locally."
+        "title": "Pick a language",
+        "body": "Click English or 中文 — the whole app re-renders in the chosen locale."
+      },
+      "step3": {
+        "title": "Theme toggle",
+        "body": "Right next to the language switcher — your light / dark preference."
+      },
+      "step4": {
+        "title": "Pick a theme",
+        "body": "Light, dark, or follow-system. Saved locally so every visit remembers."
       }
     }
   }

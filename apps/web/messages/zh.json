@@ -492,8 +492,16 @@
       "title": "填入 API Key",
       "summary": "填入你的 OpenAI / Gemini / DeepSeek key 解锁对话、Wiki 和 Matcher。",
       "step1": {
-        "title": "填入你的 API Key",
-        "body": "提问或添加资料前先把 key 粘贴在这里。"
+        "title": "API Keys 就在这里",
+        "body": "Settings 里的 API Keys 区域,放你所有 provider 的凭证。"
+      },
+      "step2": {
+        "title": "选一个 provider",
+        "body": "OpenAI、Gemini、DeepSeek、GLM、MiniMax、Kimi,或自定义 endpoint。任选或全选。"
+      },
+      "step3": {
+        "title": "粘贴并保存",
+        "body": "打开 provider 卡片,粘贴你的 key,点 Save。Key 在后端做了加密存储。"
       }
     },
     "chatWithAi": {
@@ -604,12 +612,20 @@
       "title": "语言与主题",
       "summary": "切换中英文、明暗主题。",
       "step1": {
-        "title": "语言",
-        "body": "选择中文或英文,整个应用会立即按所选语言重新渲染。"
+        "title": "语言切换",
+        "body": "顶部导航栏的地球图标切换中英文。"
       },
       "step2": {
-        "title": "主题",
-        "body": "切换明暗主题。偏好会保存在本地。"
+        "title": "选语言",
+        "body": "点 English 或 中文 —— 整个应用会立即按所选语言重新渲染。"
+      },
+      "step3": {
+        "title": "主题切换",
+        "body": "紧挨着语言切换 —— 你的明暗主题偏好。"
+      },
+      "step4": {
+        "title": "选主题",
+        "body": "浅色、深色、或跟随系统。保存在本地,每次访问都记得。"
       }
     }
   }
