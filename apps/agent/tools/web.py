@@ -16,22 +16,27 @@ from hermes.registry import registry
 
 
 @tool
-def search_web(query: str, domains: list[str] | None = None) -> str:
+def search_web(
+    query: str,
+    domains: list[str] | None = None,
+    api_key: str | None = None,
+) -> str:
     """Search the web for relevant pages via Tavily.
 
     Args:
         query: Search keywords (reformulated for best results).
         domains: Optional list of domains to restrict search to
             (e.g. ["arxiv.org"]).
+        api_key: Tavily API key. If omitted, falls back to TAVILY_API_KEY env.
     """
     try:
         from tavily import TavilyClient  # type: ignore
 
-        api_key = os.getenv("TAVILY_API_KEY", "")
-        if not api_key:
+        resolved_key = api_key or os.getenv("TAVILY_API_KEY", "")
+        if not resolved_key:
             return json.dumps({"error": "TAVILY_API_KEY not configured"})
 
-        client = TavilyClient(api_key=api_key)
+        client = TavilyClient(api_key=resolved_key)
         kwargs: dict = {
             "query": query,
             "max_results": 15,
@@ -41,6 +46,7 @@ def search_web(query: str, domains: list[str] | None = None) -> str:
             kwargs["include_domains"] = domains
 
         response = client.search(**kwargs)
+        results = response.get("results", [])
         return json.dumps(
             [
                 {
@@ -48,12 +54,11 @@ def search_web(query: str, domains: list[str] | None = None) -> str:
                     "url": r.get("url", ""),
                     "content": r.get("content", ""),
                 }
-                for r in response.get("results", [])
-            ],
-            ensure_ascii=False,
+                for r in results
+            ]
         )
-    except Exception as exc:  # noqa: BLE001
-        return json.dumps({"error": f"search_web failed: {exc}"})
+    except Exception as e:  # noqa: BLE001
+        return json.dumps({"error": str(e)})
 
 
 @tool

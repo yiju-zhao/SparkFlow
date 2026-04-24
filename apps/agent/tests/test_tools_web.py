@@ -61,3 +61,26 @@ def test_tools_are_registered():
     from hermes.registry import registry
     names = {e.name for e in registry._tools.values() if e.toolset == "web"}
     assert {"search_web", "url_fetch"} <= names
+
+
+def test_search_web_explicit_api_key_beats_env(monkeypatch):
+    """Explicit api_key kwarg must override the TAVILY_API_KEY env var."""
+    import sys
+    from unittest.mock import MagicMock
+    captured = {}
+
+    fake_tavily = MagicMock()
+    fake_tavily.search.return_value = {"results": []}
+
+    def make_client(api_key):
+        captured["api_key"] = api_key
+        return fake_tavily
+
+    tavily_mod = MagicMock()
+    tavily_mod.TavilyClient = MagicMock(side_effect=make_client)
+    monkeypatch.setitem(sys.modules, "tavily", tavily_mod)
+    monkeypatch.setenv("TAVILY_API_KEY", "env_key")
+
+    from tools.web import search_web
+    search_web.invoke({"query": "x", "api_key": "user_key"})
+    assert captured["api_key"] == "user_key"
