@@ -74,7 +74,7 @@ class SemanticOperators:
         ``lm_config`` is the per-request LOTUS LM configuration dict with
         keys ``provider``, ``model``, ``api_key``, optional ``api_base``.
         Required when any default (real-LOTUS) fn is used; ignored when
-        all three ops are injected (tests bypass the lock entirely).
+        all three ops are injected (tests bypass the pool entirely).
 
         Returns up to ``top_k`` dicts, each preserving the input fields
         (``id``, ``match_text``, ...) and — when ``include_reasons`` — a
@@ -132,8 +132,7 @@ class SemanticOperators:
         search_k: int,
         include_reasons: bool,
     ) -> list[dict]:
-        """Core pipeline — factored out so the lock/no-lock paths in
-        ``rank()`` share the same logic."""
+        """Core pipeline — factored out so the DI-injected and pytest paths share the same logic."""
 
         search_fn = self._search_fn or self._default_search_fn()
         topk_fn = self._topk_fn or self._default_topk_fn()
