@@ -69,6 +69,7 @@ export function GuideProvider({
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!cancelled) setLoading(true);
       if (!isAuthenticated) {
         if (!cancelled) {
           setState(readLocalState());
