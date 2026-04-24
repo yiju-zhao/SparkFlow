@@ -7,7 +7,7 @@ import {
   runGraphPipeline,
   removeSourceFromGraph,
   clusterGraph,
-  generateWikiPages,
+  buildWikiPagePayload,
 } from "./graph-service";
 import type { GraphData } from "./graph-service";
 import { Prisma } from "@prisma/client";
@@ -124,13 +124,43 @@ export async function removeSourceFromWiki(
   // 5. Regenerate wiki pages from new communities
   let pagesWritten = 0;
   if (cleaned.nodes.length > 0) {
-    const slugs = await generateWikiPages(
-      notebookId,
+    const { communityPages, indexPage } = await buildWikiPagePayload(
       graphWithCommunities,
       communities,
       userId,
     );
-    pagesWritten = slugs.length;
+    await prisma.$transaction(
+      async (tx) => {
+        for (const p of communityPages) {
+          await tx.wikiPage.upsert({
+            where: { notebookId_slug: { notebookId, slug: p.slug } },
+            create: {
+              notebookId,
+              slug: p.slug,
+              title: p.title,
+              content: p.content,
+              pageType: "CONCEPT",
+              sourceRefs: p.sourceRefs,
+            },
+            update: { title: p.title, content: p.content, sourceRefs: p.sourceRefs },
+          });
+        }
+        await tx.wikiPage.upsert({
+          where: { notebookId_slug: { notebookId, slug: indexPage.slug } },
+          create: {
+            notebookId,
+            slug: indexPage.slug,
+            title: indexPage.title,
+            content: indexPage.content,
+            pageType: "INDEX",
+            sourceRefs: [],
+          },
+          update: { content: indexPage.content },
+        });
+      },
+      { maxWait: 10_000, timeout: 30_000 },
+    );
+    pagesWritten = communityPages.length;
   } else {
     await prisma.wikiPage.upsert({
       where: { notebookId_slug: { notebookId, slug: "index" } },
