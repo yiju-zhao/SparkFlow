@@ -462,11 +462,11 @@
       }
     },
     "byokApiKeys": {
-      "title": "Bring your own API key",
-      "summary": "Use your own OpenAI / Gemini / DeepSeek key — optional.",
+      "title": "Add your API key",
+      "summary": "Add your OpenAI / Gemini / DeepSeek key to unlock chat, wiki, and matcher.",
       "step1": {
-        "title": "Add a key (optional)",
-        "body": "Paste a provider key here and all AI calls use it. Skip to stay on the system key."
+        "title": "Add your API key",
+        "body": "Paste a provider key here before chatting or adding sources."
       }
     },
     "chatWithAi": {

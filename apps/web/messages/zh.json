@@ -462,11 +462,11 @@
       }
     },
     "byokApiKeys": {
-      "title": "自带 API Key",
-      "summary": "用自己的 OpenAI / Gemini / DeepSeek key,可选。",
+      "title": "填入 API Key",
+      "summary": "填入你的 OpenAI / Gemini / DeepSeek key 解锁对话、Wiki 和 Matcher。",
       "step1": {
-        "title": "填入你的 Key(可选)",
-        "body": "把 key 粘贴在这里,所有 AI 调用都走你的 key;跳过则沿用系统 key。"
+        "title": "填入你的 API Key",
+        "body": "提问或添加资料前先把 key 粘贴在这里。"
       }
     },
     "chatWithAi": {
