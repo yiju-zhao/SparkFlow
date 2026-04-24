@@ -76,9 +76,12 @@ export function ActiveGuidePlayer() {
 
     async function setup() {
       if (!step) return;
-      // 1. Route
-      if (step.route && pathname && !pathname.includes(step.route)) {
-        router.push(step.route);
+      // 1. Route — navigate if we're not on the exact route.
+      if (step.route && pathname) {
+        const stripped = pathname.replace(/^\/(en|zh)(?=\/|$)/, "") || "/";
+        if (stripped !== step.route) {
+          router.push(step.route);
+        }
       }
       // 2. Trigger(s) — may be a single trigger or an array run in sequence.
       await runTriggers(step.trigger);
@@ -100,20 +103,38 @@ export function ActiveGuidePlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGuideId, stepIndex]);
 
-  // Click-to-advance: when user clicks the highlighted element, advance to the
-  // next step after a short delay (so the click's natural effect — e.g. opening
-  // a dialog — completes first).
+  // While a guide is running, block clicks on anything that isn't either the
+  // highlighted target or part of the guide's own overlay (Next / Back /
+  // Close). Also handles click-to-advance: when the user clicks the
+  // highlighted element (advanceOn includes "both"), we schedule an advance
+  // after letting the native click fire.
   useEffect(() => {
-    if (!step?.selector) return;
-    const mode = step.advanceOn ?? "both";
-    if (mode === "next") return;
-
+    if (!guide || !step) return;
     const selector = step.selector;
+    const mode = step.advanceOn ?? "both";
+
     function onClick(e: MouseEvent) {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      if (target.closest(selector)) {
-        // Let the native click fire first, then advance.
+
+      // Always allow clicks inside the guide's overlay.
+      if (target.closest("[data-guide-portal]")) return;
+
+      const hitsTarget = selector ? Boolean(target.closest(selector)) : false;
+
+      if (!hitsTarget) {
+        // Clicks on anything that isn't the highlighted target are swallowed —
+        // no Save / Close / Submit elsewhere on the page can fire while the
+        // guide is teaching this step.
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return;
+      }
+
+      // Hit the highlighted target. If this step advances on clicks, queue the
+      // advance after the native handler fires (so any dialog opens etc. go
+      // through first).
+      if (mode !== "next") {
         window.setTimeout(() => {
           if (!guide) return;
           if (stepIndex === guide.steps.length - 1) void finishGuide();
@@ -123,7 +144,7 @@ export function ActiveGuidePlayer() {
     }
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [step, stepIndex, guide, finishGuide]);
+  }, [guide, step, stepIndex, finishGuide]);
 
   if (!guide || !step) return null;
 

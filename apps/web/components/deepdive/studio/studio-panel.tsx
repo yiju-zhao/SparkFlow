@@ -407,7 +407,16 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onInteractOutside={(event) => {
+          // Don't let guide-overlay clicks dismiss the dialog.
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-guide-portal]")) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create Note</DialogTitle>
         </DialogHeader>

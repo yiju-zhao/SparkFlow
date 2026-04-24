@@ -38,10 +38,11 @@ export const wikiGraphGuide: GuideDefinition = {
       bodyKey: "guides.wikiGraph.step3.body",
       advanceOn: "next",
     },
-    // 4 — Point at the fullscreen expand button.
+    // 4 — Centered outro: call out the expand icon without anchoring on it
+    //      (the icon is a 28px button — too small to sit a ring and bubble on
+    //      gracefully). Mentioned in the body instead.
     {
-      selector: '[data-guide="wiki-graph-expand"]',
-      placement: "left",
+      placement: "top",
       titleKey: "guides.wikiGraph.step4.title",
       bodyKey: "guides.wikiGraph.step4.body",
       advanceOn: "next",

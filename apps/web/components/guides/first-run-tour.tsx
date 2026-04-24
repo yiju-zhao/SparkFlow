@@ -28,8 +28,11 @@ export function FirstRunTour() {
     if (tour.stage !== "running") return;
     const current = steps[tour.stepIndex];
     if (!current?.route) return;
-    if (pathname && !pathname.includes(current.route)) {
-      tour.navigate(current.route);
+    if (pathname) {
+      const stripped = pathname.replace(/^\/(en|zh)(?=\/|$)/, "") || "/";
+      if (stripped !== current.route) {
+        tour.navigate(current.route);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tour.stage, tour.stepIndex]);

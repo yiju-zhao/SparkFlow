@@ -35,7 +35,7 @@ export function GuideBubble({
   const isLast = stepIndex === totalSteps - 1;
 
   return (
-    <div className="max-w-80 rounded-lg border border-border bg-background p-4 shadow-xl">
+    <div className="w-80 max-w-[90vw] rounded-lg border border-border bg-background p-4 shadow-xl">
       <div className="mb-2 flex items-center gap-1.5" aria-label={`Step ${stepIndex + 1} of ${totalSteps}`}>
         {Array.from({ length: totalSteps }).map((_, i) => (
           <span

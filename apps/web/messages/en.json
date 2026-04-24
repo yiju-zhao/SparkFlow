@@ -446,21 +446,21 @@
     },
     "createNotebook": {
       "title": "Create a notebook",
-      "summary": "Every research project lives in its own notebook.",
+      "summary": "Every research project gets its own workspace.",
       "step1": {
-        "title": "Start a new notebook",
-        "body": "Click here to open the new-notebook dialog. Every research project gets its own workspace."
+        "title": "New Notebook button",
+        "body": "Opens the new-notebook dialog."
       },
       "step2": {
-        "title": "Name your notebook",
-        "body": "A short, distinctive name — you'll see it in lists everywhere."
+        "title": "Name",
+        "body": "A short, distinctive name."
       },
       "step3": {
-        "title": "Describe it (optional)",
-        "body": "A one-liner about what you're researching here. Helpful later when you have many notebooks."
+        "title": "Description (optional)",
+        "body": "One line about what you're researching."
       },
       "step4": {
-        "title": "Create to finish",
+        "title": "Create",
         "body": "Click Create to save. We won't submit for you."
       }
     },
@@ -490,142 +490,122 @@
     },
     "byokApiKeys": {
       "title": "Add your API key",
-      "summary": "Add your OpenAI / Gemini / DeepSeek key to unlock chat, wiki, and matcher.",
+      "summary": "Your provider keys unlock chat, wiki, and matcher.",
       "step1": {
-        "title": "API Keys live here",
-        "body": "In Settings, the API Keys section holds your credentials for every provider."
+        "title": "API Keys section",
+        "body": "All your provider credentials live here."
       },
       "step2": {
         "title": "Pick a provider",
-        "body": "OpenAI, Gemini, DeepSeek, GLM, MiniMax, Kimi, or a custom endpoint. Use any or all."
+        "body": "OpenAI, Gemini, DeepSeek, GLM, MiniMax, Kimi — or Custom for any OpenAI-compatible endpoint (vLLM, Ollama, self-hosted)."
       },
       "step3": {
         "title": "Paste and save",
-        "body": "Open a provider card, paste your key, and click Save. Keys are encrypted at rest."
+        "body": "Open a card, paste your key, click Save. Keys are encrypted at rest."
       }
     },
     "chatWithAi": {
       "title": "Chat with AI",
-      "summary": "Ask questions grounded in your sources — answers cite the original.",
+      "summary": "Questions grounded in your sources — answers cite the original.",
       "step1": {
-        "title": "Type here",
-        "body": "Any question about your sources. The AI cites exact passages so you can verify."
+        "title": "Type your question",
+        "body": "AI cites exact passages so you can verify."
       },
       "step2": {
-        "title": "Send with this button",
-        "body": "Or just press Enter. Shift+Enter inserts a newline."
+        "title": "Send",
+        "body": "Or press Enter. Shift+Enter for a newline."
       },
       "step3": {
-        "title": "Past conversations",
-        "body": "Every session is saved. Open history to jump back into an old thread."
+        "title": "History",
+        "body": "Every session is saved — jump back in anytime."
       }
     },
     "wikiGraph": {
       "title": "Wiki knowledge graph",
-      "summary": "Auto-generated wiki from your sources — entities, concepts, summaries.",
+      "summary": "Auto-built wiki of entities, concepts, and connections.",
       "step1": {
-        "title": "Wiki lives on this tab",
-        "body": "As sources are added, SparkFlow builds a wiki of entities, concepts, and their connections."
+        "title": "Wiki tab",
+        "body": "SparkFlow builds a wiki from your sources as they're added."
       },
       "step2": {
         "title": "Knowledge Base",
-        "body": "Every entity and concept gets its own page. Click to read, cross-reference, and jump around."
+        "body": "One page per entity or concept. Click to read."
       },
       "step3": {
         "title": "Relationship Graph",
-        "body": "The same concepts rendered as a force-directed graph — hover nodes, follow edges."
+        "body": "The same concepts as a force-directed graph."
       },
       "step4": {
-        "title": "Expand to full-screen",
-        "body": "Open the graph in a full-screen view for deeper exploration."
+        "title": "Full-screen",
+        "body": "The expand icon in the top-right opens the graph full-screen for deeper exploration."
       }
     },
     "notes": {
       "title": "Notes",
-      "summary": "Personal notes attached to a notebook — search them with AI.",
+      "summary": "Personal markdown notes attached to a notebook.",
       "step1": {
-        "title": "Notes live here",
-        "body": "Your own markdown notes alongside the AI output. Stays with this notebook forever."
+        "title": "Notes tab",
+        "body": "Your markdown alongside the AI output."
       },
       "step2": {
-        "title": "Start a new note",
-        "body": "Click to open the create-note dialog."
+        "title": "New note",
+        "body": "Opens the create-note dialog."
       },
       "step3": {
-        "title": "Title it",
-        "body": "A short title you can scan in the list later."
+        "title": "Title",
+        "body": "A short title to scan later."
       },
       "step4": {
-        "title": "Write in markdown",
-        "body": "Lists, code blocks, headings, links — full markdown support."
+        "title": "Content",
+        "body": "Full markdown — lists, code, headings, links."
       },
       "step5": {
-        "title": "Create to save",
-        "body": "Click Create when ready. We won't submit for you."
+        "title": "Create",
+        "body": "Click Create to save. We won't submit for you."
       }
     },
     "conferences": {
       "title": "Browse conferences",
-      "summary": "Venues, instances, sessions, and publications — with charts.",
+      "summary": "Venues, instances, sessions, and publications.",
       "step1": {
-        "title": "Filter by venue",
-        "body": "Pick a specific conference (ACL, NeurIPS, CHI...) or leave it as All Venues."
+        "title": "Venue",
+        "body": "Pick a conference or leave as All."
       },
       "step2": {
-        "title": "Narrow by year",
-        "body": "Combine with the venue filter to jump straight to a specific instance."
+        "title": "Year",
+        "body": "Narrow to a specific instance."
       },
       "step3": {
         "title": "Drill in",
-        "body": "Click any card to open publications, sessions, and charts for that instance."
+        "body": "Click any card for that instance's publications, sessions, and charts."
       }
     },
     "matcher": {
       "title": "Matcher",
-      "summary": "Match a query against thousands of conference sessions.",
+      "summary": "Match a query against thousands of sessions.",
       "step1": {
-        "title": "Upload a query CSV",
-        "body": "Drop an .xlsx / .csv with BU + Query columns — or paste rows into the preview table."
+        "title": "Upload queries",
+        "body": "Drop an .xlsx / .csv with BU + Query columns, or paste rows directly."
       },
       "step2": {
-        "title": "Continue through the wizard",
-        "body": "After upload, the wizard walks you through target type, topK, and run. We won't kick off a real job for you."
+        "title": "Continue in the wizard",
+        "body": "After upload it walks you through target, topK, and run. We don't start a real job for you."
       }
     },
     "wechat": {
       "title": "WeChat articles",
-      "summary": "Browse and search the WeChat article corpus.",
+      "summary": "Browse the WeChat article corpus.",
       "step1": {
         "title": "Filter by source",
-        "body": "Pick a WeChat account to narrow the feed. Click again to reset."
+        "body": "Pick an account; click again to reset."
       },
       "step2": {
-        "title": "Sort the results",
+        "title": "Sort",
         "body": "Latest, most-shared, or highest impact."
       },
       "step3": {
         "title": "Open an article",
-        "body": "Click any row to read full text with extracted images in the modal."
-      }
-    },
-    "languageTheme": {
-      "title": "Language & theme",
-      "summary": "Switch between English and Chinese, light and dark.",
-      "step1": {
-        "title": "Language switcher",
-        "body": "The globe in the top bar toggles between English and Chinese."
-      },
-      "step2": {
-        "title": "Pick a language",
-        "body": "Click English or 中文 — the whole app re-renders in the chosen locale."
-      },
-      "step3": {
-        "title": "Theme toggle",
-        "body": "Right next to the language switcher — your light / dark preference."
-      },
-      "step4": {
-        "title": "Pick a theme",
-        "body": "Light, dark, or follow-system. Saved locally so every visit remembers."
+        "body": "Click any row for full text plus extracted images."
       }
     }
   }

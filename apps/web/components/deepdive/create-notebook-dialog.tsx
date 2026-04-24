@@ -82,7 +82,17 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(event) => {
+          // Don't close when the click lands inside the guide overlay — that
+          // overlay's Next / Back belong to the guide flow, not the dialog.
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-guide-portal]")) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create Notebook</DialogTitle>
         </DialogHeader>

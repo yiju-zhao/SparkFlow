@@ -448,19 +448,19 @@
       "title": "创建 notebook",
       "summary": "每个研究项目有独立的 notebook。",
       "step1": {
-        "title": "新建 notebook",
-        "body": "点这里打开新建对话框。每个研究项目都有独立的工作空间。"
+        "title": "New Notebook 按钮",
+        "body": "打开新建对话框。"
       },
       "step2": {
-        "title": "起个名字",
-        "body": "一个短而特别的名字 —— 以后在列表里就靠它识别。"
+        "title": "名字",
+        "body": "一个短而特别的名字。"
       },
       "step3": {
-        "title": "加点描述(可选)",
-        "body": "一句话讲清楚要研究什么。notebook 多了后用这个区分很方便。"
+        "title": "描述(可选)",
+        "body": "一句话说明研究主题。"
       },
       "step4": {
-        "title": "点 Create 完成",
+        "title": "Create",
         "body": "点 Create 保存。我们不会替你提交。"
       }
     },
@@ -490,142 +490,122 @@
     },
     "byokApiKeys": {
       "title": "填入 API Key",
-      "summary": "填入你的 OpenAI / Gemini / DeepSeek key 解锁对话、Wiki 和 Matcher。",
+      "summary": "Provider key 解锁对话、Wiki 和 Matcher。",
       "step1": {
-        "title": "API Keys 就在这里",
-        "body": "Settings 里的 API Keys 区域,放你所有 provider 的凭证。"
+        "title": "API Keys 区域",
+        "body": "所有 provider 的凭证都在这里。"
       },
       "step2": {
         "title": "选一个 provider",
-        "body": "OpenAI、Gemini、DeepSeek、GLM、MiniMax、Kimi,或自定义 endpoint。任选或全选。"
+        "body": "OpenAI、Gemini、DeepSeek、GLM、MiniMax、Kimi —— 或选 Custom 对接任意 OpenAI-compatible endpoint(vLLM、Ollama、自建)。"
       },
       "step3": {
         "title": "粘贴并保存",
-        "body": "打开 provider 卡片,粘贴你的 key,点 Save。Key 在后端做了加密存储。"
+        "body": "打开卡片,粘贴 key,点 Save。Key 加密存储。"
       }
     },
     "chatWithAi": {
       "title": "与 AI 对话",
-      "summary": "基于你的资料提问,AI 回答会附带原文引用。",
+      "summary": "基于你的资料提问,回答附带原文引用。",
       "step1": {
-        "title": "在这里输入问题",
-        "body": "任何关于你资料的问题。AI 会引用原文段落,方便你核对。"
+        "title": "输入问题",
+        "body": "AI 引用原文段落,方便核对。"
       },
       "step2": {
-        "title": "点这里发送",
-        "body": "或者直接按 Enter。Shift+Enter 换行。"
+        "title": "发送",
+        "body": "或按 Enter。Shift+Enter 换行。"
       },
       "step3": {
-        "title": "历史对话",
-        "body": "每次对话都会保存。打开历史可以回到任一旧的线程。"
+        "title": "历史",
+        "body": "每次对话都保存,随时回到旧线程。"
       }
     },
     "wikiGraph": {
       "title": "Wiki 知识图谱",
-      "summary": "基于资料自动生成的 wiki — 实体、概念、摘要。",
+      "summary": "基于资料自动构建的实体、概念和关联。",
       "step1": {
-        "title": "Wiki 在这个 tab",
-        "body": "资料加进来后,SparkFlow 会自动构建实体、概念以及它们之间的关联。"
+        "title": "Wiki Tab",
+        "body": "资料加入后,SparkFlow 自动构建 wiki。"
       },
       "step2": {
         "title": "知识库",
-        "body": "每个实体和概念都有一页。点击可以阅读、交叉引用、跳转浏览。"
+        "body": "每个实体和概念都有一页,点击阅读。"
       },
       "step3": {
         "title": "关系图",
-        "body": "同样的概念画成力引导图 —— 悬停节点、跟随边线。"
+        "body": "同样的概念,力引导图形态。"
       },
       "step4": {
-        "title": "全屏展开",
-        "body": "把图打开到全屏,深入探索更方便。"
+        "title": "全屏",
+        "body": "点右上角的展开图标,把图打开到全屏。"
       }
     },
     "notes": {
       "title": "笔记",
-      "summary": "附在 notebook 上的个人笔记,AI 可检索。",
+      "summary": "附在 notebook 上的个人 markdown 笔记。",
       "step1": {
-        "title": "笔记在这里",
-        "body": "你的 markdown 笔记和 AI 输出并列。永久留在这个 notebook 里。"
+        "title": "Notes Tab",
+        "body": "你的 markdown 和 AI 输出并列。"
       },
       "step2": {
         "title": "新建笔记",
-        "body": "点这里打开创建对话框。"
+        "body": "打开创建对话框。"
       },
       "step3": {
-        "title": "起个标题",
-        "body": "短标题,方便以后在列表里扫一眼。"
+        "title": "标题",
+        "body": "短标题,方便列表里扫。"
       },
       "step4": {
-        "title": "用 markdown 写",
-        "body": "列表、代码块、标题、链接 —— 完整支持 markdown。"
+        "title": "正文",
+        "body": "完整 markdown —— 列表、代码、标题、链接。"
       },
       "step5": {
-        "title": "点 Create 保存",
-        "body": "准备好点 Create。我们不会替你提交。"
+        "title": "Create",
+        "body": "点 Create 保存。我们不会替你提交。"
       }
     },
     "conferences": {
       "title": "浏览会议",
-      "summary": "会议、届次、session、publication — 带图表。",
+      "summary": "会议、届次、session、publication。",
       "step1": {
-        "title": "按会议筛选",
-        "body": "选一个具体会议(ACL、NeurIPS、CHI...)或保持 All Venues。"
+        "title": "会议",
+        "body": "选一个会议或保持 All。"
       },
       "step2": {
-        "title": "按年份缩小",
-        "body": "配合会议筛选,直接跳到某一届。"
+        "title": "年份",
+        "body": "缩小到某一届。"
       },
       "step3": {
-        "title": "点进去看",
-        "body": "点任意卡片打开该届的 publications、sessions 和图表。"
+        "title": "点进去",
+        "body": "点任意卡片,打开该届的 publications、sessions 和图表。"
       }
     },
     "matcher": {
       "title": "Matcher",
-      "summary": "用 query 匹配数千个会议 session。",
+      "summary": "用 query 匹配数千个 session。",
       "step1": {
-        "title": "上传 query CSV",
-        "body": "拖放含 BU + Query 两列的 .xlsx / .csv,或在预览表里直接粘贴几行。"
+        "title": "上传 query",
+        "body": "拖放含 BU + Query 两列的 .xlsx / .csv,或直接粘贴几行。"
       },
       "step2": {
         "title": "继续走向导",
-        "body": "上传后向导会带你选 target type、topK 并运行。真实任务不会替你启动。"
+        "body": "上传后向导会带你选 target、topK、运行。真实任务不会替你启动。"
       }
     },
     "wechat": {
       "title": "WeChat 文章",
-      "summary": "浏览和检索 WeChat 文章库。",
+      "summary": "浏览 WeChat 文章库。",
       "step1": {
         "title": "按来源筛选",
-        "body": "选一个公众号来缩小列表。再点一次取消。"
+        "body": "选一个公众号缩小列表;再点一次取消。"
       },
       "step2": {
         "title": "排序",
-        "body": "最新发布、最多转发、或最高影响力。"
+        "body": "最新、最多转发、最高影响力。"
       },
       "step3": {
         "title": "打开文章",
-        "body": "点任一行在弹窗里阅读全文,附带提取出的图片。"
-      }
-    },
-    "languageTheme": {
-      "title": "语言与主题",
-      "summary": "切换中英文、明暗主题。",
-      "step1": {
-        "title": "语言切换",
-        "body": "顶部导航栏的地球图标切换中英文。"
-      },
-      "step2": {
-        "title": "选语言",
-        "body": "点 English 或 中文 —— 整个应用会立即按所选语言重新渲染。"
-      },
-      "step3": {
-        "title": "主题切换",
-        "body": "紧挨着语言切换 —— 你的明暗主题偏好。"
-      },
-      "step4": {
-        "title": "选主题",
-        "body": "浅色、深色、或跟随系统。保存在本地,每次访问都记得。"
+        "body": "点任一行,阅读全文 + 提取的图片。"
       }
     }
   }

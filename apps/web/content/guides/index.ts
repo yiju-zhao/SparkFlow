@@ -8,7 +8,6 @@ import { notesGuide } from "./notes";
 import { conferencesGuide } from "./conferences";
 import { matcherGuide } from "./matcher";
 import { wechatGuide } from "./wechat";
-import { languageThemeGuide } from "./language-theme";
 
 export const GUIDES: GuideDefinition[] = [
   createNotebookGuide,
@@ -20,5 +19,4 @@ export const GUIDES: GuideDefinition[] = [
   conferencesGuide,
   matcherGuide,
   wechatGuide,
-  languageThemeGuide,
 ];
