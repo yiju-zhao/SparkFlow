@@ -38,6 +38,12 @@ export interface GuideStep {
    * - `both` (default): either works; the user's click still reaches the real element
    */
   advanceOn?: GuideAdvanceMode;
+  /**
+   * Override the default "X / N" counter shown in the bubble.
+   * Use e.g. "2a / 3" when two adjacent steps describe alternatives inside
+   * the same conceptual phase.
+   */
+  counterLabel?: string;
 }
 
 export interface GuideDefinition {

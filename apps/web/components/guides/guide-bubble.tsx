@@ -5,6 +5,8 @@ interface GuideBubbleProps {
   body: string;
   stepIndex: number;
   totalSteps: number;
+  /** Overrides the default "N / total" counter. */
+  counterLabel?: string;
   onNext: () => void;
   onPrev?: () => void;
   onClose: () => void;
@@ -17,12 +19,14 @@ interface GuideBubbleProps {
 /**
  * The content inside a guide tooltip — title, body, step counter, Back / Next / close.
  * Positioning and outer animation are handled by the parent (Spotlight / GuideLayer).
+ * On the last step the Close affordance is dropped; Finish is the sole exit.
  */
 export function GuideBubble({
   title,
   body,
   stepIndex,
   totalSteps,
+  counterLabel,
   onNext,
   onPrev,
   onClose,
@@ -32,22 +36,25 @@ export function GuideBubble({
   finishLabel,
 }: GuideBubbleProps) {
   const isLast = stepIndex === totalSteps - 1;
+  const counter = counterLabel ?? `${stepIndex + 1} / ${totalSteps}`;
 
   return (
     <div className="max-w-80 rounded-lg border border-border bg-background p-4 shadow-xl">
-      <div className="mb-1 text-xs text-muted-foreground">
-        {stepIndex + 1} / {totalSteps}
-      </div>
+      <div className="mb-1 text-xs text-muted-foreground">{counter}</div>
       <div className="mb-1 text-sm font-semibold">{title}</div>
       <div className="mb-3 text-sm text-muted-foreground">{body}</div>
       <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:text-foreground"
-          onClick={onClose}
-        >
-          {closeLabel}
-        </button>
+        {isLast ? (
+          <span />
+        ) : (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={onClose}
+          >
+            {closeLabel}
+          </button>
+        )}
         <div className="flex gap-2">
           {onPrev && stepIndex > 0 ? (
             <button

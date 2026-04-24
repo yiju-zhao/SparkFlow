@@ -115,6 +115,7 @@ export function ActiveGuidePlayer() {
       body={tGuides(stripPrefix(step.bodyKey))}
       stepIndex={stepIndex}
       totalSteps={guide.steps.length}
+      counterLabel={step.counterLabel}
       onNext={() => {
         if (stepIndex === guide.steps.length - 1) closeGuide();
         else setStepIndex(stepIndex + 1);

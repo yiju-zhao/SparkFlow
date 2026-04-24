@@ -14,6 +14,7 @@ interface GuideLayerProps {
   body: string;
   stepIndex: number;
   totalSteps: number;
+  counterLabel?: string;
   onNext: () => void;
   onPrev?: () => void;
   onClose: () => void;
@@ -92,6 +93,7 @@ export function GuideLayer({
   body,
   stepIndex,
   totalSteps,
+  counterLabel,
   onNext,
   onPrev,
   onClose,
@@ -189,6 +191,7 @@ export function GuideLayer({
       body={body}
       stepIndex={stepIndex}
       totalSteps={totalSteps}
+      counterLabel={counterLabel}
       onNext={onNext}
       onPrev={onPrev}
       onClose={onClose}

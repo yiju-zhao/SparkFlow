@@ -21,8 +21,11 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step2.title",
       bodyKey: "guides.addSources.step2.body",
       advanceOn: "both",
+      counterLabel: "1 / 3",
     },
-    // 2 — Open the dialog programmatically and highlight the Upload menu.
+    // 2a — Open the dialog programmatically and highlight the Upload menu.
+    // Emphasize-only (advanceOn:"next") — clicking Upload opens a Popover
+    // that would otherwise hijack the ring.
     {
       trigger: { kind: "action", name: "open-add-source" },
       waitForSelector: { selector: '[data-guide="upload-button"]', timeoutMs: 1200 },
@@ -31,21 +34,22 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step3.title",
       bodyKey: "guides.addSources.step3.body",
       advanceOn: "next",
+      counterLabel: "2a / 3",
     },
-    // 3 — Point at the Websites entry. advanceOn="both" so clicking the
-    // button naturally advances to step 4 (where the view has switched
-    // and the Insert button exists).
+    // 2b — Alternative entry via Websites. Emphasize-only — clicking the real
+    // button switches the view, which would remove the very button we are
+    // highlighting.
     {
       selector: '[data-guide="add-source-websites"]',
       placement: "top",
       titleKey: "guides.addSources.step4.title",
       bodyKey: "guides.addSources.step4.body",
-      advanceOn: "both",
+      advanceOn: "next",
+      counterLabel: "2b / 3",
     },
-    // 4 — Point at the Insert button. Fire the `switch-to-websites` action
-    // first so the button is guaranteed to exist whether the user reached
-    // here via Next (view still on file-picker) or by clicking Websites
-    // (view already switched — the action is idempotent).
+    // 3 — Point at the Insert button. Programmatically switch to the Websites
+    // view first so the button is guaranteed to be in the DOM regardless of
+    // which path the user took.
     {
       trigger: { kind: "action", name: "switch-to-websites" },
       waitForSelector: { selector: '[data-guide="add-source-submit"]', timeoutMs: 800 },
@@ -54,6 +58,7 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step5.title",
       bodyKey: "guides.addSources.step5.body",
       advanceOn: "next",
+      counterLabel: "3 / 3",
     },
   ],
 };
