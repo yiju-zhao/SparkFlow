@@ -3,12 +3,10 @@
 import { HelpCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useGuides } from "./guide-provider";
-import { useGuidesShortcut } from "./use-keyboard-shortcut";
 
 export function FloatingGuideButton() {
   const { drawerOpen, setDrawerOpen } = useGuides();
   const t = useTranslations("guides.button");
-  useGuidesShortcut();
 
   if (drawerOpen) return null;
 

@@ -196,7 +196,6 @@ export function GuideDrawer() {
                   >
                     {t("drawer.replayTour")}
                   </button>
-                  <div className="mt-2 text-center text-xs text-muted-foreground">{t("drawer.shortcutHint")}</div>
                 </footer>
               </motion.aside>
             ) : null}

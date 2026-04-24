@@ -421,8 +421,7 @@
       "close": "关闭",
       "search": "搜索引导...",
       "replayTour": "▶ 重新运行首次引导",
-      "step": "第 {n} / {total} 步",
-      "shortcutHint": "快捷键:? 然后 g"
+      "step": "第 {n} / {total} 步"
     },
     "category": {
       "deepdive": "DeepDive",

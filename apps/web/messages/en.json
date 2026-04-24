@@ -421,8 +421,7 @@
       "close": "Close",
       "search": "Search guides...",
       "replayTour": "▶ Replay first-run tour",
-      "step": "Step {n} / {total}",
-      "shortcutHint": "Shortcut: ? then g"
+      "step": "Step {n} / {total}"
     },
     "category": {
       "deepdive": "DeepDive",
