@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "framer-motion";
 import * as LucideIcons from "lucide-react";
@@ -39,10 +39,6 @@ export function GuideDrawer() {
   const [q, setQ] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!drawerOpen) setExpandedId(null);
-  }, [drawerOpen]);
-
   const visible = useMemo(() => filterGuides(GUIDES, q, dismissedGuides), [q, dismissedGuides]);
   const grouped = useMemo(() => {
     const map = new Map<GuideCategory, GuideDefinition[]>();
@@ -52,7 +48,14 @@ export function GuideDrawer() {
   }, [visible]);
 
   return (
-    <Dialog.Root open={drawerOpen} onOpenChange={setDrawerOpen} modal={false}>
+    <Dialog.Root
+      open={drawerOpen}
+      onOpenChange={(open) => {
+        setDrawerOpen(open);
+        if (!open) setExpandedId(null);
+      }}
+      modal={false}
+    >
       <Dialog.Portal forceMount>
         <Dialog.Content asChild forceMount>
           <AnimatePresence>
