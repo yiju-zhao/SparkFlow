@@ -15,10 +15,10 @@ function slotKey(userId: string): string {
 /**
  * Atomic acquire:
  *   1. Drop slots older than TTL (crash recovery).
- *   2. Add our candidate slot with score = now.
- *   3. Take the oldest `limit` slots; if we're not among them, remove ourselves.
- * Returns the slot token on success, "" on rejection. All four steps happen
- * inside a single EVAL, so no interleaving with another caller is possible.
+ *   2. If the current slot count is already at `limit`, reject.
+ *   3. Else add ourselves and return the token.
+ * All three steps happen inside a single EVAL, so two concurrent callers
+ * cannot both observe "count < limit" and both ZADD.
  */
 const ACQUIRE_SCRIPT = `
   local key   = KEYS[1]
@@ -28,16 +28,12 @@ const ACQUIRE_SCRIPT = `
   local token = ARGV[4]
 
   redis.call("ZREMRANGEBYSCORE", key, "-inf", now - ttl)
-  redis.call("ZADD", key, now, token)
-
-  local winners = redis.call("ZRANGE", key, 0, limit - 1)
-  for i = 1, #winners do
-    if winners[i] == token then
-      return token
-    end
+  local count = redis.call("ZCARD", key)
+  if count >= limit then
+    return ""
   end
-  redis.call("ZREM", key, token)
-  return ""
+  redis.call("ZADD", key, now, token)
+  return token
 `;
 
 const RELEASE_SCRIPT = `
