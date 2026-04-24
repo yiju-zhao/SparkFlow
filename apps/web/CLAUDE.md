@@ -39,12 +39,23 @@ apps/web/
 │   ├── prisma.ts           # Prisma client singleton
 │   ├── crypto.ts           # BYOK key encryption/decryption
 │   ├── types/providers.ts  # LLM provider definitions
+│   ├── queue/              # BullMQ + Redis primitives (ingest worker)
+│   │   ├── redis.ts             # Shared ioredis singleton (lazy getter)
+│   │   ├── ingest-queue.ts      # Queue + enqueueWikiIngest + job status helper
+│   │   ├── notebook-lock.ts     # Per-notebook mutex with heartbeat (Lua)
+│   │   └── user-slot.ts         # Atomic per-user fairness semaphore (Lua)
 │   ├── services/           # Backend services
 │   │   ├── api-key-resolver.ts  # BYOK key resolution (user → admin fallback)
 │   │   ├── wiki-ingest.ts       # Wiki knowledge graph extraction pipeline
 │   │   ├── graph-service.ts     # Graph operations + Louvain clustering
 │   │   └── wiki-health.ts       # Wiki health monitoring
 │   └── hooks/              # Shared React hooks
+├── workers/                # Out-of-process workers
+│   └── ingest.ts           # BullMQ consumer: wiki-ingest
+├── scripts/                # Standalone verification + maintenance scripts
+│   └── verify-user-slot.ts # Lua semaphore correctness check
+├── Dockerfile              # Next.js production image (builder → dev → runner)
+├── Dockerfile.worker       # Minimal image for `npm run worker:ingest`
 └── hooks/                  # Global React hooks
 ```
 
@@ -74,12 +85,31 @@ Prefix with underscore `_components` or `_lib` inside `app/` for:
 
 ```bash
 npm run dev                       # Start dev server on port 3001
+npm run worker:ingest             # Start the BullMQ wiki-ingest worker (its own process)
 npm run build                     # Production build
 npx prisma generate               # Regenerate client after schema edits
 npx prisma migrate dev --name X   # Generate + apply a migration (dev)
 npx prisma migrate deploy         # Apply pending migrations (production)
 npx prisma migrate status         # Inspect applied/pending migrations
+
+# Standalone verification (requires Redis running)
+REDIS_URL=redis://localhost:6379 npx tsx scripts/verify-user-slot.ts
 ```
+
+## BullMQ Wiki-Ingest Worker
+
+Wiki ingest is long-running (30 s – 2 min) and must survive web-process
+restarts, so it runs in its own BullMQ-driven worker process. The Next.js
+route `POST /api/notebooks/[id]/sources` calls `enqueueWikiIngest(...)`
+and returns immediately with a `jobId`; the worker drains the queue.
+
+- **Entry**: `workers/ingest.ts` — env vars `INGEST_WORKER_CONCURRENCY` (default 4) and `INGEST_PER_USER_CONCURRENCY` (default 2).
+- **Queue module**: `lib/queue/ingest-queue.ts` — job id is `nb:{notebookId}:src:{sourceId}`; pass `{ force: true }` to drop a stale completed/failed job before re-enqueueing (used by manual retry).
+- **Per-user fairness**: `lib/queue/user-slot.ts` uses a single Lua `EVAL` (`ZREMRANGEBYSCORE` + `ZCARD` + `ZADD`) so atomicity holds even when two workers race on the same user. Counter lives in Redis → scales across worker replicas.
+- **Per-notebook mutex**: `lib/queue/notebook-lock.ts` uses Redis `SET NX PX` with a 60 s heartbeat that extends TTL to 10 min — the lock survives long LLM runs without ever expiring mid-ingest.
+- **Reschedule protocol**: when contention is hit, the worker calls `job.moveToDelayed(...)` and throws BullMQ's `DelayedError` — the reschedule does NOT burn the `attempts: 3` budget.
+- **Transactional commit**: `lib/services/graph-service.ts::runGraphPipeline` builds all wiki page content first (LLM calls outside any tx), then opens one `prisma.$transaction` (`maxWait: 10s, timeout: 60s`) that upserts the graph + every wiki page + deletes orphaned `community-*` slugs + appends the log entry — all-or-nothing.
+- **Status endpoint**: `GET /api/notebooks/[id]/ingest/status?jobId=...` returns `{ state, progress, failedReason, result }`; wrapped in a 2 s `Promise.race` so a down Redis fails fast with 503.
 
 ## Prisma Migration Workflow
 

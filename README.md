@@ -11,9 +11,11 @@ SparkFlow combines retrieval-augmented generation with a generative UI paradigm 
 ```
 SparkFlow/
 ├── apps/
-│   ├── web/          # Next.js 16 frontend (port 3001)
-│   ├── agent/        # LangGraph Python agents (port 2024)
-│   └── matcher/      # Standalone Python matcher service
+│   ├── web/          # Next.js 16 frontend (port 3001) + BullMQ ingest worker
+│   ├── agent/        # LangGraph Python agents (port 2024) + ARQ digest worker
+│   ├── semops/       # FastAPI SemanticOperators / matcher (port 2025)
+│   ├── mcp-server/   # MCP server (port 3108)
+│   └── toolbox/      # Prebuilt tool definitions (YAML)
 ├── docs/
 ├── scripts/
 └── tasks/
@@ -79,21 +81,32 @@ apps/agent/
 |-----------|---------|
 | LangGraph | Agent orchestration and state management |
 | LangChain | LLM tooling and chain composition |
-| OpenAI + Google Gemini | LLM providers |
-| RagFlow SDK | RAG pipeline (chunking, indexing, retrieval) |
+| FastAPI | Semops service + digest workflow endpoints |
+| LOTUS | Semantic operators (`sem_search`, `sem_topk`, `sem_map`) — rank runs in `ProcessPoolExecutor` subprocesses (spawn context) for tenant isolation |
+| OpenAI + Google Gemini + others | LLM providers (BYOK — configured per user) |
+| PageIndex | Built-in RAG pipeline (chunking, indexing, retrieval) |
+| Playwright | Webpage-to-markdown conversion |
 | psycopg3 | Direct PostgreSQL queries for hub tools |
+
+### Queues & Workers
+
+| Technology | Purpose |
+|-----------|---------|
+| BullMQ (Node) + ioredis | Wiki-ingest queue in `apps/web`; drained by `npm run worker:ingest` |
+| ARQ (Python) | Daily-digest queue in `apps/agent`; drained by `arq workflows.digest_worker.WorkerSettings` |
+| Redis 7 | Single shared broker for both queues (separate keyspaces) |
 
 ## AI Agents
 
-Three LangGraph agents are registered in `langgraph.json`:
+LangGraph surfaces registered in `langgraph.json`:
 
-| Agent | Entry Point | Purpose |
-|-------|-------------|---------|
-| `agent` | `graphs/rag_agent.py` | Document RAG queries (OpenAI) |
-| `agent_gemini` | `graphs/rag_agent_gemini.py` | Document RAG queries (Gemini) |
-| `hub` | `graphs/hub_agent.py` | Conference/session discovery with generative UI |
+| Surface | Entry Point | Purpose |
+|---------|-------------|---------|
+| `notebook_graph` | `graphs/surface.py` | Document RAG — wiki-aware deepdive agent (multi-provider via `init_chat_model`) |
+| `hub_graph` | `graphs/surface.py` | Conference/session discovery with generative UI |
+| `deep_research_graph` | `graphs/surface.py` | Open-web deep research with Tavily |
 
-The hub agent uses a tool execution loop with conditional routing: backend tool calls (database queries) execute and loop back to the LLM, while frontend tool calls (showTable, showChart) pass through to CopilotKit for React component rendering.
+All three are built by the same factory (`hermes` harness) and share the tool registry; they differ by surface-level toolset + prompt. The hub surface uses a tool execution loop with conditional routing: backend tool calls (DB queries) execute server-side and loop back to the LLM, while frontend tool calls (showTable, showChart) pass through to CopilotKit for React component rendering.
 
 ## Features
 
@@ -123,16 +136,18 @@ cd apps/web && docker compose up -d
 
 | Service | Image | Ports | Purpose |
 |---------|-------|-------|---------|
-| PostgreSQL | `postgres:17-alpine` | 5433 | Primary database |
-| MinIO | `minio/minio` | 9004 (API), 9005 (console) | S3-compatible object storage |
-| Crawl4AI | `unclecode/crawl4ai` | 11235 | Webpage-to-markdown conversion |
+| postgres | `pgvector/pgvector:pg17` | 5433 | Primary database (pgvector) |
+| redis | `redis:7-alpine` | 6379 | BullMQ + ARQ broker (AOF persistence) |
+| ingest-worker | built from `apps/web/Dockerfile.worker` | — | BullMQ consumer: wiki-ingest |
+| digest-worker | built from `apps/agent/Dockerfile` | — | ARQ consumer: daily-digest |
 
 ### External Services
 
 | Service | Default Port | Purpose |
 |---------|-------------|---------|
-| RagFlow | 9380 | RAG pipeline (chunking, indexing, retrieval) |
 | MinerU | 8000 | PDF-to-image extraction |
+| Semops | 2025 | FastAPI SemanticOperators + matcher |
+| MCP Server | 3108 | Model Context Protocol server |
 
 ## Getting Started
 
@@ -172,7 +187,7 @@ docker compose up -d
 ```bash
 cd apps/web
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy   # apply migrations (never `db push` — repo is baselined)
 ```
 
 4. **Start development servers**
@@ -182,9 +197,17 @@ npx prisma db push
 cd apps/web
 npm run dev
 
-# Terminal 2: Agent service
+# Terminal 2: Wiki-ingest worker (BullMQ)
+cd apps/web
+npm run worker:ingest
+
+# Terminal 3: Agent service (LangGraph)
 cd apps/agent
 langgraph dev --host 0.0.0.0 --port 2024
+
+# Terminal 4: Daily-digest worker (ARQ)
+cd apps/agent
+arq workflows.digest_worker.WorkerSettings
 ```
 
 5. **Access the application**
@@ -200,23 +223,36 @@ langgraph dev --host 0.0.0.0 --port 2024
 |----------|-------------|----------|
 | `NEXTAUTH_SECRET` | JWT secret for authentication | Yes |
 | `NEXTAUTH_URL` | Application URL | No (default: `http://localhost:3001`) |
+| `API_KEY_ENCRYPTION_SECRET` | Encrypts BYOK API keys at rest | Yes |
 | `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `NEXT_PUBLIC_LANGGRAPH_API_URL` | LangGraph server URL | No (default: `http://localhost:2024`) |
-| `RAGFLOW_BASE_URL` | RagFlow API URL | No (default: `http://localhost:9380`) |
-| `RAGFLOW_API_KEY` | RagFlow API key | No |
-| `S3_ENDPOINT` | MinIO/S3 endpoint | No (default: `http://localhost:9004`) |
-| `S3_ACCESS_KEY` | S3 access key | No (default: `minioadmin`) |
-| `S3_SECRET_KEY` | S3 secret key | No (default: `minioadmin`) |
-| `S3_BUCKET_NAME` | S3 bucket name | No (default: `sparkflow-images`) |
+| `REDIS_URL` | BullMQ broker | Yes (default: `redis://localhost:6379`) |
+| `INGEST_WORKER_CONCURRENCY` | Jobs in flight per ingest-worker process | No (default: `4`) |
+| `INGEST_PER_USER_CONCURRENCY` | Max ingest jobs a single user holds | No (default: `2`) |
+| `LANGGRAPH_API_URL` / `NEXT_PUBLIC_LANGGRAPH_API_URL` | LangGraph server URL | No (default: `http://localhost:2024`) |
+| `WORKFLOWS_API_URL` / `NEXT_PUBLIC_WORKFLOWS_API_URL` | FastAPI workflow server | No (default: `http://localhost:2027`) |
+| `INTERNAL_CALLBACK_TOKEN` | Shared secret for Python → Node digest callbacks | Yes |
+| `MINERU_LOCAL_URL` | MinerU (PDF) endpoint | No (default: `http://localhost:8000`) |
 
 ### Backend (`apps/agent/.env`)
 
+BYOK is mandatory on all user-facing paths — there is no `OPENAI_API_KEY`
+fallback for user requests. Admin-only paths (observability, warm-up) may
+still read env keys.
+
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENAI_API_KEY` | OpenAI API key | Yes |
-| `GOOGLE_API_KEY` | Google Gemini API key | No |
-| `RAGFLOW_BASE_URL` | RagFlow API URL | No (default: `http://localhost:9380`) |
-| `RAGFLOW_API_KEY` | RagFlow API key | No |
+| `REDIS_URL` | Shared with the web app (ARQ + BullMQ) | Yes |
+| `DIGEST_WORKER_CONCURRENCY` | Digest sections per worker process | No (default: `4`) |
+| `INTERNAL_CALLBACK_TOKEN` | Must match `apps/web` | Yes |
+| `SPARKFLOW_API_URL` | Node callback base URL | Yes |
+| `SEMOPS_API_URL` | Semops service URL | Yes |
+| `CHECKPOINT_DB_URL` | LangGraph checkpointer DB | Yes |
+
+### Semops (`apps/semops/.env`)
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SEMOPS_RANK_POOL_SIZE` | `ProcessPoolExecutor` workers for `/api/operators/rank` | No (default: `min(4, cpu_count)`) |
 
 ## Data Models
 
@@ -241,7 +277,7 @@ cd apps/web && npx tsc --noEmit
 cd apps/web && npm run lint
 
 # Prisma schema changes
-cd apps/web && npx prisma generate && npx prisma db push
+cd apps/web && npx prisma migrate dev --name <what_changed>   # NEVER `db push` — repo is baselined
 
 # Build for production
 cd apps/web && npm run build

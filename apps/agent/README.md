@@ -20,11 +20,28 @@ langgraph dev --host 0.0.0.0 --port 2024
 ```
 
 ## Key Environment Variables
-- `OPENAI_API_KEY`
 - `TOOLBOX_SERVER_URL`
 - `MCP_SERVER_URL`
 - `HUB_MODEL_PROVIDER`
 - `HUB_MODEL_NAME`
+- `REDIS_URL` — shared with the web app (BullMQ + ARQ)
+- `DIGEST_WORKER_CONCURRENCY` — ARQ digest worker concurrency (default 4)
+- `INTERNAL_CALLBACK_TOKEN` — shared secret for Python → Node digest callbacks
+
+BYOK is mandatory on all user-facing paths; there is no `OPENAI_API_KEY` env fallback for user requests.
+
+## Daily Digest (ARQ worker)
+
+User-triggered digest generation is durable: `POST /v1/workflows/daily_digest/sections/{id}/generate` enqueues an ARQ job and returns `{accepted, job_id, reused}` immediately. Poll `GET /v1/workflows/daily_digest/jobs/{job_id}/status` for `{status, result?, error?}`. The worker runs in its own process and must be started separately:
+
+```bash
+# From apps/agent
+arq workflows.digest_worker.WorkerSettings
+```
+
+- `workflows/digest_tasks.py` — ARQ task adapter that deserializes the payload into `GenerateSectionRequest` and calls the existing `workflows.daily_digest.generate_section`.
+- `workflows/digest_worker.py` — `WorkerSettings` (`max_jobs`, `max_tries=3`, `keep_result=24h`).
+- FastAPI `lifespan` opens / closes the ARQ pool on the `/v1/workflows/daily_digest/*` handler side.
 
 ## Model Configuration
 - DeepDive defaults: `config/rag_agent.py`
