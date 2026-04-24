@@ -449,7 +449,19 @@
       "summary": "Every research project lives in its own notebook.",
       "step1": {
         "title": "Start a new notebook",
-        "body": "Click to create a fresh workspace for your sources, chat, and notes."
+        "body": "Click here to open the new-notebook dialog. Every research project gets its own workspace."
+      },
+      "step2": {
+        "title": "Name your notebook",
+        "body": "A short, distinctive name — you'll see it in lists everywhere."
+      },
+      "step3": {
+        "title": "Describe it (optional)",
+        "body": "A one-liner about what you're researching here. Helpful later when you have many notebooks."
+      },
+      "step4": {
+        "title": "Create to finish",
+        "body": "Click Create to save. We won't submit for you."
       }
     },
     "addSources": {
@@ -488,24 +500,60 @@
       "title": "Chat with AI",
       "summary": "Ask questions grounded in your sources — answers cite the original.",
       "step1": {
-        "title": "Ask anything",
-        "body": "Type a question about your sources. The AI cites exact passages so you can verify."
+        "title": "Type here",
+        "body": "Any question about your sources. The AI cites exact passages so you can verify."
+      },
+      "step2": {
+        "title": "Send with this button",
+        "body": "Or just press Enter. Shift+Enter inserts a newline."
+      },
+      "step3": {
+        "title": "Past conversations",
+        "body": "Every session is saved. Open history to jump back into an old thread."
       }
     },
     "wikiGraph": {
       "title": "Wiki knowledge graph",
       "summary": "Auto-generated wiki from your sources — entities, concepts, summaries.",
       "step1": {
-        "title": "Explore the wiki",
-        "body": "As sources are added, the wiki builds a graph of entities and concepts. Click a page to jump around."
+        "title": "Wiki lives on this tab",
+        "body": "As sources are added, SparkFlow builds a wiki of entities, concepts, and their connections."
+      },
+      "step2": {
+        "title": "Knowledge Base",
+        "body": "Every entity and concept gets its own page. Click to read, cross-reference, and jump around."
+      },
+      "step3": {
+        "title": "Relationship Graph",
+        "body": "The same concepts rendered as a force-directed graph — hover nodes, follow edges."
+      },
+      "step4": {
+        "title": "Expand to full-screen",
+        "body": "Open the graph in a full-screen view for deeper exploration."
       }
     },
     "notes": {
       "title": "Notes",
       "summary": "Personal notes attached to a notebook — search them with AI.",
       "step1": {
-        "title": "Capture ideas",
-        "body": "Write your own notes alongside the AI output. They stay in the notebook forever."
+        "title": "Notes live here",
+        "body": "Your own markdown notes alongside the AI output. Stays with this notebook forever."
+      },
+      "step2": {
+        "title": "Start a new note",
+        "body": "Click to open the create-note dialog."
+      },
+      "step3": {
+        "title": "Title it",
+        "body": "A short title you can scan in the list later."
+      },
+      "step4": {
+        "title": "Write in markdown",
+        "body": "Lists, code blocks, headings, links — full markdown support."
+      },
+      "step5": {
+        "title": "Create to save",
+        "body": "Click Create when ready. We won't submit for you."
       }
     },
     "conferences": {

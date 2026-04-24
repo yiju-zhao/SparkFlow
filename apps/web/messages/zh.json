@@ -449,7 +449,19 @@
       "summary": "每个研究项目有独立的 notebook。",
       "step1": {
         "title": "新建 notebook",
-        "body": "点击按钮新建一个独立的工作空间,承载你的资料、对话和笔记。"
+        "body": "点这里打开新建对话框。每个研究项目都有独立的工作空间。"
+      },
+      "step2": {
+        "title": "起个名字",
+        "body": "一个短而特别的名字 —— 以后在列表里就靠它识别。"
+      },
+      "step3": {
+        "title": "加点描述(可选)",
+        "body": "一句话讲清楚要研究什么。notebook 多了后用这个区分很方便。"
+      },
+      "step4": {
+        "title": "点 Create 完成",
+        "body": "点 Create 保存。我们不会替你提交。"
       }
     },
     "addSources": {
@@ -488,24 +500,60 @@
       "title": "与 AI 对话",
       "summary": "基于你的资料提问,AI 回答会附带原文引用。",
       "step1": {
-        "title": "提问",
-        "body": "输入关于你资料的问题。AI 会引用原文段落,方便你核对。"
+        "title": "在这里输入问题",
+        "body": "任何关于你资料的问题。AI 会引用原文段落,方便你核对。"
+      },
+      "step2": {
+        "title": "点这里发送",
+        "body": "或者直接按 Enter。Shift+Enter 换行。"
+      },
+      "step3": {
+        "title": "历史对话",
+        "body": "每次对话都会保存。打开历史可以回到任一旧的线程。"
       }
     },
     "wikiGraph": {
       "title": "Wiki 知识图谱",
       "summary": "基于资料自动生成的 wiki — 实体、概念、摘要。",
       "step1": {
-        "title": "探索 wiki",
-        "body": "随着资料加入,wiki 会自动生成实体与概念的图谱。点击页面可跳转浏览。"
+        "title": "Wiki 在这个 tab",
+        "body": "资料加进来后,SparkFlow 会自动构建实体、概念以及它们之间的关联。"
+      },
+      "step2": {
+        "title": "知识库",
+        "body": "每个实体和概念都有一页。点击可以阅读、交叉引用、跳转浏览。"
+      },
+      "step3": {
+        "title": "关系图",
+        "body": "同样的概念画成力引导图 —— 悬停节点、跟随边线。"
+      },
+      "step4": {
+        "title": "全屏展开",
+        "body": "把图打开到全屏,深入探索更方便。"
       }
     },
     "notes": {
       "title": "笔记",
       "summary": "附在 notebook 上的个人笔记,AI 可检索。",
       "step1": {
-        "title": "记录想法",
-        "body": "在 AI 输出旁边写下自己的笔记,永久留在这个 notebook 里。"
+        "title": "笔记在这里",
+        "body": "你的 markdown 笔记和 AI 输出并列。永久留在这个 notebook 里。"
+      },
+      "step2": {
+        "title": "新建笔记",
+        "body": "点这里打开创建对话框。"
+      },
+      "step3": {
+        "title": "起个标题",
+        "body": "短标题,方便以后在列表里扫一眼。"
+      },
+      "step4": {
+        "title": "用 markdown 写",
+        "body": "列表、代码块、标题、链接 —— 完整支持 markdown。"
+      },
+      "step5": {
+        "title": "点 Create 保存",
+        "body": "准备好点 Create。我们不会替你提交。"
       }
     },
     "conferences": {
