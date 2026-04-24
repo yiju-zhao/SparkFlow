@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useGuides } from "@/components/guides/guide-provider";
 import {
   Globe,
   BookOpen,
@@ -90,6 +91,18 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const [showWebsites, setShowWebsites] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
+
+  // Expose view toggles to the guide player so the add-sources walkthrough
+  // can flip to the Websites view (where the Insert button lives) regardless
+  // of whether the user clicked the Websites button or just pressed Next.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregister = registerGuideAction("switch-to-websites", () => {
+      setShowWebsites(true);
+      setUploadError(null);
+    });
+    return unregister;
+  }, [registerGuideAction]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
