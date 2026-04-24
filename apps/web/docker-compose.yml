@@ -35,6 +35,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   ingest-worker:
     build:
@@ -49,6 +50,24 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  digest-worker:
+    build:
+      context: ../agent
+      dockerfile: Dockerfile
+    container_name: sparkflow-digest-worker
+    command: ["arq", "workflows.digest_worker.WorkerSettings"]
+    env_file: ../agent/.env
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
+      SEMOPS_API_URL: ${SEMOPS_API_URL}
+      INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
+      DIGEST_WORKER_CONCURRENCY: ${DIGEST_WORKER_CONCURRENCY:-4}
+    depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
