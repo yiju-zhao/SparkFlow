@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "framer-motion";
+import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { X, Play, BookOpen, EyeOff, Search as SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { GUIDES } from "@/content/guides";
@@ -11,6 +13,13 @@ import { useGuides } from "./guide-provider";
 
 const CATEGORY_ORDER: GuideCategory[] = ["deepdive", "explore", "account"];
 
+function resolveIcon(name: string): LucideIcon {
+  const Icon = (LucideIcons as unknown as Record<string, LucideIcon>)[name];
+  return Icon ?? LucideIcons.BookOpen;
+}
+
+// NOTE: search is key-based (matches id / titleKey / summaryKey) rather than
+// translated-string based. Locale-aware search is a v2 improvement.
 function filterGuides(guides: GuideDefinition[], q: string, dismissed: string[]) {
   const normalized = q.trim().toLowerCase();
   return guides.filter((g) => {
@@ -30,6 +39,10 @@ export function GuideDrawer() {
   const [q, setQ] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!drawerOpen) setExpandedId(null);
+  }, [drawerOpen]);
+
   const visible = useMemo(() => filterGuides(GUIDES, q, dismissedGuides), [q, dismissedGuides]);
   const grouped = useMemo(() => {
     const map = new Map<GuideCategory, GuideDefinition[]>();
@@ -40,11 +53,12 @@ export function GuideDrawer() {
 
   return (
     <Dialog.Root open={drawerOpen} onOpenChange={setDrawerOpen} modal={false}>
-      <AnimatePresence>
-        {drawerOpen ? (
-          <Dialog.Portal forceMount>
-            <Dialog.Content asChild>
+      <Dialog.Portal forceMount>
+        <Dialog.Content asChild forceMount>
+          <AnimatePresence>
+            {drawerOpen ? (
               <motion.aside
+                key="guide-drawer"
                 initial={{ x: "100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
@@ -89,10 +103,14 @@ export function GuideDrawer() {
                             <li key={g.id} className="rounded border border-transparent hover:border-border">
                               <button
                                 type="button"
+                                aria-expanded={expandedId === g.id}
                                 onClick={() => setExpandedId(expandedId === g.id ? null : g.id)}
                                 className="flex w-full items-start gap-2 px-2 py-2 text-left text-sm"
                               >
-                                <span className="mt-0.5 text-base">📘</span>
+                                {(() => {
+                                  const Icon = resolveIcon(g.icon);
+                                  return <Icon className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden />;
+                                })()}
                                 <span className="flex-1">
                                   <span className="block font-medium">{t(g.titleKey.replace(/^guides\./, ""))}</span>
                                   <span className="block text-xs text-muted-foreground">{t(g.summaryKey.replace(/^guides\./, ""))}</span>
@@ -110,10 +128,12 @@ export function GuideDrawer() {
                                   >
                                     <Play className="h-3 w-3" /> {t("action.play")}
                                   </button>
+                                  {/* TODO(Task 17): open in-drawer Read mode */}
                                   <button
                                     type="button"
-                                    onClick={() => setExpandedId(g.id)}
-                                    className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"
+                                    disabled
+                                    aria-disabled="true"
+                                    className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs opacity-50 cursor-not-allowed"
                                   >
                                     <BookOpen className="h-3 w-3" /> {t("action.read")}
                                   </button>
@@ -147,10 +167,10 @@ export function GuideDrawer() {
                   </button>
                 </footer>
               </motion.aside>
-            </Dialog.Content>
-          </Dialog.Portal>
-        ) : null}
-      </AnimatePresence>
+            ) : null}
+          </AnimatePresence>
+        </Dialog.Content>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }
