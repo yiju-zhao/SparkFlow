@@ -1,4 +1,4 @@
-# SparkFlow Postgres (local dev)
+# SparkFlow local dev services (Postgres + Redis)
 # Usage: docker compose up -d
 
 name: sparkflow
@@ -25,13 +25,33 @@ services:
   redis:
     image: redis:7-alpine
     container_name: sparkflow-redis
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  ingest-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: sparkflow-ingest-worker
+    command: ["npm", "run", "worker:ingest"]
+    env_file: .env
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   digest-worker:
@@ -54,3 +74,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
