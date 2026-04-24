@@ -682,7 +682,7 @@ export async function runGraphPipeline(
         });
       }
     },
-    { maxWait: 10_000, timeout: 30_000 },
+    { maxWait: 10_000, timeout: 60_000 },
   );
 
   await updateWikiStatus("done");

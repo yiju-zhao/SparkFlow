@@ -98,40 +98,41 @@ export async function removeSourceFromWiki(
 
   const graphData = existingGraph.graphData as unknown as GraphData;
 
-  // 1. Remove source from graph (deterministic)
+  // 1. Deterministic graph mutation — no LLM needed.
   const cleaned = removeSourceFromGraph(graphData, sourceId);
 
-  // 2. Re-cluster
+  // 2. Re-cluster in-memory.
   const { graphWithCommunities, communities } = await clusterGraph(cleaned);
 
-  // 3. Store updated graph
-  await prisma.notebookGraph.update({
-    where: { notebookId },
-    data: {
-      graphData: graphWithCommunities as unknown as Prisma.InputJsonValue,
-      communities: communities as unknown as Prisma.InputJsonValue,
-    },
-  });
+  // 3. Build wiki page content (LLM calls) OUTSIDE any transaction.
+  const payload =
+    cleaned.nodes.length > 0
+      ? await buildWikiPagePayload(graphWithCommunities, communities, userId)
+      : null;
 
-  // 4. Delete old community pages
-  const oldPages = await prisma.wikiPage.findMany({
-    where: { notebookId, slug: { startsWith: "community-" } },
-  });
-  await prisma.wikiPage.deleteMany({
+  // Count pre-existing pages for the return value; the actual delete happens
+  // inside the transaction below.
+  const oldPagesCount = await prisma.wikiPage.count({
     where: { notebookId, slug: { startsWith: "community-" } },
   });
 
-  // 5. Regenerate wiki pages from new communities
-  let pagesWritten = 0;
-  if (cleaned.nodes.length > 0) {
-    const { communityPages, indexPage } = await buildWikiPagePayload(
-      graphWithCommunities,
-      communities,
-      userId,
-    );
-    await prisma.$transaction(
-      async (tx) => {
-        for (const p of communityPages) {
+  const writtenSlugs = payload ? payload.communityPages.map((p) => p.slug) : [];
+  const today = new Date().toISOString().split("T")[0];
+  const logEntry = `\n## [${today}] remove | ${sourceTitle}\nRemoved source, ${oldPagesCount} old pages deleted, ${writtenSlugs.length} pages regenerated`;
+
+  // 4. Commit everything atomically.
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.notebookGraph.update({
+        where: { notebookId },
+        data: {
+          graphData: graphWithCommunities as unknown as Prisma.InputJsonValue,
+          communities: communities as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      if (payload) {
+        for (const p of payload.communityPages) {
           await tx.wikiPage.upsert({
             where: { notebookId_slug: { notebookId, slug: p.slug } },
             create: {
@@ -146,50 +147,57 @@ export async function removeSourceFromWiki(
           });
         }
         await tx.wikiPage.upsert({
-          where: { notebookId_slug: { notebookId, slug: indexPage.slug } },
+          where: { notebookId_slug: { notebookId, slug: payload.indexPage.slug } },
           create: {
             notebookId,
-            slug: indexPage.slug,
-            title: indexPage.title,
-            content: indexPage.content,
+            slug: payload.indexPage.slug,
+            title: payload.indexPage.title,
+            content: payload.indexPage.content,
             pageType: "INDEX",
             sourceRefs: [],
           },
-          update: { content: indexPage.content },
+          update: { content: payload.indexPage.content },
         });
-      },
-      { maxWait: 10_000, timeout: 30_000 },
-    );
-    pagesWritten = communityPages.length;
-  } else {
-    await prisma.wikiPage.upsert({
-      where: { notebookId_slug: { notebookId, slug: "index" } },
-      create: {
-        notebookId,
-        slug: "index",
-        title: "Wiki Index",
-        content: "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.",
-        pageType: "INDEX",
-        sourceRefs: [],
-      },
-      update: {
-        content: "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.",
-      },
-    });
-  }
+      } else {
+        // Empty graph — keep the index page but surface an empty-state message.
+        const emptyContent = "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.";
+        await tx.wikiPage.upsert({
+          where: { notebookId_slug: { notebookId, slug: "index" } },
+          create: {
+            notebookId,
+            slug: "index",
+            title: "Wiki Index",
+            content: emptyContent,
+            pageType: "INDEX",
+            sourceRefs: [],
+          },
+          update: { content: emptyContent },
+        });
+      }
 
-  // 6. Log
-  const today = new Date().toISOString().split("T")[0];
-  const logEntry = `\n## [${today}] remove | ${sourceTitle}\nRemoved source, ${oldPages.length} old pages deleted, ${pagesWritten} pages regenerated`;
-  const logPage = await prisma.wikiPage.findUnique({
-    where: { notebookId_slug: { notebookId, slug: "log" } },
-  });
-  if (logPage) {
-    await prisma.wikiPage.update({
-      where: { id: logPage.id },
-      data: { content: logPage.content + logEntry },
-    });
-  }
+      // Delete community-* pages orphaned by re-clustering. For the empty-graph
+      // branch, `writtenSlugs` is empty so every old page goes.
+      await tx.wikiPage.deleteMany({
+        where: {
+          notebookId,
+          slug: { startsWith: "community-" },
+          NOT: { slug: { in: writtenSlugs } },
+        },
+      });
 
-  return { pagesDeleted: oldPages.length, pagesUpdated: pagesWritten };
+      const logPage = await tx.wikiPage.findUnique({
+        where: { notebookId_slug: { notebookId, slug: "log" } },
+        select: { id: true, content: true },
+      });
+      if (logPage) {
+        await tx.wikiPage.update({
+          where: { id: logPage.id },
+          data: { content: logPage.content + logEntry },
+        });
+      }
+    },
+    { maxWait: 10_000, timeout: 60_000 },
+  );
+
+  return { pagesDeleted: oldPagesCount, pagesUpdated: writtenSlugs.length };
 }
