@@ -6,11 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { GuideState } from "@/content/guides/types";
 import { GUIDE_STATE_STORAGE_KEY } from "@/content/guides/types";
+
+type GuideActionHandler = () => void | Promise<void>;
 
 interface GuideContextValue extends GuideState {
   isAuthenticated: boolean;
@@ -24,6 +27,8 @@ interface GuideContextValue extends GuideState {
   undismissGuide: (id: string) => Promise<void>;
   markTourCompleted: () => Promise<void>;
   resetTour: () => Promise<void>;
+  registerGuideAction: (name: string, handler: GuideActionHandler) => () => void;
+  runGuideAction: (name: string, options?: { timeoutMs?: number }) => Promise<boolean>;
 }
 
 const EMPTY_STATE: GuideState = { tourCompletedAt: null, dismissedGuides: [] };
@@ -65,6 +70,11 @@ export function GuideProvider({
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeGuideId, setActiveGuideId] = useState<string | null>(null);
+
+  // Action registry: components register handlers; the player calls them by name.
+  // A ref keeps registration changes from causing re-renders; the registrar
+  // returns an unregister function for cleanup.
+  const actionsRef = useRef<Map<string, GuideActionHandler>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -128,6 +138,41 @@ export function GuideProvider({
     [isAuthenticated],
   );
 
+  const registerGuideAction = useCallback((name: string, handler: GuideActionHandler) => {
+    actionsRef.current.set(name, handler);
+    return () => {
+      // Only remove if this exact handler is still registered — a later
+      // registerGuideAction(name, otherHandler) should win and not be clobbered
+      // by this cleanup.
+      if (actionsRef.current.get(name) === handler) {
+        actionsRef.current.delete(name);
+      }
+    };
+  }, []);
+
+  const runGuideAction = useCallback(
+    async (name: string, options?: { timeoutMs?: number }): Promise<boolean> => {
+      const timeoutMs = options?.timeoutMs ?? 1000;
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const handler = actionsRef.current.get(name);
+        if (handler) {
+          try {
+            await handler();
+            return true;
+          } catch (err) {
+            console.warn(`[guides] action "${name}" threw:`, err);
+            return false;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      console.warn(`[guides] action "${name}" was not registered within ${timeoutMs}ms`);
+      return false;
+    },
+    [],
+  );
+
   const value = useMemo<GuideContextValue>(
     () => ({
       ...state,
@@ -144,8 +189,10 @@ export function GuideProvider({
       undismissGuide: (id) => patch({ undismissGuideId: id }),
       markTourCompleted: () => patch({ markTourCompleted: true }),
       resetTour: () => patch({ resetTour: true }),
+      registerGuideAction,
+      runGuideAction,
     }),
-    [state, isAuthenticated, loading, drawerOpen, activeGuideId, patch],
+    [state, isAuthenticated, loading, drawerOpen, activeGuideId, patch, registerGuideAction, runGuideAction],
   );
 
   return <GuideContext.Provider value={value}>{children}</GuideContext.Provider>;

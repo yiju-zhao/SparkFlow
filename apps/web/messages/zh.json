@@ -457,8 +457,24 @@
       "title": "添加资料",
       "summary": "支持文件、文件夹、URL,一次最多 50 份。",
       "step1": {
-        "title": "上传你的材料",
-        "body": "拖放 PDF、粘贴 URL,或选一整个文件夹。系统会自动提取并建立索引。"
+        "title": "我们来添加资料",
+        "body": "先跳到你最近的 notebook,再一步步走 Add Source 对话框。"
+      },
+      "step2": {
+        "title": "打开 Add Source 对话框",
+        "body": "点 Add Source 按钮打开导入器;直接点 Next 也可以。"
+      },
+      "step3": {
+        "title": "选文件或文件夹",
+        "body": "拖放文件,或选一整个文件夹 —— 一次最多 50 份。"
+      },
+      "step4": {
+        "title": "也可以粘贴 URL",
+        "body": "切到 Websites 就能按 URL 导入网页。"
+      },
+      "step5": {
+        "title": "点 Insert 完成",
+        "body": "准备好就点 Insert,SparkFlow 会在后台建索引。"
       }
     },
     "byokApiKeys": {

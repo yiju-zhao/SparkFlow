@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { NotebookList } from "@/components/deepdive/notebook-list";
 import { CreateNotebookDialog } from "@/components/deepdive/create-notebook-dialog";
 import { DeepdiveShell } from "@/components/deepdive/deepdive-shell";
+import { NotebookActionsRegistrar } from "@/components/deepdive/notebook-actions-registrar";
 import { Archive, Clock, Folder, Search, SlidersHorizontal, ArrowUpDown, Users } from "lucide-react";
 
 interface DeepdivePageProps {
@@ -36,6 +37,7 @@ export default async function DeepdivePage({ params }: DeepdivePageProps) {
 
   return (
     <DeepdiveShell user={session?.user}>
+      <NotebookActionsRegistrar notebookIds={notebooks.map((n) => n.id)} />
       <div className="flex-1 overflow-y-auto bg-sf-bg">
         <div className="flex min-h-full">
           {/* Left sidebar — Library */}

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { GuideStepPlacement } from "@/content/guides/types";
 import { GuideBubble } from "./guide-bubble";
 
-interface SpotlightProps {
+interface GuideLayerProps {
   /** Optional — intro / outro steps without a target render a centered bubble. */
   selector?: string;
   placement: GuideStepPlacement;
@@ -50,22 +50,42 @@ function getRect(selector: string): Rect | null {
 function tooltipPosition(rect: Rect, placement: GuideStepPlacement) {
   switch (placement) {
     case "top":
-      return { top: rect.top - 12, left: rect.left + rect.width / 2, x: "-50%", y: "-100%" };
+      return {
+        top: rect.top - 12,
+        left: rect.left + rect.width / 2,
+        x: "-50%",
+        y: "-100%",
+      };
     case "bottom":
-      return { top: rect.top + rect.height + 12, left: rect.left + rect.width / 2, x: "-50%", y: 0 };
+      return {
+        top: rect.top + rect.height + 12,
+        left: rect.left + rect.width / 2,
+        x: "-50%",
+        y: 0,
+      };
     case "left":
-      return { top: rect.top + rect.height / 2, left: rect.left - 12, x: "-100%", y: "-50%" };
+      return {
+        top: rect.top + rect.height / 2,
+        left: rect.left - 12,
+        x: "-100%",
+        y: "-50%",
+      };
     case "right":
-      return { top: rect.top + rect.height / 2, left: rect.left + rect.width + 12, x: 0, y: "-50%" };
+      return {
+        top: rect.top + rect.height / 2,
+        left: rect.left + rect.width + 12,
+        x: 0,
+        y: "-50%",
+      };
   }
 }
 
 /**
- * Dark-mask spotlight: 4 animated mask divs form a hole around the target,
- * ring outlines the hole, bubble tooltip sits beside it. Transitions between
- * steps animate smoothly via Framer springs. Used by the first-run tour.
+ * Lighter guide overlay: ring around the target element + floating bubble.
+ * No dark mask — page stays fully interactive. Used by the drawer Play mode.
+ * Step transitions animate via Framer (spring on position).
  */
-export function Spotlight({
+export function GuideLayer({
   selector,
   placement,
   title,
@@ -79,7 +99,7 @@ export function Spotlight({
   prevLabel,
   closeLabel,
   finishLabel,
-}: SpotlightProps) {
+}: GuideLayerProps) {
   const [rect, setRect] = useState<Rect | null>(null);
   const [lastSelector, setLastSelector] = useState<string | undefined>(selector);
   const [isMobile, setIsMobile] = useState(false);
@@ -179,12 +199,12 @@ export function Spotlight({
     />
   );
 
-  // Mobile: bottom sheet, no mask hole.
+  // Mobile: always a bottom sheet, no ring.
   if (isMobile) {
     return createPortal(
       <AnimatePresence>
         <motion.div
-          key="spotlight-mobile"
+          key="guide-layer-mobile"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -197,19 +217,20 @@ export function Spotlight({
     );
   }
 
-  // No target → full dark overlay with a centered bubble.
+  // No target → centered bubble (intro / fallback).
   if (!rect) {
     return createPortal(
-      <motion.div
-        key="spotlight-centered"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/55"
-        onClick={onClose}
-      >
-        <div onClick={(e) => e.stopPropagation()}>{bubble}</div>
-      </motion.div>,
+      <AnimatePresence>
+        <motion.div
+          key="guide-layer-centered"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="pointer-events-auto fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
+        >
+          {bubble}
+        </motion.div>
+      </AnimatePresence>,
       document.body,
     );
   }
@@ -217,47 +238,36 @@ export function Spotlight({
   const pos = tooltipPosition(rect, placement);
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-50">
-      {/* Four animated masks forming a hole. */}
+    <>
+      {/* Ring — animated position */}
       <motion.div
-        className="pointer-events-auto fixed bg-black/55"
-        animate={{ top: 0, left: 0, right: 0, height: rect.top }}
+        key="guide-layer-ring"
+        initial={false}
+        animate={{
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        }}
         transition={SPRING}
-        onClick={onClose}
+        className="pointer-events-none fixed z-50 rounded-md ring-2 ring-indigo-500 shadow-[0_0_0_4px_rgba(99,102,241,0.15)]"
       />
+      {/* Bubble — also animated */}
       <motion.div
-        className="pointer-events-auto fixed bg-black/55"
-        animate={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }}
+        key="guide-layer-bubble"
+        initial={false}
+        animate={{
+          top: pos.top,
+          left: pos.left,
+          x: pos.x,
+          y: pos.y,
+        }}
         transition={SPRING}
-        onClick={onClose}
-      />
-      <motion.div
-        className="pointer-events-auto fixed bg-black/55"
-        animate={{ top: rect.top, left: 0, width: rect.left, height: rect.height }}
-        transition={SPRING}
-        onClick={onClose}
-      />
-      <motion.div
-        className="pointer-events-auto fixed bg-black/55"
-        animate={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height }}
-        transition={SPRING}
-        onClick={onClose}
-      />
-      {/* Ring around the hole. */}
-      <motion.div
-        className="pointer-events-none fixed rounded-md ring-2 ring-indigo-500"
-        animate={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
-        transition={SPRING}
-      />
-      {/* Bubble. */}
-      <motion.div
-        className="pointer-events-auto fixed"
-        animate={{ top: pos.top, left: pos.left, x: pos.x, y: pos.y }}
-        transition={SPRING}
+        className="pointer-events-auto fixed z-50"
       >
         {bubble}
       </motion.div>
-    </div>,
+    </>,
     document.body,
   );
 }

@@ -457,8 +457,24 @@
       "title": "Add sources",
       "summary": "Upload files, folders, or URLs — up to 50 at once.",
       "step1": {
-        "title": "Upload your material",
-        "body": "Drop PDFs, paste URLs, or pick a whole folder. The system will extract and index it."
+        "title": "Let's add some sources",
+        "body": "We'll jump into your most recent notebook and walk through the Add Source dialog."
+      },
+      "step2": {
+        "title": "Open the Add Source dialog",
+        "body": "Click the Add Source button to open the importer. You can also just press Next."
+      },
+      "step3": {
+        "title": "Pick files or a folder",
+        "body": "Drop files here or choose a whole folder — up to 50 at a time."
+      },
+      "step4": {
+        "title": "Or paste URLs",
+        "body": "Switch to Websites to import web pages by URL."
+      },
+      "step5": {
+        "title": "Insert to finish",
+        "body": "When you're ready, click Insert and SparkFlow indexes everything in the background."
       }
     },
     "byokApiKeys": {

@@ -520,6 +520,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
             {/* Insert Button */}
             <div className="flex justify-end mt-4">
               <Button
+                data-guide="add-source-submit"
                 disabled={isPending || isLimitReached || !urlsText.trim()}
                 onClick={handleWebsitesInsert}
               >
@@ -772,6 +773,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                     </PopoverContent>
                   </Popover>
                   <button
+                    data-guide="add-source-websites"
                     disabled={isLimitReached}
                     className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => {
