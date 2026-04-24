@@ -50,21 +50,36 @@ function jobId(data: WikiIngestJobData): string {
   return `nb:${data.notebookId}:src:${data.sourceId}`;
 }
 
+export type EnqueueWikiIngestResult = {
+  /** The BullMQ jobId assigned (deterministic for a given notebookId+sourceId). */
+  jobId: string;
+  /**
+   * True if we actually dropped a prior completed/failed/delayed job with
+   * this id before adding. False if `force` was not requested, or if the
+   * prior job was still active and could not be removed (we then re-used
+   * the in-flight job rather than duplicating work).
+   */
+  replaced: boolean;
+};
+
 export async function enqueueWikiIngest(
   data: WikiIngestJobData,
   opts: JobsOptions & { force?: boolean } = {},
-): Promise<string> {
+): Promise<EnqueueWikiIngestResult> {
   const id = jobId(data);
   const queue = getWikiIngestQueue();
 
+  let replaced = false;
   if (opts.force) {
     // Drop any prior instance of this jobId — completed, failed, or delayed —
     // so `queue.add` doesn't silently return the old corpse.
     try {
       await queue.remove(id);
+      replaced = true;
     } catch {
-      // `remove` throws if the job is active; that's fine — don't re-enqueue
-      // while an attempt is in flight.
+      // `remove` throws if the job is active; that's fine — we do NOT want to
+      // re-enqueue while an attempt is in flight. `replaced` stays false so
+      // the caller can tell the user their retry hit an already-running job.
     }
   }
 
@@ -73,7 +88,7 @@ export async function enqueueWikiIngest(
     jobId: id,
     ...addOpts,
   });
-  return job.id ?? id;
+  return { jobId: job.id ?? id, replaced };
 }
 
 export type WikiIngestJobStatus = {

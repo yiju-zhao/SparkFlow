@@ -106,11 +106,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
   let ingestEnqueueError: string | null = null;
   if (finalMarkdown) {
     try {
-      ingestJobId = await enqueueWikiIngest({
+      const { jobId } = await enqueueWikiIngest({
         notebookId,
         sourceId: source.id,
         userId: session.user.id,
       });
+      ingestJobId = jobId;
     } catch (err) {
       console.error("[POST sources] Failed to enqueue wiki ingest:", err);
       ingestEnqueueError = "ingest queue unavailable";

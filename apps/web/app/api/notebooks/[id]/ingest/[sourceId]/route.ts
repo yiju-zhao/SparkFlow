@@ -29,7 +29,7 @@ export async function POST(
 
   try {
     const force = request.nextUrl.searchParams.get("force") === "1";
-    const jobId = await enqueueWikiIngest(
+    const { jobId, replaced } = await enqueueWikiIngest(
       {
         notebookId,
         sourceId,
@@ -37,7 +37,10 @@ export async function POST(
       },
       { force },
     );
-    return NextResponse.json({ accepted: true, jobId }, { status: 202 });
+    return NextResponse.json(
+      { accepted: true, jobId, replaced, reused: force && !replaced },
+      { status: 202 },
+    );
   } catch (error) {
     console.error("[POST ingest] enqueue failed:", error);
     return NextResponse.json(
