@@ -367,3 +367,32 @@ def test_run_rank_swallows_exception_during_reset(monkeypatch, caplog):
     # The reset exception was logged at ERROR level.
     error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
     assert any("reset boom" in r.getMessage() or "raised during reset" in r.getMessage() for r in error_records)
+
+
+def test_pool_rebuilds_after_worker_exception(monkeypatch):
+    """A task that raises must not poison the pool — subsequent tasks see a fresh executor."""
+    from services import _pool
+
+    # Force a fresh pool state so the assertion holds regardless of test ordering.
+    _pool.shutdown_pool()
+
+    monkeypatch.setenv("SEMOPS_RANK_POOL_SIZE", "2")
+
+    # `run_in_pool` submits the fn to the pool; on raise it must tear down
+    # and rebuild so subsequent callers aren't stuck in a poisoned subprocess.
+    import pytest
+    with pytest.raises(RuntimeError, match="worker exploded"):
+        _pool.run_in_pool(_raise_for_pool_test)
+
+    # After a raise, the next submission succeeds — proves rebuild happened.
+    assert _pool.run_in_pool(_peace_for_pool_test) == "ok"
+
+    _pool.shutdown_pool()
+
+
+def _raise_for_pool_test():
+    raise RuntimeError("worker exploded")
+
+
+def _peace_for_pool_test():
+    return "ok"
