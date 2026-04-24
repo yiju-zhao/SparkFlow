@@ -560,24 +560,44 @@
       "title": "浏览会议",
       "summary": "会议、届次、session、publication — 带图表。",
       "step1": {
-        "title": "打开会议浏览器",
-        "body": "按会议/年份/主题筛选。点进 session 可看讲者、机构与关键词。"
+        "title": "按会议筛选",
+        "body": "选一个具体会议(ACL、NeurIPS、CHI...)或保持 All Venues。"
+      },
+      "step2": {
+        "title": "按年份缩小",
+        "body": "配合会议筛选,直接跳到某一届。"
+      },
+      "step3": {
+        "title": "点进去看",
+        "body": "点任意卡片打开该届的 publications、sessions 和图表。"
       }
     },
     "matcher": {
       "title": "Matcher",
       "summary": "用 query 匹配数千个会议 session。",
       "step1": {
-        "title": "试试 Matcher",
-        "body": "粘贴一段提问或摘要,Matcher 返回按相似度排序的相关 session。"
+        "title": "上传 query CSV",
+        "body": "拖放含 BU + Query 两列的 .xlsx / .csv,或在预览表里直接粘贴几行。"
+      },
+      "step2": {
+        "title": "继续走向导",
+        "body": "上传后向导会带你选 target type、topK 并运行。真实任务不会替你启动。"
       }
     },
     "wechat": {
       "title": "WeChat 文章",
       "summary": "浏览和检索 WeChat 文章库。",
       "step1": {
-        "title": "探索文章",
-        "body": "按关键词检索 WeChat 文章;打开任意文章可阅读并查看抽取出的图片。"
+        "title": "按来源筛选",
+        "body": "选一个公众号来缩小列表。再点一次取消。"
+      },
+      "step2": {
+        "title": "排序",
+        "body": "最新发布、最多转发、或最高影响力。"
+      },
+      "step3": {
+        "title": "打开文章",
+        "body": "点任一行在弹窗里阅读全文,附带提取出的图片。"
       }
     },
     "languageTheme": {

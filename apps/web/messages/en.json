@@ -560,24 +560,44 @@
       "title": "Browse conferences",
       "summary": "Venues, instances, sessions, and publications — with charts.",
       "step1": {
-        "title": "Open the conference browser",
-        "body": "Filter by venue / year / topic. Drill into a session to see speakers, affiliations, and keywords."
+        "title": "Filter by venue",
+        "body": "Pick a specific conference (ACL, NeurIPS, CHI...) or leave it as All Venues."
+      },
+      "step2": {
+        "title": "Narrow by year",
+        "body": "Combine with the venue filter to jump straight to a specific instance."
+      },
+      "step3": {
+        "title": "Drill in",
+        "body": "Click any card to open publications, sessions, and charts for that instance."
       }
     },
     "matcher": {
       "title": "Matcher",
       "summary": "Match a query against thousands of conference sessions.",
       "step1": {
-        "title": "Try the matcher",
-        "body": "Paste a question or abstract; Matcher returns ranked sessions with similarity scores."
+        "title": "Upload a query CSV",
+        "body": "Drop an .xlsx / .csv with BU + Query columns — or paste rows into the preview table."
+      },
+      "step2": {
+        "title": "Continue through the wizard",
+        "body": "After upload, the wizard walks you through target type, topK, and run. We won't kick off a real job for you."
       }
     },
     "wechat": {
       "title": "WeChat articles",
       "summary": "Browse and search the WeChat article corpus.",
       "step1": {
-        "title": "Explore articles",
-        "body": "Search WeChat articles by keyword; open any article to read and see extracted images."
+        "title": "Filter by source",
+        "body": "Pick a WeChat account to narrow the feed. Click again to reset."
+      },
+      "step2": {
+        "title": "Sort the results",
+        "body": "Latest, most-shared, or highest impact."
+      },
+      "step3": {
+        "title": "Open an article",
+        "body": "Click any row to read full text with extracted images in the modal."
       }
     },
     "languageTheme": {
