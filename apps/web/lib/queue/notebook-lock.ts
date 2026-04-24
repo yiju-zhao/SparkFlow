@@ -8,7 +8,7 @@ import { getBullmqConnection } from "./redis";
 
 const BASE_TTL_MS = 5 * 60 * 1000;          // 5 min
 const HEARTBEAT_INTERVAL_MS = 60 * 1000;    // extend every 60s
-const HEARTBEAT_EXTEND_MS = 5 * 60 * 1000;  // push TTL to now + 5 min
+const HEARTBEAT_EXTEND_MS = 10 * 60 * 1000; // push TTL to now + 10 min
 
 function lockKey(notebookId: string): string {
   return `lock:notebook:${notebookId}`;
@@ -33,10 +33,25 @@ export async function acquireNotebookLock(
   );
   if (result !== "OK") return null;
 
+  let consecutiveFailures = 0;
   const heartbeat = setInterval(() => {
-    void extendLock(notebookId, token, HEARTBEAT_EXTEND_MS).catch((err) => {
-      console.warn(`[notebook-lock] heartbeat failed for ${notebookId}:`, err);
-    });
+    void extendLock(notebookId, token, HEARTBEAT_EXTEND_MS)
+      .then(() => {
+        consecutiveFailures = 0;
+      })
+      .catch((err) => {
+        consecutiveFailures += 1;
+        if (consecutiveFailures <= 3) {
+          console.warn(
+            `[notebook-lock] heartbeat failed (${consecutiveFailures}) for ${notebookId}:`,
+            err,
+          );
+        } else if (consecutiveFailures === 4) {
+          console.error(
+            `[notebook-lock] heartbeat failing repeatedly for ${notebookId}; lock may expire soon`,
+          );
+        }
+      });
   }, HEARTBEAT_INTERVAL_MS);
   // Don't hold the Node event loop open just for a heartbeat.
   heartbeat.unref?.();
@@ -48,6 +63,13 @@ export async function acquireNotebookLock(
   };
 }
 
+/**
+ * Both EXTEND and RELEASE gate their Redis mutation on `GET == token`.
+ * If the heartbeat is already in flight when `releaseNotebookLock` runs,
+ * the DEL happens first; when the extend's EVAL reaches Redis the GET
+ * returns nil (or another holder's token), so PEXPIRE is skipped. No
+ * resurrection of a released lock is possible.
+ */
 const EXTEND_SCRIPT = `
   if redis.call("GET", KEYS[1]) == ARGV[1] then
     return redis.call("PEXPIRE", KEYS[1], ARGV[2])
