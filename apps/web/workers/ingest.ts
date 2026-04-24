@@ -41,21 +41,29 @@ async function processJob(
     throw new DelayedError();
   }
 
-  const notebookLock = await acquireNotebookLock(notebookId);
-  if (!notebookLock) {
-    await releaseUserSlot(userId, slotToken).catch(() => undefined);
-    await job.moveToDelayed(Date.now() + 3_000, token);
-    throw new DelayedError();
-  }
-
-  const startedAt = Date.now();
   try {
-    await job.updateProgress({ phase: "extracting", started: startedAt });
-    const result = await ingestSourceToWiki(notebookId, sourceId, userId);
-    await job.updateProgress({ phase: "done", pagesWritten: result.pagesWritten });
-    return result;
+    let notebookLock: Awaited<ReturnType<typeof acquireNotebookLock>>;
+    try {
+      notebookLock = await acquireNotebookLock(notebookId);
+    } catch (err) {
+      // Lock acquisition threw (e.g. Redis hiccup) — release the slot and bubble up.
+      throw err;
+    }
+    if (!notebookLock) {
+      await job.moveToDelayed(Date.now() + 3_000, token);
+      throw new DelayedError();
+    }
+
+    const startedAt = Date.now();
+    try {
+      await job.updateProgress({ phase: "extracting", started: startedAt });
+      const result = await ingestSourceToWiki(notebookId, sourceId, userId);
+      await job.updateProgress({ phase: "done", pagesWritten: result.pagesWritten });
+      return result;
+    } finally {
+      await releaseNotebookLock(notebookLock).catch(() => undefined);
+    }
   } finally {
-    await releaseNotebookLock(notebookLock).catch(() => undefined);
     await releaseUserSlot(userId, slotToken).catch(() => undefined);
   }
 }
@@ -83,6 +91,9 @@ worker.on("completed", (job, result) => {
   );
 });
 worker.on("failed", (job, err) => {
+  // DelayedError is not a real failure — it's BullMQ's signal that we
+  // voluntarily rescheduled the job. Suppress the noise.
+  if (err instanceof DelayedError || err?.name === "DelayedError") return;
   console.error(
     `[ingest-worker] failed job=${job?.id} user=${job?.data.userId}: ${err.message}`,
   );
