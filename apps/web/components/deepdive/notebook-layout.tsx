@@ -10,6 +10,7 @@ import { CitationProvider, useCitation } from "@/lib/context/citation-context";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
 import { CollapsedGripStrip } from "@/components/ui/collapsed-grip-strip";
 import { BookOpen, NotebookPen } from "lucide-react";
+import { useGuides } from "@/components/guides/guide-provider";
 
 import type { Source, Note, Notebook } from "@prisma/client";
 import type { GraphData } from "@/lib/services/graph-service";
@@ -82,6 +83,18 @@ function NotebookLayoutInner({
   const [sourcesWidth, setSourcesWidth] = useState(SOURCES_DEFAULT_WIDTH);
   const [rightWidth, setRightWidth] = useState(RIGHT_DEFAULT_WIDTH);
   const [rightTab, setRightTab] = useState<"wiki" | "notes">("wiki");
+
+  // Expose tab switching to the guide player so wiki/notes walkthroughs can
+  // flip the right panel programmatically.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisterWiki = registerGuideAction("switch-to-wiki", () => setRightTab("wiki"));
+    const unregisterNotes = registerGuideAction("switch-to-notes", () => setRightTab("notes"));
+    return () => {
+      unregisterWiki();
+      unregisterNotes();
+    };
+  }, [registerGuideAction]);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [wikiNavigateSlug, setWikiNavigateSlug] = useState<string | null>(null);

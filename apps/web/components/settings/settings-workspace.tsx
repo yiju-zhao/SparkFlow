@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SparkflowLockup } from "@/components/ui/sparkflow-lockup";
+import { useGuides } from "@/components/guides/guide-provider";
 
 // ============================================================================
 // Types
@@ -141,6 +142,18 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
       window.history.replaceState(null, "", `#${id}`);
     }
   }, []);
+
+  // Expose section navigation to the guide player so settings guides (byok)
+  // can open the right section programmatically.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisters = NAV_ITEMS.map(({ id }) =>
+      registerGuideAction(`settings:open-${id}`, () => handleSelect(id)),
+    );
+    return () => {
+      for (const u of unregisters) u();
+    };
+  }, [registerGuideAction, handleSelect]);
 
   // Bootstrap: fetch model config + settings + wechat sources
   useEffect(() => {

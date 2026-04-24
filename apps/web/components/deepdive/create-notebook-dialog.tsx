@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createNotebook } from "@/lib/actions/notebooks";
 import Link from "next/link";
+import { useGuides } from "@/components/guides/guide-provider";
 
 export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } = {}) {
   const [open, setOpen] = useState(false);
@@ -21,6 +22,24 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
   const [description, setDescription] = useState("");
   const [isPending, startTransition] = useTransition();
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null); // null = loading
+
+  // Expose open/close to the guide player so the create-notebook walkthrough
+  // can drive this dialog programmatically.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisterOpen = registerGuideAction("open-create-notebook", () => {
+      setOpen(true);
+    });
+    const unregisterClose = registerGuideAction("close-create-notebook", () => {
+      setOpen(false);
+      setName("");
+      setDescription("");
+    });
+    return () => {
+      unregisterOpen();
+      unregisterClose();
+    };
+  }, [registerGuideAction]);
 
   // Check if user has an API key for their active provider
   useEffect(() => {

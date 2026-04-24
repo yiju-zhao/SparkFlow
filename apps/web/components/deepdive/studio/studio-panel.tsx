@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useGuides } from "@/components/guides/guide-provider";
 import { Markdown } from "@/components/ui/markdown";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import {
@@ -60,6 +61,21 @@ export function StudioPanel({
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Expose create-note dialog open/close to the guide player.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisterOpen = registerGuideAction("open-create-note", () => {
+      setIsCreateDialogOpen(true);
+    });
+    const unregisterClose = registerGuideAction("close-create-note", () => {
+      setIsCreateDialogOpen(false);
+    });
+    return () => {
+      unregisterOpen();
+      unregisterClose();
+    };
+  }, [registerGuideAction]);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
