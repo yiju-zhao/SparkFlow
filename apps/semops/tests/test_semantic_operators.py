@@ -207,3 +207,113 @@ def test_rank_rejects_empty_candidates(fake_lotus_ops):
             search_k=5,
             include_reasons=False,
         )
+
+
+def test_run_rank_configures_lotus_and_resets(monkeypatch):
+    """run_rank must configure lotus.settings.lm at entry and clear it in finally."""
+    import sys
+    from unittest.mock import MagicMock
+
+    calls: list = []
+
+    fake_settings = MagicMock()
+    fake_settings.configure = MagicMock(side_effect=lambda **kw: calls.append(("configure", kw)))
+    fake_lotus = MagicMock()
+    fake_lotus.settings = fake_settings
+
+    class FakeLM:
+        def __init__(self, **kw):
+            calls.append(("LM", kw))
+
+    fake_models = MagicMock()
+    fake_models.LM = FakeLM
+
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    from services._lotus_worker import run_rank
+
+    def fake_pipeline(candidates, query_text, top_k, search_k, include_reasons):
+        calls.append(("pipeline", len(candidates), query_text))
+        return [{"id": "x", "recommendation_reason": "ok"}]
+
+    result = run_rank(
+        lm_config={
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "sk-test",
+            "api_base": None,
+        },
+        candidates=[{"id": "a", "match_text": "x"}],
+        query_text="q",
+        top_k=5,
+        search_k=20,
+        include_reasons=True,
+        pipeline_fn=fake_pipeline,
+    )
+
+    lm_calls = [c for c in calls if c[0] == "LM"]
+    assert len(lm_calls) == 1
+    assert lm_calls[0][1]["model"] == "openai/gpt-4o-mini"
+    assert lm_calls[0][1]["api_key"] == "sk-test"
+
+    configure_calls = [c for c in calls if c[0] == "configure"]
+    assert len(configure_calls) == 2
+    assert configure_calls[0][1].get("lm") is not None
+    assert configure_calls[1][1].get("lm") is None
+
+    pipeline_calls = [c for c in calls if c[0] == "pipeline"]
+    assert len(pipeline_calls) == 1
+
+    # Order: first configure → pipeline → second configure (finally).
+    order = [c[0] for c in calls]
+    first_cfg = order.index("configure")
+    pipe_idx = order.index("pipeline")
+    # The LAST configure must come after the pipeline.
+    last_cfg = len(order) - 1 - order[::-1].index("configure")
+    assert first_cfg < pipe_idx < last_cfg
+
+    assert result == [{"id": "x", "recommendation_reason": "ok"}]
+
+
+def test_run_rank_resets_lotus_on_pipeline_exception(monkeypatch):
+    """Even when the pipeline raises, the finally block must reset lotus.settings.lm=None."""
+    import sys
+    from unittest.mock import MagicMock
+
+    configure_calls: list = []
+    fake_settings = MagicMock()
+    fake_settings.configure = MagicMock(side_effect=lambda **kw: configure_calls.append(kw))
+    fake_lotus = MagicMock()
+    fake_lotus.settings = fake_settings
+    fake_models = MagicMock()
+    fake_models.LM = MagicMock(return_value="FAKE_LM")
+
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    from services._lotus_worker import run_rank
+
+    def boom(**_kw):
+        raise RuntimeError("pipeline explosion")
+
+    import pytest
+    with pytest.raises(RuntimeError, match="pipeline explosion"):
+        run_rank(
+            lm_config={
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "api_key": "sk-test",
+                "api_base": None,
+            },
+            candidates=[{"id": "a", "match_text": "x"}],
+            query_text="q",
+            top_k=5,
+            search_k=20,
+            include_reasons=True,
+            pipeline_fn=boom,
+        )
+
+    assert len(configure_calls) == 2
+    assert configure_calls[0].get("lm") is not None
+    assert configure_calls[1].get("lm") is None
