@@ -442,6 +442,90 @@
       "finish": "Finish",
       "close": "Close",
       "skipToast": "Reopen anytime from the ? button"
+    },
+    "createNotebook": {
+      "title": "Create a notebook",
+      "summary": "Every research project lives in its own notebook.",
+      "step1": {
+        "title": "Start a new notebook",
+        "body": "Click to create a fresh workspace for your sources, chat, and notes."
+      }
+    },
+    "addSources": {
+      "title": "Add sources",
+      "summary": "Upload files, folders, or URLs — up to 50 at once.",
+      "step1": {
+        "title": "Upload your material",
+        "body": "Drop PDFs, paste URLs, or pick a whole folder. The system will extract and index it."
+      }
+    },
+    "byokApiKeys": {
+      "title": "Bring your own API key",
+      "summary": "Use your own OpenAI / Gemini / DeepSeek key — optional.",
+      "step1": {
+        "title": "Add a key (optional)",
+        "body": "Paste a provider key here and all AI calls use it. Skip to stay on the system key."
+      }
+    },
+    "chatWithAi": {
+      "title": "Chat with AI",
+      "summary": "Ask questions grounded in your sources — answers cite the original.",
+      "step1": {
+        "title": "Ask anything",
+        "body": "Type a question about your sources. The AI cites exact passages so you can verify."
+      }
+    },
+    "wikiGraph": {
+      "title": "Wiki knowledge graph",
+      "summary": "Auto-generated wiki from your sources — entities, concepts, summaries.",
+      "step1": {
+        "title": "Explore the wiki",
+        "body": "As sources are added, the wiki builds a graph of entities and concepts. Click a page to jump around."
+      }
+    },
+    "notes": {
+      "title": "Notes",
+      "summary": "Personal notes attached to a notebook — search them with AI.",
+      "step1": {
+        "title": "Capture ideas",
+        "body": "Write your own notes alongside the AI output. They stay in the notebook forever."
+      }
+    },
+    "conferences": {
+      "title": "Browse conferences",
+      "summary": "Venues, instances, sessions, and publications — with charts.",
+      "step1": {
+        "title": "Open the conference browser",
+        "body": "Filter by venue / year / topic. Drill into a session to see speakers, affiliations, and keywords."
+      }
+    },
+    "matcher": {
+      "title": "Matcher",
+      "summary": "Match a query against thousands of conference sessions.",
+      "step1": {
+        "title": "Try the matcher",
+        "body": "Paste a question or abstract; Matcher returns ranked sessions with similarity scores."
+      }
+    },
+    "wechat": {
+      "title": "WeChat articles",
+      "summary": "Browse and search the WeChat article corpus.",
+      "step1": {
+        "title": "Explore articles",
+        "body": "Search WeChat articles by keyword; open any article to read and see extracted images."
+      }
+    },
+    "languageTheme": {
+      "title": "Language & theme",
+      "summary": "Switch between English and Chinese, light and dark.",
+      "step1": {
+        "title": "Language",
+        "body": "Pick English or Chinese. The whole app re-renders in the chosen locale."
+      },
+      "step2": {
+        "title": "Theme",
+        "body": "Toggle light / dark. Your preference is saved locally."
+      }
     }
   }
 }

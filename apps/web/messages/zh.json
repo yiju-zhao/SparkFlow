@@ -442,6 +442,90 @@
       "finish": "完成",
       "close": "关闭",
       "skipToast": "随时点右下的 ? 按钮重启"
+    },
+    "createNotebook": {
+      "title": "创建 notebook",
+      "summary": "每个研究项目有独立的 notebook。",
+      "step1": {
+        "title": "新建 notebook",
+        "body": "点击按钮新建一个独立的工作空间,承载你的资料、对话和笔记。"
+      }
+    },
+    "addSources": {
+      "title": "添加资料",
+      "summary": "支持文件、文件夹、URL,一次最多 50 份。",
+      "step1": {
+        "title": "上传你的材料",
+        "body": "拖放 PDF、粘贴 URL,或选一整个文件夹。系统会自动提取并建立索引。"
+      }
+    },
+    "byokApiKeys": {
+      "title": "自带 API Key",
+      "summary": "用自己的 OpenAI / Gemini / DeepSeek key,可选。",
+      "step1": {
+        "title": "填入你的 Key(可选)",
+        "body": "把 key 粘贴在这里,所有 AI 调用都走你的 key;跳过则沿用系统 key。"
+      }
+    },
+    "chatWithAi": {
+      "title": "与 AI 对话",
+      "summary": "基于你的资料提问,AI 回答会附带原文引用。",
+      "step1": {
+        "title": "提问",
+        "body": "输入关于你资料的问题。AI 会引用原文段落,方便你核对。"
+      }
+    },
+    "wikiGraph": {
+      "title": "Wiki 知识图谱",
+      "summary": "基于资料自动生成的 wiki — 实体、概念、摘要。",
+      "step1": {
+        "title": "探索 wiki",
+        "body": "随着资料加入,wiki 会自动生成实体与概念的图谱。点击页面可跳转浏览。"
+      }
+    },
+    "notes": {
+      "title": "笔记",
+      "summary": "附在 notebook 上的个人笔记,AI 可检索。",
+      "step1": {
+        "title": "记录想法",
+        "body": "在 AI 输出旁边写下自己的笔记,永久留在这个 notebook 里。"
+      }
+    },
+    "conferences": {
+      "title": "浏览会议",
+      "summary": "会议、届次、session、publication — 带图表。",
+      "step1": {
+        "title": "打开会议浏览器",
+        "body": "按会议/年份/主题筛选。点进 session 可看讲者、机构与关键词。"
+      }
+    },
+    "matcher": {
+      "title": "Matcher",
+      "summary": "用 query 匹配数千个会议 session。",
+      "step1": {
+        "title": "试试 Matcher",
+        "body": "粘贴一段提问或摘要,Matcher 返回按相似度排序的相关 session。"
+      }
+    },
+    "wechat": {
+      "title": "WeChat 文章",
+      "summary": "浏览和检索 WeChat 文章库。",
+      "step1": {
+        "title": "探索文章",
+        "body": "按关键词检索 WeChat 文章;打开任意文章可阅读并查看抽取出的图片。"
+      }
+    },
+    "languageTheme": {
+      "title": "语言与主题",
+      "summary": "切换中英文、明暗主题。",
+      "step1": {
+        "title": "语言",
+        "body": "选择中文或英文,整个应用会立即按所选语言重新渲染。"
+      },
+      "step2": {
+        "title": "主题",
+        "body": "切换明暗主题。偏好会保存在本地。"
+      }
     }
   }
 }
