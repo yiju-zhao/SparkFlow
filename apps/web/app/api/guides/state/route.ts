@@ -5,12 +5,12 @@ import type { GuideState } from "@/content/guides/types";
 
 export async function GET(): Promise<NextResponse<GuideState | { error: string }>> {
   const session = await auth();
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { id: session.user.id },
     select: { tourCompletedAt: true, dismissedGuides: true },
   });
 
@@ -33,14 +33,14 @@ interface PatchBody {
 
 export async function PATCH(request: Request): Promise<NextResponse<GuideState | { error: string }>> {
   const session = await auth();
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => ({}))) as PatchBody;
 
   const current = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { id: session.user.id },
     select: { id: true, tourCompletedAt: true, dismissedGuides: true },
   });
   if (!current) {
