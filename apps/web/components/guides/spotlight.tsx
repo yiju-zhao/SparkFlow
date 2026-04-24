@@ -14,7 +14,6 @@ interface SpotlightProps {
   body: string;
   stepIndex: number;
   totalSteps: number;
-  counterLabel?: string;
   onNext: () => void;
   onPrev?: () => void;
   onClose: () => void;
@@ -73,7 +72,6 @@ export function Spotlight({
   body,
   stepIndex,
   totalSteps,
-  counterLabel,
   onNext,
   onPrev,
   onClose,
@@ -171,7 +169,6 @@ export function Spotlight({
       body={body}
       stepIndex={stepIndex}
       totalSteps={totalSteps}
-      counterLabel={counterLabel}
       onNext={onNext}
       onPrev={onPrev}
       onClose={onClose}

@@ -76,7 +76,6 @@ export function FirstRunTour() {
               body={tGuides(stripPrefix(current.bodyKey))}
               stepIndex={tour.stepIndex}
               totalSteps={steps.length}
-              counterLabel={current.counterLabel}
               onNext={() => (tour.stepIndex === steps.length - 1 ? tour.finish() : tour.next())}
               onPrev={tour.stepIndex > 0 ? tour.prev : undefined}
               onClose={handleSkip}

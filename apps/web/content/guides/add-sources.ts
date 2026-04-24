@@ -21,7 +21,6 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step2.title",
       bodyKey: "guides.addSources.step2.body",
       advanceOn: "both",
-      counterLabel: "1 / 3",
     },
     // 2a — Open the dialog programmatically and highlight the Upload menu.
     // Emphasize-only (advanceOn:"next") — clicking Upload opens a Popover
@@ -34,7 +33,6 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step3.title",
       bodyKey: "guides.addSources.step3.body",
       advanceOn: "next",
-      counterLabel: "2a / 3",
     },
     // 2b — Alternative entry via Websites. Emphasize-only — clicking the real
     // button switches the view, which would remove the very button we are
@@ -45,7 +43,6 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step4.title",
       bodyKey: "guides.addSources.step4.body",
       advanceOn: "next",
-      counterLabel: "2b-1 / 3",
     },
     // 3 — Point at the Insert button. Programmatically switch to the Websites
     // view first so the button is guaranteed to be in the DOM regardless of
@@ -58,7 +55,6 @@ export const addSourcesGuide: GuideDefinition = {
       titleKey: "guides.addSources.step5.title",
       bodyKey: "guides.addSources.step5.body",
       advanceOn: "next",
-      counterLabel: "2b-2 / 3",
     },
   ],
 };
