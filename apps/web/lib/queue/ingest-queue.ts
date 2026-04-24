@@ -54,10 +54,11 @@ export type EnqueueWikiIngestResult = {
   /** The BullMQ jobId assigned (deterministic for a given notebookId+sourceId). */
   jobId: string;
   /**
-   * True if we actually dropped a prior completed/failed/delayed job with
-   * this id before adding. False if `force` was not requested, or if the
-   * prior job was still active and could not be removed (we then re-used
-   * the in-flight job rather than duplicating work).
+   * True if `force` was requested AND BullMQ's `remove(id)` returned 1
+   * (job was either removed or didn't exist — the queue is now clean for
+   * this id). False when `force` wasn't requested, when `remove` returned 0
+   * (prior job is active/locked, retry is a no-op), or when the `remove`
+   * call errored.
    */
   replaced: boolean;
 };
@@ -71,15 +72,16 @@ export async function enqueueWikiIngest(
 
   let replaced = false;
   if (opts.force) {
-    // Drop any prior instance of this jobId — completed, failed, or delayed —
-    // so `queue.add` doesn't silently return the old corpse.
+    // BullMQ `Queue.remove` returns 1 when the job was removed (or there
+    // was nothing to remove), 0 when the job is currently active/locked and
+    // cannot be removed, and throws on real Redis / argument errors. We only
+    // treat code === 1 as a successful replacement; an active job means the
+    // retry is a no-op and the caller should surface "already running".
     try {
-      await queue.remove(id);
-      replaced = true;
+      const code = await queue.remove(id);
+      replaced = code === 1;
     } catch {
-      // `remove` throws if the job is active; that's fine — we do NOT want to
-      // re-enqueue while an attempt is in flight. `replaced` stays false so
-      // the caller can tell the user their retry hit an already-running job.
+      replaced = false;
     }
   }
 
