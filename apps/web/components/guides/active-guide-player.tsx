@@ -103,48 +103,23 @@ export function ActiveGuidePlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGuideId, stepIndex]);
 
-  // While a guide is running, block clicks on anything that isn't either the
-  // highlighted target or part of the guide's own overlay (Next / Back /
-  // Close). Also handles click-to-advance: when the user clicks the
-  // highlighted element (advanceOn includes "both"), we schedule an advance
-  // after letting the native click fire.
+  // While a guide is running, block every click that isn't part of the
+  // guide's own overlay (Next / Back / Close). Even the highlighted target
+  // is blocked — the guide's triggers drive all UI state programmatically
+  // so the user only interacts with the bubble.
   useEffect(() => {
     if (!guide || !step) return;
-    const selector = step.selector;
-    const mode = step.advanceOn ?? "both";
 
     function onClick(e: MouseEvent) {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-
-      // Always allow clicks inside the guide's overlay.
       if (target.closest("[data-guide-portal]")) return;
-
-      const hitsTarget = selector ? Boolean(target.closest(selector)) : false;
-
-      if (!hitsTarget) {
-        // Clicks on anything that isn't the highlighted target are swallowed —
-        // no Save / Close / Submit elsewhere on the page can fire while the
-        // guide is teaching this step.
-        e.stopImmediatePropagation();
-        e.preventDefault();
-        return;
-      }
-
-      // Hit the highlighted target. If this step advances on clicks, queue the
-      // advance after the native handler fires (so any dialog opens etc. go
-      // through first).
-      if (mode !== "next") {
-        window.setTimeout(() => {
-          if (!guide) return;
-          if (stepIndex === guide.steps.length - 1) void finishGuide();
-          else setStepIndex((n) => n + 1);
-        }, 80);
-      }
+      e.stopImmediatePropagation();
+      e.preventDefault();
     }
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [guide, step, stepIndex, finishGuide]);
+  }, [guide, step]);
 
   if (!guide || !step) return null;
 
