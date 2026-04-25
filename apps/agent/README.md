@@ -40,6 +40,28 @@ make stop        # stop the langgraph-* compose stack
 make logs        # tail langgraph-api logs
 ```
 
+`langgraph up` requires `LANGSMITH_API_KEY` for local testing (and a
+`LANGGRAPH_CLOUD_LICENSE_KEY` in production). Make sure both live in
+`apps/agent/.env`. `make dev` does not need a LangSmith key.
+
+The default port for `langgraph up` is `8123`; we override to `2024` in
+the Makefile so it matches `langgraph dev` and `apps/web/.env`'s
+`LANGGRAPH_API_URL=http://localhost:2024`. Set `PORT=...` to override:
+```bash
+make up PORT=8123
+```
+
+### Optional: pin the LangGraph API server version
+
+Production deployments should pin `api_version` in `langgraph.json` to
+avoid surprise breakage when LangChain ships a new server major. Verify
+the running version with `docker logs langgraph-api-1 | head` (look for
+`langgraph_api_version=…`), then add to `langgraph.json`:
+```json
+"api_version": "0.8"
+```
+Bump explicitly when ready to upgrade.
+
 ### Production hosts: mounting a corporate CA bundle
 
 `langgraph up` does NOT accept `-v` for volume mounts (the CLI only has
