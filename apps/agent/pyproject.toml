@@ -24,6 +24,11 @@ dependencies = [
     # Workflow server
     "fastapi>=0.109",
     "uvicorn[standard]>=0.27",
+    # Daily-digest ARQ worker queue
+    "arq>=0.25",
+    # Matcher workflow (Excel ingestion + ranking)
+    "pandas>=2.0",
+    "openpyxl>=3.1",
 ]
 
 [build-system]
