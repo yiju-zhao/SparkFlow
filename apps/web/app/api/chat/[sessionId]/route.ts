@@ -7,7 +7,11 @@ interface RouteParams {
 }
 
 function getLangGraphApiUrl(): string | null {
-  return process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || null;
+  return (
+    process.env.LANGGRAPH_API_URL ||
+    process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ||
+    null
+  );
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
@@ -115,7 +119,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         });
       } else {
         console.warn(
-          "Skipping agent memory cleanup because NEXT_PUBLIC_LANGGRAPH_API_URL is not configured.",
+          "Skipping agent memory cleanup because LANGGRAPH_API_URL is not configured.",
         );
       }
     } catch (agentError) {

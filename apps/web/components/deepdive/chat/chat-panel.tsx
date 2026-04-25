@@ -59,7 +59,9 @@ interface ModelSettings {
   modelName: string;
 }
 
-const LANGGRAPH_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL;
+// Same-origin reverse proxy at app/api/langgraph/[...path]/route.ts.
+// Avoids CORS, mixed-content, and reachability issues for end users.
+const LANGGRAPH_API_URL = "/api/langgraph";
 
 // Spark-diamond glyph from Sparkflow Design System (brand lockup).
 function SparkDiamond({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -84,12 +86,6 @@ export function ChatPanel({
   onWikiNavigate,
   onNoteAdded,
 }: ChatPanelProps) {
-  if (!LANGGRAPH_API_URL) {
-    throw new Error(
-      "NEXT_PUBLIC_LANGGRAPH_API_URL is not configured. Set it to the reachable LangGraph server URL.",
-    );
-  }
-
   // Thread management
   const [threadId, setThreadId] = useState<string | null>(
     initialSessions.length > 0 ? initialSessions[0].langgraphThreadId || null : null,
