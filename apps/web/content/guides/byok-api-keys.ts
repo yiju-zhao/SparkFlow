@@ -19,14 +19,15 @@ export const byokApiKeysGuide: GuideDefinition = {
       titleKey: "guides.byokApiKeys.step1.title",
       bodyKey: "guides.byokApiKeys.step1.body",
     },
-    // 2 — Ring moves from the sidebar into the provider-card grid. Body covers
-    //      the full workflow: pick a provider (or Custom for OpenAI-compatible
-    //      endpoints), paste your key, Save.
+    // 2 — Ring moves from the sidebar into the provider-card grid. Placement
+    //      "bottom" keeps the bubble below the OpenAI card so the card itself
+    //      stays visible above the bubble. Scroll-into-view from setup keeps
+    //      this in-frame even on tall viewports.
     {
       trigger: { kind: "action", name: "settings:open-api-keys" },
       waitForSelector: { selector: '[data-guide="provider-card-openai"]', timeoutMs: 1200 },
       selector: '[data-guide="provider-card-openai"]',
-      placement: "top",
+      placement: "bottom",
       titleKey: "guides.byokApiKeys.step2.title",
       bodyKey: "guides.byokApiKeys.step2.body",
     },

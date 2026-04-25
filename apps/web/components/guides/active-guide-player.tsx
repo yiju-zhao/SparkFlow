@@ -95,6 +95,15 @@ export function ActiveGuidePlayer() {
           await new Promise((r) => setTimeout(r, 50));
         }
       }
+      // 4. Scroll the highlighted target into the viewport. The scroll
+      //    blocker only touches user-initiated wheel/touch — scrollIntoView
+      //    is programmatic and goes through.
+      if (!cancelled && seq === setupSeq.current && step.selector) {
+        const el = document.querySelector(step.selector);
+        if (el instanceof HTMLElement) {
+          el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        }
+      }
     }
     setup();
     return () => {
@@ -103,10 +112,9 @@ export function ActiveGuidePlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGuideId, stepIndex]);
 
-  // While a guide is running, the guide's own overlay (Next / Back / Close)
-  // is the ONLY interactive surface. Block clicks, keystrokes, and focus on
-  // every other element so the user can't type into highlighted inputs,
-  // submit forms, or tab into the page.
+  // While a guide is running the guide's own overlay (Next / Back / Close)
+  // is the ONLY interactive surface. Trap every interaction on the rest of
+  // the page so the user can't click, type, focus, scroll, drag, or select.
   useEffect(() => {
     if (!guide || !step) return;
 
@@ -120,11 +128,19 @@ export function ActiveGuidePlayer() {
       e.preventDefault();
     }
 
+    // preventDefault on mousedown also prevents focus moving to the clicked
+    // element — complements the focusin handler below for mouse-initiated
+    // focus, and kills text drag-select.
+    function onMouseDown(e: MouseEvent) {
+      if (isInPortal(e.target)) return;
+      e.preventDefault();
+    }
+
     // preventDefault on keydown suppresses character insertion and default
-    // actions (form submit, button-as-Enter) while still letting the guide's
-    // own window-level keyboard handler bubble up to handle Next / Back /
-    // Escape. Don't stopImmediatePropagation — that would kill the guide
-    // handler too.
+    // actions (form submit, button-as-Enter, arrow-key scroll) while still
+    // letting the guide's own window-level keyboard handler bubble up to
+    // handle Next / Back / Escape. Don't stopImmediatePropagation — that
+    // would kill the guide handler too.
     function onKeyDown(e: KeyboardEvent) {
       if (isInPortal(e.target)) return;
       e.preventDefault();
@@ -140,13 +156,41 @@ export function ActiveGuidePlayer() {
       target.blur();
     }
 
+    // Block wheel / touch scrolling + right-click / drag on the page itself.
+    function onWheel(e: WheelEvent) {
+      if (isInPortal(e.target)) return;
+      e.preventDefault();
+    }
+    function onTouchMove(e: TouchEvent) {
+      if (isInPortal(e.target)) return;
+      e.preventDefault();
+    }
+    function onContextMenu(e: MouseEvent) {
+      if (isInPortal(e.target)) return;
+      e.preventDefault();
+    }
+
     document.addEventListener("click", onClick, true);
+    document.addEventListener("mousedown", onMouseDown, true);
     document.addEventListener("keydown", onKeyDown, true);
     document.addEventListener("focusin", onFocusIn, true);
+    document.addEventListener("wheel", onWheel, { capture: true, passive: false });
+    document.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+    document.addEventListener("contextmenu", onContextMenu, true);
+
+    // Freeze text selection on the rest of the page.
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+
     return () => {
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("mousedown", onMouseDown, true);
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("focusin", onFocusIn, true);
+      document.removeEventListener("wheel", onWheel, true);
+      document.removeEventListener("touchmove", onTouchMove, true);
+      document.removeEventListener("contextmenu", onContextMenu, true);
+      document.body.style.userSelect = prevUserSelect;
     };
   }, [guide, step]);
 
