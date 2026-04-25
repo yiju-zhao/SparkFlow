@@ -13,8 +13,9 @@ import {
 import { HubToolUIs } from "./research-assistant-tools";
 import { AIContextProvider, useAIContext } from "./ai-context";
 
+// Same-origin reverse proxy at app/api/langgraph/[...path]/route.ts.
 const langGraphClient = new Client({
-  apiUrl: process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ?? "http://localhost:2024",
+  apiUrl: "/api/langgraph",
   apiKey: null,
 });
 
