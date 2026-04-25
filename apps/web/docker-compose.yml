@@ -77,10 +77,35 @@ services:
 
   # ── Production-only services (opt-in) ─────────────────────────────────────
   # Default `docker compose up -d` runs only postgres/redis/workers so local
-  # dev keeps using `npm run dev` on the host (faster HMR than bind-mount).
+  # dev keeps using `npm run dev` on the host (faster HMR than bind-mount)
+  # and `make serve` on the host (which also binds 2027 — a docker
+  # workflows-api running by default would conflict with it).
   # For a production-style stack on a server, run:
   #     docker compose --profile prod up -d --build
-  # That brings up `migrate` (one-shot) → `web` after migrations succeed.
+  # That brings up workflows-api + migrate (one-shot) → web after migrations.
+
+  workflows-api:
+    profiles: ["prod"]
+    build:
+      context: ../agent
+      dockerfile: Dockerfile.workflows-api
+    container_name: sparkflow-workflows-api
+    env_file: ../agent/.env
+    environment:
+      # In-container service hostnames override host-side localhost URLs.
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+      SPARKFLOW_API_URL: ${SPARKFLOW_API_URL:-http://web:3001}
+      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://host.docker.internal:2025}
+      INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
+    ports:
+      - "${WORKFLOWS_PORT:-2027}:2027"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   migrate:
     profiles: ["prod"]
@@ -113,12 +138,16 @@ services:
       # Override host-side localhost URLs with docker service hostnames.
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
       REDIS_URL: redis://redis:6379
-      # When apps/agent and apps/semops are NOT in this compose file, point
-      # these at wherever they actually run (e.g. host.docker.internal:2024
-      # on Docker Desktop, or the public URL behind your reverse proxy).
+      # WORKFLOWS_API_URL is wired to the docker service hostname; LangGraph
+      # is NOT in this compose file (built/run separately via `langgraph
+      # up`), so it falls back to host.docker.internal. Override either
+      # via .env when deploying behind a reverse proxy.
       LANGGRAPH_API_URL: ${LANGGRAPH_API_URL:-http://host.docker.internal:2024}
-      WORKFLOWS_API_URL: ${WORKFLOWS_API_URL:-http://host.docker.internal:2027}
-      NEXT_PUBLIC_WORKFLOWS_API_URL: ${NEXT_PUBLIC_WORKFLOWS_API_URL:-http://host.docker.internal:2027}
+      WORKFLOWS_API_URL: ${WORKFLOWS_API_URL:-http://workflows-api:2027}
+      # Browser-bundled URL — must be reachable from the user's browser,
+      # not from inside the docker network. Set to the public URL of the
+      # workflows server (e.g. https://workflows.example.com).
+      NEXT_PUBLIC_WORKFLOWS_API_URL: ${NEXT_PUBLIC_WORKFLOWS_API_URL:-http://localhost:2027}
     ports:
       - "${WEB_PORT:-3001}:3001"
     depends_on:
@@ -128,6 +157,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      workflows-api:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
