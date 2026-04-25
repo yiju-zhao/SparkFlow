@@ -260,20 +260,29 @@ export async function clusterGraph(graphData: GraphData): Promise<{
 }
 
 // ============================================================
-// 4. Generate — create wiki pages from communities
+// 4. Build wiki page content — pure, no DB writes
 // ============================================================
 
-export async function generateWikiPages(
-  notebookId: string,
+export type BuiltWikiPage = {
+  slug: string;
+  title: string;
+  content: string;
+  sourceRefs: string[];
+};
+
+export type BuiltWikiPayload = {
+  communityPages: BuiltWikiPage[];
+  indexPage: BuiltWikiPage;
+};
+
+export async function buildWikiPagePayload(
   graphData: GraphData,
   communities: CommunityMap,
   userId: string,
-): Promise<string[]> {
+): Promise<BuiltWikiPayload> {
   const { client: openai, model: wikiModel } = await resolveWikiClient(userId);
 
   const nodeMap = new Map(graphData.nodes.map((n) => [n.id, n]));
-
-  // Prepare all community data first
   const communityEntries = Object.entries(communities).filter(([, ids]) => ids.length > 0);
 
   const preparations = communityEntries.map(([communityId, nodeIds]) => {
@@ -287,7 +296,6 @@ export async function generateWikiPages(
         (!nodeIds.includes(e.source) && nodeIds.includes(e.target)),
     );
 
-    // Find god nodes by degree
     const degreeMap: Record<string, number> = {};
     for (const id of nodeIds) degreeMap[id] = 0;
     for (const e of communityEdges) {
@@ -332,7 +340,6 @@ export async function generateWikiPages(
     };
   });
 
-  // Parallel LLM calls for all communities
   const completions = await Promise.all(
     preparations.map((p) =>
       openai.chat.completions.create({
@@ -356,28 +363,14 @@ Do NOT include a References section — source attribution is handled separately
     ),
   );
 
-  // Write all pages to DB
-  const writtenSlugs = await Promise.all(
-    preparations.map(async (p, i) => {
-      const slug = `community-${p.communityId}`;
-      const content = completions[i].choices[0]?.message?.content || "";
-      await prisma.wikiPage.upsert({
-        where: { notebookId_slug: { notebookId, slug } },
-        create: {
-          notebookId,
-          slug,
-          title: p.communityLabel,
-          content,
-          pageType: "CONCEPT",
-          sourceRefs: p.sourceRefs,
-        },
-        update: { title: p.communityLabel, content, sourceRefs: p.sourceRefs },
-      });
-      return slug;
-    }),
-  );
+  const communityPages: BuiltWikiPage[] = preparations.map((p, i) => ({
+    slug: `community-${p.communityId}`,
+    title: p.communityLabel,
+    content: completions[i].choices[0]?.message?.content || "",
+    sourceRefs: p.sourceRefs,
+  }));
 
-  // Generate index page
+  // Index page — lists every community with its top entities.
   const indexLines = ["# Wiki Index\n"];
   for (const [communityId, nodeIds] of Object.entries(communities)) {
     if (nodeIds.length === 0) continue;
@@ -397,20 +390,14 @@ Do NOT include a References section — source attribution is handled separately
     );
   }
 
-  await prisma.wikiPage.upsert({
-    where: { notebookId_slug: { notebookId, slug: "index" } },
-    create: {
-      notebookId,
-      slug: "index",
-      title: "Wiki Index",
-      content: indexLines.join("\n"),
-      pageType: "INDEX",
-      sourceRefs: [],
-    },
-    update: { content: indexLines.join("\n") },
-  });
+  const indexPage: BuiltWikiPage = {
+    slug: "index",
+    title: "Wiki Index",
+    content: indexLines.join("\n"),
+    sourceRefs: [],
+  };
 
-  return writtenSlugs;
+  return { communityPages, indexPage };
 }
 
 // ============================================================
@@ -614,49 +601,89 @@ export async function runGraphPipeline(
   await updateWikiStatus("clustering");
   const { graphWithCommunities, communities } = await clusterGraph(merged);
 
-  // 4. Store graph
-  await prisma.notebookGraph.upsert({
-    where: { notebookId },
-    create: {
-      notebookId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      graphData: graphWithCommunities as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      communities: communities as any,
-    },
-    update: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      graphData: graphWithCommunities as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      communities: communities as any,
-    },
-  });
-
-  // 5. Delete old community pages and regenerate
+  // 4. Build wiki page content OUTSIDE any transaction.
+  //    LLM calls here take 10s-60s; never hold a tx across them.
   await updateWikiStatus("generating");
-  await prisma.wikiPage.deleteMany({
-    where: { notebookId, slug: { startsWith: "community-" } },
-  });
-  const writtenSlugs = await generateWikiPages(
-    notebookId,
+  const { communityPages, indexPage } = await buildWikiPagePayload(
     graphWithCommunities,
     communities,
     userId,
   );
 
-  // 6. Log
+  // 5. Commit everything atomically: graph upsert, wiki-page upserts,
+  //    orphan delete, and log append in one short transaction.
   const today = new Date().toISOString().split("T")[0];
   const logEntry = `\n## [${today}] ingest | ${extraction.normalizedTitle || sourceTitle}\nNodes: +${extraction.nodes.length}, Edges: +${extraction.edges.length}, Communities: ${Object.keys(communities).length}`;
+  const writtenSlugs = communityPages.map((p) => p.slug);
 
-  const logPage = await prisma.wikiPage.findUnique({
-    where: { notebookId_slug: { notebookId, slug: "log" } },
-  });
-  if (logPage) {
-    await prisma.wikiPage.update({
-      where: { id: logPage.id },
-      data: { content: logPage.content + logEntry },
-    });
-  }
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.notebookGraph.upsert({
+        where: { notebookId },
+        create: {
+          notebookId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          graphData: graphWithCommunities as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          communities: communities as any,
+        },
+        update: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          graphData: graphWithCommunities as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          communities: communities as any,
+        },
+      });
+
+      for (const p of communityPages) {
+        await tx.wikiPage.upsert({
+          where: { notebookId_slug: { notebookId, slug: p.slug } },
+          create: {
+            notebookId,
+            slug: p.slug,
+            title: p.title,
+            content: p.content,
+            pageType: "CONCEPT",
+            sourceRefs: p.sourceRefs,
+          },
+          update: { title: p.title, content: p.content, sourceRefs: p.sourceRefs },
+        });
+      }
+
+      await tx.wikiPage.upsert({
+        where: { notebookId_slug: { notebookId, slug: indexPage.slug } },
+        create: {
+          notebookId,
+          slug: indexPage.slug,
+          title: indexPage.title,
+          content: indexPage.content,
+          pageType: "INDEX",
+          sourceRefs: [],
+        },
+        update: { content: indexPage.content },
+      });
+
+      await tx.wikiPage.deleteMany({
+        where: {
+          notebookId,
+          slug: { startsWith: "community-" },
+          NOT: { slug: { in: writtenSlugs } },
+        },
+      });
+
+      const logPage = await tx.wikiPage.findUnique({
+        where: { notebookId_slug: { notebookId, slug: "log" } },
+        select: { id: true, content: true },
+      });
+      if (logPage) {
+        await tx.wikiPage.update({
+          where: { id: logPage.id },
+          data: { content: logPage.content + logEntry },
+        });
+      }
+    },
+    { maxWait: 10_000, timeout: 60_000 },
+  );
 
   await updateWikiStatus("done");
 

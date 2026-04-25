@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import TurndownService from "turndown";
+import { enqueueWikiIngest } from "@/lib/queue/ingest-queue";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -98,14 +99,27 @@ export async function POST(req: NextRequest, context: RouteContext) {
     },
   });
 
-  // Trigger wiki ingest in background if content is already available
+  // Enqueue wiki ingest on the BullMQ worker if content is already available.
+  // The worker process (npm run worker:ingest) drains the queue with per-user
+  // fairness; stacking duplicate uploads returns the existing jobId.
+  let ingestJobId: string | null = null;
+  let ingestEnqueueError: string | null = null;
   if (finalMarkdown) {
-    import("@/lib/services/wiki-ingest")
-      .then(({ ingestSourceToWiki }) =>
-        ingestSourceToWiki(notebookId, source.id, session.user!.id!),
-      )
-      .catch((err) => console.error("[POST sources] Wiki ingest failed:", err));
+    try {
+      const { jobId } = await enqueueWikiIngest({
+        notebookId,
+        sourceId: source.id,
+        userId: session.user.id,
+      });
+      ingestJobId = jobId;
+    } catch (err) {
+      console.error("[POST sources] Failed to enqueue wiki ingest:", err);
+      ingestEnqueueError = "ingest queue unavailable";
+    }
   }
 
-  return NextResponse.json(source, { status: 201 });
+  return NextResponse.json(
+    { ...source, ingestJobId, ingestEnqueueError },
+    { status: 201 },
+  );
 }
