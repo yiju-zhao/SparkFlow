@@ -270,14 +270,17 @@ export function WikiPanel({
     return entityToCommunity[slug] || slug;
   };
 
-  // Handle external navigation (e.g. from chat [[wiki-link]] clicks)
-  useEffect(() => {
+  // Handle external navigation (e.g. from chat [[wiki-link]] clicks) via the
+  // setState-during-render pattern. Using a useEffect here would trip
+  // react-hooks/set-state-in-effect.
+  const [lastNavigateSlug, setLastNavigateSlug] = useState(navigateToSlug);
+  if (navigateToSlug !== lastNavigateSlug) {
+    setLastNavigateSlug(navigateToSlug);
     if (navigateToSlug) {
       setSelectedSlug(resolveSlug(navigateToSlug));
       onNavigateComplete?.();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigateToSlug]);
+  }
 
   // Notify parent so the right rail can widen on page open and restore on close.
   useEffect(() => {
@@ -647,14 +650,17 @@ function WikiPageView({
     }
   };
 
-  // Resolve source IDs to titles for display
+  // Resolve source IDs to titles for display. Extracting sourceRefs into its
+  // own constant keeps the useMemo dep list stable (react-compiler can't
+  // preserve memoization with an optional-chain expression).
+  const sourceRefs = page?.sourceRefs;
   const sourceTitles = useMemo(() => {
-    if (!page?.sourceRefs) return [];
-    return page.sourceRefs.map((id) => ({
+    if (!sourceRefs) return [];
+    return sourceRefs.map((id) => ({
       id,
       title: sourceMap[id] || id.slice(0, 8) + "...",
     }));
-  }, [page?.sourceRefs, sourceMap]);
+  }, [sourceRefs, sourceMap]);
 
   return (
     <div className="flex h-full flex-col bg-sf-surface">

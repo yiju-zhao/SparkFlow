@@ -126,19 +126,19 @@ const NAV_ITEMS: { id: SectionId; label: string; icon: typeof Cpu }[] = [
 // ============================================================================
 
 export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspaceProps) {
-  const [active, setActive] = useState<SectionId>("models");
+  // Read active section from URL hash synchronously on mount so we don't
+  // trip the react-hooks/set-state-in-effect rule with a post-mount setState.
+  const [active, setActive] = useState<SectionId>(() => {
+    if (typeof window === "undefined") return "models";
+    const hash = window.location.hash.replace("#", "") as SectionId;
+    return NAV_ITEMS.some((n) => n.id === hash) ? hash : "models";
+  });
   const [config, setConfig] = useState<ModelsConfig | null>(null);
   const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, ApiKeyStatus>>({});
   const [wechatSources, setWechatSources] = useState<WechatSource[]>([]);
   const [wechatExcluded, setWechatExcluded] = useState<Set<number>>(new Set());
   const [wechatLoading, setWechatLoading] = useState(true);
   const mainScrollRef = useRef<HTMLElement>(null);
-
-  // Read active section from URL hash on mount
-  useEffect(() => {
-    const hash = window.location.hash.replace("#", "") as SectionId;
-    if (NAV_ITEMS.some((n) => n.id === hash)) setActive(hash);
-  }, []);
 
   // Reset the content pane to the top whenever the section changes. Without
   // this, opening e.g. /settings#api-keys would leave scroll wherever the
@@ -393,7 +393,9 @@ function AiModelsSection({
   );
   const [matcherModel, setMatcherModel] = useState(initialSettings?.semopsModelName ?? "");
 
-  const baselineRef = useRef(initialSettings);
+  // Baseline is regular state — reading a ref's `.current` during render is
+  // flagged by the react-hooks/refs rule.
+  const [baseline, setBaseline] = useState(initialSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -412,36 +414,45 @@ function AiModelsSection({
     [getModels],
   );
 
-  // Reset model when provider changes
-  useEffect(() => {
+  // Reset model when provider changes — use the setState-during-render
+  // pattern (React 19 idiom) with a "last seen provider" sentinel instead
+  // of a useEffect, which would trip react-hooks/set-state-in-effect.
+  const [lastChatProvider, setLastChatProvider] = useState(chatProvider);
+  if (chatProvider !== lastChatProvider) {
+    setLastChatProvider(chatProvider);
     const ids = getModelIds(chatProvider);
     if (ids.length > 0 && !ids.includes(chatModel)) setChatModel(ids[0]);
-  }, [chatProvider, getModelIds, chatModel]);
-  useEffect(() => {
+  }
+  const [lastWikiProvider, setLastWikiProvider] = useState(wikiProvider);
+  if (wikiProvider !== lastWikiProvider) {
+    setLastWikiProvider(wikiProvider);
     const ids = getModelIds(wikiProvider);
     if (ids.length > 0 && !ids.includes(wikiModel)) setWikiModel(ids[0]);
-  }, [wikiProvider, getModelIds, wikiModel]);
-  useEffect(() => {
+  }
+  const [lastSearchProvider, setLastSearchProvider] = useState(searchProvider);
+  if (searchProvider !== lastSearchProvider) {
+    setLastSearchProvider(searchProvider);
     const ids = getModelIds(searchProvider);
     if (ids.length > 0 && !ids.includes(searchModel)) setSearchModel(ids[0]);
-  }, [searchProvider, getModelIds, searchModel]);
-  useEffect(() => {
+  }
+  const [lastMatcherProvider, setLastMatcherProvider] = useState(matcherProvider);
+  if (matcherProvider !== lastMatcherProvider) {
+    setLastMatcherProvider(matcherProvider);
     const ids = getModelIds(matcherProvider);
     if (ids.length > 0 && !ids.includes(matcherModel)) setMatcherModel(ids[0]);
-  }, [matcherProvider, getModelIds, matcherModel]);
+  }
 
   // Normalize null → "" so a never-configured user is NOT treated as dirty
   // and Discard doesn't widen the state to nullable.
-  const b = baselineRef.current;
   const isDirty =
-    (b?.modelProvider ?? "") !== chatProvider ||
-    (b?.modelName ?? "") !== chatModel ||
-    (b?.wikiModelProvider ?? "") !== wikiProvider ||
-    (b?.wikiModelName ?? "") !== wikiModel ||
-    (b?.searchModelProvider ?? "") !== searchProvider ||
-    (b?.searchModelName ?? "") !== searchModel ||
-    (b?.semopsModelProvider ?? "") !== matcherProvider ||
-    (b?.semopsModelName ?? "") !== matcherModel;
+    (baseline?.modelProvider ?? "") !== chatProvider ||
+    (baseline?.modelName ?? "") !== chatModel ||
+    (baseline?.wikiModelProvider ?? "") !== wikiProvider ||
+    (baseline?.wikiModelName ?? "") !== wikiModel ||
+    (baseline?.searchModelProvider ?? "") !== searchProvider ||
+    (baseline?.searchModelName ?? "") !== searchModel ||
+    (baseline?.semopsModelProvider ?? "") !== matcherProvider ||
+    (baseline?.semopsModelName ?? "") !== matcherModel;
 
   // Save is gated: user must pick all 8 slots (4 provider+model pairs).
   const allPicked =
@@ -455,15 +466,15 @@ function AiModelsSection({
     !!matcherModel;
 
   const handleDiscard = () => {
-    if (!b) return;
-    setChatProvider(b.modelProvider ?? "");
-    setChatModel(b.modelName ?? "");
-    setWikiProvider(b.wikiModelProvider ?? "");
-    setWikiModel(b.wikiModelName ?? "");
-    setSearchProvider(b.searchModelProvider ?? "");
-    setSearchModel(b.searchModelName ?? "");
-    setMatcherProvider(b.semopsModelProvider ?? "");
-    setMatcherModel(b.semopsModelName ?? "");
+    if (!baseline) return;
+    setChatProvider(baseline.modelProvider ?? "");
+    setChatModel(baseline.modelName ?? "");
+    setWikiProvider(baseline.wikiModelProvider ?? "");
+    setWikiModel(baseline.wikiModelName ?? "");
+    setSearchProvider(baseline.searchModelProvider ?? "");
+    setSearchModel(baseline.searchModelName ?? "");
+    setMatcherProvider(baseline.semopsModelProvider ?? "");
+    setMatcherModel(baseline.semopsModelName ?? "");
   };
 
   const handleSave = async () => {
@@ -485,7 +496,7 @@ function AiModelsSection({
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Save failed");
-      baselineRef.current = payload;
+      setBaseline(payload);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 1800);
     } catch (error) {

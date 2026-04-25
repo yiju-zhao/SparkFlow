@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import type { EChartsOption, ECharts } from "echarts";
 
@@ -12,13 +12,14 @@ export function useECharts({ option }: UseEChartsOptions) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<ECharts | null>(null);
   const { resolvedTheme } = useTheme();
-  const [isMounted, setIsMounted] = useState(false);
 
-  // Wait for client-side mount to avoid SSR issues
-  useEffect(() => {
-    setIsMounted(true);
-    return () => setIsMounted(false);
-  }, []);
+  // Hydration-safe "are we on the client" signal — React-19-sanctioned way
+  // that avoids the setState-in-effect pattern.
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   // Initialize and update chart
   useEffect(() => {

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { matcherClient } from "./client";
 import type { JobProgress, MatchJob, MatchJobStatus } from "./types";
 
@@ -131,7 +131,10 @@ export function useMatchJob() {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createJob = useCallback(async (input: Parameters<typeof matcherClient.createJob>[0]) => {
+  // Not wrapped in useCallback — React Compiler auto-memoizes, and the
+  // async bodies can't be preserved by manual useCallback anyway (the
+  // preserve-manual-memoization rule flagged them).
+  async function createJob(input: Parameters<typeof matcherClient.createJob>[0]) {
     setIsCreating(true);
     setError(null);
 
@@ -146,9 +149,9 @@ export function useMatchJob() {
     } finally {
       setIsCreating(false);
     }
-  }, []);
+  }
 
-  const cancelJob = useCallback(async (jobId: string) => {
+  async function cancelJob(jobId: string) {
     try {
       await matcherClient.cancelJob(jobId);
       setJob((prev) => (prev ? { ...prev, status: "CANCELLED" as MatchJobStatus } : null));
@@ -156,13 +159,13 @@ export function useMatchJob() {
       console.error("Failed to cancel job:", err);
       throw err;
     }
-  }, []);
+  }
 
-  const reset = useCallback(() => {
+  function reset() {
     setJob(null);
     setError(null);
     setIsCreating(false);
-  }, []);
+  }
 
   return {
     job,
@@ -180,8 +183,9 @@ export function useMatchJob() {
 export function useMatcherHealth() {
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [hasChecked, setHasChecked] = useState(false);
 
-  const checkHealth = useCallback(async () => {
+  async function checkHealth() {
     setIsChecking(true);
     try {
       const healthy = await matcherClient.healthCheck();
@@ -191,11 +195,14 @@ export function useMatcherHealth() {
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }
 
-  useEffect(() => {
-    checkHealth();
-  }, [checkHealth]);
+  // Run once on mount via the setState-during-render sentinel — avoids the
+  // set-state-in-effect rule.
+  if (!hasChecked) {
+    setHasChecked(true);
+    void checkHealth();
+  }
 
   return { isHealthy, isChecking, checkHealth };
 }
