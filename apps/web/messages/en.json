@@ -461,7 +461,7 @@
       },
       "step4": {
         "title": "Create",
-        "body": "Click Create to save. We won't submit for you."
+        "body": "Click Create to save."
       }
     },
     "addSources": {
@@ -492,16 +492,12 @@
       "title": "Add your API key",
       "summary": "Your provider keys unlock chat, wiki, and matcher.",
       "step1": {
-        "title": "API Keys section",
-        "body": "All your provider credentials live here."
+        "title": "Settings → API Keys",
+        "body": "This is where every provider's credentials live."
       },
       "step2": {
-        "title": "Pick a provider",
-        "body": "OpenAI, Gemini, DeepSeek, GLM, MiniMax, Kimi — or Custom for any OpenAI-compatible endpoint (vLLM, Ollama, self-hosted)."
-      },
-      "step3": {
-        "title": "Paste and save",
-        "body": "Open a card, paste your key, click Save. Keys are encrypted at rest."
+        "title": "Pick a provider, paste, Save",
+        "body": "Each provider has a card. Open one, paste your key, Save — encrypted at rest. Custom handles any OpenAI-compatible endpoint (vLLM, Ollama, self-hosted)."
       }
     },
     "chatWithAi": {
@@ -561,7 +557,7 @@
       },
       "step5": {
         "title": "Create",
-        "body": "Click Create to save. We won't submit for you."
+        "body": "Click Create to save."
       }
     },
     "conferences": {

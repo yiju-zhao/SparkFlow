@@ -461,7 +461,7 @@
       },
       "step4": {
         "title": "Create",
-        "body": "点 Create 保存。我们不会替你提交。"
+        "body": "点 Create 保存。"
       }
     },
     "addSources": {
@@ -492,16 +492,12 @@
       "title": "填入 API Key",
       "summary": "Provider key 解锁对话、Wiki 和 Matcher。",
       "step1": {
-        "title": "API Keys 区域",
+        "title": "Settings → API Keys",
         "body": "所有 provider 的凭证都在这里。"
       },
       "step2": {
-        "title": "选一个 provider",
-        "body": "OpenAI、Gemini、DeepSeek、GLM、MiniMax、Kimi —— 或选 Custom 对接任意 OpenAI-compatible endpoint(vLLM、Ollama、自建)。"
-      },
-      "step3": {
-        "title": "粘贴并保存",
-        "body": "打开卡片,粘贴 key,点 Save。Key 加密存储。"
+        "title": "选 provider、粘贴、保存",
+        "body": "每个 provider 一张卡片。打开、粘贴 key、点 Save —— 加密存储。Custom 卡片可对接任意 OpenAI-compatible endpoint(vLLM、Ollama、自建)。"
       }
     },
     "chatWithAi": {
@@ -561,7 +557,7 @@
       },
       "step5": {
         "title": "Create",
-        "body": "点 Create 保存。我们不会替你提交。"
+        "body": "点 Create 保存。"
       }
     },
     "conferences": {
