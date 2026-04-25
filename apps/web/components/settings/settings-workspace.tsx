@@ -778,8 +778,6 @@ function ApiKeysSection({
           </div>
         ))}
       </div>
-
-      <CustomEndpointsCard />
     </>
   );
 }
@@ -980,57 +978,6 @@ function ProviderKeyCard({
         </div>
       </div>
     </Card>
-  );
-}
-
-function CustomEndpointsCard() {
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-
-  return (
-    <div className="mt-8">
-      <h3 className="text-[17px] font-bold text-sf-ink tracking-tight">Custom Endpoints</h3>
-      <p className="mt-1 text-[13px] text-sf-ink-3">
-        Configure local or self-hosted models running on vLLM, Ollama, or OpenAI-compatible servers.
-      </p>
-      <Card className="mt-4 p-5">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <div>
-            <FieldLabel>Provider Name</FieldLabel>
-            <Input
-              placeholder="e.g. Local Ollama"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-9 rounded-[6px] border-sf-line-strong text-sm"
-            />
-          </div>
-          <div>
-            <FieldLabel>Base URL</FieldLabel>
-            <Input
-              placeholder="http://localhost:11434/v1"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="h-9 rounded-[6px] border-sf-line-strong text-[12px] font-mono"
-            />
-          </div>
-          <Button
-            variant="outline"
-            className="h-9 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt"
-          >
-            Test Connection
-          </Button>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button
-            className="h-9 rounded-[6px] bg-sf-accent hover:bg-sf-accent-ink text-white"
-            disabled={!name || !url}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" strokeWidth={2.25} />
-            Add Endpoint
-          </Button>
-        </div>
-      </Card>
-    </div>
   );
 }
 
