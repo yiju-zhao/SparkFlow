@@ -61,7 +61,15 @@ interface ModelSettings {
 
 // Same-origin reverse proxy at app/api/langgraph/[...path]/route.ts.
 // Avoids CORS, mixed-content, and reachability issues for end users.
-const LANGGRAPH_API_URL = "/api/langgraph";
+// Must be an absolute URL because the LangGraph SDK uses `new URL(apiUrl + path)`.
+function getLangGraphApiUrl(): string {
+  if (typeof window === "undefined") {
+    // SSR fallback — useStream only runs on the client, but the const must
+    // resolve to *something* during render to avoid passing undefined.
+    return "http://localhost/api/langgraph";
+  }
+  return `${window.location.origin}/api/langgraph`;
+}
 
 // Spark-diamond glyph from Sparkflow Design System (brand lockup).
 function SparkDiamond({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -178,7 +186,7 @@ export function ChatPanel({
 
   // LangGraph stream hook - model selection happens per-request via context
   const stream = useStream<AgentState>({
-    apiUrl: LANGGRAPH_API_URL,
+    apiUrl: getLangGraphApiUrl(),
     assistantId: "notebook",
     threadId: threadId ?? undefined,
     onThreadId: (newThreadId) => {

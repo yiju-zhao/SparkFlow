@@ -14,10 +14,16 @@ import { HubToolUIs } from "./research-assistant-tools";
 import { AIContextProvider, useAIContext } from "./ai-context";
 
 // Same-origin reverse proxy at app/api/langgraph/[...path]/route.ts.
-const langGraphClient = new Client({
-  apiUrl: "/api/langgraph",
-  apiKey: null,
-});
+// The SDK's `new URL(apiUrl + path)` requires an absolute URL, so we resolve
+// against window.location.origin at runtime (the Client is only used in the
+// browser). Module-level `new Client(...)` would crash during SSR.
+function buildLangGraphClient(): Client {
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+  return new Client({
+    apiUrl: `${origin}/api/langgraph`,
+    apiKey: null,
+  });
+}
 
 export interface ExploreShellProps {
   children: React.ReactNode;
@@ -78,6 +84,11 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const exploreNavLinks = useExploreNavLinks();
+  // Lazy state initializer runs once per mount; on the client `window` is
+  // defined so the Client gets a valid absolute apiUrl. During SSR this
+  // returns a placeholder Client that is never actually invoked because the
+  // runtime calls only fire from event handlers / effects.
+  const [langGraphClient] = useState<Client>(() => buildLangGraphClient());
 
   // Build page context string from AI context
   const pageContext = useMemo(() => {
