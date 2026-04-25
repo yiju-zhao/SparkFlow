@@ -4,24 +4,30 @@ version = "0.1.0"
 description = "SparkFlow AI agents for research hub and RAG"
 requires-python = ">=3.11"
 dependencies = [
+    # LangChain / LangGraph stack
     "langgraph",
+    "langgraph-cli[inmem]",
+    "langgraph-checkpoint-postgres",
     "langchain",
+    "langchain-core",
     "langchain-openai",
     "langchain-deepseek",
-    "langchain-core",
-    "langgraph-cli[inmem]",
     "langchain-mcp-adapters",
-    "langgraph-checkpoint-postgres",
-    "psycopg[binary]",
+    # Model Context Protocol (used by tools/toolbox_client.py)
+    "mcp",
+    # Other AI / SDK
     "openai",
+    "deepagents",
+    "tavily-python",
+    "copilotkit",
+    # Database
+    "psycopg[binary]",
+    # Core utilities
     "pydantic",
     "python-dotenv",
     "PyYAML>=6.0",
     "httpx",
-    "copilotkit",
-    "deepagents",
-    "tavily-python",
-    # Workflow server
+    # Workflow server (FastAPI surface)
     "fastapi>=0.109",
     "uvicorn[standard]>=0.27",
     # Daily-digest ARQ worker queue

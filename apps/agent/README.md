@@ -26,7 +26,7 @@ Full Docker stack (postgres + redis + agent), per the
 [langgraph CLI docs](https://docs.langchain.com/langsmith/cli):
 ```bash
 make up          # daily — `langgraph up`, Docker layer cache keeps it fast
-make up-fresh    # after editing requirements.txt / pyproject.toml (--no-cache rebuild)
+make up-fresh    # after editing pyproject.toml (--no-cache rebuild)
 make stop        # stop the langgraph-* compose stack
 make logs        # tail langgraph-api logs
 ```
