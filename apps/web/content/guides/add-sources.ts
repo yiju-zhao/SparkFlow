@@ -21,13 +21,15 @@ export const addSourcesGuide: GuideDefinition = {
     // 1 — Land in a notebook workspace and point at the Add Source button.
     // Triggers run in order: goto-last-notebook navigates to the most recent
     // notebook; close-add-source ensures the dialog is closed (important when
-    // the user navigates BACK to step 1 from 2a).
+    // the user navigates BACK to step 1 from 2a). waitForSelector blocks the
+    // render until we're actually inside a workspace.
     {
       route: "/deepdive",
       trigger: [
         { kind: "action", name: "goto-last-notebook" },
         { kind: "action", name: "close-add-source" },
       ],
+      waitForSelector: { selector: '[data-guide="add-source-trigger"]', timeoutMs: 2000 },
       selector: '[data-guide="add-source-trigger"]',
       placement: "right",
       titleKey: "guides.addSources.step2.title",

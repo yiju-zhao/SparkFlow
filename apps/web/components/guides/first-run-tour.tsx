@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { GUIDES } from "@/content/guides";
-import type { GuideStep } from "@/content/guides/types";
+import type { GuideStep, GuideTrigger } from "@/content/guides/types";
 import { Spotlight } from "./spotlight";
 import { useFirstRunTour } from "./use-first-run-tour";
 import { useGuides } from "./guide-provider";
@@ -17,23 +17,63 @@ function firstRunSteps(): Array<GuideStep & { guideId: string }> {
 
 export function FirstRunTour() {
   const tour = useFirstRunTour();
-  const { isAuthenticated } = useGuides();
+  const { isAuthenticated, runGuideAction } = useGuides();
   const t = useTranslations("guides.tour");
   const tGuides = useTranslations("guides");
   const pathname = usePathname();
   const steps = firstRunSteps();
   const [showSkipBanner, setShowSkipBanner] = useState(false);
 
+  // Mirror the ActiveGuidePlayer setup loop: navigate, run triggers (single or
+  // array), wait for the step's anchor, scroll it into view. Without this the
+  // first-run step can land on the wrong page (e.g. add-sources pointing at
+  // [data-guide="add-source-trigger"] which only exists inside a notebook
+  // workspace, not on /deepdive).
+  const setupSeq = useRef(0);
   useEffect(() => {
     if (tour.stage !== "running") return;
     const current = steps[tour.stepIndex];
-    if (!current?.route) return;
-    if (pathname) {
-      const stripped = pathname.replace(/^\/(en|zh)(?=\/|$)/, "") || "/";
-      if (stripped !== current.route) {
-        tour.navigate(current.route);
+    if (!current) return;
+    const seq = ++setupSeq.current;
+    let cancelled = false;
+
+    async function run() {
+      // 1. Route — strict-equal to locale-stripped pathname.
+      if (current?.route && pathname) {
+        const stripped = pathname.replace(/^\/(en|zh)(?=\/|$)/, "") || "/";
+        if (stripped !== current.route) {
+          tour.navigate(current.route);
+        }
+      }
+      // 2. Triggers (single or array).
+      if (current?.trigger) {
+        const list: GuideTrigger[] = Array.isArray(current.trigger) ? current.trigger : [current.trigger];
+        for (const trigger of list) {
+          if (trigger.kind === "navigate") tour.navigate(trigger.route);
+          else await runGuideAction(trigger.name);
+        }
+      }
+      // 3. Wait for the anchor if the step asked.
+      if (current?.waitForSelector) {
+        const timeoutMs = current.waitForSelector.timeoutMs ?? 1000;
+        const start = Date.now();
+        while (!cancelled && seq === setupSeq.current && Date.now() - start < timeoutMs) {
+          if (document.querySelector(current.waitForSelector.selector)) break;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+      // 4. Scroll the target into the viewport.
+      if (!cancelled && seq === setupSeq.current && current?.selector) {
+        const el = document.querySelector(current.selector);
+        if (el instanceof HTMLElement) {
+          el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        }
       }
     }
+    run();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tour.stage, tour.stepIndex]);
 
