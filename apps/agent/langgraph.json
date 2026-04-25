@@ -8,5 +8,10 @@
         "deep_research": "./graphs/surface.py:deep_research_graph"
     },
     "env": ".env",
-    "image_distro": "wolfi"
+    "image_distro": "wolfi",
+    "dockerfile_lines": [
+        "ENV PIP_CACHE_DIR=/root/.cache/pip",
+        "ENV UV_CACHE_DIR=/root/.cache/uv",
+        "ENV PYTHONDONTWRITEBYTECODE=1"
+    ]
 }

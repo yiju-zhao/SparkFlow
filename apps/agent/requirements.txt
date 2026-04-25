@@ -28,9 +28,6 @@ PyYAML>=6.0
 httpx
 tavily-python
 
-# BGE-M3 embeddings (CPU) — powers the search-agent prefilter.
-FlagEmbedding>=1.2
-
 # Workflow server
 fastapi>=0.109
 uvicorn[standard]>=0.27
