@@ -1,7 +1,7 @@
 # Ingest worker image — runs `npm run worker:ingest` (tsx workers/ingest.ts).
 # Separate from the main Dockerfile because the worker does NOT need a
 # Next.js build: it only consumes node_modules, source TS, and Prisma client.
-FROM node:20 AS base
+FROM node:24 AS base
 WORKDIR /app
 ENV NODE_ENV=production
 
