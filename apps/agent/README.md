@@ -16,6 +16,15 @@ The `hub` graph uses GenAI Toolbox for deterministic database querying and relie
 
 ## Run Locally
 
+First-time setup on a dev machine — install the LangGraph CLI plus
+everything else `make dev`/`make up` needs:
+```bash
+pip install -e ".[dev]"
+# Provides the `langgraph` command (cli + inmem server) and dev test deps.
+# The CLI is NOT a runtime dep, so `langgraph build` will not bake it
+# into the agent image.
+```
+
 In-process dev server (fastest, no Docker, hot reload):
 ```bash
 make dev

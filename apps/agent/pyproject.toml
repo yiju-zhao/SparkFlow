@@ -4,9 +4,9 @@ version = "0.1.0"
 description = "SparkFlow AI agents for research hub and RAG"
 requires-python = ">=3.11"
 dependencies = [
-    # LangChain / LangGraph stack
+    # LangChain / LangGraph stack (runtime — `langgraph-cli` is dev-only,
+    # see [project.optional-dependencies].dev)
     "langgraph",
-    "langgraph-cli[inmem]",
     "langgraph-checkpoint-postgres",
     "langchain",
     "langchain-core",
@@ -46,6 +46,10 @@ packages = ["graphs", "tools", "config", "prompts", "embeddings", "hermes"]
 
 [project.optional-dependencies]
 dev = [
+    # CLI on the developer's host (`langgraph dev/build/up`). [inmem] adds
+    # the in-process server backing `langgraph dev`. Never used inside the
+    # built image — the langgraph-api container runs its own server.
+    "langgraph-cli[inmem]",
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
     "pytest-mock>=3.12",
