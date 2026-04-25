@@ -7,10 +7,14 @@ FROM base AS builder
 
 # Skip SSL verification for npm/prisma during build
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+# prisma.config.ts eagerly reads DATABASE_URL on load. `prisma generate`
+# doesn't actually need a live DB, but the config loader resolves env first.
+# Real DATABASE_URL is supplied at runtime; this placeholder is build-only.
+ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-COPY prisma/config.ts ./prisma/config.ts
+COPY prisma.config.ts ./
 
 # Install dependencies and generate Prisma client
 RUN npm ci && npx prisma generate
@@ -28,7 +32,7 @@ ENV NODE_ENV=development
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma/config.ts ./prisma/config.ts
+COPY --from=builder /app/prisma.config.ts ./
 
 EXPOSE 3001
 ENV PORT=3001
@@ -51,6 +55,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Copy Prisma files and CLI for migrations
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma

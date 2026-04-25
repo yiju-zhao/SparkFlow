@@ -75,6 +75,61 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ── Production-only services (opt-in) ─────────────────────────────────────
+  # Default `docker compose up -d` runs only postgres/redis/workers so local
+  # dev keeps using `npm run dev` on the host (faster HMR than bind-mount).
+  # For a production-style stack on a server, run:
+  #     docker compose --profile prod up -d --build
+  # That brings up `migrate` (one-shot) → `web` after migrations succeed.
+
+  migrate:
+    profiles: ["prod"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Use builder stage: it has full node_modules (incl. prisma CLI's
+      # transitive deps like `effect`). The slim runner stage only carries
+      # cherry-picked @prisma/* dirs and breaks at CLI load time.
+      target: builder
+    container_name: sparkflow-migrate
+    command: ["npx", "prisma", "migrate", "deploy"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    profiles: ["prod"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: sparkflow-web
+    env_file: .env
+    environment:
+      # Override host-side localhost URLs with docker service hostnames.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+      REDIS_URL: redis://redis:6379
+      # When apps/agent and apps/semops are NOT in this compose file, point
+      # these at wherever they actually run (e.g. host.docker.internal:2024
+      # on Docker Desktop, or the public URL behind your reverse proxy).
+      LANGGRAPH_API_URL: ${LANGGRAPH_API_URL:-http://host.docker.internal:2024}
+      WORKFLOWS_API_URL: ${WORKFLOWS_API_URL:-http://host.docker.internal:2027}
+      NEXT_PUBLIC_WORKFLOWS_API_URL: ${NEXT_PUBLIC_WORKFLOWS_API_URL:-http://host.docker.internal:2027}
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
