@@ -743,14 +743,13 @@ function ApiKeysSection({
       />
 
       <div data-guide="api-keys-section" className="mb-6">
-        <div className="rounded-[10px] bg-sf-accent-soft border-l-4 border-sf-accent px-4 py-3 flex items-start gap-3">
-          <Info className="h-4 w-4 text-sf-accent-ink shrink-0 mt-0.5" strokeWidth={2} />
-          <div>
-            <p className="text-[13px] font-bold text-sf-accent-ink">Security Notice</p>
-            <p className="mt-0.5 text-[12.5px] text-sf-accent-ink/80">
-              Keys are encrypted at rest using AES-256 and are only decrypted temporarily during inference requests.
-            </p>
-          </div>
+        <div className="rounded-[10px] bg-sf-accent-soft border-l-4 border-sf-accent px-4 py-2 flex items-center gap-3">
+          <Info className="h-4 w-4 text-sf-accent-ink shrink-0" strokeWidth={2} />
+          <p className="text-[12.5px] text-sf-accent-ink">
+            <span className="font-bold">Security Notice</span>
+            <span className="mx-2 text-sf-accent-ink/50">·</span>
+            <span className="text-sf-accent-ink/80">Keys are encrypted at rest using AES-256.</span>
+          </p>
         </div>
       </div>
 
