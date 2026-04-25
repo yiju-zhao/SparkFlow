@@ -34,7 +34,6 @@ FlagEmbedding>=1.2
 # Workflow server
 fastapi>=0.109
 uvicorn[standard]>=0.27
-arq>=0.25
 
 # Testing
 pytest-mock>=3.12

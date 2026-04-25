@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
   // ── Transaction: upsert DailyDigest, create new DigestSections ───────────
   const conflicts: DigestSourceType[] = [];
-  let digestId: string = "";
+  let digestId: string;
   const newSections: { id: string; sourceType: DigestSourceType; status: string }[] = [];
 
   await prisma.$transaction(async (tx) => {
@@ -190,25 +190,13 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  // ── Enqueue one ARQ job per new section ───────────────────────────────────
+  // ── Fire-and-forget: POST to Python workflow for each new section ──────────
   const wechatConfig = digestConfig.sources?.wechat;
   const topN = wechatConfig?.topN ?? 5;
   const subscribedSourceIds = wechatConfig?.subscribedSourceIds ?? [];
 
-  const enqueued: Array<{
-    sectionId: string;
-    sourceType: DigestSourceType;
-    jobId: string | null;
-  }> = [];
-  const enqueueErrors: Array<{
-    sectionId: string;
-    sourceType: DigestSourceType;
-    status: number;
-    detail: string;
-  }> = [];
-
   for (const section of newSections) {
-    const agentPayload = {
+    const workflowBody = {
       section_id: section.id,
       source_type: section.sourceType,
       digest_date: toDateString(digestDate),
@@ -221,87 +209,38 @@ export async function POST(request: NextRequest) {
       api_base: resolvedApiBase ?? null,
     };
 
-    try {
-      const agentResp = await fetch(
-        `${WORKFLOWS_API_URL}/v1/workflows/daily_digest/sections/${section.id}/generate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Internal-Token": INTERNAL_CALLBACK_TOKEN,
-          },
-          body: JSON.stringify(agentPayload),
-        },
-      );
-
-      if (!agentResp.ok) {
-        const detail = await agentResp.text().catch(() => "(no body)");
-        console.error(
-          "[digest/generate] agent enqueue failed:",
-          agentResp.status,
-          detail,
-        );
-        enqueueErrors.push({
-          sectionId: section.id,
-          sourceType: section.sourceType,
-          status: agentResp.status,
-          detail,
-        });
-        continue;
-      }
-
-      const agentBody = (await agentResp.json()) as { job_id?: string };
-      enqueued.push({
-        sectionId: section.id,
-        sourceType: section.sourceType,
-        jobId: agentBody.job_id ?? null,
-      });
-    } catch (err) {
-      console.error("[digest/generate] agent fetch threw:", err);
-      enqueueErrors.push({
-        sectionId: section.id,
-        sourceType: section.sourceType,
-        status: 0,
-        detail: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  // If every attempt failed AND nothing was enqueued AND no prior conflicts,
-  // the client has no usable result — surface a 502. Otherwise prefer a
-  // partial-success 202 so the client can see which sections need retry.
-  if (
-    enqueued.length === 0 &&
-    enqueueErrors.length > 0 &&
-    conflicts.length === 0
-  ) {
-    return NextResponse.json(
+    // Fire and forget — do not await
+    fetch(
+      `${WORKFLOWS_API_URL}/v1/workflows/daily_digest/sections/${section.id}/generate`,
       {
-        error: "Digest enqueue failed. Try again shortly.",
-        failures: enqueueErrors.map(({ sectionId, sourceType }) => ({
-          sectionId,
-          sourceType,
-        })),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Token": INTERNAL_CALLBACK_TOKEN,
+        },
+        body: JSON.stringify(workflowBody),
       },
-      { status: 502 },
-    );
+    ).catch((err) => {
+      console.error(
+        `[digest/generate] Failed to fire workflow for section ${section.id}:`,
+        err,
+      );
+    });
   }
 
-  return NextResponse.json(
-    {
-      accepted: true,
-      digestId,
-      enqueued,
-      conflicts,
-      ...(enqueueErrors.length > 0
-        ? {
-            failures: enqueueErrors.map(({ sectionId, sourceType }) => ({
-              sectionId,
-              sourceType,
-            })),
-          }
-        : {}),
-    },
-    { status: 202 },
-  );
+  // ── Return 202 ────────────────────────────────────────────────────────────
+  const response: {
+    digestId: string;
+    sections: typeof newSections;
+    conflicts?: DigestSourceType[];
+  } = {
+    digestId: digestId!,
+    sections: newSections,
+  };
+
+  if (conflicts.length > 0) {
+    response.conflicts = conflicts;
+  }
+
+  return NextResponse.json(response, { status: 202 });
 }

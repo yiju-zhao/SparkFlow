@@ -33,7 +33,6 @@ class SearchRequest:
     model_provider: str = "openai"
     model_name: str = "gpt-4o-mini"
     api_key: str | None = None
-    tavily_api_key: str | None = None
     top_k: int = DEFAULT_TOP_K
 
 
@@ -76,7 +75,7 @@ async def _invoke_web_search(req: SearchRequest) -> list[dict[str, Any]]:
     from tools.web import search_web
     import json
 
-    raw = search_web.invoke({"query": req.query, "domains": req.domains or None, "api_key": req.tavily_api_key})
+    raw = search_web.invoke({"query": req.query, "domains": req.domains or None})
     try:
         parsed = json.loads(raw)
     except (TypeError, ValueError):
