@@ -2,6 +2,7 @@
 langgraph
 langchain
 langchain-openai
+langchain-deepseek
 langchain-core
 langchain-community
 langgraph-cli[inmem]
