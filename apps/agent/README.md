@@ -22,12 +22,30 @@ make dev
 # equivalent to: langgraph dev --host 0.0.0.0 --port 2024
 ```
 
-Full Docker stack (postgres + redis + agent), build once, restart fast:
+Full Docker stack (postgres + redis + agent), per the
+[langgraph CLI docs](https://docs.langchain.com/langsmith/cli):
 ```bash
-make build       # only when requirements.txt / pyproject.toml change
-make up          # reuses sparkflow-agent:dev image, skips rebuild
-make up-fresh    # force rebuild (after dep changes)
+make up          # daily — `langgraph up`, Docker layer cache keeps it fast
+make up-fresh    # after editing requirements.txt / pyproject.toml (--no-cache rebuild)
+make stop        # stop the langgraph-* compose stack
+make logs        # tail langgraph-api logs
 ```
+
+### Production hosts: mounting a corporate CA bundle
+
+`langgraph up` does NOT accept `-v` for volume mounts (the CLI only has
+`--verbose`). To mount a CA bundle so the agent trusts a private cert
+authority, use the official `-d <docker-compose.override.yml>` path:
+
+```bash
+# On the production host, inside apps/agent/:
+cp docker-compose.override.yml.example docker-compose.override.yml
+cp /path/to/your-ca.crt ./ca-certificates.crt
+make up    # the Makefile auto-attaches the override
+```
+
+`docker-compose.override.yml` and `ca-certificates.crt` are gitignored;
+the `.example` template stays in the repo so each host can opt in.
 
 ### Optional: BGE-M3 embeddings for offline backfill
 

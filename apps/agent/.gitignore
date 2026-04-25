@@ -208,3 +208,6 @@ __marimo__/
 
 .claude/
 .langgraph_api/
+# Host-specific overlays for `langgraph up -d` (CA certs, mounts, etc.)
+docker-compose.override.yml
+ca-certificates.crt

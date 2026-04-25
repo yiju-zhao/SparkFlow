@@ -1,0 +1,21 @@
+# Optional override consumed by `langgraph up -d docker-compose.override.yml`.
+# Used on hosts that need extras (CA bundle, custom DNS, etc.) without
+# rebuilding the image.
+#
+# Activate on a host:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   make up
+#
+# (apps/agent/Makefile auto-attaches the file with `-d` when it exists.)
+
+services:
+  langgraph-api:
+    volumes:
+      # Mount a corporate / private CA bundle into the canonical Debian
+      # location. requests, httpx, openai SDK, langchain-* all read this.
+      - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      # Bind inside the container; Docker port mapping handles external access.
+      LANGGRAPH_API_HOST: 0.0.0.0
