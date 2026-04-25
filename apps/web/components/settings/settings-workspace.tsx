@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/select";
 import { SparkflowLockup } from "@/components/ui/sparkflow-lockup";
 import { useGuides } from "@/components/guides/guide-provider";
+import { v4 as uuidv4 } from "uuid";
+import { CUSTOM_PROVIDER_PREFIX } from "@/lib/types/providers";
 
 // ============================================================================
 // Types
@@ -83,6 +85,8 @@ interface InitialSettings {
 interface ApiKeyStatus {
   hasKey: boolean;
   maskedKey: string;
+  label?: string;
+  baseUrl?: string;
 }
 
 interface SettingsUser {
@@ -108,7 +112,6 @@ const API_KEY_PROVIDERS: {
   { id: "glm", label: "GLM (Zhipu)", description: "GLM-4, GLM-4-Air", placeholder: "..." },
   { id: "minimax", label: "Minimax", description: "MiniMax-ABAB, Text", placeholder: "..." },
   { id: "kimi", label: "Kimi (Moonshot)", description: "Moonshot v1", placeholder: "sk-..." },
-  { id: "custom", label: "Custom", description: "Self-hosted OpenAI-compatible", placeholder: "sk-..." },
 ];
 
 const NAV_ITEMS: { id: SectionId; label: string; icon: typeof Cpu }[] = [
@@ -777,7 +780,277 @@ function ApiKeysSection({
           </div>
         ))}
       </div>
+
+      <CustomEndpointsSection
+        apiKeyStatus={apiKeyStatus}
+        setApiKeyStatus={setApiKeyStatus}
+      />
     </>
+  );
+}
+
+// ============================================================================
+// Custom endpoints — any OpenAI-compatible provider (vLLM, Ollama, self-host)
+// ============================================================================
+
+interface CustomEndpointDraft {
+  id: string;
+  label: string;
+  baseUrl: string;
+  apiKey: string;
+}
+
+function CustomEndpointsSection({
+  apiKeyStatus,
+  setApiKeyStatus,
+}: {
+  apiKeyStatus: Record<string, ApiKeyStatus>;
+  setApiKeyStatus: React.Dispatch<React.SetStateAction<Record<string, ApiKeyStatus>>>;
+}) {
+  // Existing endpoints come from the server — filter apiKeyStatus by id prefix.
+  const saved = useMemo(() => {
+    return Object.entries(apiKeyStatus)
+      .filter(([id]) => id.startsWith(CUSTOM_PROVIDER_PREFIX))
+      .map(([id, status]) => ({ id, ...status }));
+  }, [apiKeyStatus]);
+
+  // Drafts = not-yet-saved entries the user added via "+ Add".
+  const [drafts, setDrafts] = useState<CustomEndpointDraft[]>([]);
+
+  async function refreshStatus() {
+    const res = await fetch("/api/settings");
+    if (res.ok) {
+      const data = await res.json();
+      setApiKeyStatus(data.apiKeyStatus || {});
+    }
+  }
+
+  return (
+    <div className="mt-10">
+      <div className="mb-4">
+        <h3 className="text-[17px] font-bold text-sf-ink tracking-tight">Custom Endpoints</h3>
+        <p className="mt-1 text-[13px] text-sf-ink-3">
+          Connect any OpenAI-compatible provider — vLLM, Ollama, or self-hosted. Add as many as you need.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
+        {saved.map((entry) => (
+          <CustomEndpointCard
+            key={entry.id}
+            initialId={entry.id}
+            initialLabel={entry.label ?? ""}
+            initialBaseUrl={entry.baseUrl ?? ""}
+            maskedKey={entry.maskedKey}
+            onSaved={refreshStatus}
+            onRemoved={() => {
+              setApiKeyStatus((prev) => {
+                const next = { ...prev };
+                delete next[entry.id];
+                return next;
+              });
+            }}
+          />
+        ))}
+        {drafts.map((draft) => (
+          <CustomEndpointCard
+            key={draft.id}
+            initialId={draft.id}
+            initialLabel={draft.label}
+            initialBaseUrl={draft.baseUrl}
+            maskedKey={null}
+            startInEditing
+            onSaved={async () => {
+              setDrafts((d) => d.filter((x) => x.id !== draft.id));
+              await refreshStatus();
+            }}
+            onRemoved={() => {
+              setDrafts((d) => d.filter((x) => x.id !== draft.id));
+            }}
+          />
+        ))}
+      </div>
+
+      <Button
+        variant="outline"
+        className="h-9 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt gap-2"
+        onClick={() => {
+          setDrafts((d) => [
+            ...d,
+            { id: `${CUSTOM_PROVIDER_PREFIX}${uuidv4()}`, label: "", baseUrl: "", apiKey: "" },
+          ]);
+        }}
+      >
+        <Plus className="h-3.5 w-3.5" strokeWidth={2.25} />
+        Add custom endpoint
+      </Button>
+    </div>
+  );
+}
+
+function CustomEndpointCard({
+  initialId,
+  initialLabel,
+  initialBaseUrl,
+  maskedKey,
+  startInEditing = false,
+  onSaved,
+  onRemoved,
+}: {
+  initialId: string;
+  initialLabel: string;
+  initialBaseUrl: string;
+  maskedKey: string | null;
+  startInEditing?: boolean;
+  onSaved: () => void | Promise<void>;
+  onRemoved: () => void;
+}) {
+  const [editing, setEditing] = useState(startInEditing);
+  const [label, setLabel] = useState(initialLabel);
+  const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
+  const [apiKey, setApiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const hasKey = maskedKey !== null;
+
+  async function handleSave() {
+    if (!label.trim() || !baseUrl.trim() || !apiKey.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          apiKeys: {
+            [initialId]: {
+              apiKey: apiKey.trim(),
+              baseUrl: baseUrl.trim(),
+              label: label.trim(),
+            },
+          },
+        }),
+      });
+      if (res.ok) {
+        setApiKey("");
+        setEditing(false);
+        await onSaved();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ apiKeys: { [initialId]: null } }),
+      });
+      if (res.ok) onRemoved();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="p-5 gap-3">
+      <div className="flex items-center justify-between gap-2">
+        {editing ? (
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Endpoint name (e.g. Local Ollama)"
+            className="h-8 rounded-[6px] border-sf-line-strong text-sm font-semibold"
+          />
+        ) : (
+          <h4 className="text-[15px] font-bold text-sf-ink truncate">{label || "Custom endpoint"}</h4>
+        )}
+        {hasKey ? <StatusBadge tone="success">Configured</StatusBadge> : null}
+      </div>
+
+      <FieldLabel>Base URL</FieldLabel>
+      {editing ? (
+        <Input
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
+          placeholder="http://localhost:11434/v1"
+          className="h-9 rounded-[6px] border-sf-line-strong text-[12px] font-mono"
+        />
+      ) : (
+        <div className="h-9 rounded-[6px] border border-sf-line-strong bg-sf-surface-muted px-3 flex items-center font-mono text-[12px] text-sf-ink-3 truncate">
+          {baseUrl || "—"}
+        </div>
+      )}
+
+      <FieldLabel>API Key</FieldLabel>
+      {editing || !hasKey ? (
+        <div className="relative">
+          <Input
+            type={showKey ? "text" : "password"}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-..."
+            className="h-9 rounded-[6px] border-sf-line-strong pr-9 font-mono text-[12px]"
+          />
+          <button
+            type="button"
+            aria-label="Toggle key visibility"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-sf-ink-4 hover:text-sf-ink"
+            onClick={() => setShowKey((v) => !v)}
+          >
+            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+      ) : (
+        <div className="h-9 rounded-[6px] border border-sf-line-strong bg-sf-surface-muted px-3 flex items-center font-mono text-[12px] text-sf-ink-3 truncate">
+          {maskedKey}
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-2 pt-1">
+        {editing ? (
+          <>
+            <Button
+              variant="outline"
+              className="h-8 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt text-xs"
+              onClick={() => (hasKey ? setEditing(false) : onRemoved())}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="h-8 rounded-[6px] bg-sf-accent hover:bg-sf-accent-ink text-white text-xs"
+              onClick={handleSave}
+              disabled={saving || !label.trim() || !baseUrl.trim() || !apiKey.trim()}
+            >
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              className="h-8 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt text-xs"
+              onClick={handleRemove}
+              disabled={saving}
+            >
+              Remove
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt text-xs"
+              onClick={() => setEditing(true)}
+              disabled={saving}
+            >
+              Edit
+            </Button>
+          </>
+        )}
+      </div>
+    </Card>
   );
 }
 

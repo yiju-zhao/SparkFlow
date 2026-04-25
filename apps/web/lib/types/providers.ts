@@ -46,6 +46,8 @@ export interface StoredApiKeys {
   [providerId: string]: {
     apiKey: string;
     baseUrl?: string;
+    /** Display name for user-added custom endpoints. */
+    label?: string;
   };
 }
 
@@ -53,5 +55,11 @@ export interface ApiKeyStatus {
   [providerId: string]: {
     hasKey: boolean;
     maskedKey: string;
+    /** Display name for user-added custom endpoints. */
+    label?: string;
+    /** Saved base URL — only meaningful for custom endpoints. */
+    baseUrl?: string;
   };
 }
+
+export const CUSTOM_PROVIDER_PREFIX = "custom-";
