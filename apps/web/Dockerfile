@@ -1,5 +1,5 @@
 # Base stage
-FROM node:20 AS base
+FROM node:24 AS base
 WORKDIR /app
 
 # Builder stage
