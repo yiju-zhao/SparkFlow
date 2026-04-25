@@ -45,8 +45,10 @@ services:
     command: ["npm", "run", "worker:ingest"]
     env_file: .env
     environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      DATABASE_URL: ${DATABASE_URL}
+      # Override host-side localhost URLs with docker service hostnames.
+      # apps/web/.env uses localhost so `npm run dev` works on the host.
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,12 +59,13 @@ services:
   digest-worker:
     build:
       context: ../agent
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
     env_file: ../agent/.env
     environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Override host-side localhost URL with docker service hostname.
+      REDIS_URL: redis://redis:6379
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
       SEMOPS_API_URL: ${SEMOPS_API_URL}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}

@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1.7
+# Digest worker image — runs `arq workflows.digest_worker.WorkerSettings`.
+# Separate from langgraph-api (which builds its own image via `langgraph build`
+# from langgraph.json). The worker calls back to apps/web over HTTP, so it does
+# NOT need langchain/langgraph/openai — only arq + httpx.
+
+FROM python:3.13-slim
+
+WORKDIR /app
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "arq>=0.25" "httpx" "python-dotenv"
+
+COPY workflows ./workflows
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+CMD ["arq", "workflows.digest_worker.WorkerSettings"]
