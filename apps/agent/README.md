@@ -15,8 +15,29 @@ This directory hosts the LangGraph agent runtime and its supporting modules.
 The `hub` graph uses GenAI Toolbox for deterministic database querying and relies on CopilotKit-provided MCP Apps actions for workflow/presentation rendering.
 
 ## Run Locally
+
+In-process dev server (fastest, no Docker, hot reload):
 ```bash
-langgraph dev --host 0.0.0.0 --port 2024
+make dev
+# equivalent to: langgraph dev --host 0.0.0.0 --port 2024
+```
+
+Full Docker stack (postgres + redis + agent), build once, restart fast:
+```bash
+make build       # only when requirements.txt / pyproject.toml change
+make up          # reuses sparkflow-agent:dev image, skips rebuild
+make up-fresh    # force rebuild (after dep changes)
+```
+
+### Optional: BGE-M3 embeddings for offline backfill
+
+`scripts/backfill_*.py` need BGE-M3 (pulls torch + transformers, ~800MB).
+Not installed by default to keep the agent image lean. Install only on
+machines that run those scripts:
+```bash
+pip install -r requirements-embeddings.txt
+# or, if working from pyproject:
+pip install -e ".[embeddings]"
 ```
 
 ## Key Environment Variables

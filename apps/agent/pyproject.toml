@@ -20,8 +20,6 @@ dependencies = [
     "copilotkit",
     "deepagents",
     "tavily-python",
-    # BGE-M3 embeddings (CPU) — drives the search-agent prefilter.
-    "FlagEmbedding>=1.2",
     # Workflow server
     "fastapi>=0.109",
     "uvicorn[standard]>=0.27",
@@ -39,4 +37,11 @@ dev = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
     "pytest-mock>=3.12",
+]
+# BGE-M3 (CPU) — pulls torch + transformers (~800MB).
+# Only the offline backfill scripts use it; LangGraph runtime does not.
+# Install separately on machines that run those scripts:
+#   pip install -e ".[embeddings]"
+embeddings = [
+    "FlagEmbedding>=1.2",
 ]
