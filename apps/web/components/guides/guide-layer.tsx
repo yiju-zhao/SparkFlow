@@ -167,6 +167,10 @@ export function GuideLayer({
         return;
       }
       const target = e.target as HTMLElement | null;
+      // Skip events that originated inside the guide overlay — the bubble's
+      // Next / Back buttons handle Enter natively, so letting the window
+      // listener ALSO fire would advance twice.
+      if (target?.closest("[data-guide-portal]")) return;
       const tag = target?.tagName;
       const isEditable =
         tag === "INPUT" ||

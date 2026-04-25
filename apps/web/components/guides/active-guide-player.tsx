@@ -103,22 +103,51 @@ export function ActiveGuidePlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGuideId, stepIndex]);
 
-  // While a guide is running, block every click that isn't part of the
-  // guide's own overlay (Next / Back / Close). Even the highlighted target
-  // is blocked — the guide's triggers drive all UI state programmatically
-  // so the user only interacts with the bubble.
+  // While a guide is running, the guide's own overlay (Next / Back / Close)
+  // is the ONLY interactive surface. Block clicks, keystrokes, and focus on
+  // every other element so the user can't type into highlighted inputs,
+  // submit forms, or tab into the page.
   useEffect(() => {
     if (!guide || !step) return;
 
+    function isInPortal(target: EventTarget | null) {
+      return target instanceof HTMLElement && Boolean(target.closest("[data-guide-portal]"));
+    }
+
     function onClick(e: MouseEvent) {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      if (target.closest("[data-guide-portal]")) return;
+      if (isInPortal(e.target)) return;
       e.stopImmediatePropagation();
       e.preventDefault();
     }
+
+    // preventDefault on keydown suppresses character insertion and default
+    // actions (form submit, button-as-Enter) while still letting the guide's
+    // own window-level keyboard handler bubble up to handle Next / Back /
+    // Escape. Don't stopImmediatePropagation — that would kill the guide
+    // handler too.
+    function onKeyDown(e: KeyboardEvent) {
+      if (isInPortal(e.target)) return;
+      e.preventDefault();
+    }
+
+    // Radix focus traps re-focus the first input when a dialog opens. Steal
+    // focus back onto body so highlighted inputs don't get a visible cursor.
+    function onFocusIn(e: FocusEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest("[data-guide-portal]")) return;
+      if (target === document.body) return;
+      target.blur();
+    }
+
     document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("focusin", onFocusIn, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("focusin", onFocusIn, true);
+    };
   }, [guide, step]);
 
   if (!guide || !step) return null;

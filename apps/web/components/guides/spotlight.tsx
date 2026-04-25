@@ -147,6 +147,7 @@ export function Spotlight({
         return;
       }
       const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-guide-portal]")) return;
       const tag = target?.tagName;
       const isEditable =
         tag === "INPUT" ||
