@@ -262,6 +262,3 @@ async function downloadAndExtractZip(zipUrl: string): Promise<MineruResult> {
   const arrayBuffer = await response.arrayBuffer();
   return extractFromZipBuffer(arrayBuffer);
 }
-
-// Alias — MinerU handles PDF/DOCX/PPT uniformly
-export const parseDocumentViaMineru = parsePdf;
