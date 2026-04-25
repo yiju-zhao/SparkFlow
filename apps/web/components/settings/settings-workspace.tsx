@@ -129,12 +129,21 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
   const [wechatSources, setWechatSources] = useState<WechatSource[]>([]);
   const [wechatExcluded, setWechatExcluded] = useState<Set<number>>(new Set());
   const [wechatLoading, setWechatLoading] = useState(true);
+  const mainScrollRef = useRef<HTMLElement>(null);
 
   // Read active section from URL hash on mount
   useEffect(() => {
     const hash = window.location.hash.replace("#", "") as SectionId;
     if (NAV_ITEMS.some((n) => n.id === hash)) setActive(hash);
   }, []);
+
+  // Reset the content pane to the top whenever the section changes. Without
+  // this, opening e.g. /settings#api-keys would leave scroll wherever the
+  // browser's scroll restoration landed it — which on a refresh is often
+  // the bottom of the previously-rendered section.
+  useEffect(() => {
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [active]);
 
   const handleSelect = useCallback((id: SectionId) => {
     setActive(id);
@@ -209,7 +218,7 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
 
       <div className="flex flex-1 overflow-hidden">
         <SettingsSidebar active={active} onSelect={handleSelect} user={user} />
-        <main className="flex-1 overflow-y-auto bg-sf-bg">
+        <main ref={mainScrollRef} className="flex-1 overflow-y-auto bg-sf-bg">
           <div className="mx-auto max-w-[1040px] px-10 py-10">
             {active === "models" && (
               <AiModelsSection initialSettings={initialSettings} config={config} />
