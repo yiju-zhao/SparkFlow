@@ -111,10 +111,11 @@ export function ChatPanel({
       })) as Message[],
   );
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
-  // Track which session was preloaded to avoid refetching (immutable, use ref)
-  const preloadedSessionId = useRef<string | null>(
+  // Immutable snapshot of the preloaded session id — use lazy useState so we
+  // never read `.current` on a ref during render (react-hooks/refs).
+  const [preloadedSessionId] = useState<string | null>(() =>
     initialSessions.length > 0 ? initialSessions[0].id : null,
-  ).current;
+  );
 
   // Input state
   const [input, setInput] = useState("");
@@ -211,6 +212,24 @@ export function ChatPanel({
     }
   }, [sessionMessages, stream.messages]);
 
+  // Get message content as string — declared before the useEffects that
+  // consume it so we don't trip react-hooks/refs (access-before-declared).
+  const getMessageContent = (message: Message): string => {
+    if (typeof message.content === "string") return message.content;
+    if (Array.isArray(message.content)) {
+      return message.content
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (typeof item === "object" && item && "text" in item)
+            return (item as { text: string }).text;
+          return "";
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+    return "";
+  };
+
   // Save messages to database when streaming completes
   useEffect(() => {
     const wasLoading = prevIsLoadingRef.current;
@@ -267,14 +286,24 @@ export function ChatPanel({
     }
   }, [stream.isLoading, stream.error, stream.messages, streamSessionId, notebookId]);
 
-  // Load stored messages for the active session
-  const hasLoadedPreloaded = useRef(preloadedSessionId !== null && initialMessages.length > 0);
+  // Load stored messages for the active session. The flag starts null and is
+  // initialized on the first effect run so we never read a ref's value during
+  // render (react-hooks/refs).
+  const hasLoadedPreloaded = useRef<boolean | null>(null);
+
+  // Reset messages when the session is cleared — setState-during-render
+  // pattern with a sentinel, so we never call setState inside an effect.
+  const [lastActiveSessionId, setLastActiveSessionId] = useState(activeSessionId);
+  if (activeSessionId !== lastActiveSessionId) {
+    setLastActiveSessionId(activeSessionId);
+    if (!activeSessionId) setSessionMessages([]);
+  }
 
   useEffect(() => {
-    if (!activeSessionId) {
-      setSessionMessages([]);
-      return;
+    if (hasLoadedPreloaded.current === null) {
+      hasLoadedPreloaded.current = preloadedSessionId !== null && initialMessages.length > 0;
     }
+    if (!activeSessionId) return;
 
     // Skip fetch on initial mount if this is the preloaded session
     if (activeSessionId === preloadedSessionId && hasLoadedPreloaded.current) {
@@ -312,6 +341,10 @@ export function ChatPanel({
     return () => {
       isMounted = false;
     };
+    // initialMessages.length is only read once at mount (via hasLoadedPreloaded
+    // initialization); re-running the effect when it changes would defeat the
+    // very skip-refetch logic we're guarding.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessionId, preloadedSessionId]);
 
   // Save AI response to Notes panel
@@ -519,22 +552,6 @@ export function ChatPanel({
     });
   };
 
-  // Get message content as string
-  const getMessageContent = (message: Message): string => {
-    if (typeof message.content === "string") return message.content;
-    if (Array.isArray(message.content)) {
-      return message.content
-        .map((item) => {
-          if (typeof item === "string") return item;
-          if (typeof item === "object" && item && "text" in item)
-            return (item as { text: string }).text;
-          return "";
-        })
-        .filter(Boolean)
-        .join("\n");
-    }
-    return "";
-  };
 
   const displayMessages =
     streamSessionId && streamSessionId === activeSessionId && stream.messages.length > 0
@@ -579,6 +596,7 @@ export function ChatPanel({
         </div>
         <div className="flex items-center gap-1.5">
           <Button
+            data-guide="chat-history-button"
             variant="ghost"
             size="sm"
             className="h-8 w-8 rounded-[6px] hover:bg-sf-bg-alt"
@@ -839,7 +857,7 @@ export function ChatPanel({
         </div>
       )}
       {/* Input — white card with circular blue send (Sparkflow DS card + primary contract) */}
-      <div className="px-6 py-4 bg-sf-surface flex">
+      <div data-guide="chat-input" className="px-6 py-4 bg-sf-surface flex">
         <form
           onSubmit={handleSubmit}
           className="relative w-full flex rounded-[10px] border border-sf-line bg-sf-surface focus-within:border-sf-accent focus-within:ring-2 focus-within:ring-sf-accent-soft transition-colors"
@@ -863,6 +881,7 @@ export function ChatPanel({
           />
           <button
             type="submit"
+            data-guide="chat-send-button"
             disabled={!input.trim() || stream.isLoading}
             className="absolute right-2 bottom-2 h-9 w-9 flex items-center justify-center rounded-full bg-sf-accent text-white hover:bg-sf-accent-ink disabled:bg-sf-line-strong disabled:text-white/70 transition-colors"
             title="Send"

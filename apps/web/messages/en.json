@@ -411,5 +411,198 @@
     "switch": "Switch Language",
     "en": "English",
     "zh": "中文"
+  },
+  "guides": {
+    "button": {
+      "openGuides": "Open guides"
+    },
+    "drawer": {
+      "title": "Guides",
+      "close": "Close",
+      "search": "Search guides...",
+      "replayTour": "▶ Replay first-run tour",
+      "step": "Step {n} / {total}"
+    },
+    "category": {
+      "deepdive": "DeepDive",
+      "explore": "Explore",
+      "account": "Account"
+    },
+    "action": {
+      "play": "Play",
+      "read": "Read",
+      "dismiss": "Don't show again"
+    },
+    "tour": {
+      "welcomeTitle": "Welcome to SparkFlow",
+      "welcomeBody": "Take a 5-minute tour of the essentials?",
+      "start": "Start tour",
+      "skip": "Skip for now",
+      "next": "Next",
+      "prev": "Back",
+      "finish": "Finish",
+      "close": "Close",
+      "skipToast": "Reopen anytime from the ? button"
+    },
+    "createNotebook": {
+      "title": "Create a notebook",
+      "summary": "Every research project gets its own workspace.",
+      "step1": {
+        "title": "New Notebook button",
+        "body": "Opens the new-notebook dialog."
+      },
+      "step2": {
+        "title": "Name",
+        "body": "A short, distinctive name."
+      },
+      "step3": {
+        "title": "Description (optional)",
+        "body": "One line about what you're researching."
+      },
+      "step4": {
+        "title": "Create",
+        "body": "Click Create to save."
+      }
+    },
+    "addSources": {
+      "title": "Add sources",
+      "summary": "Upload files, folders, or URLs — up to 50 at once.",
+      "step1": {
+        "title": "Let's add some sources",
+        "body": "We'll jump into your most recent notebook and walk through the Add Source dialog."
+      },
+      "step2": {
+        "title": "Open the Add Source dialog",
+        "body": "Click the Add Source button to open the importer. You can also just press Next."
+      },
+      "step3": {
+        "title": "Pick files or a folder",
+        "body": "Drop files here or choose a whole folder — up to 50 at a time."
+      },
+      "step4": {
+        "title": "Or paste URLs",
+        "body": "Switch to Websites to import web pages by URL."
+      },
+      "step5": {
+        "title": "Insert to finish",
+        "body": "When you're ready, click Insert and SparkFlow indexes everything in the background."
+      }
+    },
+    "byokApiKeys": {
+      "title": "Add your API key",
+      "summary": "Your provider keys unlock chat, wiki, and matcher.",
+      "step1": {
+        "title": "Settings → API Keys",
+        "body": "This is where every provider's credentials live."
+      },
+      "step2": {
+        "title": "Pick a provider, paste, Save",
+        "body": "Each provider has a card. Open one, paste your key, Save — encrypted at rest. Custom handles any OpenAI-compatible endpoint (vLLM, Ollama, self-hosted)."
+      }
+    },
+    "chatWithAi": {
+      "title": "Chat with AI",
+      "summary": "Questions grounded in your sources — answers cite the original.",
+      "step1": {
+        "title": "Type your question",
+        "body": "AI cites exact passages so you can verify."
+      },
+      "step2": {
+        "title": "Send",
+        "body": "Or press Enter. Shift+Enter for a newline."
+      },
+      "step3": {
+        "title": "History",
+        "body": "Every session is saved — jump back in anytime."
+      }
+    },
+    "wikiGraph": {
+      "title": "Wiki knowledge graph",
+      "summary": "Auto-built wiki of entities, concepts, and connections.",
+      "step1": {
+        "title": "Wiki tab",
+        "body": "SparkFlow builds a wiki from your sources as they're added."
+      },
+      "step2": {
+        "title": "Knowledge Base",
+        "body": "One page per entity or concept. Click to read."
+      },
+      "step3": {
+        "title": "Relationship Graph",
+        "body": "The same concepts as a force-directed graph."
+      },
+      "step4": {
+        "title": "Full-screen",
+        "body": "The expand icon in the top-right opens the graph full-screen for deeper exploration."
+      }
+    },
+    "notes": {
+      "title": "Notes",
+      "summary": "Personal markdown notes attached to a notebook.",
+      "step1": {
+        "title": "Notes tab",
+        "body": "Your markdown alongside the AI output."
+      },
+      "step2": {
+        "title": "New note",
+        "body": "Opens the create-note dialog."
+      },
+      "step3": {
+        "title": "Title",
+        "body": "A short title to scan later."
+      },
+      "step4": {
+        "title": "Content",
+        "body": "Full markdown — lists, code, headings, links."
+      },
+      "step5": {
+        "title": "Create",
+        "body": "Click Create to save."
+      }
+    },
+    "conferences": {
+      "title": "Browse conferences",
+      "summary": "Venues, instances, sessions, and publications.",
+      "step1": {
+        "title": "Venue",
+        "body": "Pick a conference or leave as All."
+      },
+      "step2": {
+        "title": "Year",
+        "body": "Narrow to a specific instance."
+      },
+      "step3": {
+        "title": "Drill in",
+        "body": "Click any card for that instance's publications, sessions, and charts."
+      }
+    },
+    "matcher": {
+      "title": "Matcher",
+      "summary": "Match a query against thousands of sessions.",
+      "step1": {
+        "title": "Upload queries",
+        "body": "Drop an .xlsx / .csv with BU + Query columns, or paste rows directly."
+      },
+      "step2": {
+        "title": "Continue in the wizard",
+        "body": "After upload it walks you through target, topK, and run. We don't start a real job for you."
+      }
+    },
+    "wechat": {
+      "title": "WeChat articles",
+      "summary": "Browse the WeChat article corpus.",
+      "step1": {
+        "title": "Filter by source",
+        "body": "Pick an account; click again to reset."
+      },
+      "step2": {
+        "title": "Sort",
+        "body": "Latest, most-shared, or highest impact."
+      },
+      "step3": {
+        "title": "Open an article",
+        "body": "Click any row for full text plus extracted images."
+      }
+    }
   }
 }

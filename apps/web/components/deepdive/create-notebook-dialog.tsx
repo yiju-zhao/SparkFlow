@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createNotebook } from "@/lib/actions/notebooks";
 import Link from "next/link";
+import { useGuides } from "@/components/guides/guide-provider";
 
 export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } = {}) {
   const [open, setOpen] = useState(false);
@@ -21,6 +22,24 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
   const [description, setDescription] = useState("");
   const [isPending, startTransition] = useTransition();
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null); // null = loading
+
+  // Expose open/close to the guide player so the create-notebook walkthrough
+  // can drive this dialog programmatically.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisterOpen = registerGuideAction("open-create-notebook", () => {
+      setOpen(true);
+    });
+    const unregisterClose = registerGuideAction("close-create-notebook", () => {
+      setOpen(false);
+      setName("");
+      setDescription("");
+    });
+    return () => {
+      unregisterOpen();
+      unregisterClose();
+    };
+  }, [registerGuideAction]);
 
   // Check if user has an API key for their active provider
   useEffect(() => {
@@ -57,13 +76,23 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button className="gap-2">
+          <Button data-guide="new-notebook-button" className="gap-2">
             <Plus className="h-4 w-4" />
             New Notebook
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(event) => {
+          // Don't close when the click lands inside the guide overlay — that
+          // overlay's Next / Back belong to the guide flow, not the dialog.
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-guide-portal]")) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create Notebook</DialogTitle>
         </DialogHeader>
@@ -99,6 +128,7 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
               </label>
               <Input
                 id="name"
+                data-guide="notebook-name-field"
                 placeholder="My Research Notebook"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -111,6 +141,7 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
               </label>
               <Textarea
                 id="description"
+                data-guide="notebook-description-field"
                 placeholder="A brief description of this notebook..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -129,6 +160,7 @@ export function CreateNotebookDialog({ trigger }: { trigger?: React.ReactNode } 
               </Button>
               <Button
                 type="submit"
+                data-guide="notebook-create-button"
                 disabled={isPending || !name.trim() || hasApiKey === null}
               >
                 {hasApiKey === null ? "Checking..." : isPending ? "Creating..." : "Create"}

@@ -48,7 +48,7 @@ export function ConferencesFilterBar({ venues, years }: ConferencesFilterBarProp
     >
       <div className="flex flex-wrap items-end gap-3">
         {/* Venue */}
-        <div className="flex flex-col gap-1.5 min-w-[180px]">
+        <div data-guide="conf-filter-venue" className="flex flex-col gap-1.5 min-w-[180px]">
           <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-sf-ink-3">
             Venue
           </label>
@@ -71,7 +71,7 @@ export function ConferencesFilterBar({ venues, years }: ConferencesFilterBarProp
         </div>
 
         {/* Year */}
-        <div className="flex flex-col gap-1.5 min-w-[120px]">
+        <div data-guide="conf-filter-year" className="flex flex-col gap-1.5 min-w-[120px]">
           <label className="text-[11px] font-bold uppercase tracking-[0.14em] text-sf-ink-3">
             Year
           </label>

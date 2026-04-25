@@ -10,14 +10,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useGuides } from "@/components/guides/guide-provider";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => setMounted(true));
   }, []);
+
+  // Expose menu open/close to the guide player so the language-theme guide
+  // can walk the user into the dropdown content.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisterOpen = registerGuideAction("theme-menu:open", () => setMenuOpen(true));
+    const unregisterClose = registerGuideAction("theme-menu:close", () => setMenuOpen(false));
+    return () => {
+      unregisterOpen();
+      unregisterClose();
+    };
+  }, [registerGuideAction]);
 
   if (!mounted) {
     return (
@@ -28,9 +42,9 @@ export function ThemeToggle() {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
+        <Button data-guide="theme-toggle" variant="ghost" size="icon" className="h-8 w-8">
           {theme === "dark" ? (
             <Moon className="h-4 w-4" />
           ) : theme === "light" ? (
@@ -40,7 +54,7 @@ export function ThemeToggle() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent data-guide="theme-menu-content" align="end">
         <DropdownMenuItem onClick={() => setTheme("light")}>
           <Sun className="mr-2 h-4 w-4" />
           Light

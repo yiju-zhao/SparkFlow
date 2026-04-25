@@ -19,13 +19,15 @@ interface ResearchAssistantPanelProps {
 export function ResearchAssistantTrigger({ onClick }: { onClick: () => void }) {
   return (
     <motion.button
+      type="button"
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#00D084] px-5 py-3 text-sm font-medium text-white shadow-lg hover:shadow-xl transition-shadow"
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
+      aria-label="Research Assistant"
+      title="Research Assistant"
+      className="fixed top-20 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#00D084] text-white shadow-lg transition-shadow hover:shadow-xl"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
     >
-      <Sparkles className="h-4 w-4" />
-      Research Assistant
+      <Sparkles className="h-5 w-5" />
     </motion.button>
   );
 }

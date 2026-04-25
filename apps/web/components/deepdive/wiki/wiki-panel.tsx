@@ -270,14 +270,17 @@ export function WikiPanel({
     return entityToCommunity[slug] || slug;
   };
 
-  // Handle external navigation (e.g. from chat [[wiki-link]] clicks)
-  useEffect(() => {
+  // Handle external navigation (e.g. from chat [[wiki-link]] clicks) via the
+  // setState-during-render pattern. Using a useEffect here would trip
+  // react-hooks/set-state-in-effect.
+  const [lastNavigateSlug, setLastNavigateSlug] = useState(navigateToSlug);
+  if (navigateToSlug !== lastNavigateSlug) {
+    setLastNavigateSlug(navigateToSlug);
     if (navigateToSlug) {
       setSelectedSlug(resolveSlug(navigateToSlug));
       onNavigateComplete?.();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigateToSlug]);
+  }
 
   // Notify parent so the right rail can widen on page open and restore on close.
   useEffect(() => {
@@ -301,6 +304,7 @@ export function WikiPanel({
     <div ref={splitContainerRef} className="flex h-full flex-col bg-sf-bg">
       {/* === TOP: Pages List === */}
       <div
+        data-guide="wiki-pages-section"
         className="flex flex-col overflow-hidden"
         style={{ height: `${topPercent}%` }}
       >
@@ -346,6 +350,7 @@ export function WikiPanel({
 
       {/* === BOTTOM: Graph === */}
       <div
+        data-guide="wiki-graph-section"
         className="flex flex-col overflow-hidden bg-sf-surface"
         style={{ height: `${100 - topPercent}%` }}
       >
@@ -369,6 +374,7 @@ export function WikiPanel({
               />
             </Button>
             <Button
+              data-guide="wiki-graph-expand"
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt"
@@ -644,14 +650,17 @@ function WikiPageView({
     }
   };
 
-  // Resolve source IDs to titles for display
+  // Resolve source IDs to titles for display. Extracting sourceRefs into its
+  // own constant keeps the useMemo dep list stable (react-compiler can't
+  // preserve memoization with an optional-chain expression).
+  const sourceRefs = page?.sourceRefs;
   const sourceTitles = useMemo(() => {
-    if (!page?.sourceRefs) return [];
-    return page.sourceRefs.map((id) => ({
+    if (!sourceRefs) return [];
+    return sourceRefs.map((id) => ({
       id,
       title: sourceMap[id] || id.slice(0, 8) + "...",
     }));
-  }, [page?.sourceRefs, sourceMap]);
+  }, [sourceRefs, sourceMap]);
 
   return (
     <div className="flex h-full flex-col bg-sf-surface">

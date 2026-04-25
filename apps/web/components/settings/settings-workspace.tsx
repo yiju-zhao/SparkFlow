@@ -28,6 +28,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SparkflowLockup } from "@/components/ui/sparkflow-lockup";
+import { useGuides } from "@/components/guides/guide-provider";
+import { v4 as uuidv4 } from "uuid";
+import { CUSTOM_PROVIDER_PREFIX } from "@/lib/types/providers";
 
 // ============================================================================
 // Types
@@ -82,6 +85,8 @@ interface InitialSettings {
 interface ApiKeyStatus {
   hasKey: boolean;
   maskedKey: string;
+  label?: string;
+  baseUrl?: string;
 }
 
 interface SettingsUser {
@@ -107,7 +112,6 @@ const API_KEY_PROVIDERS: {
   { id: "glm", label: "GLM (Zhipu)", description: "GLM-4, GLM-4-Air", placeholder: "..." },
   { id: "minimax", label: "Minimax", description: "MiniMax-ABAB, Text", placeholder: "..." },
   { id: "kimi", label: "Kimi (Moonshot)", description: "Moonshot v1", placeholder: "sk-..." },
-  { id: "custom", label: "Custom", description: "Self-hosted OpenAI-compatible", placeholder: "sk-..." },
 ];
 
 const NAV_ITEMS: { id: SectionId; label: string; icon: typeof Cpu }[] = [
@@ -122,18 +126,27 @@ const NAV_ITEMS: { id: SectionId; label: string; icon: typeof Cpu }[] = [
 // ============================================================================
 
 export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspaceProps) {
-  const [active, setActive] = useState<SectionId>("models");
+  // Read active section from URL hash synchronously on mount so we don't
+  // trip the react-hooks/set-state-in-effect rule with a post-mount setState.
+  const [active, setActive] = useState<SectionId>(() => {
+    if (typeof window === "undefined") return "models";
+    const hash = window.location.hash.replace("#", "") as SectionId;
+    return NAV_ITEMS.some((n) => n.id === hash) ? hash : "models";
+  });
   const [config, setConfig] = useState<ModelsConfig | null>(null);
   const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, ApiKeyStatus>>({});
   const [wechatSources, setWechatSources] = useState<WechatSource[]>([]);
   const [wechatExcluded, setWechatExcluded] = useState<Set<number>>(new Set());
   const [wechatLoading, setWechatLoading] = useState(true);
+  const mainScrollRef = useRef<HTMLElement>(null);
 
-  // Read active section from URL hash on mount
+  // Reset the content pane to the top whenever the section changes. Without
+  // this, opening e.g. /settings#api-keys would leave scroll wherever the
+  // browser's scroll restoration landed it — which on a refresh is often
+  // the bottom of the previously-rendered section.
   useEffect(() => {
-    const hash = window.location.hash.replace("#", "") as SectionId;
-    if (NAV_ITEMS.some((n) => n.id === hash)) setActive(hash);
-  }, []);
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [active]);
 
   const handleSelect = useCallback((id: SectionId) => {
     setActive(id);
@@ -141,6 +154,18 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
       window.history.replaceState(null, "", `#${id}`);
     }
   }, []);
+
+  // Expose section navigation to the guide player so settings guides (byok)
+  // can open the right section programmatically.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisters = NAV_ITEMS.map(({ id }) =>
+      registerGuideAction(`settings:open-${id}`, () => handleSelect(id)),
+    );
+    return () => {
+      for (const u of unregisters) u();
+    };
+  }, [registerGuideAction, handleSelect]);
 
   // Bootstrap: fetch model config + settings + wechat sources
   useEffect(() => {
@@ -196,7 +221,7 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
 
       <div className="flex flex-1 overflow-hidden">
         <SettingsSidebar active={active} onSelect={handleSelect} user={user} />
-        <main className="flex-1 overflow-y-auto bg-sf-bg">
+        <main ref={mainScrollRef} className="flex-1 overflow-y-auto bg-sf-bg">
           <div className="mx-auto max-w-[1040px] px-10 py-10">
             {active === "models" && (
               <AiModelsSection initialSettings={initialSettings} config={config} />
@@ -252,6 +277,7 @@ function SettingsSidebar({
             <button
               key={id}
               type="button"
+              data-guide={`settings-nav-${id}`}
               onClick={() => onSelect(id)}
               className={`flex items-center gap-3 h-10 px-3 rounded-[8px] text-[13.5px] font-medium transition-colors ${
                 isActive
@@ -367,7 +393,9 @@ function AiModelsSection({
   );
   const [matcherModel, setMatcherModel] = useState(initialSettings?.semopsModelName ?? "");
 
-  const baselineRef = useRef(initialSettings);
+  // Baseline is regular state — reading a ref's `.current` during render is
+  // flagged by the react-hooks/refs rule.
+  const [baseline, setBaseline] = useState(initialSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -386,36 +414,45 @@ function AiModelsSection({
     [getModels],
   );
 
-  // Reset model when provider changes
-  useEffect(() => {
+  // Reset model when provider changes — use the setState-during-render
+  // pattern (React 19 idiom) with a "last seen provider" sentinel instead
+  // of a useEffect, which would trip react-hooks/set-state-in-effect.
+  const [lastChatProvider, setLastChatProvider] = useState(chatProvider);
+  if (chatProvider !== lastChatProvider) {
+    setLastChatProvider(chatProvider);
     const ids = getModelIds(chatProvider);
     if (ids.length > 0 && !ids.includes(chatModel)) setChatModel(ids[0]);
-  }, [chatProvider, getModelIds, chatModel]);
-  useEffect(() => {
+  }
+  const [lastWikiProvider, setLastWikiProvider] = useState(wikiProvider);
+  if (wikiProvider !== lastWikiProvider) {
+    setLastWikiProvider(wikiProvider);
     const ids = getModelIds(wikiProvider);
     if (ids.length > 0 && !ids.includes(wikiModel)) setWikiModel(ids[0]);
-  }, [wikiProvider, getModelIds, wikiModel]);
-  useEffect(() => {
+  }
+  const [lastSearchProvider, setLastSearchProvider] = useState(searchProvider);
+  if (searchProvider !== lastSearchProvider) {
+    setLastSearchProvider(searchProvider);
     const ids = getModelIds(searchProvider);
     if (ids.length > 0 && !ids.includes(searchModel)) setSearchModel(ids[0]);
-  }, [searchProvider, getModelIds, searchModel]);
-  useEffect(() => {
+  }
+  const [lastMatcherProvider, setLastMatcherProvider] = useState(matcherProvider);
+  if (matcherProvider !== lastMatcherProvider) {
+    setLastMatcherProvider(matcherProvider);
     const ids = getModelIds(matcherProvider);
     if (ids.length > 0 && !ids.includes(matcherModel)) setMatcherModel(ids[0]);
-  }, [matcherProvider, getModelIds, matcherModel]);
+  }
 
   // Normalize null → "" so a never-configured user is NOT treated as dirty
   // and Discard doesn't widen the state to nullable.
-  const b = baselineRef.current;
   const isDirty =
-    (b?.modelProvider ?? "") !== chatProvider ||
-    (b?.modelName ?? "") !== chatModel ||
-    (b?.wikiModelProvider ?? "") !== wikiProvider ||
-    (b?.wikiModelName ?? "") !== wikiModel ||
-    (b?.searchModelProvider ?? "") !== searchProvider ||
-    (b?.searchModelName ?? "") !== searchModel ||
-    (b?.semopsModelProvider ?? "") !== matcherProvider ||
-    (b?.semopsModelName ?? "") !== matcherModel;
+    (baseline?.modelProvider ?? "") !== chatProvider ||
+    (baseline?.modelName ?? "") !== chatModel ||
+    (baseline?.wikiModelProvider ?? "") !== wikiProvider ||
+    (baseline?.wikiModelName ?? "") !== wikiModel ||
+    (baseline?.searchModelProvider ?? "") !== searchProvider ||
+    (baseline?.searchModelName ?? "") !== searchModel ||
+    (baseline?.semopsModelProvider ?? "") !== matcherProvider ||
+    (baseline?.semopsModelName ?? "") !== matcherModel;
 
   // Save is gated: user must pick all 8 slots (4 provider+model pairs).
   const allPicked =
@@ -429,15 +466,15 @@ function AiModelsSection({
     !!matcherModel;
 
   const handleDiscard = () => {
-    if (!b) return;
-    setChatProvider(b.modelProvider ?? "");
-    setChatModel(b.modelName ?? "");
-    setWikiProvider(b.wikiModelProvider ?? "");
-    setWikiModel(b.wikiModelName ?? "");
-    setSearchProvider(b.searchModelProvider ?? "");
-    setSearchModel(b.searchModelName ?? "");
-    setMatcherProvider(b.semopsModelProvider ?? "");
-    setMatcherModel(b.semopsModelName ?? "");
+    if (!baseline) return;
+    setChatProvider(baseline.modelProvider ?? "");
+    setChatModel(baseline.modelName ?? "");
+    setWikiProvider(baseline.wikiModelProvider ?? "");
+    setWikiModel(baseline.wikiModelName ?? "");
+    setSearchProvider(baseline.searchModelProvider ?? "");
+    setSearchModel(baseline.searchModelName ?? "");
+    setMatcherProvider(baseline.semopsModelProvider ?? "");
+    setMatcherModel(baseline.semopsModelName ?? "");
   };
 
   const handleSave = async () => {
@@ -459,7 +496,7 @@ function AiModelsSection({
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Save failed");
-      baselineRef.current = payload;
+      setBaseline(payload);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 1800);
     } catch (error) {
@@ -719,22 +756,21 @@ function ApiKeysSection({
         description="Connect your preferred AI model providers by securely adding your API keys below. SparkFlow never stores your keys in plain text."
       />
 
-      <div className="mb-6">
-        <div className="rounded-[10px] bg-sf-accent-soft border-l-4 border-sf-accent px-4 py-3 flex items-start gap-3">
-          <Info className="h-4 w-4 text-sf-accent-ink shrink-0 mt-0.5" strokeWidth={2} />
-          <div>
-            <p className="text-[13px] font-bold text-sf-accent-ink">Security Notice</p>
-            <p className="mt-0.5 text-[12.5px] text-sf-accent-ink/80">
-              Keys are encrypted at rest using AES-256 and are only decrypted temporarily during inference requests.
-            </p>
-          </div>
+      <div data-guide="api-keys-section" className="mb-6">
+        <div className="rounded-[10px] bg-sf-accent-soft border-l-4 border-sf-accent px-4 py-2 flex items-center gap-3">
+          <Info className="h-4 w-4 text-sf-accent-ink shrink-0" strokeWidth={2} />
+          <p className="text-[12.5px] text-sf-accent-ink">
+            <span className="font-bold">Security Notice</span>
+            <span className="mx-2 text-sf-accent-ink/50">·</span>
+            <span className="text-sf-accent-ink/80">Keys are encrypted at rest using AES-256.</span>
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
         {API_KEY_PROVIDERS.map((provider) => (
+          <div key={provider.id} data-guide={provider.id === "openai" ? "provider-card-openai" : undefined}>
           <ProviderKeyCard
-            key={provider.id}
             provider={provider}
             status={apiKeyStatus[provider.id]}
             onSaved={async () => {
@@ -752,11 +788,280 @@ function ApiKeysSection({
               });
             }}
           />
+          </div>
         ))}
       </div>
 
-      <CustomEndpointsCard />
+      <CustomEndpointsSection
+        apiKeyStatus={apiKeyStatus}
+        setApiKeyStatus={setApiKeyStatus}
+      />
     </>
+  );
+}
+
+// ============================================================================
+// Custom endpoints — any OpenAI-compatible provider (vLLM, Ollama, self-host)
+// ============================================================================
+
+interface CustomEndpointDraft {
+  id: string;
+  label: string;
+  baseUrl: string;
+  apiKey: string;
+}
+
+function CustomEndpointsSection({
+  apiKeyStatus,
+  setApiKeyStatus,
+}: {
+  apiKeyStatus: Record<string, ApiKeyStatus>;
+  setApiKeyStatus: React.Dispatch<React.SetStateAction<Record<string, ApiKeyStatus>>>;
+}) {
+  // Existing endpoints come from the server — filter apiKeyStatus by id prefix.
+  const saved = useMemo(() => {
+    return Object.entries(apiKeyStatus)
+      .filter(([id]) => id.startsWith(CUSTOM_PROVIDER_PREFIX))
+      .map(([id, status]) => ({ id, ...status }));
+  }, [apiKeyStatus]);
+
+  // Drafts = not-yet-saved entries the user added via "+ Add".
+  const [drafts, setDrafts] = useState<CustomEndpointDraft[]>([]);
+
+  async function refreshStatus() {
+    const res = await fetch("/api/settings");
+    if (res.ok) {
+      const data = await res.json();
+      setApiKeyStatus(data.apiKeyStatus || {});
+    }
+  }
+
+  return (
+    <div className="mt-10">
+      <div className="mb-4">
+        <h3 className="text-[17px] font-bold text-sf-ink tracking-tight">Custom Endpoints</h3>
+        <p className="mt-1 text-[13px] text-sf-ink-3">
+          Connect any OpenAI-compatible provider — vLLM, Ollama, or self-hosted. Add as many as you need.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
+        {saved.map((entry) => (
+          <CustomEndpointCard
+            key={entry.id}
+            initialId={entry.id}
+            initialLabel={entry.label ?? ""}
+            initialBaseUrl={entry.baseUrl ?? ""}
+            maskedKey={entry.maskedKey}
+            onSaved={refreshStatus}
+            onRemoved={() => {
+              setApiKeyStatus((prev) => {
+                const next = { ...prev };
+                delete next[entry.id];
+                return next;
+              });
+            }}
+          />
+        ))}
+        {drafts.map((draft) => (
+          <CustomEndpointCard
+            key={draft.id}
+            initialId={draft.id}
+            initialLabel={draft.label}
+            initialBaseUrl={draft.baseUrl}
+            maskedKey={null}
+            startInEditing
+            onSaved={async () => {
+              setDrafts((d) => d.filter((x) => x.id !== draft.id));
+              await refreshStatus();
+            }}
+            onRemoved={() => {
+              setDrafts((d) => d.filter((x) => x.id !== draft.id));
+            }}
+          />
+        ))}
+      </div>
+
+      <Button
+        variant="outline"
+        className="h-9 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt gap-2"
+        onClick={() => {
+          setDrafts((d) => [
+            ...d,
+            { id: `${CUSTOM_PROVIDER_PREFIX}${uuidv4()}`, label: "", baseUrl: "", apiKey: "" },
+          ]);
+        }}
+      >
+        <Plus className="h-3.5 w-3.5" strokeWidth={2.25} />
+        Add custom endpoint
+      </Button>
+    </div>
+  );
+}
+
+function CustomEndpointCard({
+  initialId,
+  initialLabel,
+  initialBaseUrl,
+  maskedKey,
+  startInEditing = false,
+  onSaved,
+  onRemoved,
+}: {
+  initialId: string;
+  initialLabel: string;
+  initialBaseUrl: string;
+  maskedKey: string | null;
+  startInEditing?: boolean;
+  onSaved: () => void | Promise<void>;
+  onRemoved: () => void;
+}) {
+  const [editing, setEditing] = useState(startInEditing);
+  const [label, setLabel] = useState(initialLabel);
+  const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
+  const [apiKey, setApiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const hasKey = maskedKey !== null;
+
+  async function handleSave() {
+    if (!label.trim() || !baseUrl.trim() || !apiKey.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          apiKeys: {
+            [initialId]: {
+              apiKey: apiKey.trim(),
+              baseUrl: baseUrl.trim(),
+              label: label.trim(),
+            },
+          },
+        }),
+      });
+      if (res.ok) {
+        setApiKey("");
+        setEditing(false);
+        await onSaved();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ apiKeys: { [initialId]: null } }),
+      });
+      if (res.ok) onRemoved();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="p-5 gap-3">
+      <div className="flex items-center justify-between gap-2">
+        {editing ? (
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Endpoint name (e.g. Local Ollama)"
+            className="h-8 rounded-[6px] border-sf-line-strong text-sm font-semibold"
+          />
+        ) : (
+          <h4 className="text-[15px] font-bold text-sf-ink truncate">{label || "Custom endpoint"}</h4>
+        )}
+        {hasKey ? <StatusBadge tone="success">Configured</StatusBadge> : null}
+      </div>
+
+      <FieldLabel>Base URL</FieldLabel>
+      {editing ? (
+        <Input
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
+          placeholder="http://localhost:11434/v1"
+          className="h-9 rounded-[6px] border-sf-line-strong text-[12px] font-mono"
+        />
+      ) : (
+        <div className="h-9 rounded-[6px] border border-sf-line-strong bg-sf-surface-muted px-3 flex items-center font-mono text-[12px] text-sf-ink-3 truncate">
+          {baseUrl || "—"}
+        </div>
+      )}
+
+      <FieldLabel>API Key</FieldLabel>
+      {editing || !hasKey ? (
+        <div className="relative">
+          <Input
+            type={showKey ? "text" : "password"}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-..."
+            className="h-9 rounded-[6px] border-sf-line-strong pr-9 font-mono text-[12px]"
+          />
+          <button
+            type="button"
+            aria-label="Toggle key visibility"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-sf-ink-4 hover:text-sf-ink"
+            onClick={() => setShowKey((v) => !v)}
+          >
+            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+      ) : (
+        <div className="h-9 rounded-[6px] border border-sf-line-strong bg-sf-surface-muted px-3 flex items-center font-mono text-[12px] text-sf-ink-3 truncate">
+          {maskedKey}
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-2 pt-1">
+        {editing ? (
+          <>
+            <Button
+              variant="outline"
+              className="h-8 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt text-xs"
+              onClick={() => (hasKey ? setEditing(false) : onRemoved())}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="h-8 rounded-[6px] bg-sf-accent hover:bg-sf-accent-ink text-white text-xs"
+              onClick={handleSave}
+              disabled={saving || !label.trim() || !baseUrl.trim() || !apiKey.trim()}
+            >
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              className="h-8 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt text-xs"
+              onClick={handleRemove}
+              disabled={saving}
+            >
+              Remove
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt text-xs"
+              onClick={() => setEditing(true)}
+              disabled={saving}
+            >
+              Edit
+            </Button>
+          </>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -956,57 +1261,6 @@ function ProviderKeyCard({
         </div>
       </div>
     </Card>
-  );
-}
-
-function CustomEndpointsCard() {
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-
-  return (
-    <div className="mt-8">
-      <h3 className="text-[17px] font-bold text-sf-ink tracking-tight">Custom Endpoints</h3>
-      <p className="mt-1 text-[13px] text-sf-ink-3">
-        Configure local or self-hosted models running on vLLM, Ollama, or OpenAI-compatible servers.
-      </p>
-      <Card className="mt-4 p-5">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <div>
-            <FieldLabel>Provider Name</FieldLabel>
-            <Input
-              placeholder="e.g. Local Ollama"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-9 rounded-[6px] border-sf-line-strong text-sm"
-            />
-          </div>
-          <div>
-            <FieldLabel>Base URL</FieldLabel>
-            <Input
-              placeholder="http://localhost:11434/v1"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="h-9 rounded-[6px] border-sf-line-strong text-[12px] font-mono"
-            />
-          </div>
-          <Button
-            variant="outline"
-            className="h-9 rounded-[6px] border-sf-line-strong text-sf-ink-2 hover:bg-sf-bg-alt"
-          >
-            Test Connection
-          </Button>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button
-            className="h-9 rounded-[6px] bg-sf-accent hover:bg-sf-accent-ink text-white"
-            disabled={!name || !url}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" strokeWidth={2.25} />
-            Add Endpoint
-          </Button>
-        </div>
-      </Card>
-    </div>
   );
 }
 

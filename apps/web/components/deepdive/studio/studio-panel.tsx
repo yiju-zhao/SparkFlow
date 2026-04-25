@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useGuides } from "@/components/guides/guide-provider";
 import { Markdown } from "@/components/ui/markdown";
 import { useRelativeTime } from "@/lib/hooks/use-relative-time";
 import {
@@ -61,6 +62,21 @@ export function StudioPanel({
   const [isEditing, setIsEditing] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
+  // Expose create-note dialog open/close to the guide player.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisterOpen = registerGuideAction("open-create-note", () => {
+      setIsCreateDialogOpen(true);
+    });
+    const unregisterClose = registerGuideAction("close-create-note", () => {
+      setIsCreateDialogOpen(false);
+    });
+    return () => {
+      unregisterOpen();
+      unregisterClose();
+    };
+  }, [registerGuideAction]);
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {selectedNote ? (
@@ -83,6 +99,7 @@ export function StudioPanel({
               Notes
             </span>
             <Button
+              data-guide="notes-new-button"
               size="sm"
               variant="ghost"
               className="h-7 w-7 p-0 rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink transition-colors"
@@ -390,7 +407,16 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onInteractOutside={(event) => {
+          // Don't let guide-overlay clicks dismiss the dialog.
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-guide-portal]")) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create Note</DialogTitle>
         </DialogHeader>
@@ -401,6 +427,7 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
             </label>
             <Input
               id="title"
+              data-guide="note-title-field"
               placeholder="Note title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -413,6 +440,7 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
             </label>
             <Textarea
               id="content"
+              data-guide="note-content-field"
               placeholder="Write your note in markdown..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -432,6 +460,7 @@ function CreateNoteDialog({ notebookId, open, onOpenChange }: CreateNoteDialogPr
             </Button>
             <Button
               type="submit"
+              data-guide="note-create-button"
               className="bg-accent-red hover:bg-accent-red-hover"
               disabled={isPending || !title.trim()}
             >

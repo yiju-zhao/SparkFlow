@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useGuides } from "@/components/guides/guide-provider";
 import {
   Globe,
   BookOpen,
@@ -90,6 +91,35 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const [showWebsites, setShowWebsites] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
+
+  // Expose view toggles to the guide player so the add-sources walkthrough
+  // can flip the dialog into the view it expects for each step — both
+  // forward and backward navigation converge on the right state.
+  const { registerGuideAction } = useGuides();
+  useEffect(() => {
+    const unregisterToWebsites = registerGuideAction("switch-to-websites", () => {
+      setShowWebsites(true);
+      setUploadError(null);
+    });
+    const unregisterToFiles = registerGuideAction("switch-to-files", () => {
+      setShowWebsites(false);
+      setUploadError(null);
+    });
+    // Fires on guide finish/close — returns the dialog's internal state to
+    // a fresh baseline so nothing the guide touched persists into the next
+    // real use.
+    const unregisterReset = registerGuideAction("reset-add-source-state", () => {
+      setShowWebsites(false);
+      setUrlsText("");
+      setUploadError(null);
+      setIsUploadMenuOpen(false);
+    });
+    return () => {
+      unregisterToWebsites();
+      unregisterToFiles();
+      unregisterReset();
+    };
+  }, [registerGuideAction]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -462,7 +492,19 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
         }
       }}
     >
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0" showCloseButton={false}>
+      <DialogContent
+        className="sm:max-w-[560px] p-0 gap-0"
+        showCloseButton={false}
+        onInteractOutside={(event) => {
+          // When the active guide's overlay is clicked (Next, Back, etc.),
+          // Radix would otherwise treat that as "outside the dialog" and close
+          // it. Opt out while the guide is driving this dialog.
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-guide-portal]")) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogTitle className="sr-only">Add Source</DialogTitle>
         {showWebsites ? (
           /* Websites sub-view — full takeover, no search bar */
@@ -520,6 +562,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
             {/* Insert Button */}
             <div className="flex justify-end mt-4">
               <Button
+                data-guide="add-source-submit"
                 disabled={isPending || isLimitReached || !urlsText.trim()}
                 onClick={handleWebsitesInsert}
               >
@@ -729,6 +772,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                   <Popover open={isUploadMenuOpen} onOpenChange={setIsUploadMenuOpen}>
                     <PopoverTrigger asChild>
                       <button
+                        data-guide="upload-button"
                         disabled={isLimitReached}
                         className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -771,6 +815,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                     </PopoverContent>
                   </Popover>
                   <button
+                    data-guide="add-source-websites"
                     disabled={isLimitReached}
                     className="flex items-center justify-center gap-2 py-3 border border-border rounded-xl text-sm font-medium hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => {

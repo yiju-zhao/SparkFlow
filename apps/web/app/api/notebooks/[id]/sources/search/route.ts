@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
 import type { SearchRequest, SearchResult, SearchStatusResponse } from "@/lib/types/search";
-import modelsConfig from "@/config/models.json";
 
 // In-memory task store (sufficient for single-server)
 export const searchTasks = new Map<string, SearchStatusResponse & { notebookId: string }>();

@@ -411,5 +411,198 @@
     "switch": "切换语言",
     "en": "English",
     "zh": "中文"
+  },
+  "guides": {
+    "button": {
+      "openGuides": "打开引导"
+    },
+    "drawer": {
+      "title": "使用引导",
+      "close": "关闭",
+      "search": "搜索引导...",
+      "replayTour": "▶ 重新运行首次引导",
+      "step": "第 {n} / {total} 步"
+    },
+    "category": {
+      "deepdive": "DeepDive",
+      "explore": "Explore",
+      "account": "账户"
+    },
+    "action": {
+      "play": "播放演示",
+      "read": "阅读",
+      "dismiss": "不再显示"
+    },
+    "tour": {
+      "welcomeTitle": "欢迎使用 SparkFlow",
+      "welcomeBody": "用 5 分钟逛一圈?",
+      "start": "开始",
+      "skip": "稍后再说",
+      "next": "下一步",
+      "prev": "上一步",
+      "finish": "完成",
+      "close": "关闭",
+      "skipToast": "随时点右下的 ? 按钮重启"
+    },
+    "createNotebook": {
+      "title": "创建 notebook",
+      "summary": "每个研究项目有独立的 notebook。",
+      "step1": {
+        "title": "New Notebook 按钮",
+        "body": "打开新建对话框。"
+      },
+      "step2": {
+        "title": "名字",
+        "body": "一个短而特别的名字。"
+      },
+      "step3": {
+        "title": "描述(可选)",
+        "body": "一句话说明研究主题。"
+      },
+      "step4": {
+        "title": "Create",
+        "body": "点 Create 保存。"
+      }
+    },
+    "addSources": {
+      "title": "添加资料",
+      "summary": "支持文件、文件夹、URL,一次最多 50 份。",
+      "step1": {
+        "title": "我们来添加资料",
+        "body": "先跳到你最近的 notebook,再一步步走 Add Source 对话框。"
+      },
+      "step2": {
+        "title": "打开 Add Source 对话框",
+        "body": "点 Add Source 按钮打开导入器;直接点 Next 也可以。"
+      },
+      "step3": {
+        "title": "选文件或文件夹",
+        "body": "拖放文件,或选一整个文件夹 —— 一次最多 50 份。"
+      },
+      "step4": {
+        "title": "也可以粘贴 URL",
+        "body": "切到 Websites 就能按 URL 导入网页。"
+      },
+      "step5": {
+        "title": "点 Insert 完成",
+        "body": "准备好就点 Insert,SparkFlow 会在后台建索引。"
+      }
+    },
+    "byokApiKeys": {
+      "title": "填入 API Key",
+      "summary": "Provider key 解锁对话、Wiki 和 Matcher。",
+      "step1": {
+        "title": "Settings → API Keys",
+        "body": "所有 provider 的凭证都在这里。"
+      },
+      "step2": {
+        "title": "选 provider、粘贴、保存",
+        "body": "每个 provider 一张卡片。打开、粘贴 key、点 Save —— 加密存储。Custom 卡片可对接任意 OpenAI-compatible endpoint(vLLM、Ollama、自建)。"
+      }
+    },
+    "chatWithAi": {
+      "title": "与 AI 对话",
+      "summary": "基于你的资料提问,回答附带原文引用。",
+      "step1": {
+        "title": "输入问题",
+        "body": "AI 引用原文段落,方便核对。"
+      },
+      "step2": {
+        "title": "发送",
+        "body": "或按 Enter。Shift+Enter 换行。"
+      },
+      "step3": {
+        "title": "历史",
+        "body": "每次对话都保存,随时回到旧线程。"
+      }
+    },
+    "wikiGraph": {
+      "title": "Wiki 知识图谱",
+      "summary": "基于资料自动构建的实体、概念和关联。",
+      "step1": {
+        "title": "Wiki Tab",
+        "body": "资料加入后,SparkFlow 自动构建 wiki。"
+      },
+      "step2": {
+        "title": "知识库",
+        "body": "每个实体和概念都有一页,点击阅读。"
+      },
+      "step3": {
+        "title": "关系图",
+        "body": "同样的概念,力引导图形态。"
+      },
+      "step4": {
+        "title": "全屏",
+        "body": "点右上角的展开图标,把图打开到全屏。"
+      }
+    },
+    "notes": {
+      "title": "笔记",
+      "summary": "附在 notebook 上的个人 markdown 笔记。",
+      "step1": {
+        "title": "Notes Tab",
+        "body": "你的 markdown 和 AI 输出并列。"
+      },
+      "step2": {
+        "title": "新建笔记",
+        "body": "打开创建对话框。"
+      },
+      "step3": {
+        "title": "标题",
+        "body": "短标题,方便列表里扫。"
+      },
+      "step4": {
+        "title": "正文",
+        "body": "完整 markdown —— 列表、代码、标题、链接。"
+      },
+      "step5": {
+        "title": "Create",
+        "body": "点 Create 保存。"
+      }
+    },
+    "conferences": {
+      "title": "浏览会议",
+      "summary": "会议、届次、session、publication。",
+      "step1": {
+        "title": "会议",
+        "body": "选一个会议或保持 All。"
+      },
+      "step2": {
+        "title": "年份",
+        "body": "缩小到某一届。"
+      },
+      "step3": {
+        "title": "点进去",
+        "body": "点任意卡片,打开该届的 publications、sessions 和图表。"
+      }
+    },
+    "matcher": {
+      "title": "Matcher",
+      "summary": "用 query 匹配数千个 session。",
+      "step1": {
+        "title": "上传 query",
+        "body": "拖放含 BU + Query 两列的 .xlsx / .csv,或直接粘贴几行。"
+      },
+      "step2": {
+        "title": "继续走向导",
+        "body": "上传后向导会带你选 target、topK、运行。真实任务不会替你启动。"
+      }
+    },
+    "wechat": {
+      "title": "WeChat 文章",
+      "summary": "浏览 WeChat 文章库。",
+      "step1": {
+        "title": "按来源筛选",
+        "body": "选一个公众号缩小列表;再点一次取消。"
+      },
+      "step2": {
+        "title": "排序",
+        "body": "最新、最多转发、最高影响力。"
+      },
+      "step3": {
+        "title": "打开文章",
+        "body": "点任一行,阅读全文 + 提取的图片。"
+      }
+    }
   }
 }

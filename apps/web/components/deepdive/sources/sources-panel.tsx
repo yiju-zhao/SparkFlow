@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { deleteSource } from "@/lib/actions/sources";
 import { AddSourceDialog } from "@/components/deepdive/sources/add-source-dialog";
+import { useGuides } from "@/components/guides/guide-provider";
 import { IngestReport } from "./ingest-report";
 import type { Source } from "@prisma/client";
 import { Markdown } from "@/components/ui/markdown";
@@ -35,6 +36,22 @@ export function SourcesPanel({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const prevWikiStatusRef = useRef<Map<string, string>>(new Map());
+  const { registerGuideAction } = useGuides();
+
+  // Expose dialog control to the guide player so the Play demo can open the
+  // Add Source dialog programmatically during step transitions.
+  useEffect(() => {
+    const unregisterOpen = registerGuideAction("open-add-source", () => {
+      setIsDialogOpen(true);
+    });
+    const unregisterClose = registerGuideAction("close-add-source", () => {
+      setIsDialogOpen(false);
+    });
+    return () => {
+      unregisterOpen();
+      unregisterClose();
+    };
+  }, [registerGuideAction]);
 
   const { data: liveSources = sources } = useQuery<Source[]>({
     queryKey: ["notebook-sources", notebookId],
@@ -99,6 +116,7 @@ export function SourcesPanel({
       {/* Primary CTA — one blue primary per view (Sparkflow DS §07) */}
       <div className="p-5">
         <Button
+          data-guide="add-source-trigger"
           onClick={() => setIsDialogOpen(true)}
           className="w-full h-11 gap-2 font-semibold rounded-[10px] bg-sf-accent text-white hover:bg-sf-accent-ink active:scale-[0.98] transition-all shadow-none"
         >

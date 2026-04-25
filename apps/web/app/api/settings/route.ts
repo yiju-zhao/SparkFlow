@@ -41,6 +41,8 @@ export async function GET() {
         apiKeyStatus[providerId] = {
           hasKey: true,
           maskedKey: maskApiKey(entry.apiKey),
+          ...(entry.label ? { label: entry.label } : {}),
+          ...(entry.baseUrl ? { baseUrl: entry.baseUrl } : {}),
         };
       }
     } catch {
@@ -129,11 +131,12 @@ export async function POST(request: Request) {
       if (value === null) {
         delete currentKeys[providerId];
       } else if (typeof value === "object" && value !== null) {
-        const entry = value as { apiKey?: string; baseUrl?: string };
+        const entry = value as { apiKey?: string; baseUrl?: string; label?: string };
         if (entry.apiKey) {
           currentKeys[providerId] = {
             apiKey: entry.apiKey,
             ...(entry.baseUrl ? { baseUrl: entry.baseUrl } : {}),
+            ...(entry.label ? { label: entry.label } : {}),
           };
         }
       }

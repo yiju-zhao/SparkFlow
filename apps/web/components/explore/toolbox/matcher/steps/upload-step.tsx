@@ -143,7 +143,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
       </div>
 
       {showPreview ? (
-        <div>
+        <div data-guide="matcher-query-preview">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">
               {t("queriesLoaded", { count: queries.length })}
@@ -157,7 +157,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
           </div>
         </div>
       ) : (
-        <>
+        <div data-guide="matcher-upload-dropzone">
           <FileDropzone onFileSelect={handleFileSelect} disabled={isParsing} />
           {isParsing && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -165,7 +165,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
               {t("parsing")}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
