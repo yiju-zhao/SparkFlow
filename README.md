@@ -128,18 +128,26 @@ All three are built by the same factory (`hermes` harness) and share the tool re
 
 ## Infrastructure
 
-### Docker Services
+### Default profile (always running — `docker compose up -d`)
 
-```bash
-cd apps/web && docker compose up -d
-```
-
-| Service | Image | Ports | Purpose |
-|---------|-------|-------|---------|
+| Service | Image / Built from | Host port | Purpose |
+|---------|--------------------|-----------|---------|
 | postgres | `pgvector/pgvector:pg17` | 5433 | Primary database (pgvector) |
 | redis | `redis:7-alpine` | 6379 | BullMQ + ARQ broker (AOF persistence) |
-| ingest-worker | built from `apps/web/Dockerfile.worker` | — | BullMQ consumer: wiki-ingest |
-| digest-worker | built from `apps/agent/Dockerfile` | — | ARQ consumer: daily-digest |
+| searxng | `searxng/searxng:latest` | 8888 | Self-hosted web search (default backend; Tavily is BYOK) |
+| ingest-worker | `apps/web/Dockerfile.worker` | — | BullMQ consumer: wiki-ingest |
+| digest-worker | `apps/agent/Dockerfile.worker` | — | ARQ consumer: daily-digest |
+
+### Prod profile (opt-in — `docker compose --profile prod up -d`)
+
+Adds containerized web + workflows-api + a one-shot migrate runner. Skip
+in dev so `npm run dev` keeps fast HMR on the host.
+
+| Service | Built from | Host port | Purpose |
+|---------|------------|-----------|---------|
+| migrate | `apps/web/Dockerfile` (builder stage) | — | Runs `prisma migrate deploy` once and exits |
+| web | `apps/web/Dockerfile` (runner stage) | 3001 | Next.js standalone server |
+| workflows-api | `apps/agent/Dockerfile.workflows-api` | 2027 | FastAPI: `/v1/workflows/{matcher,daily_digest,search}` |
 
 ### External Services
 
@@ -153,100 +161,196 @@ cd apps/web && docker compose up -d
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 24 LTS (npm 10 / 11)
 - Python 3.11+
-- Docker and Docker Compose (for infrastructure services)
+- Docker and Docker Compose
+- Corporate networks behind a TLS-intercepting proxy: drop your CA bundle
+  at `apps/web/ca-certificates.crt` and `apps/agent/ca-certificates.crt`
+  (gitignored). Empty files are fine on open networks.
 
-### Setup
+---
 
-1. **Clone and install dependencies**
+### Development (local machine)
+
+Setup runs Next.js + LangGraph + workflows-api on the **host** for fast
+HMR; postgres / redis / searxng / workers run in **docker**.
+
+1. **Clone, install deps, generate secrets**
 
 ```bash
 # Frontend
 cd apps/web
 npm install
-cp .env.example .env.local
+cp .env.example .env
 
 # Backend
 cd apps/agent
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 cp .env.example .env
+
+# Generate one set of secrets and paste into BOTH .env files
+echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)"
+echo "API_KEY_ENCRYPTION_SECRET=$(openssl rand -base64 32)"
+echo "INTERNAL_CALLBACK_TOKEN=$(openssl rand -hex 32)"   # MUST match in apps/web + apps/agent
 ```
 
-2. **Start infrastructure**
+Set `ADMIN_EMAILS=your@email` in `apps/web/.env` so your account auto-promotes on first login.
+
+2. **Start shared services (postgres, redis, searxng, workers)**
 
 ```bash
 cd apps/web
 docker compose up -d
 ```
 
-3. **Setup database**
+3. **Apply database migrations**
 
 ```bash
 cd apps/web
 npx prisma generate
-npx prisma migrate deploy   # apply migrations (never `db push` — repo is baselined)
+npx prisma migrate deploy   # never `db push` — repo is baselined
 ```
 
-4. **Start development servers**
+4. **Start the four host processes (each in its own terminal)**
 
 ```bash
-# Terminal 1: Frontend
-cd apps/web
-npm run dev
+# Terminal 1 — Next.js (port 3001)
+cd apps/web && npm run dev
 
-# Terminal 2: Wiki-ingest worker (BullMQ)
-cd apps/web
-npm run worker:ingest
+# Terminal 2 — LangGraph API (port 2024)
+cd apps/agent && make dev
 
-# Terminal 3: Agent service (LangGraph)
-cd apps/agent
-langgraph dev --host 0.0.0.0 --port 2024
+# Terminal 3 — Workflows FastAPI (port 2027)
+cd apps/agent && make serve
 
-# Terminal 4: Daily-digest worker (ARQ)
-cd apps/agent
-arq workflows.digest_worker.WorkerSettings
+# Terminal 4 — Semops (port 2025)
+cd apps/semops && python main.py
 ```
+
+The wiki-ingest and daily-digest workers run inside docker compose, no
+host process needed.
 
 5. **Access the application**
 
 - Frontend: http://localhost:3001
 - LangGraph API: http://localhost:2024
+- Workflows API health: http://localhost:2027/v1/healthz
+- SearXNG: http://localhost:8888
+
+---
+
+### Production (server deployment)
+
+Setup runs everything in docker, including web + workflows-api +
+migrate. Single command brings it all up; no host node / langgraph
+process needed.
+
+1. **Pull the repo, install the CA bundle (corporate networks only)**
+
+```bash
+git pull
+# If you're behind a TLS-intercepting proxy:
+cp /path/to/your-corporate-ca.crt apps/web/ca-certificates.crt
+cp /path/to/your-corporate-ca.crt apps/agent/ca-certificates.crt
+# Open networks: just `touch` empty files there.
+```
+
+2. **Configure prod env files**
+
+```bash
+cp apps/web/.env.production.example   apps/web/.env
+cp apps/agent/.env.production.example apps/agent/.env
+```
+
+Edit both files. **Rotate every secret** (NEXTAUTH_SECRET,
+API_KEY_ENCRYPTION_SECRET, INTERNAL_CALLBACK_TOKEN, POSTGRES_PASSWORD).
+Set the **public** `NEXTAUTH_URL` and all `NEXT_PUBLIC_*` URLs to
+domains the user's browser can reach (not docker service names).
+`INTERNAL_CALLBACK_TOKEN` MUST be identical in both files.
+
+3. **Bring up the full stack**
+
+```bash
+cd apps/web
+docker compose --profile prod up -d --build
+```
+
+Startup order (compose handles automatically):
+postgres + redis + searxng healthy → migrate runs `prisma migrate deploy`
+→ web + workflows-api start.
+
+4. **Verify**
+
+```bash
+docker compose ps                                       # all services Up
+curl https://your-domain.com/                           # 307 redirect to /en
+curl https://workflows.your-domain.com/v1/healthz       # {"ok":true}
+```
+
+5. **Updating to a new version**
+
+```bash
+git pull
+cd apps/web
+docker compose --profile prod up -d --build
+# migrate auto-runs `prisma migrate deploy` before web restarts.
+```
+
+For schema changes that need a worker rebuild see
+`apps/web/CLAUDE.md`.
 
 ## Environment Variables
 
-### Frontend (`apps/web/.env.local`)
+Two pairs of templates ship with the repo. **Use the dev pair on your
+laptop, the prod pair on the server.** Don't mix.
+
+| Environment | Frontend | Backend |
+|---|---|---|
+| Development | `apps/web/.env.example` → `.env` | `apps/agent/.env.example` → `.env` |
+| Production  | `apps/web/.env.production.example` → `.env` | `apps/agent/.env.production.example` → `.env` |
+
+The example files are the source of truth — read them for full
+descriptions of every variable. The tables below summarize what's
+required vs defaulted.
+
+### Frontend (`apps/web/.env`)
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `NEXTAUTH_SECRET` | JWT secret for authentication | Yes |
-| `NEXTAUTH_URL` | Application URL | No (default: `http://localhost:3001`) |
+| `NEXTAUTH_SECRET` | JWT secret | Yes (rotate per env) |
+| `NEXTAUTH_URL` | Application URL the browser hits | Yes (prod); default `http://localhost:3001` (dev) |
 | `API_KEY_ENCRYPTION_SECRET` | Encrypts BYOK API keys at rest | Yes |
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `REDIS_URL` | BullMQ broker | Yes (default: `redis://localhost:6379`) |
-| `INGEST_WORKER_CONCURRENCY` | Jobs in flight per ingest-worker process | No (default: `4`) |
-| `INGEST_PER_USER_CONCURRENCY` | Max ingest jobs a single user holds | No (default: `2`) |
-| `LANGGRAPH_API_URL` / `NEXT_PUBLIC_LANGGRAPH_API_URL` | LangGraph server URL | No (default: `http://localhost:2024`) |
-| `WORKFLOWS_API_URL` / `NEXT_PUBLIC_WORKFLOWS_API_URL` | FastAPI workflow server | No (default: `http://localhost:2027`) |
-| `INTERNAL_CALLBACK_TOKEN` | Shared secret for Python → Node digest callbacks | Yes |
-| `MINERU_LOCAL_URL` | MinerU (PDF) endpoint | No (default: `http://localhost:8000`) |
+| `INTERNAL_CALLBACK_TOKEN` | Shared with `apps/agent` (Python→Node digest callback) | Yes |
+| `ADMIN_EMAILS` | Comma-separated; auto-promotes on login | Yes |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres credentials (compose builds DATABASE_URL from these) | Yes |
+| `DATABASE_URL` | Override for non-compose use | No |
+| `REDIS_URL` | BullMQ broker | Default `redis://localhost:6379` (dev); compose injects in prod |
+| `INGEST_WORKER_CONCURRENCY` | Jobs per worker process | Default `4` |
+| `INGEST_PER_USER_CONCURRENCY` | Max ingest jobs a single user holds | Default `2` |
+| `LANGGRAPH_API_URL` / `NEXT_PUBLIC_LANGGRAPH_API_URL` | LangGraph URL | Yes in prod (no default that works publicly) |
+| `WORKFLOWS_API_URL` | Server-side FastAPI URL | Default `http://localhost:2027` (dev) / `http://workflows-api:2027` (prod) |
+| `NEXT_PUBLIC_WORKFLOWS_API_URL` | **Browser-side** workflows URL — must be publicly reachable | Yes in prod |
+| `MINERU_MODE`, `MINERU_LOCAL_URL`, `MINERU_API_TOKEN` | PDF parser config | `MINERU_API_TOKEN` required when `MODE=api` |
 
 ### Backend (`apps/agent/.env`)
 
 BYOK is mandatory on all user-facing paths — there is no `OPENAI_API_KEY`
-fallback for user requests. Admin-only paths (observability, warm-up) may
-still read env keys.
+fallback for user requests. Admin-only paths may still read env keys.
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `REDIS_URL` | Shared with the web app (ARQ + BullMQ) | Yes |
-| `DIGEST_WORKER_CONCURRENCY` | Digest sections per worker process | No (default: `4`) |
 | `INTERNAL_CALLBACK_TOKEN` | Must match `apps/web` | Yes |
 | `SPARKFLOW_API_URL` | Node callback base URL | Yes |
 | `SEMOPS_API_URL` | Semops service URL | Yes |
-| `CHECKPOINT_DB_URL` | LangGraph checkpointer DB | Yes |
+| `DATABASE_URL` | Main SparkFlow DB (used by backfill scripts + langgraph-api) | Yes |
+| `REDIS_URL` | Shared with web app (ARQ + BullMQ) | Default `redis://localhost:6379` (dev); compose injects in prod |
+| `SEARXNG_URL` | Default web-search backend (Tavily is BYOK only) | Default `http://localhost:8888` (dev) / `http://searxng:8080` (prod) |
+| `TOOLBOX_SERVER_URL` | Toolbox MCP server | Yes for hub agent |
+| `DIGEST_WORKER_CONCURRENCY` | Digest sections per worker process | Default `4` |
+| `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT` | LangSmith tracing | Optional (recommended in prod) |
+| `WECHAT_DATABASE_URL` | External Postgres for WeChat features | Optional |
 
 ### Semops (`apps/semops/.env`)
 
