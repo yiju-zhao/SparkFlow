@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type { GuideState } from "@/content/guides/types";
-import { GUIDE_STATE_STORAGE_KEY } from "@/content/guides/types";
+import { GUIDE_STATE_STORAGE_KEY, TOUR_PROGRESS_STORAGE_KEY } from "@/content/guides/types";
 
 type GuideActionHandler = () => void | Promise<void>;
 
@@ -25,13 +25,21 @@ interface GuideContextValue extends GuideState {
   closeGuide: () => void;
   dismissGuide: (id: string) => Promise<void>;
   undismissGuide: (id: string) => Promise<void>;
+  /** Flip welcomePending off without marking the tour completed (Start). */
+  dismissWelcome: () => Promise<void>;
+  /** Skip / Finish — flips welcomePending off and stamps tourCompletedAt. */
   markTourCompleted: () => Promise<void>;
+  /** Replay — re-arms the welcome modal, wipes any local progress marker. */
   resetTour: () => Promise<void>;
   registerGuideAction: (name: string, handler: GuideActionHandler) => () => void;
   runGuideAction: (name: string, options?: { timeoutMs?: number }) => Promise<boolean>;
 }
 
-const EMPTY_STATE: GuideState = { tourCompletedAt: null, dismissedGuides: [] };
+const EMPTY_STATE: GuideState = {
+  tourCompletedAt: null,
+  welcomePending: false,
+  dismissedGuides: [],
+};
 
 const GuideContext = createContext<GuideContextValue | null>(null);
 
@@ -43,6 +51,7 @@ function readLocalState(): GuideState {
     const parsed = JSON.parse(raw) as Partial<GuideState>;
     return {
       tourCompletedAt: parsed.tourCompletedAt ?? null,
+      welcomePending: Boolean(parsed.welcomePending),
       dismissedGuides: Array.isArray(parsed.dismissedGuides) ? parsed.dismissedGuides : [],
     };
   } catch {
@@ -54,6 +63,15 @@ function writeLocalState(state: GuideState) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(GUIDE_STATE_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearLocalProgress() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(TOUR_PROGRESS_STORAGE_KEY);
   } catch {
     /* ignore */
   }
@@ -106,11 +124,19 @@ export function GuideProvider({
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
+      if (body.resetTour) clearLocalProgress();
       if (!isAuthenticated) {
         setState((prev) => {
           const next: GuideState = { ...prev };
-          if (body.markTourCompleted) next.tourCompletedAt = new Date().toISOString();
-          if (body.resetTour) next.tourCompletedAt = null;
+          if (body.markTourCompleted) {
+            next.tourCompletedAt = new Date().toISOString();
+            next.welcomePending = false;
+          }
+          if (body.dismissWelcome) next.welcomePending = false;
+          if (body.resetTour) {
+            next.tourCompletedAt = null;
+            next.welcomePending = true;
+          }
           if (typeof body.dismissGuideId === "string") {
             next.dismissedGuides = Array.from(new Set([...prev.dismissedGuides, body.dismissGuideId]));
           }
@@ -187,6 +213,7 @@ export function GuideProvider({
       closeGuide: () => setActiveGuideId(null),
       dismissGuide: (id) => patch({ dismissGuideId: id }),
       undismissGuide: (id) => patch({ undismissGuideId: id }),
+      dismissWelcome: () => patch({ dismissWelcome: true }),
       markTourCompleted: () => patch({ markTourCompleted: true }),
       resetTour: () => patch({ resetTour: true }),
       registerGuideAction,

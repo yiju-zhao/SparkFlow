@@ -7,7 +7,8 @@ import { TOUR_PROGRESS_STORAGE_KEY } from "@/content/guides/types";
 import { useGuides } from "./guide-provider";
 
 export function useFirstRunTour() {
-  const { loading, tourCompletedAt, markTourCompleted } = useGuides();
+  const { loading, welcomePending, tourCompletedAt, dismissWelcome, markTourCompleted } = useGuides();
+
   // Read resumed progress once on mount (client-only).
   const [stepIndex, setStepIndex] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
@@ -24,7 +25,7 @@ export function useFirstRunTour() {
   });
 
   // Whether there was a resumable progress marker at mount time.
-  const [hadResume] = useState<boolean>(() => {
+  const [hadResume, setHadResume] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     try {
       return window.localStorage.getItem(TOUR_PROGRESS_STORAGE_KEY) !== null;
@@ -36,24 +37,41 @@ export function useFirstRunTour() {
   // Manual stage transitions (user clicks Start / Skip / Finish).
   const [manualStage, setManualStage] = useState<"running" | "done" | null>(null);
 
+  // When the drawer's "Replay tour" button fires, the server flips
+  // welcomePending back on. Drop stale manualStage / hadResume so the welcome
+  // modal can re-appear in the same session — setState-during-render keeps
+  // this side-effect free without bouncing through useEffect.
+  const [lastWelcomePending, setLastWelcomePending] = useState(welcomePending);
+  if (welcomePending !== lastWelcomePending) {
+    setLastWelcomePending(welcomePending);
+    if (welcomePending && !loading) {
+      setManualStage(null);
+      setHadResume(false);
+      setStepIndex(0);
+    }
+  }
+
   const router = useRouter();
   const pathname = usePathname();
 
-  // Derive stage without an effect. Order of precedence:
-  //   1. Manual transitions win (user clicked a button).
-  //   2. Still loading initial state → idle.
-  //   3. tourCompletedAt present → done.
-  //   4. Had resumable progress in localStorage → running.
-  //   5. Otherwise show the welcome modal.
-  const stage: "idle" | "welcome" | "running" | "done" = manualStage
-    ? manualStage
-    : loading
-      ? "idle"
-      : tourCompletedAt
-        ? "done"
-        : hadResume
-          ? "running"
-          : "welcome";
+  // Stage decision (in priority order):
+  //   1. While loading initial state → idle (don't flash a welcome).
+  //   2. welcomePending true → welcome (unless user already clicked Start).
+  //   3. Manual transition is the source of truth in-session.
+  //   4. Resumable progress → running.
+  //   5. Otherwise dormant.
+  let stage: "idle" | "welcome" | "running" | "done";
+  if (loading) {
+    stage = "idle";
+  } else if (welcomePending) {
+    stage = manualStage === "running" ? "running" : "welcome";
+  } else if (manualStage) {
+    stage = manualStage;
+  } else if (hadResume) {
+    stage = "running";
+  } else {
+    stage = "done";
+  }
 
   function saveProgress(next: number) {
     if (typeof window === "undefined") return;
@@ -73,14 +91,18 @@ export function useFirstRunTour() {
   return {
     stage,
     stepIndex,
-    start: () => {
+    tourCompletedAt,
+    start: async () => {
       setManualStage("running");
       saveProgress(0);
+      // Flip welcomePending off so a reload mid-tour resumes via hadResume,
+      // not by re-showing the welcome modal.
+      await dismissWelcome();
     },
     skip: async () => {
       clearProgress();
-      await markTourCompleted();
       setManualStage("done");
+      await markTourCompleted();
     },
     next: () => {
       const n = stepIndex + 1;
@@ -94,8 +116,8 @@ export function useFirstRunTour() {
     },
     finish: async () => {
       clearProgress();
-      await markTourCompleted();
       setManualStage("done");
+      await markTourCompleted();
     },
     navigate: (route: string) => router.push(route),
   };

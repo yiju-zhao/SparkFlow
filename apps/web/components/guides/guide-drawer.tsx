@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "framer-motion";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { X, Play, BookOpen, EyeOff, Search as SearchIcon } from "lucide-react";
+import { X, Play, BookOpen, EyeOff, Search as SearchIcon, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { GUIDES } from "@/content/guides";
 import type { GuideCategory, GuideDefinition } from "@/content/guides/types";
@@ -135,6 +135,26 @@ export function GuideDrawer() {
                               </button>
                               {expandedId === g.id ? (
                                 <>
+                                  {g.prereq ? (
+                                    <div className="flex items-start gap-2 border-t border-border bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+                                      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                                      <span className="flex-1">
+                                        {t(g.prereq.hintKey.replace(/^guides\./, ""))}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const setupId = g.prereq?.setupGuideId;
+                                          if (!setupId) return;
+                                          setDrawerOpen(false);
+                                          openGuide(setupId);
+                                        }}
+                                        className="shrink-0 rounded border border-amber-600/40 px-2 py-0.5 text-[11px] font-medium hover:bg-amber-500/15"
+                                      >
+                                        {t("action.setupFirst")}
+                                      </button>
+                                    </div>
+                                  ) : null}
                                   <div className="flex gap-2 border-t border-border bg-muted/10 px-2 py-2">
                                     <button
                                       type="button"

@@ -7,8 +7,8 @@ export const chatWithAiGuide: GuideDefinition = {
   titleKey: "guides.chatWithAi.title",
   summaryKey: "guides.chatWithAi.summary",
   publicOnLanding: true,
-  includeInFirstRunTour: true,
-  firstRunTourOrder: 4,
+  // Removed from the first-run tour — needs an existing notebook.
+  prereq: { hintKey: "guides.chatWithAi.prereq", setupGuideId: "create-notebook" },
   steps: [
     // 1 — Point at the chat input. Takes the user to a notebook workspace first.
     {
