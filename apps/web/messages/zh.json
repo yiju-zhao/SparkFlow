@@ -431,7 +431,8 @@
     "action": {
       "play": "播放演示",
       "read": "阅读",
-      "dismiss": "不再显示"
+      "dismiss": "不再显示",
+      "setupFirst": "先去准备"
     },
     "tour": {
       "welcomeTitle": "欢迎使用 SparkFlow",
@@ -467,6 +468,7 @@
     "addSources": {
       "title": "添加资料",
       "summary": "支持文件、文件夹、URL,一次最多 50 份。",
+      "prereq": "需要先有一个 notebook,请先创建。",
       "step1": {
         "title": "我们来添加资料",
         "body": "先跳到你最近的 notebook,再一步步走 Add Source 对话框。"
@@ -503,6 +505,7 @@
     "chatWithAi": {
       "title": "与 AI 对话",
       "summary": "基于你的资料提问,回答附带原文引用。",
+      "prereq": "需要一个至少含一份资料的 notebook,请先创建。",
       "step1": {
         "title": "输入问题",
         "body": "AI 引用原文段落,方便核对。"
@@ -519,6 +522,7 @@
     "wikiGraph": {
       "title": "Wiki 知识图谱",
       "summary": "基于资料自动构建的实体、概念和关联。",
+      "prereq": "需要 notebook 中已有资料,Wiki 才有内容可构建。",
       "step1": {
         "title": "Wiki Tab",
         "body": "资料加入后,SparkFlow 自动构建 wiki。"
@@ -539,6 +543,7 @@
     "notes": {
       "title": "笔记",
       "summary": "附在 notebook 上的个人 markdown 笔记。",
+      "prereq": "需要先有一个 notebook,请先创建。",
       "step1": {
         "title": "Notes Tab",
         "body": "你的 markdown 和 AI 输出并列。"

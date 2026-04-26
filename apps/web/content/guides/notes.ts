@@ -6,6 +6,7 @@ export const notesGuide: GuideDefinition = {
   icon: "NotebookPen",
   titleKey: "guides.notes.title",
   summaryKey: "guides.notes.summary",
+  prereq: { hintKey: "guides.notes.prereq", setupGuideId: "create-notebook" },
   onExit: { kind: "action", name: "close-create-note" },
   steps: [
     // 1 — Arrive at the Notes tab. close-create-note ensures the dialog is shut

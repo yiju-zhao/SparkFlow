@@ -6,6 +6,8 @@ export const conferencesGuide: GuideDefinition = {
   icon: "CalendarDays",
   titleKey: "guides.conferences.title",
   summaryKey: "guides.conferences.summary",
+  includeInFirstRunTour: true,
+  firstRunTourOrder: 3,
   steps: [
     // 1 — Filter by venue.
     {

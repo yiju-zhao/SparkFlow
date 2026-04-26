@@ -7,7 +7,7 @@ export const byokApiKeysGuide: GuideDefinition = {
   titleKey: "guides.byokApiKeys.title",
   summaryKey: "guides.byokApiKeys.summary",
   includeInFirstRunTour: true,
-  firstRunTourOrder: 3,
+  firstRunTourOrder: 2,
   steps: [
     // 1 — Navigate to Settings and show where API Keys lives in the sidebar.
     {

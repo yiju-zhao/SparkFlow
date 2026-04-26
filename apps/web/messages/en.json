@@ -431,7 +431,8 @@
     "action": {
       "play": "Play",
       "read": "Read",
-      "dismiss": "Don't show again"
+      "dismiss": "Don't show again",
+      "setupFirst": "Set up first"
     },
     "tour": {
       "welcomeTitle": "Welcome to SparkFlow",
@@ -467,6 +468,7 @@
     "addSources": {
       "title": "Add sources",
       "summary": "Upload files, folders, or URLs — up to 50 at once.",
+      "prereq": "Needs an existing notebook. Create one first.",
       "step1": {
         "title": "Let's add some sources",
         "body": "We'll jump into your most recent notebook and walk through the Add Source dialog."
@@ -503,6 +505,7 @@
     "chatWithAi": {
       "title": "Chat with AI",
       "summary": "Questions grounded in your sources — answers cite the original.",
+      "prereq": "Needs a notebook with at least one source. Create one first.",
       "step1": {
         "title": "Type your question",
         "body": "AI cites exact passages so you can verify."
@@ -519,6 +522,7 @@
     "wikiGraph": {
       "title": "Wiki knowledge graph",
       "summary": "Auto-built wiki of entities, concepts, and connections.",
+      "prereq": "Needs a notebook with sources so the wiki has something to build.",
       "step1": {
         "title": "Wiki tab",
         "body": "SparkFlow builds a wiki from your sources as they're added."
@@ -539,6 +543,7 @@
     "notes": {
       "title": "Notes",
       "summary": "Personal markdown notes attached to a notebook.",
+      "prereq": "Needs an existing notebook. Create one first.",
       "step1": {
         "title": "Notes tab",
         "body": "Your markdown alongside the AI output."

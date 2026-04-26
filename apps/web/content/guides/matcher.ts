@@ -6,6 +6,8 @@ export const matcherGuide: GuideDefinition = {
   icon: "Target",
   titleKey: "guides.matcher.title",
   summaryKey: "guides.matcher.summary",
+  includeInFirstRunTour: true,
+  firstRunTourOrder: 4,
   steps: [
     // 1 — Point at the upload dropzone / query preview.
     {

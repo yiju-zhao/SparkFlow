@@ -11,7 +11,7 @@ export async function GET(): Promise<NextResponse<GuideState | { error: string }
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { tourCompletedAt: true, dismissedGuides: true },
+    select: { tourCompletedAt: true, welcomePending: true, dismissedGuides: true },
   });
 
   if (!user) {
@@ -20,14 +20,19 @@ export async function GET(): Promise<NextResponse<GuideState | { error: string }
 
   return NextResponse.json({
     tourCompletedAt: user.tourCompletedAt ? user.tourCompletedAt.toISOString() : null,
+    welcomePending: user.welcomePending,
     dismissedGuides: user.dismissedGuides,
   });
 }
 
 interface PatchBody {
+  /** Skip / Finish — flips welcomePending off too so the modal won't return. */
   markTourCompleted?: boolean;
+  /** Start — flips welcomePending off without marking the tour as completed. */
+  dismissWelcome?: boolean;
   dismissGuideId?: string;
   undismissGuideId?: string;
+  /** Replay — re-arms the welcome modal and clears tourCompletedAt. */
   resetTour?: boolean;
 }
 
@@ -41,7 +46,7 @@ export async function PATCH(request: Request): Promise<NextResponse<GuideState |
 
   const current = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, tourCompletedAt: true, dismissedGuides: true },
+    select: { id: true, tourCompletedAt: true, welcomePending: true, dismissedGuides: true },
   });
   if (!current) {
     return NextResponse.json({ error: "user_not_found" }, { status: 404 });
@@ -51,21 +56,31 @@ export async function PATCH(request: Request): Promise<NextResponse<GuideState |
   if (body.dismissGuideId) nextDismissed.add(body.dismissGuideId);
   if (body.undismissGuideId) nextDismissed.delete(body.undismissGuideId);
 
+  let nextTourCompleted = current.tourCompletedAt;
+  let nextWelcomePending = current.welcomePending;
+  if (body.resetTour) {
+    nextTourCompleted = null;
+    nextWelcomePending = true;
+  } else if (body.markTourCompleted) {
+    nextTourCompleted = new Date();
+    nextWelcomePending = false;
+  } else if (body.dismissWelcome) {
+    nextWelcomePending = false;
+  }
+
   const updated = await prisma.user.update({
     where: { id: current.id },
     data: {
-      tourCompletedAt: body.resetTour
-        ? null
-        : body.markTourCompleted
-          ? new Date()
-          : current.tourCompletedAt,
+      tourCompletedAt: nextTourCompleted,
+      welcomePending: nextWelcomePending,
       dismissedGuides: Array.from(nextDismissed),
     },
-    select: { tourCompletedAt: true, dismissedGuides: true },
+    select: { tourCompletedAt: true, welcomePending: true, dismissedGuides: true },
   });
 
   return NextResponse.json({
     tourCompletedAt: updated.tourCompletedAt ? updated.tourCompletedAt.toISOString() : null,
+    welcomePending: updated.welcomePending,
     dismissedGuides: updated.dismissedGuides,
   });
 }

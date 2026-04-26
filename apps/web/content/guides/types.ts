@@ -45,6 +45,19 @@ export interface GuideStep {
   advanceOn?: GuideAdvanceMode;
 }
 
+/**
+ * Declarative precondition for a single guide. Rendered in the drawer as a
+ * hint banner above Play; the "Set up first" button launches `setupGuideId`
+ * to walk the user through the missing setup. No runtime check today — the
+ * field is informational only, but the type leaves room for one later.
+ */
+export interface GuidePrereq {
+  /** next-intl key for the hint copy ("You need a notebook first."). */
+  hintKey: string;
+  /** Guide id to launch when the user clicks "Set up first". */
+  setupGuideId: string;
+}
+
 export interface GuideDefinition {
   /** Stable, forever-unchanging ID. Used in dismissedGuides[]. */
   id: string;
@@ -59,6 +72,8 @@ export interface GuideDefinition {
   includeInFirstRunTour?: boolean;
   /** 1-indexed order within the first-run tour. Required if includeInFirstRunTour. */
   firstRunTourOrder?: number;
+  /** Optional declarative precondition shown in the drawer. */
+  prereq?: GuidePrereq;
   steps: GuideStep[];
   /**
    * Fired once when the guide fully closes (Finish, Skip, or user-close).
@@ -70,6 +85,12 @@ export interface GuideDefinition {
 
 export interface GuideState {
   tourCompletedAt: string | null;
+  /**
+   * True iff the welcome modal should auto-prompt on next mount. Set on
+   * signup; cleared when the user clicks Start or Skip; re-armed by the
+   * drawer's "Replay tour" button.
+   */
+  welcomePending: boolean;
   dismissedGuides: string[];
 }
 
