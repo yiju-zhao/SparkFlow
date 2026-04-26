@@ -48,23 +48,24 @@ interface WechatSource {
 interface ModelInfo {
   id: string;
   label: string;
-  desc: string;
 }
 
 interface ModelsConfig {
-  providers: Record<string, { label: string; models: ModelInfo[] }>;
+  providers: Record<
+    string,
+    {
+      label: string;
+      models: ModelInfo[];
+      source: "remote" | "manual";
+      error?: string;
+    }
+  >;
   defaults: {
     provider: string;
     chatModel: string;
     wikiModel: string;
     searchModel: string;
     semopsModel: string;
-  };
-  recommendations?: {
-    chat?: string;
-    wiki?: string;
-    search?: string;
-    matcher?: string;
   };
 }
 
@@ -87,6 +88,7 @@ interface ApiKeyStatus {
   maskedKey: string;
   label?: string;
   baseUrl?: string;
+  modelNames?: string[];
 }
 
 interface SettingsUser {
@@ -172,8 +174,9 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
     (async () => {
       try {
         const [modelsRes, settingsRes] = await Promise.all([
-          fetch("/api/models"),
-          fetch("/api/settings"),
+          // Per-user dynamic list — never let any cache layer hold it.
+          fetch("/api/models", { cache: "no-store" }),
+          fetch("/api/settings", { cache: "no-store" }),
         ]);
         if (modelsRes.ok) setConfig(await modelsRes.json());
         if (settingsRes.ok) {
@@ -545,7 +548,6 @@ function AiModelsSection({
           <ModelRow
             label="Chat Model"
             description="Used for general conversational interactions and reasoning."
-            recommendation={config?.recommendations?.chat}
             providerOptions={providerOptions}
             models={getModels(chatProvider)}
             provider={chatProvider}
@@ -556,7 +558,6 @@ function AiModelsSection({
           <ModelRow
             label="Wiki Model"
             description="Optimized for long-context generation and document summarization."
-            recommendation={config?.recommendations?.wiki}
             providerOptions={providerOptions}
             models={getModels(wikiProvider)}
             provider={wikiProvider}
@@ -567,7 +568,6 @@ function AiModelsSection({
           <ModelRow
             label="Search Model"
             description="Fast model for query expansion and intent classification."
-            recommendation={config?.recommendations?.search}
             providerOptions={providerOptions}
             models={getModels(searchProvider)}
             provider={searchProvider}
@@ -581,7 +581,6 @@ function AiModelsSection({
           <ModelRow
             label="Matcher Model"
             description="Used for matching entity relationships and classification tasks."
-            recommendation={config?.recommendations?.matcher}
             providerOptions={providerOptions}
             models={getModels(matcherProvider)}
             provider={matcherProvider}
@@ -629,7 +628,6 @@ function ModelsGroup({
 function ModelRow({
   label,
   description,
-  recommendation,
   providerOptions,
   models,
   provider,
@@ -639,7 +637,6 @@ function ModelRow({
 }: {
   label: string;
   description: string;
-  recommendation?: string;
   providerOptions: { id: string; label: string }[];
   models: ModelInfo[];
   provider: string;
@@ -652,12 +649,6 @@ function ModelRow({
       <div>
         <p className="text-[14px] font-semibold text-sf-ink">{label}</p>
         <p className="mt-1 text-[12.5px] text-sf-ink-3 max-w-[44ch]">{description}</p>
-        {recommendation && (
-          <span className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] text-[11px] font-semibold bg-sf-accent-soft text-sf-accent-ink">
-            <Info className="h-3 w-3" strokeWidth={2} />
-            Recommended: {recommendation}
-          </span>
-        )}
       </div>
       <div className="grid grid-cols-2 gap-3 w-[420px]">
         <Select value={provider} onValueChange={onProviderChange}>
@@ -685,10 +676,7 @@ function ModelRow({
           <SelectContent>
             {models.map((m) => (
               <SelectItem key={m.id} value={m.id}>
-                <div className="flex items-baseline gap-2">
-                  <span>{m.label}</span>
-                  <span className="text-xs text-sf-ink-4">{m.desc}</span>
-                </div>
+                {m.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -879,6 +867,7 @@ function CustomEndpointsSection({
             initialId={entry.id}
             initialLabel={entry.label ?? ""}
             initialBaseUrl={entry.baseUrl ?? ""}
+            initialModelNames={entry.modelNames ?? []}
             maskedKey={entry.maskedKey}
             onSaved={refreshStatus}
             onRemoved={() => {
@@ -896,6 +885,7 @@ function CustomEndpointsSection({
             initialId={draft.id}
             initialLabel={draft.label}
             initialBaseUrl={draft.baseUrl}
+            initialModelNames={[]}
             maskedKey={null}
             startInEditing
             onSaved={async () => {
@@ -930,6 +920,7 @@ function CustomEndpointCard({
   initialId,
   initialLabel,
   initialBaseUrl,
+  initialModelNames,
   maskedKey,
   startInEditing = false,
   onSaved,
@@ -938,6 +929,7 @@ function CustomEndpointCard({
   initialId: string;
   initialLabel: string;
   initialBaseUrl: string;
+  initialModelNames: string[];
   maskedKey: string | null;
   startInEditing?: boolean;
   onSaved: () => void | Promise<void>;
@@ -947,15 +939,30 @@ function CustomEndpointCard({
   const [label, setLabel] = useState(initialLabel);
   const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
   const [apiKey, setApiKey] = useState("");
+  // Comma- or newline-separated model IDs typed by the user (custom
+  // endpoints don't auto-probe /v1/models).
+  const [modelNamesText, setModelNamesText] = useState(
+    initialModelNames.join(", "),
+  );
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const hasKey = maskedKey !== null;
+
+  function parseModelNames(text: string): string[] {
+    return text
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
 
   async function handleSave() {
     if (!label.trim() || !baseUrl.trim() || !apiKey.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
+      const modelNames = parseModelNames(modelNamesText);
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -965,15 +972,26 @@ function CustomEndpointCard({
               apiKey: apiKey.trim(),
               baseUrl: baseUrl.trim(),
               label: label.trim(),
+              ...(modelNames.length > 0 ? { modelNames } : {}),
             },
           },
         }),
       });
-      if (res.ok) {
-        setApiKey("");
-        setEditing(false);
-        await onSaved();
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const code = body?.error?.code as string | undefined;
+        setSaveError(
+          code === "INVALID_BASE_URL"
+            ? "Base URL is not allowed (must be a public https URL)"
+            : body?.error?.message || "Save failed",
+        );
+        return;
       }
+      setApiKey("");
+      setEditing(false);
+      await onSaved();
+    } catch {
+      setSaveError("Save failed");
     } finally {
       setSaving(false);
     }
@@ -1048,6 +1066,26 @@ function CustomEndpointCard({
         </div>
       )}
 
+      <FieldLabel>Models</FieldLabel>
+      {editing ? (
+        <textarea
+          value={modelNamesText}
+          onChange={(e) => setModelNamesText(e.target.value)}
+          placeholder="Comma- or newline-separated, e.g. llama3.1:8b, qwen2.5:14b"
+          className="rounded-[6px] border border-sf-line-strong bg-sf-surface px-3 py-2 text-[12px] font-mono min-h-[60px] resize-y"
+        />
+      ) : (
+        <div className="rounded-[6px] border border-sf-line-strong bg-sf-surface-muted px-3 py-2 font-mono text-[12px] text-sf-ink-3 min-h-9 break-words">
+          {initialModelNames.length > 0 ? initialModelNames.join(", ") : "—"}
+        </div>
+      )}
+
+      {saveError && (
+        <p className="text-[12px] text-sf-danger" role="alert">
+          {saveError}
+        </p>
+      )}
+
       <div className="flex items-center justify-end gap-2 pt-1">
         {editing ? (
           <>
@@ -1108,12 +1146,14 @@ function ProviderKeyCard({
   const [baseUrlInput, setBaseUrlInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const hasKey = status?.hasKey;
 
   const handleSave = async () => {
     if (!keyInput.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch("/api/settings", {
         method: "POST",
@@ -1129,11 +1169,31 @@ function ProviderKeyCard({
           },
         }),
       });
-      if (!res.ok) throw new Error("save failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const code = body?.error?.code as string | undefined;
+        const upstream = body?.error?.upstreamStatus as number | undefined;
+        const reason =
+          code === "INVALID_KEY"
+            ? "Provider rejected this key"
+            : code === "TIMEOUT"
+              ? "Provider didn't respond in time"
+              : code === "INVALID_BASE_URL"
+                ? "Base URL is not allowed"
+                : code === "BAD_RESPONSE"
+                  ? `Provider returned an unexpected response${upstream ? ` (HTTP ${upstream})` : ""}`
+                  : code === "NETWORK_ERROR"
+                    ? "Could not reach the provider"
+                    : body?.error?.message || "Save failed";
+        setSaveError(reason);
+        return;
+      }
       await onSaved();
       setEditing(false);
       setKeyInput("");
       setBaseUrlInput("");
+    } catch {
+      setSaveError("Save failed");
     } finally {
       setSaving(false);
     }
@@ -1287,6 +1347,11 @@ function ProviderKeyCard({
           )}
         </div>
       </div>
+      {saveError && (
+        <p className="mt-3 text-[12px] text-sf-danger" role="alert">
+          {saveError}
+        </p>
+      )}
     </Card>
   );
 }
