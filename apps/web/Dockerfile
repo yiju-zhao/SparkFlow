@@ -16,13 +16,12 @@ COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-# Install dependencies and generate Prisma client.
-# --ignore-scripts skips package postinstall hooks during install — most
-# importantly Prisma's engine-binary download, which can hang/segfault
-# and trigger npm 11's "Exit handler never called!" bug. We run
-# `prisma generate` explicitly afterwards so the client still lands in
-# node_modules/.prisma.
-RUN npm ci --ignore-scripts && npx prisma generate
+# Use pnpm via corepack instead of `npm ci`. npm 11 (shipped with
+# node:24) crashes mid-install with "Exit handler never called!" on
+# this lockfile; pnpm's installer is a different code path and is also
+# 3-5× faster on cold caches.
+RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN pnpm install --no-frozen-lockfile --ignore-scripts && pnpm exec prisma generate
 
 COPY . .
 
