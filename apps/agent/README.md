@@ -77,19 +77,29 @@ the running version with `docker logs langgraph-api-1 | head` (look for
 ```
 Bump explicitly when ready to upgrade.
 
-### Corporate CA bundle (mirrors apps/web)
+### Corporate CA bundle (runtime mount, NOT baked)
 
-`apps/agent/ca-certificates.crt` is required at build time (gitignored).
-On open networks an empty file is fine — `touch ca-certificates.crt` once.
-On hosts behind a TLS-intercepting proxy, replace it with the real CA:
+The `langgraph-api` image is built by `langgraph build` from the upstream
+`langchain/langgraph-api:wolfi` base — we don't modify it. Instead, the
+CA cert is mounted at runtime via `docker-compose.override.yml`:
+
 ```bash
-cp /path/to/your-ca.crt apps/agent/ca-certificates.crt
-make up-fresh   # rebuild so the cert is appended into the image bundle
+# On a host that needs a corp CA:
+cp docker-compose.override.yml.example docker-compose.override.yml
+cp /path/to/your-ca.crt ./ca-certificates.crt
+make up    # the Makefile auto-attaches the override
 ```
 
-The cert is appended to `/etc/ssl/certs/ca-certificates.crt` inside the
-image, and `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` all
-point at that path — covers Python `ssl`, `requests`, and libcurl.
+The override mounts the cert at `/etc/ssl/certs/ca-certificates.crt`
+and sets `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` —
+covers Python `ssl`, `requests`, and libcurl. Both files are gitignored;
+the `.example` template stays in the repo so each host can opt in.
+
+> Why mount instead of baking (unlike apps/web)? `langgraph build` pulls
+> the upstream wolfi base on every rebuild. Baking host-specific layers
+> on top makes us hostage to upstream's network/DNS defaults — a base
+> bump once broke DNS resolution for `langgraph-postgres` from inside
+> `langgraph-api`. Mounting decouples the cert from image refreshes.
 
 ### Optional: BGE-M3 embeddings for offline backfill
 

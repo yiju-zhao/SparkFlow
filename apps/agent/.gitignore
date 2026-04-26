@@ -208,7 +208,9 @@ __marimo__/
 
 .claude/
 .langgraph_api/
-# Host-specific corporate CA bundle baked into the image at build time.
-# Empty file is fine on open networks; populate with the real CA on hosts
-# that sit behind a TLS-intercepting proxy. Mirrors apps/web's pattern.
+# Host-specific corporate CA bundle, mounted at runtime via
+# docker-compose.override.yml (see docker-compose.override.yml.example).
+# NOT baked into the langgraph-api image — that image is built from the
+# upstream wolfi base by `langgraph build`, so we leave it untouched.
 ca-certificates.crt
+docker-compose.override.yml
