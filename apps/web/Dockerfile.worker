@@ -10,7 +10,12 @@ FROM base AS deps
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-RUN npm ci && npx prisma generate
+# --ignore-scripts skips all package postinstall hooks during install.
+# Without this, Prisma's postinstall (which downloads engine binaries)
+# can hang/segfault and trigger npm 11's "Exit handler never called!"
+# bug. We then run `prisma generate` explicitly so the engine + client
+# end up in node_modules/.prisma the same as before.
+RUN npm ci --ignore-scripts && npx prisma generate
 
 FROM base AS runtime
 COPY --from=deps /app/node_modules ./node_modules
