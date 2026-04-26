@@ -1,7 +1,22 @@
 # SparkFlow local dev services (Postgres + Redis)
 # Usage: docker compose up -d
+#
+# On hosts behind a TLS-intercepting / forwarding proxy (HTTP_PROXY /
+# HTTPS_PROXY auto-injected by ~/.docker/config.json), NO_PROXY must list
+# every docker-network service hostname or library-level NO_PROXY checks
+# route inter-container traffic through the host proxy. The compose file
+# appends those service names to whatever the user already has set in
+# their host shell / .env, so corporate intranet domains in $NO_PROXY are
+# preserved.
 
 name: sparkflow
+
+# Reused by every service that does outbound HTTP (workers, web,
+# workflows-api). Anchors are merged into each service's environment via
+# `<<: *no_proxy_env`.
+x-no-proxy-env: &no_proxy_env
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},postgres,redis,searxng,web,workflows-api,ingest-worker,digest-worker,migrate
+  no_proxy: ${no_proxy:-localhost,127.0.0.1},postgres,redis,searxng,web,workflows-api,ingest-worker,digest-worker,migrate
 
 services:
   postgres:
@@ -62,6 +77,7 @@ services:
     command: ["npm", "run", "worker:ingest"]
     env_file: .env
     environment:
+      <<: *no_proxy_env
       # Override host-side localhost URLs with docker service hostnames.
       # apps/web/.env uses localhost so `npm run dev` works on the host.
       REDIS_URL: redis://redis:6379
@@ -81,6 +97,7 @@ services:
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
     env_file: ../agent/.env
     environment:
+      <<: *no_proxy_env
       # Override host-side localhost URL with docker service hostname.
       REDIS_URL: redis://redis:6379
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
@@ -109,6 +126,7 @@ services:
     container_name: sparkflow-workflows-api
     env_file: ../agent/.env
     environment:
+      <<: *no_proxy_env
       # In-container service hostnames override host-side localhost URLs.
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
@@ -139,6 +157,7 @@ services:
     command: ["npx", "prisma", "migrate", "deploy"]
     env_file: .env
     environment:
+      <<: *no_proxy_env
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
     depends_on:
       postgres:
@@ -154,6 +173,7 @@ services:
     container_name: sparkflow-web
     env_file: .env
     environment:
+      <<: *no_proxy_env
       # Override host-side localhost URLs with docker service hostnames.
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
       REDIS_URL: redis://redis:6379
