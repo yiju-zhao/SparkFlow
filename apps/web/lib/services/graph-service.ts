@@ -28,8 +28,19 @@ async function resolveWikiClient(userId: string) {
   // this provider; the error message points them at /settings.
   const resolved = await resolveApiKey(userId, settings.wikiModelProvider);
 
+  // Explicit timeout/retries because the SDK default is 10 minutes — too
+  // long for an interactive ingest pipeline. Tunable via env so corporate
+  // networks with TLS-intercepting proxies can dial up if needed.
+  const timeoutMs = Number(process.env.WIKI_LLM_TIMEOUT_MS ?? 180_000);
+  const maxRetries = Number(process.env.WIKI_LLM_MAX_RETRIES ?? 2);
+
   return {
-    client: new OpenAI({ apiKey: resolved.apiKey, baseURL: resolved.baseUrl }),
+    client: new OpenAI({
+      apiKey: resolved.apiKey,
+      baseURL: resolved.baseUrl,
+      timeout: timeoutMs,
+      maxRetries,
+    }),
     model: settings.wikiModelName,
   };
 }

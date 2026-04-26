@@ -5,13 +5,12 @@ FROM node:24 AS base
 WORKDIR /app
 ENV NODE_ENV=production
 
-FROM base AS deps
 # Optional corporate CA bundle. Required on networks whose proxy does
-# TLS interception (registry calls would otherwise fail with "sslv3
-# alert handshake failure"). The file `apps/web/ca-certificates.crt`
-# MUST exist; gitignored — populate with your CA on networks that need
-# it, otherwise leave empty. The RUN below installs it only when
-# non-empty so open-network builds are unaffected.
+# TLS interception (registry calls and runtime LLM calls both go through
+# the same proxy). The file `apps/web/ca-certificates.crt` MUST exist;
+# gitignored — populate with your CA on networks that need it, otherwise
+# leave empty. Done in `base` so every derived stage (deps build AND
+# runtime) trusts the CA, not just the install step.
 COPY ca-certificates.crt /tmp/corporate-ca.crt
 RUN if [ -s /tmp/corporate-ca.crt ]; then \
       cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
@@ -19,6 +18,7 @@ RUN if [ -s /tmp/corporate-ca.crt ]; then \
     fi && rm /tmp/corporate-ca.crt
 ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
+FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 RUN npm ci && npx prisma generate
