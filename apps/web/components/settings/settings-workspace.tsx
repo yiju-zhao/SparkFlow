@@ -224,7 +224,12 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
         <main ref={mainScrollRef} className="flex-1 overflow-y-auto bg-sf-bg">
           <div className="mx-auto max-w-[1040px] px-10 py-10">
             {active === "models" && (
-              <AiModelsSection initialSettings={initialSettings} config={config} />
+              <AiModelsSection
+                initialSettings={initialSettings}
+                config={config}
+                apiKeyStatus={apiKeyStatus}
+                onOpenApiKeys={() => handleSelect("api-keys")}
+              />
             )}
             {active === "data-sources" && (
               <DataSourcesSection
@@ -374,9 +379,13 @@ function StatusBadge({
 function AiModelsSection({
   initialSettings,
   config,
+  apiKeyStatus,
+  onOpenApiKeys,
 }: {
   initialSettings?: InitialSettings;
   config: ModelsConfig | null;
+  apiKeyStatus: Record<string, ApiKeyStatus>;
+  onOpenApiKeys: () => void;
 }) {
   // Empty string = "not picked yet" (renders as a placeholder).
   // BYOK mandate: Save is disabled until all 8 slots are filled.
@@ -399,10 +408,15 @@ function AiModelsSection({
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
+  // Only providers the user has actually configured a BYOK key for
+  // appear in the dropdowns. Surfacing every provider lets users pick
+  // one they can't actually use, then hit a runtime error mid-ingest.
   const providerOptions = useMemo(() => {
     if (!config) return [];
-    return Object.entries(config.providers).map(([id, { label }]) => ({ id, label }));
-  }, [config]);
+    return Object.entries(config.providers)
+      .filter(([id]) => apiKeyStatus[id]?.hasKey)
+      .map(([id, { label }]) => ({ id, label }));
+  }, [config, apiKeyStatus]);
 
   const getModels = useCallback(
     (providerId: string): ModelInfo[] => config?.providers[providerId]?.models || [],
@@ -514,6 +528,19 @@ function AiModelsSection({
       />
 
       <div className="flex flex-col gap-6 pb-24">
+        {config && providerOptions.length === 0 && (
+          <div className="rounded-[8px] border border-sf-line-strong bg-sf-bg-alt p-4 text-sm text-sf-ink-2">
+            No API keys configured yet. Add a BYOK key under{" "}
+            <button
+              type="button"
+              onClick={onOpenApiKeys}
+              className="font-semibold text-sf-accent underline decoration-sf-accent/40 underline-offset-2 hover:decoration-sf-accent"
+            >
+              API Keys
+            </button>{" "}
+            first; only providers with a saved key will appear in the dropdowns below.
+          </div>
+        )}
         <ModelsGroup title="Deepdive" description="Configure the models powering the Deepdive research and synthesis capabilities.">
           <ModelRow
             label="Chat Model"
