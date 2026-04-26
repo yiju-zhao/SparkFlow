@@ -97,6 +97,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL:-http://web:3001}
       SEMOPS_API_URL: ${SEMOPS_API_URL:-http://host.docker.internal:2025}
+      # SearXNG is deployed outside this compose. Default to the host
+      # bridge so docker-on-mac/win can reach it; on Linux servers
+      # override SEARXNG_URL in .env to the actual reachable URL.
+      SEARXNG_URL: ${SEARXNG_URL:-http://host.docker.internal:8888}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
     ports:
       - "${WORKFLOWS_PORT:-2027}:2027"
