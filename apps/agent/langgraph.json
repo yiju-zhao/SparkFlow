@@ -7,5 +7,12 @@
         "deep_research": "./graphs/surface.py:deep_research_graph"
     },
     "env": ".env",
-    "image_distro": "wolfi"
+    "image_distro": "wolfi",
+    "dockerfile_lines": [
+        "COPY ca-certificates.crt /tmp/corporate-ca.crt",
+        "RUN if [ -s /tmp/corporate-ca.crt ]; then cat /tmp/corporate-ca.crt >> /etc/ssl/certs/ca-certificates.crt; fi && rm /tmp/corporate-ca.crt",
+        "ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt",
+        "ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt",
+        "ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt"
+    ]
 }

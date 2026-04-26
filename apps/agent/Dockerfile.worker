@@ -22,7 +22,8 @@ RUN if [ -s /tmp/corporate-ca.crt ]; then \
       update-ca-certificates; \
     fi && rm /tmp/corporate-ca.crt
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
-    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install "arq>=0.25" "httpx" "python-dotenv"
