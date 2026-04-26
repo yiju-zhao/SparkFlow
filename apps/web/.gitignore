@@ -34,6 +34,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env
 
+# Corporate CA bundle for HTTPS-intercepting proxies. Drop the cert
+# here on machines that need it; never commit.
+ca-certificates.crt
+
 # vercel
 .vercel
 
