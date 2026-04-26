@@ -37,6 +37,23 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Self-hosted SearXNG — default web search backend used by
+  # apps/agent/tools/web.py when no Tavily BYOK key is provided.
+  # Internal use only (limiter disabled in config/settings.yml).
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: sparkflow-searxng
+    ports:
+      - "${SEARXNG_PORT:-8888}:8080"
+    volumes:
+      - ./searxng/config:/etc/searxng:rw
+      - ./searxng/data:/var/cache/searxng:rw
+    environment:
+      SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8888}/
+      # Splits into settings.yml's `ultrasecretkey` placeholder at startup.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-sparkflow-default-rotate-in-prod}
+    restart: unless-stopped
+
   ingest-worker:
     build:
       context: .
@@ -97,6 +114,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL:-http://web:3001}
       SEMOPS_API_URL: ${SEMOPS_API_URL:-http://host.docker.internal:2025}
+      # SearXNG runs in the same compose network — use the service name.
+      SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
     ports:
       - "${WORKFLOWS_PORT:-2027}:2027"

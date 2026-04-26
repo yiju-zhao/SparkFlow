@@ -1,0 +1,41 @@
+# SparkFlow internal SearXNG instance.
+# Mounted at /etc/searxng/settings.yml inside the container.
+# Reference: https://docs.searxng.org/admin/settings/
+
+use_default_settings: true
+
+general:
+  instance_name: "SparkFlow Internal"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: false
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  # The official searxng/searxng entrypoint sed-replaces the literal
+  # `ultrasecretkey` with the SEARXNG_SECRET env var value at startup.
+  # Override SEARXNG_SECRET in your .env on production hosts.
+  secret_key: "ultrasecretkey"
+  base_url: false
+  # Internal-only — disable the bot-protection limiter so server-side
+  # callers from workflows-api / langgraph don't get throttled.
+  # NEVER expose this instance to the public internet without
+  # re-enabling.
+  limiter: false
+  public_instance: false
+  image_proxy: false
+
+# JSON format must be explicitly enabled — default settings.yml only
+# allows html, so /search?format=json returns 403 without this block.
+search:
+  formats:
+    - html
+    - json
+  autocomplete: "duckduckgo"
+  safe_search: 0
+  default_lang: "auto"
+
+ui:
+  default_theme: simple
