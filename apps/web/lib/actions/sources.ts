@@ -329,12 +329,17 @@ export async function addWechatSource(notebookId: string, articleId: number) {
         },
       });
 
-      // Trigger wiki ingest
+      // Enqueue wiki ingest — drained out-of-process by ingest-worker.
       try {
-        const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
-        await ingestSourceToWiki(notebookId, source.id, session.user.id);
+        const { enqueueWikiIngest } = await import("@/lib/queue/ingest-queue");
+        const { jobId } = await enqueueWikiIngest({
+          notebookId,
+          sourceId: source.id,
+          userId: session.user.id,
+        });
+        console.log(`[addWechatSource] wiki ingest enqueued: ${jobId}`);
       } catch (wikiErr) {
-        console.error("[addWechatSource] Wiki ingest failed:", wikiErr);
+        console.error("[addWechatSource] Failed to enqueue wiki ingest:", wikiErr);
       }
     } catch (err) {
       console.error("[addWechatSource] Failed:", err);
