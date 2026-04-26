@@ -29,6 +29,16 @@ export function FirstRunTour() {
   // first-run step can land on the wrong page (e.g. add-sources pointing at
   // [data-guide="add-source-trigger"] which only exists inside a notebook
   // workspace, not on /deepdive).
+  // Gate the Spotlight render on setup completion + pathname match so the
+  // bubble never appears with new content while the previous page is still on
+  // screen. Reset to false on step change via setState-during-render.
+  const [setupSettled, setSetupSettled] = useState(false);
+  const [lastSettledStep, setLastSettledStep] = useState(tour.stepIndex);
+  if (tour.stepIndex !== lastSettledStep) {
+    setLastSettledStep(tour.stepIndex);
+    setSetupSettled(false);
+  }
+
   const setupSeq = useRef(0);
   useEffect(() => {
     if (tour.stage !== "running") return;
@@ -69,6 +79,10 @@ export function FirstRunTour() {
           el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
         }
       }
+      // 5. Setup done — unblock the render gate.
+      if (!cancelled && seq === setupSeq.current) {
+        setSetupSettled(true);
+      }
     }
     run();
     return () => {
@@ -107,29 +121,35 @@ export function FirstRunTour() {
           </div>
         </div>
       ) : null}
-      {tour.stage === "running" && steps.length > 0 ? (
-        (() => {
-          const current = steps[tour.stepIndex] ?? steps[steps.length - 1];
-          const stripPrefix = (k: string) => k.replace(/^guides\./, "");
-          return (
-            <Spotlight
-              selector={current.selector}
-              placement={current.placement}
-              title={tGuides(stripPrefix(current.titleKey))}
-              body={tGuides(stripPrefix(current.bodyKey))}
-              stepIndex={tour.stepIndex}
-              totalSteps={steps.length}
-              onNext={() => (tour.stepIndex === steps.length - 1 ? tour.finish() : tour.next())}
-              onPrev={tour.stepIndex > 0 ? tour.prev : undefined}
-              onClose={handleSkip}
-              nextLabel={t("next")}
-              prevLabel={t("prev")}
-              closeLabel={t("close")}
-              finishLabel={t("finish")}
-            />
-          );
-        })()
-      ) : null}
+      {tour.stage === "running" && steps.length > 0
+        ? (() => {
+            const current = steps[tour.stepIndex] ?? steps[steps.length - 1];
+            // Hold the Spotlight until both the route AND the setup sequence
+            // have flushed — otherwise the next step's bubble paints on top of
+            // the previous page for one frame.
+            const stripped = pathname?.replace(/^\/(en|zh)(?=\/|$)/, "") || "/";
+            const onRoute = !current.route || stripped === current.route;
+            if (!onRoute || !setupSettled) return null;
+            const stripPrefix = (k: string) => k.replace(/^guides\./, "");
+            return (
+              <Spotlight
+                selector={current.selector}
+                placement={current.placement}
+                title={tGuides(stripPrefix(current.titleKey))}
+                body={tGuides(stripPrefix(current.bodyKey))}
+                stepIndex={tour.stepIndex}
+                totalSteps={steps.length}
+                onNext={() => (tour.stepIndex === steps.length - 1 ? tour.finish() : tour.next())}
+                onPrev={tour.stepIndex > 0 ? tour.prev : undefined}
+                onClose={handleSkip}
+                nextLabel={t("next")}
+                prevLabel={t("prev")}
+                closeLabel={t("close")}
+                finishLabel={t("finish")}
+              />
+            );
+          })()
+        : null}
       {showSkipBanner ? (
         <div className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-border bg-background px-4 py-2 text-xs shadow-lg">
           {t("skipToast")}
