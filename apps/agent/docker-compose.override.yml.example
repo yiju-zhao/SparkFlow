@@ -15,3 +15,9 @@ services:
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       CURL_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       LANGGRAPH_API_HOST: 0.0.0.0
+      # On hosts where ~/.docker/config.json injects HTTP_PROXY/HTTPS_PROXY into
+      # every container (corp networks), NO_PROXY must list every sibling
+      # service hostname so postgres/redis traffic doesn't get proxied. Both
+      # cases written: requests/httpx read NO_PROXY, libcurl reads no_proxy.
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},langgraph-postgres,langgraph-redis,langgraph-api
+      no_proxy: ${no_proxy:-localhost,127.0.0.1},langgraph-postgres,langgraph-redis,langgraph-api
