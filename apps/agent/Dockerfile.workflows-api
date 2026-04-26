@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1.7
+# Workflows API server (FastAPI). Hosts /v1/workflows/* endpoints consumed
+# by apps/web for matcher jobs, daily digest, and the search workflow.
+# Separate from the langgraph-api image (which is built by `langgraph build`
+# from langgraph.json) and from the digest worker image (which only needs
+# arq + httpx).
+
+FROM python:3.13-slim
+
+WORKDIR /app
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install runtime deps from pyproject.toml. Using `uv` instead of plain
+# `pip` because pyproject.toml leaves langchain/langgraph/langchain-* on
+# their floating ranges — pip's resolver backtracks for many minutes,
+# uv's Rust resolver finishes the same workload in seconds.
+COPY pyproject.toml ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    pip install --no-cache-dir uv && \
+    python -c "import tomllib,sys; d=tomllib.loads(open('pyproject.toml','rb').read().decode())['project']['dependencies']; sys.stdout.write('\n'.join(d))" > /tmp/deps.txt && \
+    uv pip install --system -r /tmp/deps.txt
+
+# Copy only the source the workflows API touches transitively. The
+# `workflows` and `server` packages aren't in pyproject.toml's hatch
+# packages list, so they must be copied raw.
+COPY workflows ./workflows
+COPY server ./server
+COPY tools ./tools
+COPY hermes ./hermes
+COPY config ./config
+COPY prompts ./prompts
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 2027
+
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "2027"]

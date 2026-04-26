@@ -31,6 +31,21 @@ make dev
 # equivalent to: langgraph dev --host 0.0.0.0 --port 2024
 ```
 
+The agent has **two independent server processes** that must both run for
+the full feature set:
+
+| Process | Port | What it serves | How to start |
+|---------|------|----------------|--------------|
+| LangGraph API | 2024 | Notebook / hub / deep-research surface graphs (`langgraph.json`) | `make dev` |
+| Workflows API | 2027 | `/v1/workflows/matcher/jobs/*`, `/v1/workflows/daily_digest/*`, `/v1/workflows/search` (FastAPI in `server/app.py`) | `make serve` |
+| Digest worker | — | ARQ consumer for daily-digest sections | `arq workflows.digest_worker.WorkerSettings` |
+
+**Run all three in separate terminals during dev** (each is needed by
+different `apps/web` routes — chat hits 2024, matcher/digest hits 2027,
+digest jobs drain via the ARQ worker). If `make serve` isn't running,
+`POST /api/digest/generate` and `POST /api/matcher/jobs` from the web
+app will time out / 502.
+
 Full Docker stack (postgres + redis + agent), per the
 [langgraph CLI docs](https://docs.langchain.com/langsmith/cli):
 ```bash

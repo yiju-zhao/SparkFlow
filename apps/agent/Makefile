@@ -3,6 +3,7 @@
 
 IMAGE_TAG ?= sparkflow-agent:dev
 PORT ?= 2024
+WORKFLOWS_PORT ?= 2027
 
 export DOCKER_BUILDKIT := 1
 export COMPOSE_DOCKER_CLI_BUILD := 1
@@ -18,11 +19,12 @@ else
 COMPOSE_FLAG :=
 endif
 
-.PHONY: dev up up-fresh build stop logs test clean help
+.PHONY: dev serve up up-fresh build stop logs test clean help
 
 help:
 	@echo "Targets:"
 	@echo "  dev       - In-process LangGraph dev server (no Docker, hot reload)"
+	@echo "  serve     - FastAPI workflows server (matcher / digest / search)"
 	@echo "  up        - Start postgres/redis + agent (uses docker-compose.override.yml if present)"
 	@echo "  up-fresh  - Force --no-cache rebuild then start (after editing deps)"
 	@echo "  build     - Standalone: build $(IMAGE_TAG), don't start"
@@ -34,6 +36,13 @@ help:
 # Fastest path: in-process, hot reload. Use this for daily development.
 dev:
 	langgraph dev --host 0.0.0.0 --port $(PORT)
+
+# FastAPI workflows server. Runs alongside `langgraph dev` (different port).
+# Hosts /v1/workflows/matcher/jobs, /v1/workflows/daily_digest/sections/*,
+# and /v1/workflows/search — consumed by apps/web's API routes.
+# --reload picks up edits to server/, workflows/, tools/, hermes/.
+serve:
+	uvicorn server.app:app --host 0.0.0.0 --port $(WORKFLOWS_PORT) --reload
 
 # Daily Docker path. Lets the CLI build + run in one shot — Docker layer
 # cache makes repeats fast, no risk of using a stale prebuilt tag.

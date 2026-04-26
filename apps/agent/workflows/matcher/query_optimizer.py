@@ -8,7 +8,6 @@ rewrite vague requests into clearer, more matchable search text.
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
 
 from google import genai
@@ -59,9 +58,6 @@ class QueryOptimizer:
         api_base: str | None = None,
     ):
         self.excel_processor = excel_processor or ExcelProcessor()
-        self.enabled = (
-            os.getenv("ENABLE_MATCHER_QUERY_OPTIMIZER", "true").lower() == "true"
-        )
         self.model_provider = model_provider
         self.model_name = model_name
         self.api_base = api_base
@@ -104,12 +100,9 @@ class QueryOptimizer:
                 source_queries=[],
             )
 
-        if not self.enabled:
-            return self._fallback_result(normalized_queries, fallback_native)
-
         if not self.api_key:
             logger.warning(
-                "Query optimizer is enabled but no GOOGLE_API_KEY is configured. "
+                "Query optimizer has no GOOGLE_API_KEY configured. "
                 "Falling back to deterministic query merge."
             )
             return self._fallback_result(normalized_queries, fallback_native)
