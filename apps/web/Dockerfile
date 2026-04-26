@@ -16,8 +16,13 @@ COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-# Install dependencies and generate Prisma client
-RUN npm ci && npx prisma generate
+# Install dependencies and generate Prisma client.
+# --ignore-scripts skips package postinstall hooks during install — most
+# importantly Prisma's engine-binary download, which can hang/segfault
+# and trigger npm 11's "Exit handler never called!" bug. We run
+# `prisma generate` explicitly afterwards so the client still lands in
+# node_modules/.prisma.
+RUN npm ci --ignore-scripts && npx prisma generate
 
 COPY . .
 
