@@ -99,8 +99,6 @@ the `.example` template stays in the repo so each host can opt in.
 Not installed by default to keep the agent image lean. Install only on
 machines that run those scripts:
 ```bash
-pip install -r requirements-embeddings.txt
-# or, if working from pyproject:
 pip install -e ".[embeddings]"
 ```
 
