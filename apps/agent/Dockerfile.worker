@@ -12,6 +12,18 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Optional corporate CA bundle (see Dockerfile.workflows-api for context).
+# File MUST exist; empty = no-op for open networks.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+COPY ca-certificates.crt /tmp/corporate-ca.crt
+RUN if [ -s /tmp/corporate-ca.crt ]; then \
+      cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
+      update-ca-certificates; \
+    fi && rm /tmp/corporate-ca.crt
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install "arq>=0.25" "httpx" "python-dotenv"
 

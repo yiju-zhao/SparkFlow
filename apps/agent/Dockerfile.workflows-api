@@ -13,6 +13,20 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Optional corporate CA bundle for HTTPS-intercepting proxies.
+# python:3.13-slim doesn't ship `ca-certificates` so we install it
+# first; on networks that don't need a CA the file is empty and the
+# install no-ops. File MUST exist (gitignored — see apps/agent/.gitignore).
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+COPY ca-certificates.crt /tmp/corporate-ca.crt
+RUN if [ -s /tmp/corporate-ca.crt ]; then \
+      cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
+      update-ca-certificates; \
+    fi && rm /tmp/corporate-ca.crt
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
 # Install runtime deps from pyproject.toml. Using `uv` instead of plain
 # `pip` because pyproject.toml leaves langchain/langgraph/langchain-* on
 # their floating ranges — pip's resolver backtracks for many minutes,
