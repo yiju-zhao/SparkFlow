@@ -64,14 +64,14 @@
       "label": "DeepSeek",
       "models": [
         {
-          "id": "deepseek-chat",
-          "label": "DeepSeek Chat (V3.2)",
-          "desc": "Strong general-purpose, very low cost, 128K"
+          "id": "deepseek-v4-flash",
+          "label": "DeepSeek V4 Flash",
+          "desc": "Fast & low-cost general purpose, 128K"
         },
         {
-          "id": "deepseek-reasoner",
-          "label": "DeepSeek Reasoner (V3.2)",
-          "desc": "Thinking mode, deep reasoning, 128K"
+          "id": "deepseek-v4-pro",
+          "label": "DeepSeek V4 Pro",
+          "desc": "Stronger reasoning, deep thinking, 128K"
         }
       ]
     },
@@ -135,9 +135,9 @@
     "semopsModel": "gemini-2.5-flash"
   },
   "recommendations": {
-    "chat": "Fast models work best: Gemini 2.5 Flash, GPT-4.1 Mini, DeepSeek Chat. For complex research, try Gemini 3.1 Pro or GPT-5.4.",
-    "wiki": "Wiki extraction benefits from strong reasoning. Gemini 3.1 Pro, GPT-5.4, GLM-5.1, or DeepSeek Reasoner produce richer knowledge graphs. Flash models are fine for most content.",
-    "search": "The search agent finds sources for your notebook. A capable model with tool-use works best: Gemini 2.5 Flash, GPT-4.1, or DeepSeek Chat.",
-    "matcher": "Matcher compares queries against many items. Use a fast, affordable model: Gemini 2.5 Flash, DeepSeek Chat, or GPT-4.1 Nano."
+    "chat": "Fast models work best: Gemini 2.5 Flash, GPT-4.1 Mini, DeepSeek V4 Flash. For complex research, try Gemini 3.1 Pro or GPT-5.4.",
+    "wiki": "Wiki extraction benefits from strong reasoning. Gemini 3.1 Pro, GPT-5.4, GLM-5.1, or DeepSeek V4 Pro produce richer knowledge graphs. Flash models are fine for most content.",
+    "search": "The search agent finds sources for your notebook. A capable model with tool-use works best: Gemini 2.5 Flash, GPT-4.1, or DeepSeek V4 Flash.",
+    "matcher": "Matcher compares queries against many items. Use a fast, affordable model: Gemini 2.5 Flash, DeepSeek V4 Flash, or GPT-4.1 Nano."
   }
 }
