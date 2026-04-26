@@ -8,24 +8,13 @@ WORKFLOWS_PORT ?= 2027
 export DOCKER_BUILDKIT := 1
 export COMPOSE_DOCKER_CLI_BUILD := 1
 
-# Auto-attach docker-compose.override.yml when it exists on this machine
-# (e.g. production hosts that need a CA cert mounted into langgraph-api).
-# `langgraph up -d FILE` is the official way to add side-services / volumes;
-# `langgraph up -v` does NOT exist — older docs and chat tips were wrong.
-COMPOSE_OVERRIDE := $(wildcard docker-compose.override.yml)
-ifneq ($(COMPOSE_OVERRIDE),)
-COMPOSE_FLAG := -d $(COMPOSE_OVERRIDE)
-else
-COMPOSE_FLAG :=
-endif
-
 .PHONY: dev serve up up-fresh build stop logs test clean help
 
 help:
 	@echo "Targets:"
 	@echo "  dev       - In-process LangGraph dev server (no Docker, hot reload)"
 	@echo "  serve     - FastAPI workflows server (matcher / digest / search)"
-	@echo "  up        - Start postgres/redis + agent (uses docker-compose.override.yml if present)"
+	@echo "  up        - Start postgres/redis + agent (Docker layer cache keeps it fast)"
 	@echo "  up-fresh  - Force --no-cache rebuild then start (after editing deps)"
 	@echo "  build     - Standalone: build $(IMAGE_TAG), don't start"
 	@echo "  stop      - Stop the langgraph compose stack"
@@ -47,13 +36,13 @@ serve:
 # Daily Docker path. Lets the CLI build + run in one shot — Docker layer
 # cache makes repeats fast, no risk of using a stale prebuilt tag.
 up:
-	langgraph up --port $(PORT) $(COMPOSE_FLAG)
+	langgraph up --port $(PORT)
 
 # Force a rebuild (e.g. after editing requirements/pyproject). Tags the
 # image so we can hand it to `langgraph up --image` and skip its rebuild.
 up-fresh:
 	langgraph build --no-cache -t $(IMAGE_TAG)
-	langgraph up --image $(IMAGE_TAG) --port $(PORT) $(COMPOSE_FLAG)
+	langgraph up --image $(IMAGE_TAG) --port $(PORT)
 
 # Standalone build — useful in CI, or to pre-warm the cache before `up`.
 build:

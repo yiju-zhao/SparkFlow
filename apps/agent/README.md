@@ -77,21 +77,19 @@ the running version with `docker logs langgraph-api-1 | head` (look for
 ```
 Bump explicitly when ready to upgrade.
 
-### Production hosts: mounting a corporate CA bundle
+### Corporate CA bundle (mirrors apps/web)
 
-`langgraph up` does NOT accept `-v` for volume mounts (the CLI only has
-`--verbose`). To mount a CA bundle so the agent trusts a private cert
-authority, use the official `-d <docker-compose.override.yml>` path:
-
+`apps/agent/ca-certificates.crt` is required at build time (gitignored).
+On open networks an empty file is fine — `touch ca-certificates.crt` once.
+On hosts behind a TLS-intercepting proxy, replace it with the real CA:
 ```bash
-# On the production host, inside apps/agent/:
-cp docker-compose.override.yml.example docker-compose.override.yml
-cp /path/to/your-ca.crt ./ca-certificates.crt
-make up    # the Makefile auto-attaches the override
+cp /path/to/your-ca.crt apps/agent/ca-certificates.crt
+make up-fresh   # rebuild so the cert is appended into the image bundle
 ```
 
-`docker-compose.override.yml` and `ca-certificates.crt` are gitignored;
-the `.example` template stays in the repo so each host can opt in.
+The cert is appended to `/etc/ssl/certs/ca-certificates.crt` inside the
+image, and `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` all
+point at that path — covers Python `ssl`, `requests`, and libcurl.
 
 ### Optional: BGE-M3 embeddings for offline backfill
 

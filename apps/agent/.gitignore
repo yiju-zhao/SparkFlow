@@ -208,6 +208,7 @@ __marimo__/
 
 .claude/
 .langgraph_api/
-# Host-specific overlays for `langgraph up -d` (CA certs, mounts, etc.)
-docker-compose.override.yml
+# Host-specific corporate CA bundle baked into the image at build time.
+# Empty file is fine on open networks; populate with the real CA on hosts
+# that sit behind a TLS-intercepting proxy. Mirrors apps/web's pattern.
 ca-certificates.crt
