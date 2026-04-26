@@ -1,30 +1,29 @@
 /**
- * audit-provider-models — fetch each LLM provider's `/v1/models` endpoint
- * and compare it against `apps/web/config/models.json`.
+ * audit-provider-models — fetch each LLM provider's `/v1/models`
+ * endpoint and print the live model id list. Useful for spot-checking
+ * what the production app's settings dropdowns will surface for a
+ * given BYOK key, without running the dev server.
  *
  * Run:
  *   cd apps/web
  *   npx tsx scripts/audit-provider-models.ts
  *
- * Reads API keys from environment variables (same names used elsewhere
- * in the repo). A provider with no key set is skipped silently.
+ * Reads API keys from environment variables. A provider with no key
+ * set is skipped silently.
  *
  *   OPENAI_API_KEY
  *   GEMINI_API_KEY            (or GOOGLE_API_KEY)
  *   DEEPSEEK_API_KEY
  *   GLM_API_KEY               (or ZHIPU_API_KEY)
- *   MINIMAX_API_KEY
+ *   MINIMAX_API_KEY            (no /v1/models endpoint — script reports skip)
  *   KIMI_API_KEY              (or MOONSHOT_API_KEY)
  *
- * Loads `.env` via dotenv if present so a normal dev `.env` works
- * without re-exporting.
+ * Loads `.env` via dotenv if present so a normal dev `.env` works.
  */
 
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 loadEnv();
-
-import modelsConfig from "../config/models.json";
 
 interface ProviderProbe {
   id: string;
@@ -79,14 +78,6 @@ const PROVIDERS: ProviderProbe[] = [
   },
 ];
 
-interface ProviderModelsConfig {
-  label: string;
-  models: Array<{ id: string; label: string; desc: string }>;
-}
-
-const configProviders = (modelsConfig as { providers: Record<string, ProviderModelsConfig> })
-  .providers;
-
 async function fetchRemoteModels(probe: ProviderProbe): Promise<string[]> {
   const url = `${probe.baseUrl}${probe.modelsPath ?? "/models"}`;
   const res = await fetch(url, {
@@ -102,24 +93,16 @@ async function fetchRemoteModels(probe: ProviderProbe): Promise<string[]> {
   return body.data.map((m) => m.id).sort();
 }
 
-function diff(a: string[], b: string[]): { onlyA: string[]; onlyB: string[]; both: string[] } {
-  const setA = new Set(a);
-  const setB = new Set(b);
-  return {
-    onlyA: a.filter((x) => !setB.has(x)),
-    onlyB: b.filter((x) => !setA.has(x)),
-    both: a.filter((x) => setB.has(x)),
-  };
-}
-
 async function auditProvider(probe: ProviderProbe): Promise<void> {
-  const local = configProviders[probe.id];
-  const localIds = local ? local.models.map((m) => m.id).sort() : [];
-
   console.log(`\n=== ${probe.label} (${probe.id}) ===`);
 
   if (!probe.apiKey) {
     console.log("  (no API key in environment — skipping)");
+    return;
+  }
+
+  if (probe.id === "minimax") {
+    console.log("  (minimax has no /v1/models endpoint — skipping live probe)");
     return;
   }
 
@@ -131,24 +114,12 @@ async function auditProvider(probe: ProviderProbe): Promise<void> {
     return;
   }
 
-  const { onlyA: missingFromLocal, onlyB: stalLocal, both } = diff(remoteIds, localIds);
-  console.log(`  remote: ${remoteIds.length} models   local: ${localIds.length} models`);
-
-  if (both.length > 0) {
-    console.log(`  ✓ in both (${both.length}): ${both.slice(0, 8).join(", ")}${both.length > 8 ? ", ..." : ""}`);
-  }
-  if (missingFromLocal.length > 0) {
-    console.log(`  + only on API (${missingFromLocal.length}, candidates to ADD):`);
-    for (const id of missingFromLocal) console.log(`      ${id}`);
-  }
-  if (stalLocal.length > 0) {
-    console.log(`  - only in models.json (${stalLocal.length}, candidates to REMOVE):`);
-    for (const id of stalLocal) console.log(`      ${id}`);
-  }
+  console.log(`  ${remoteIds.length} models from /v1/models:`);
+  for (const id of remoteIds) console.log(`    ${id}`);
 }
 
 async function main(): Promise<void> {
-  console.log("Auditing apps/web/config/models.json against live provider /v1/models endpoints");
+  console.log("Listing live models per provider (/v1/models)");
   for (const probe of PROVIDERS) {
     await auditProvider(probe);
   }

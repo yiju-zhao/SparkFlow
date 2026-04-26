@@ -1,0 +1,29 @@
+# Optional override consumed by `langgraph up -d docker-compose.override.yml`.
+# Activate on a host:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   make up
+# (apps/agent/Makefile auto-attaches the file with `-d` when it exists.)
+#
+# Why mount instead of baking into the image:
+#  * `langgraph build` pulls the upstream wolfi base — modifying that
+#    image risks netconfig drift when the base bumps.
+#  * The cert is host-specific anyway (different CAs per environment).
+#  * Mounting needs no rebuild; replace the cert and `make stop && make up`.
+
+x-ca-bundle: &ca-bundle
+  volumes:
+    - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+  environment:
+    # Three env vars cover every Python TLS path: ssl module, requests, libcurl.
+    SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+    REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    CURL_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    LANGGRAPH_API_HOST: 0.0.0.0
+
+services:
+  langgraph-api:
+    <<: *ca-bundle
+
+  # Uncomment if your compose stack also runs the digest worker as a sibling.
+  # digest-worker:
+  #   <<: *ca-bundle

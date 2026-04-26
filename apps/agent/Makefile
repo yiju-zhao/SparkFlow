@@ -8,19 +8,30 @@ WORKFLOWS_PORT ?= 2027
 export DOCKER_BUILDKIT := 1
 export COMPOSE_DOCKER_CLI_BUILD := 1
 
-.PHONY: dev serve up up-fresh build stop logs test clean help
+# Auto-attach docker-compose.override.yml if present on this host
+# (mounts CA cert, sets SSL_CERT_FILE / REQUESTS_CA_BUNDLE / CURL_CA_BUNDLE
+# and LANGGRAPH_API_HOST=0.0.0.0).
+COMPOSE_OVERRIDE := $(wildcard docker-compose.override.yml)
+ifneq ($(COMPOSE_OVERRIDE),)
+COMPOSE_FLAG := -d $(COMPOSE_OVERRIDE)
+else
+COMPOSE_FLAG :=
+endif
+
+.PHONY: dev serve up up-fresh build build-from-scratch stop logs test clean help
 
 help:
 	@echo "Targets:"
-	@echo "  dev       - In-process LangGraph dev server (no Docker, hot reload)"
-	@echo "  serve     - FastAPI workflows server (matcher / digest / search)"
-	@echo "  up        - Start postgres/redis + agent (Docker layer cache keeps it fast)"
-	@echo "  up-fresh  - Force --no-cache rebuild then start (after editing deps)"
-	@echo "  build     - Standalone: build $(IMAGE_TAG), don't start"
-	@echo "  stop      - Stop the langgraph compose stack"
-	@echo "  logs      - Tail logs from the langgraph-api container"
-	@echo "  test      - Run pytest"
-	@echo "  clean     - Remove the prebuilt image"
+	@echo "  dev                - In-process LangGraph dev server (no Docker, hot reload)"
+	@echo "  serve              - FastAPI workflows server (matcher / digest / search)"
+	@echo "  up                 - Start postgres/redis + agent (auto-uses override if present)"
+	@echo "  up-fresh           - Rebuild image (deps changed) then start"
+	@echo "  build              - Standalone: build $(IMAGE_TAG), don't start"
+	@echo "  build-from-scratch - Full --no-cache --pull rebuild (escape hatch)"
+	@echo "  stop               - Stop the langgraph compose stack"
+	@echo "  logs               - Tail logs from the langgraph-api container"
+	@echo "  test               - Run pytest"
+	@echo "  clean              - Remove the prebuilt image"
 
 # Fastest path: in-process, hot reload. Use this for daily development.
 dev:
@@ -29,24 +40,32 @@ dev:
 # FastAPI workflows server. Runs alongside `langgraph dev` (different port).
 # Hosts /v1/workflows/matcher/jobs, /v1/workflows/daily_digest/sections/*,
 # and /v1/workflows/search — consumed by apps/web's API routes.
-# --reload picks up edits to server/, workflows/, tools/, hermes/.
 serve:
 	uvicorn server.app:app --host 0.0.0.0 --port $(WORKFLOWS_PORT) --reload
 
 # Daily Docker path. Lets the CLI build + run in one shot — Docker layer
-# cache makes repeats fast, no risk of using a stale prebuilt tag.
+# cache makes repeats fast.
 up:
-	langgraph up --port $(PORT)
+	langgraph up --port $(PORT) $(COMPOSE_FLAG)
 
-# Force a rebuild (e.g. after editing requirements/pyproject). Tags the
-# image so we can hand it to `langgraph up --image` and skip its rebuild.
+# Rebuild after editing requirements/pyproject.toml. We do NOT pass
+# `--no-cache` — Docker's content-addressed layer cache busts the deps
+# layer automatically when pyproject.toml changes, and `--no-cache`
+# combined with `langgraph build`'s default `--pull` re-fetches the
+# wolfi base image, which has caused DNS misbehaviour after upstream
+# bumps. Use `make build-from-scratch` if you genuinely want fresh base.
 up-fresh:
-	langgraph build --no-cache -t $(IMAGE_TAG)
-	langgraph up --image $(IMAGE_TAG) --port $(PORT)
+	langgraph build -t $(IMAGE_TAG)
+	langgraph up --image $(IMAGE_TAG) --port $(PORT) $(COMPOSE_FLAG)
 
 # Standalone build — useful in CI, or to pre-warm the cache before `up`.
 build:
 	langgraph build -t $(IMAGE_TAG)
+
+# Escape hatch: full --no-cache --pull rebuild. Only when you specifically
+# want the latest upstream base image.
+build-from-scratch:
+	langgraph build --no-cache --pull -t $(IMAGE_TAG)
 
 # `langgraph` has no `down` subcommand. Stop containers via docker compose
 # project name. The CLI launches under the project named after the parent
