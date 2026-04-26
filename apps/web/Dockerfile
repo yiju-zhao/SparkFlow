@@ -1,6 +1,15 @@
-# Base stage
+# Base stage — shared CA bundle so every derived stage (builder, dev,
+# runner) trusts a corporate proxy's certificate at both build and run
+# time. The file `apps/web/ca-certificates.crt` MUST exist (gitignored,
+# empty is fine on open networks).
 FROM node:24 AS base
 WORKDIR /app
+COPY ca-certificates.crt /tmp/corporate-ca.crt
+RUN if [ -s /tmp/corporate-ca.crt ]; then \
+      cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
+      update-ca-certificates; \
+    fi && rm /tmp/corporate-ca.crt
+ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
 # Builder stage
 FROM base AS builder
@@ -9,15 +18,6 @@ FROM base AS builder
 # doesn't actually need a live DB, but the config loader resolves env first.
 # Real DATABASE_URL is supplied at runtime; this placeholder is build-only.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-
-# Optional corporate CA bundle. See Dockerfile.worker for details.
-# File `apps/web/ca-certificates.crt` MUST exist (empty is fine).
-COPY ca-certificates.crt /tmp/corporate-ca.crt
-RUN if [ -s /tmp/corporate-ca.crt ]; then \
-      cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
-      update-ca-certificates; \
-    fi && rm /tmp/corporate-ca.crt
-ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
