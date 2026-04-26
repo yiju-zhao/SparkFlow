@@ -30,14 +30,17 @@ export async function processTextDocument(
       },
     });
 
-    // Trigger wiki ingest (awaited to prevent premature termination)
+    // Enqueue wiki ingest — drained out-of-process by ingest-worker.
     try {
-      const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
-      const result = await ingestSourceToWiki(context.notebookId, sourceId, context.userId);
-      console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`);
+      const { enqueueWikiIngest } = await import("@/lib/queue/ingest-queue");
+      const { jobId } = await enqueueWikiIngest({
+        notebookId: context.notebookId,
+        sourceId,
+        userId: context.userId,
+      });
+      console.log(`[text-processor] wiki ingest enqueued: ${jobId}`);
     } catch (err) {
-      console.error("Wiki ingest failed:", err);
-      // Don't fail the source processing if wiki ingest fails
+      console.error("[text-processor] failed to enqueue wiki ingest:", err);
     }
 
     return { success: true };

@@ -78,11 +78,15 @@ export async function processMineruDocument(
     });
 
     try {
-      const { ingestSourceToWiki } = await import("@/lib/services/wiki-ingest");
-      const result = await ingestSourceToWiki(context.notebookId, sourceId, context.userId);
-      console.log(`Wiki ingest complete: ${result.pagesWritten} pages written`);
+      const { enqueueWikiIngest } = await import("@/lib/queue/ingest-queue");
+      const { jobId } = await enqueueWikiIngest({
+        notebookId: context.notebookId,
+        sourceId,
+        userId: context.userId,
+      });
+      console.log(`[mineru-processor] wiki ingest enqueued: ${jobId}`);
     } catch (err) {
-      console.error("Wiki ingest failed:", err);
+      console.error("[mineru-processor] failed to enqueue wiki ingest:", err);
     }
 
     return { success: true };
