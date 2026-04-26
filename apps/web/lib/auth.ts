@@ -12,28 +12,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
-      } else if (token.id) {
-        // Refresh role from DB and auto-promote from ADMIN_EMAILS
-        // so admin changes take effect without requiring re-login
+        return token;
+      }
+      if (!token.id) return token;
+
+      // Refresh role from DB and auto-promote from ADMIN_EMAILS so admin
+      // changes take effect without re-login. If the DB is unreachable
+      // (migrations not yet applied, postgres restarting, network blip)
+      // keep whatever role the JWT already carries — losing the session
+      // here cascades into JWTSessionError on every protected page.
+      try {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { id: true, email: true, role: true },
         });
-        if (dbUser) {
-          const adminEmails = (process.env.ADMIN_EMAILS || "")
-            .split(",")
-            .map((e) => e.trim().toLowerCase())
-            .filter(Boolean);
-          if (adminEmails.includes(dbUser.email.toLowerCase()) && dbUser.role !== "ADMIN") {
-            await prisma.user.update({
-              where: { id: dbUser.id },
-              data: { role: "ADMIN" },
-            });
-            token.role = "ADMIN";
-          } else {
-            token.role = dbUser.role;
-          }
+        if (!dbUser) return token;
+
+        const adminEmails = (process.env.ADMIN_EMAILS || "")
+          .split(",")
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean);
+        if (
+          adminEmails.includes(dbUser.email.toLowerCase()) &&
+          dbUser.role !== "ADMIN"
+        ) {
+          await prisma.user.update({
+            where: { id: dbUser.id },
+            data: { role: "ADMIN" },
+          });
+          token.role = "ADMIN";
+        } else {
+          token.role = dbUser.role;
         }
+      } catch (err) {
+        console.warn("[auth] jwt role refresh skipped (DB unreachable):", err);
       }
       return token;
     },
