@@ -1,35 +1,17 @@
-# Optional override consumed by `langgraph up -d docker-compose.override.yml`.
-# Activate on a host:
+# Optional override for `langgraph up -d docker-compose.override.yml`.
+# Activate on a host that needs a corporate CA bundle:
 #   cp docker-compose.override.yml.example docker-compose.override.yml
+#   cp /path/to/your-ca.crt ./ca-certificates.crt
 #   make up
 # (apps/agent/Makefile auto-attaches the file with `-d` when it exists.)
-#
-# Why mount instead of baking into the image:
-#  * `langgraph build` pulls the upstream wolfi base — modifying that
-#    image risks netconfig drift when the base bumps.
-#  * The cert is host-specific anyway (different CAs per environment).
-#  * Mounting needs no rebuild; replace the cert and `make stop && make up`.
-
-x-host-extras: &host-extras
-  # Make `host.docker.internal` resolvable from inside the container on
-  # Linux (it's automatic on Docker Desktop). Lets us point
-  # `--postgres-uri` at a Postgres listening on the host port 5433
-  # without depending on Docker's embedded DNS resolving sibling names.
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-  volumes:
-    - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-  environment:
-    # Three env vars cover every Python TLS path: ssl module, requests, libcurl.
-    SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-    REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
-    CURL_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
-    LANGGRAPH_API_HOST: 0.0.0.0
 
 services:
   langgraph-api:
-    <<: *host-extras
-
-  # Uncomment if your compose stack also runs the digest worker as a sibling.
-  # digest-worker:
-  #   <<: *host-extras
+    volumes:
+      - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    environment:
+      # Three env vars cover every Python TLS path: ssl module, requests, libcurl.
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      CURL_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      LANGGRAPH_API_HOST: 0.0.0.0

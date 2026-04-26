@@ -77,25 +77,6 @@ the running version with `docker logs langgraph-api-1 | head` (look for
 ```
 Bump explicitly when ready to upgrade.
 
-### External Postgres (skip the CLI's sibling postgres container)
-
-On hosts where Docker's embedded DNS misbehaves and `langgraph-api`
-can't resolve `langgraph-postgres`, point `langgraph up` at an existing
-Postgres instead of letting the CLI run one for you:
-
-```bash
-# One-time: create a dedicated DB on the host postgres (port 5433)
-PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -p 5433 -U postgres \
-  -c "CREATE DATABASE langgraph;"
-
-# Run langgraph against it
-make up LANGGRAPH_POSTGRES_URI="postgresql://postgres:$POSTGRES_PASSWORD@host.docker.internal:5433/langgraph"
-```
-
-The `docker-compose.override.yml` adds `host.docker.internal:host-gateway`
-so that hostname resolves on Linux (Docker Desktop on Mac/Win does it
-automatically). No more sibling-DNS dependency on this path.
-
 ### Corporate CA bundle (runtime mount, NOT baked)
 
 The `langgraph-api` image is built by `langgraph build` from the upstream
