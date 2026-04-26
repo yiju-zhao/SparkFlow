@@ -10,7 +10,13 @@
 #  * The cert is host-specific anyway (different CAs per environment).
 #  * Mounting needs no rebuild; replace the cert and `make stop && make up`.
 
-x-ca-bundle: &ca-bundle
+x-host-extras: &host-extras
+  # Make `host.docker.internal` resolvable from inside the container on
+  # Linux (it's automatic on Docker Desktop). Lets us point
+  # `--postgres-uri` at a Postgres listening on the host port 5433
+  # without depending on Docker's embedded DNS resolving sibling names.
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   volumes:
     - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
   environment:
@@ -22,8 +28,8 @@ x-ca-bundle: &ca-bundle
 
 services:
   langgraph-api:
-    <<: *ca-bundle
+    <<: *host-extras
 
   # Uncomment if your compose stack also runs the digest worker as a sibling.
   # digest-worker:
-  #   <<: *ca-bundle
+  #   <<: *host-extras

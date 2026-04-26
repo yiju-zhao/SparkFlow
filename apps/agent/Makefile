@@ -18,6 +18,18 @@ else
 COMPOSE_FLAG :=
 endif
 
+# Optional: point langgraph at an external Postgres instead of the
+# CLI-managed sibling container. Set on hosts where Docker's embedded
+# DNS can't resolve compose siblings (corp networks, deeply nested
+# docker setups, etc.). Use the host postgres reachable via
+# host.docker.internal — the override ensures that name resolves on Linux.
+#   make up LANGGRAPH_POSTGRES_URI="postgresql://user:pass@host.docker.internal:5433/langgraph"
+ifneq ($(LANGGRAPH_POSTGRES_URI),)
+POSTGRES_FLAG := --postgres-uri "$(LANGGRAPH_POSTGRES_URI)"
+else
+POSTGRES_FLAG :=
+endif
+
 .PHONY: dev serve up up-fresh build build-from-scratch stop logs test clean help
 
 help:
@@ -46,7 +58,7 @@ serve:
 # Daily Docker path. Lets the CLI build + run in one shot — Docker layer
 # cache makes repeats fast.
 up:
-	langgraph up --port $(PORT) $(COMPOSE_FLAG)
+	langgraph up --port $(PORT) $(POSTGRES_FLAG) $(COMPOSE_FLAG)
 
 # Rebuild after editing requirements/pyproject.toml. We do NOT pass
 # `--no-cache` — Docker's content-addressed layer cache busts the deps
@@ -56,7 +68,7 @@ up:
 # bumps. Use `make build-from-scratch` if you genuinely want fresh base.
 up-fresh:
 	langgraph build -t $(IMAGE_TAG)
-	langgraph up --image $(IMAGE_TAG) --port $(PORT) $(COMPOSE_FLAG)
+	langgraph up --image $(IMAGE_TAG) --port $(PORT) $(POSTGRES_FLAG) $(COMPOSE_FLAG)
 
 # Standalone build — useful in CI, or to pre-warm the cache before `up`.
 build:
