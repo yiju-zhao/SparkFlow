@@ -6,7 +6,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 FROM base AS deps
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 # Optional corporate CA bundle. Required on networks whose proxy does
 # TLS interception (registry calls would otherwise fail with "sslv3
 # alert handshake failure"). The file `apps/web/ca-certificates.crt`
@@ -22,14 +21,7 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-# Use pnpm via corepack instead of `npm ci`. npm 11 (shipped with
-# node:24) reliably crashes mid-install with "Exit handler never
-# called!" on this lockfile — even with --ignore-scripts and a 4GB
-# heap. pnpm's installer is a different code path entirely and is also
-# 3-5× faster on cold caches. --no-frozen-lockfile lets pnpm install
-# from package.json without needing to commit a pnpm-lock.yaml.
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN pnpm install --no-frozen-lockfile --ignore-scripts && pnpm exec prisma generate
+RUN npm ci && npx prisma generate
 
 FROM base AS runtime
 COPY --from=deps /app/node_modules ./node_modules
