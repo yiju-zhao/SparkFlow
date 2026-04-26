@@ -5,8 +5,6 @@ WORKDIR /app
 # Builder stage
 FROM base AS builder
 
-# Skip SSL verification for npm/prisma during build
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 # prisma.config.ts eagerly reads DATABASE_URL on load. `prisma generate`
 # doesn't actually need a live DB, but the config loader resolves env first.
 # Real DATABASE_URL is supplied at runtime; this placeholder is build-only.
@@ -25,12 +23,7 @@ COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-# Use pnpm via corepack instead of `npm ci`. npm 11 (shipped with
-# node:24) crashes mid-install with "Exit handler never called!" on
-# this lockfile; pnpm's installer is a different code path and is also
-# 3-5× faster on cold caches.
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN pnpm install --no-frozen-lockfile --ignore-scripts && pnpm exec prisma generate
+RUN npm ci && npx prisma generate
 
 COPY . .
 
