@@ -104,7 +104,7 @@ route `POST /api/notebooks/[id]/sources` calls `enqueueWikiIngest(...)`
 and returns immediately with a `jobId`; the worker drains the queue.
 
 - **Entry**: `workers/ingest.ts` — env vars `INGEST_WORKER_CONCURRENCY` (default 4) and `INGEST_PER_USER_CONCURRENCY` (default 2).
-- **Queue module**: `lib/queue/ingest-queue.ts` — job id is `nb:{notebookId}:src:{sourceId}`; pass `{ force: true }` to drop a stale completed/failed job before re-enqueueing (used by manual retry).
+- **Queue module**: `lib/queue/ingest-queue.ts` — job id is `nb-{notebookId}-src-{sourceId}` (recent BullMQ rejects custom ids containing `:`); pass `{ force: true }` to drop a stale completed/failed job before re-enqueueing (used by manual retry).
 - **Per-user fairness**: `lib/queue/user-slot.ts` uses a single Lua `EVAL` (`ZREMRANGEBYSCORE` + `ZCARD` + `ZADD`) so atomicity holds even when two workers race on the same user. Counter lives in Redis → scales across worker replicas.
 - **Per-notebook mutex**: `lib/queue/notebook-lock.ts` uses Redis `SET NX PX` with a 60 s heartbeat that extends TTL to 10 min — the lock survives long LLM runs without ever expiring mid-ingest.
 - **Reschedule protocol**: when contention is hit, the worker calls `job.moveToDelayed(...)` and throws BullMQ's `DelayedError` — the reschedule does NOT burn the `attempts: 3` budget.

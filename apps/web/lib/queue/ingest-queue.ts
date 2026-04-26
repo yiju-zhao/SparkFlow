@@ -47,7 +47,9 @@ export function getWikiIngestQueue(): Queue<WikiIngestJobData, WikiIngestJobResu
  * existing job instead of stacking duplicates behind the worker.
  */
 function jobId(data: WikiIngestJobData): string {
-  return `nb:${data.notebookId}:src:${data.sourceId}`;
+  // Recent BullMQ rejects custom job ids that contain ":" because the
+  // library uses ":" as its key separator internally. Use "-" instead.
+  return `nb-${data.notebookId}-src-${data.sourceId}`;
 }
 
 export type EnqueueWikiIngestResult = {
