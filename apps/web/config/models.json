@@ -6,18 +6,31 @@
         {
           "id": "gpt-4.1-nano",
           "label": "GPT-4.1 Nano",
-          "desc": "Fastest, cheapest — simple tasks"
+          "desc": "Fastest, cheapest — simple tasks, 1M context"
         },
         { "id": "gpt-4.1-mini", "label": "GPT-4.1 Mini", "desc": "Fast & affordable, 1M context" },
-        { "id": "gpt-4.1", "label": "GPT-4.1", "desc": "Strong coding & instruction following" },
-        { "id": "gpt-4o-mini", "label": "GPT-4o Mini", "desc": "Lightweight multimodal" },
-        { "id": "gpt-4o", "label": "GPT-4o", "desc": "Multimodal reasoning" },
+        { "id": "gpt-4.1", "label": "GPT-4.1", "desc": "Strong coding & instruction following, 1M" },
+        { "id": "gpt-4o-mini", "label": "GPT-4o Mini", "desc": "Lightweight multimodal, 128K" },
+        { "id": "gpt-4o", "label": "GPT-4o", "desc": "Multimodal reasoning, 128K" },
         { "id": "o4-mini", "label": "o4-mini", "desc": "Fast reasoning, math & code" },
-        { "id": "o3", "label": "o3", "desc": "Advanced reasoning, science & math" },
+        { "id": "o3", "label": "o3", "desc": "Advanced reasoning, science & math, 200K" },
         { "id": "o3-pro", "label": "o3 Pro", "desc": "More compute, better answers" },
+        { "id": "gpt-5-nano", "label": "GPT-5 Nano", "desc": "Smallest GPT-5, ultra-low cost, 400K" },
+        { "id": "gpt-5-mini", "label": "GPT-5 Mini", "desc": "Cost-efficient GPT-5, 400K context" },
+        { "id": "gpt-5", "label": "GPT-5", "desc": "Frontier general-purpose, 400K context" },
         { "id": "gpt-5.1", "label": "GPT-5.1", "desc": "Best for coding & agentic, 400K" },
         { "id": "gpt-5.2", "label": "GPT-5.2", "desc": "Frontier, configurable reasoning" },
         { "id": "gpt-5.3", "label": "GPT-5.3 Instant", "desc": "Fast everyday tasks, 128K" },
+        {
+          "id": "gpt-5.4-nano",
+          "label": "GPT-5.4 Nano",
+          "desc": "Tiny flagship variant, 1M context"
+        },
+        {
+          "id": "gpt-5.4-mini",
+          "label": "GPT-5.4 Mini",
+          "desc": "Affordable flagship, 1M context"
+        },
         {
           "id": "gpt-5.4",
           "label": "GPT-5.4",
@@ -36,12 +49,12 @@
         {
           "id": "gemini-2.5-flash",
           "label": "Gemini 2.5 Flash",
-          "desc": "Best value — fast & capable"
+          "desc": "Best value — fast & capable, 1M"
         },
         {
           "id": "gemini-2.5-pro",
           "label": "Gemini 2.5 Pro",
-          "desc": "Strong reasoning, thinking model"
+          "desc": "Strong reasoning, thinking model, 1M"
         },
         {
           "id": "gemini-3-flash-preview",
@@ -78,13 +91,25 @@
     "glm": {
       "label": "GLM (Zhipu/Z.ai)",
       "models": [
-        { "id": "glm-4.7-flash", "label": "GLM-4.7 Flash", "desc": "30B MoE, fast, free tier" },
-        { "id": "glm-4.7", "label": "GLM-4.7", "desc": "355B flagship, coding & reasoning" },
-        { "id": "glm-5", "label": "GLM-5", "desc": "Next-gen, 200K context" },
+        {
+          "id": "glm-4.7-flash",
+          "label": "GLM-4.7 Flash",
+          "desc": "30B MoE, fast, free tier, 203K"
+        },
+        {
+          "id": "glm-4.7",
+          "label": "GLM-4.7",
+          "desc": "355B flagship, coding & reasoning, open-source"
+        },
+        {
+          "id": "glm-5",
+          "label": "GLM-5",
+          "desc": "745B MoE (44B active), agentic, 200K"
+        },
         {
           "id": "glm-5.1",
           "label": "GLM-5.1",
-          "desc": "Latest — 754B MoE, #1 SWE-Bench Pro, MIT open-source"
+          "desc": "754B MoE, #1 SWE-Bench Pro 58.4%, MIT open-source, 200K"
         }
       ]
     },
@@ -94,35 +119,52 @@
         {
           "id": "MiniMax-M2.1",
           "label": "MiniMax M2.1",
-          "desc": "Strong multi-language coding, 200K"
+          "desc": "Multi-language coding, 200K context"
         },
-        { "id": "MiniMax-M2.5", "label": "MiniMax M2.5", "desc": "Peak performance, great value" },
+        {
+          "id": "MiniMax-M2.5",
+          "label": "MiniMax M2.5",
+          "desc": "SWE-Bench Verified 80.2%, coding SOTA, great value"
+        },
         {
           "id": "MiniMax-M2.5-highspeed",
           "label": "MiniMax M2.5 HS",
-          "desc": "Same quality, ~100 tps"
+          "desc": "M2.5 quality, ~100 tps throughput"
         },
         {
           "id": "MiniMax-M2.7",
           "label": "MiniMax M2.7",
-          "desc": "Latest flagship, recursive self-improvement"
+          "desc": "Latest flagship (Mar 2026), recursive self-improvement"
         },
         {
           "id": "MiniMax-M2.7-highspeed",
           "label": "MiniMax M2.7 HS",
-          "desc": "Same quality, ~100 tps"
+          "desc": "M2.7 quality, ~100 tps throughput"
         }
       ]
     },
     "kimi": {
       "label": "Kimi (Moonshot)",
       "models": [
-        { "id": "moonshot-v1-32k", "label": "Moonshot 32K", "desc": "Balanced context and speed" },
-        { "id": "moonshot-v1-128k", "label": "Moonshot 128K", "desc": "Long context, large docs" },
+        {
+          "id": "moonshot-v1-32k",
+          "label": "Moonshot 32K",
+          "desc": "Legacy v1, balanced context and speed"
+        },
+        {
+          "id": "moonshot-v1-128k",
+          "label": "Moonshot 128K",
+          "desc": "Legacy v1, long-context docs"
+        },
         {
           "id": "kimi-k2.5",
           "label": "Kimi K2.5",
-          "desc": "Latest — multimodal, agent swarm, 256K, ultra-low cost"
+          "desc": "Multimodal, agent-capable, 256K context"
+        },
+        {
+          "id": "kimi-k2.6",
+          "label": "Kimi K2.6",
+          "desc": "Latest (Apr 2026) — 1T MoE (32B active), #1 coding, agent swarm, 256K"
         }
       ]
     }
@@ -135,9 +177,9 @@
     "semopsModel": "gemini-2.5-flash"
   },
   "recommendations": {
-    "chat": "Fast models work best: Gemini 2.5 Flash, GPT-4.1 Mini, DeepSeek V4 Flash. For complex research, try Gemini 3.1 Pro or GPT-5.4.",
-    "wiki": "Wiki extraction benefits from strong reasoning. Gemini 3.1 Pro, GPT-5.4, GLM-5.1, or DeepSeek V4 Pro produce richer knowledge graphs. Flash models are fine for most content.",
-    "search": "The search agent finds sources for your notebook. A capable model with tool-use works best: Gemini 2.5 Flash, GPT-4.1, or DeepSeek V4 Flash.",
-    "matcher": "Matcher compares queries against many items. Use a fast, affordable model: Gemini 2.5 Flash, DeepSeek V4 Flash, or GPT-4.1 Nano."
+    "chat": "Fast models work best: Gemini 2.5 Flash, GPT-5 Mini, DeepSeek V4 Flash. For complex research, try Gemini 3.1 Pro or GPT-5.4.",
+    "wiki": "Wiki extraction benefits from strong reasoning. Gemini 3.1 Pro, GPT-5.4, GLM-5.1, DeepSeek V4 Pro, or Kimi K2.6 produce richer knowledge graphs. Flash models are fine for most content.",
+    "search": "The search agent finds sources for your notebook. A capable model with tool-use works best: Gemini 2.5 Flash, GPT-5 Mini, or DeepSeek V4 Flash.",
+    "matcher": "Matcher compares queries against many items. Use a fast, affordable model: Gemini 2.5 Flash, GPT-5 Nano, or DeepSeek V4 Flash."
   }
 }
