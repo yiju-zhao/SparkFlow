@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
 
   # Self-hosted SearXNG — default web search backend used by
-  # apps/agent/tools/web.py when no Tavily BYOK key is provided.
+  # apps/langgraph/tools/web.py when no Tavily BYOK key is provided.
   # Internal use only (limiter disabled in config/settings.yml).
   searxng:
     image: docker.io/searxng/searxng:latest

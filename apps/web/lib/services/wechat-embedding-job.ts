@@ -53,8 +53,8 @@ function resolveBackfillPaths(): { scriptPath: string; logDir: string; cwd: stri
   const repoRoot = path.resolve(process.cwd(), up, up);
   return {
     scriptPath:
-      scriptEnv ?? path.join(repoRoot, "apps/agent/scripts/backfill_wechat_embeddings.py"),
-    logDir: logDirEnv ?? path.join(repoRoot, "apps/agent/.logs"),
+      scriptEnv ?? path.join(repoRoot, "apps/langgraph/scripts/backfill_wechat_embeddings.py"),
+    logDir: logDirEnv ?? path.join(repoRoot, "apps/langgraph/.logs"),
     cwd: cwdEnv ?? repoRoot,
   };
 }

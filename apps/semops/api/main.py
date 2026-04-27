@@ -2,8 +2,8 @@
 SemOps Service - FastAPI Application
 
 Pure semantic-operator library. Exposes `/api/operators/*` for workflow
-callers (apps/agent/workflows) to invoke LOTUS-backed semantic primitives.
-Matcher-specific orchestration moved to apps/agent/workflows/matcher/
+callers (apps/langgraph/workflows) to invoke LOTUS-backed semantic primitives.
+Matcher-specific orchestration moved to apps/langgraph/workflows/matcher/
 in the P5 refactor.
 """
 

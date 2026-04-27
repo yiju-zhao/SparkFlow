@@ -2,7 +2,7 @@
 Semantic operator routes.
 
 Exposes ``SemanticOperators`` primitives directly. Workflow callers
-(apps/agent/workflows/{search,matcher,daily_digest}) invoke these over
+(apps/langgraph/workflows/{search,matcher,daily_digest}) invoke these over
 HTTP, passing per-request BYOK credentials in ``lm_config``.
 """
 

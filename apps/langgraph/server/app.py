@@ -1,4 +1,4 @@
-"""FastAPI server hosting apps/agent workflows.
+"""FastAPI server hosting apps/langgraph workflows.
 
 Runs alongside ``langgraph dev`` (which handles agent surfaces). Workflow
 routes are stateless; each request carries its own config + model settings.

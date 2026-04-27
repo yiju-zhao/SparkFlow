@@ -3,7 +3,7 @@
 #   cp docker-compose.override.yml.example docker-compose.override.yml
 #   cp /path/to/your-ca.crt ./ca-certificates.crt
 #   make up
-# (apps/agent/Makefile auto-attaches the file with `-d` when it exists.)
+# (apps/langgraph/Makefile auto-attaches the file with `-d` when it exists.)
 
 services:
   langgraph-api:

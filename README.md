@@ -42,10 +42,10 @@ apps/web/
 └── prisma/              # Database schema
 ```
 
-### Backend (`apps/agent`)
+### Backend (`apps/langgraph`)
 
 ```
-apps/agent/
+apps/langgraph/
 ├── graphs/       # Agent graph definitions
 ├── tools/        # Tool implementations
 ├── prompts/      # System prompts
@@ -92,7 +92,7 @@ apps/agent/
 | Technology | Purpose |
 |-----------|---------|
 | BullMQ (Node) + ioredis | Wiki-ingest queue in `apps/web`; drained by `npm run worker:ingest` |
-| ARQ (Python) | Daily-digest queue in `apps/agent`; drained by `arq workflows.digest_worker.WorkerSettings` |
+| ARQ (Python) | Daily-digest queue in `apps/langgraph`; drained by `arq workflows.digest_worker.WorkerSettings` |
 | Redis 7 | Single shared broker for both queues (separate keyspaces) |
 
 ## AI Agents
@@ -135,7 +135,7 @@ All three are built by the same factory (`hermes` harness) and share the tool re
 | redis | `redis:7-alpine` | 6379 | BullMQ + ARQ broker (AOF persistence) |
 | searxng | `searxng/searxng:latest` | 8888 | Self-hosted web search (default backend; Tavily is BYOK) |
 | ingest-worker | `apps/web/Dockerfile.worker` | — | BullMQ consumer: wiki-ingest |
-| digest-worker | `apps/agent/Dockerfile.worker` | — | ARQ consumer: daily-digest |
+| digest-worker | `apps/langgraph/Dockerfile.worker` | — | ARQ consumer: daily-digest |
 
 ### Prod profile (opt-in — `docker compose --profile prod up -d`)
 
@@ -146,7 +146,7 @@ in dev so `npm run dev` keeps fast HMR on the host.
 |---------|------------|-----------|---------|
 | migrate | `apps/web/Dockerfile` (builder stage) | — | Runs `prisma migrate deploy` once and exits |
 | web | `apps/web/Dockerfile` (runner stage) | 3001 | Next.js standalone server |
-| workflows-api | `apps/agent/Dockerfile.workflows-api` | 2027 | FastAPI: `/v1/workflows/{matcher,daily_digest,search}` |
+| workflows-api | `apps/langgraph/Dockerfile.workflows-api` | 2027 | FastAPI: `/v1/workflows/{matcher,daily_digest,search}` |
 
 ### External Services
 
@@ -163,7 +163,7 @@ in dev so `npm run dev` keeps fast HMR on the host.
 - Python 3.11+
 - Docker and Docker Compose
 - Corporate networks behind a TLS-intercepting proxy: drop your CA bundle
-  at `apps/web/ca-certificates.crt` and `apps/agent/ca-certificates.crt`
+  at `apps/web/ca-certificates.crt` and `apps/langgraph/ca-certificates.crt`
   (gitignored). Empty files are fine on open networks.
 
 ---
@@ -182,7 +182,7 @@ npm install
 cp .env.example .env
 
 # Backend
-cd apps/agent
+cd apps/langgraph
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -191,7 +191,7 @@ cp .env.example .env
 # Generate one set of secrets and paste into BOTH .env files
 echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)"
 echo "API_KEY_ENCRYPTION_SECRET=$(openssl rand -base64 32)"
-echo "INTERNAL_CALLBACK_TOKEN=$(openssl rand -hex 32)"   # MUST match in apps/web + apps/agent
+echo "INTERNAL_CALLBACK_TOKEN=$(openssl rand -hex 32)"   # MUST match in apps/web + apps/langgraph
 ```
 
 Set `ADMIN_EMAILS=your@email` in `apps/web/.env` so your account auto-promotes on first login.
@@ -218,10 +218,10 @@ npx prisma migrate deploy   # never `db push` — repo is baselined
 cd apps/web && npm run dev
 
 # Terminal 2 — LangGraph API (port 2024)
-cd apps/agent && make dev
+cd apps/langgraph && make dev
 
 # Terminal 3 — Workflows FastAPI (port 2027)
-cd apps/agent && make serve
+cd apps/langgraph && make serve
 
 # Terminal 4 — Semops (port 2025)
 cd apps/semops && python main.py
@@ -251,7 +251,7 @@ process needed.
 git pull
 # If you're behind a TLS-intercepting proxy:
 cp /path/to/your-corporate-ca.crt apps/web/ca-certificates.crt
-cp /path/to/your-corporate-ca.crt apps/agent/ca-certificates.crt
+cp /path/to/your-corporate-ca.crt apps/langgraph/ca-certificates.crt
 # Open networks: just `touch` empty files there.
 ```
 
@@ -259,7 +259,7 @@ cp /path/to/your-corporate-ca.crt apps/agent/ca-certificates.crt
 
 ```bash
 cp apps/web/.env.production.example   apps/web/.env
-cp apps/agent/.env.production.example apps/agent/.env
+cp apps/langgraph/.env.production.example apps/langgraph/.env
 ```
 
 Edit both files. **Rotate every secret** (NEXTAUTH_SECRET,
@@ -306,8 +306,8 @@ laptop, the prod pair on the server.** Don't mix.
 
 | Environment | Frontend | Backend |
 |---|---|---|
-| Development | `apps/web/.env.example` → `.env` | `apps/agent/.env.example` → `.env` |
-| Production  | `apps/web/.env.production.example` → `.env` | `apps/agent/.env.production.example` → `.env` |
+| Development | `apps/web/.env.example` → `.env` | `apps/langgraph/.env.example` → `.env` |
+| Production  | `apps/web/.env.production.example` → `.env` | `apps/langgraph/.env.production.example` → `.env` |
 
 The example files are the source of truth — read them for full
 descriptions of every variable. The tables below summarize what's
@@ -320,7 +320,7 @@ required vs defaulted.
 | `NEXTAUTH_SECRET` | JWT secret | Yes (rotate per env) |
 | `NEXTAUTH_URL` | Application URL the browser hits | Yes (prod); default `http://localhost:3001` (dev) |
 | `API_KEY_ENCRYPTION_SECRET` | Encrypts BYOK API keys at rest | Yes |
-| `INTERNAL_CALLBACK_TOKEN` | Shared with `apps/agent` (Python→Node digest callback) | Yes |
+| `INTERNAL_CALLBACK_TOKEN` | Shared with `apps/langgraph` (Python→Node digest callback) | Yes |
 | `ADMIN_EMAILS` | Comma-separated; auto-promotes on login | Yes |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres credentials (compose builds DATABASE_URL from these) | Yes |
 | `DATABASE_URL` | Override for non-compose use | No |
@@ -332,7 +332,7 @@ required vs defaulted.
 | `NEXT_PUBLIC_WORKFLOWS_API_URL` | **Browser-side** workflows URL — must be publicly reachable | Yes in prod |
 | `MINERU_MODE`, `MINERU_LOCAL_URL`, `MINERU_API_TOKEN` | PDF parser config | `MINERU_API_TOKEN` required when `MODE=api` |
 
-### Backend (`apps/agent/.env`)
+### Backend (`apps/langgraph/.env`)
 
 BYOK is mandatory on all user-facing paths — there is no `OPENAI_API_KEY`
 fallback for user requests. Admin-only paths may still read env keys.

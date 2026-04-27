@@ -48,7 +48,7 @@ class CreateMatchJobRequest(BaseModel):
     search_k: int = 350
     include_reasons: bool = True
     # Model configuration + BYOK credential threaded from Next.js. Required —
-    # the apps/agent workflow layer does not carry its own API keys.
+    # the apps/langgraph workflow layer does not carry its own API keys.
     model_provider: str
     model_name: str
     api_key: str

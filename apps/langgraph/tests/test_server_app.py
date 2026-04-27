@@ -1,4 +1,4 @@
-"""Tests for the apps/agent FastAPI workflow server."""
+"""Tests for the apps/langgraph FastAPI workflow server."""
 
 from fastapi.testclient import TestClient
 

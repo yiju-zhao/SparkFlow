@@ -1,5 +1,5 @@
 [project]
-name = "sparkflow-agent"
+name = "sparkflow-langgraph"
 version = "0.1.0"
 description = "SparkFlow AI agents for research hub and RAG"
 requires-python = ">=3.11"
