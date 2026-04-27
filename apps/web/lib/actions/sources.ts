@@ -16,6 +16,8 @@ import {
 const MINERU_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt"];
 const TEXT_EXTENSIONS = ["txt", "md"];
 const ALLOWED_EXTENSIONS = [...MINERU_EXTENSIONS, ...TEXT_EXTENSIONS];
+const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_FILE_SIZE_LABEL = "100MB";
 
 type PrismaLike = Prisma.TransactionClient | typeof prisma;
 
@@ -378,6 +380,13 @@ export async function uploadDocumentsBatch(notebookId: string, formData: FormDat
   const allFiles = formData.getAll("file").filter((v): v is File => v instanceof File);
   if (allFiles.length === 0) {
     throw new Error("No files provided");
+  }
+
+  const oversize = allFiles.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+  if (oversize.length > 0) {
+    throw new Error(
+      `File too large (max ${MAX_FILE_SIZE_LABEL}): ${oversize.map((f) => f.name).join(", ")}`,
+    );
   }
 
   const accepted: { file: File; extension: string }[] = [];

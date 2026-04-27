@@ -20,4 +20,7 @@ Default MCP endpoint: `http://127.0.0.1:5000/mcp`
 - Schema/value probing for ambiguous user requests
 - Structured list/count/aggregate results for the hub agent
 
-This service does **not** render MCP Apps. Rendering stays in `apps/mcp-server`.
+This service does **not** render MCP Apps. UI rendering for the hub agent is
+done in-process — the hub graph emits CopilotKit frontend tool calls
+(`showTable`, `showChart`) that the web app renders as React components,
+no MCP roundtrip required.

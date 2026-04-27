@@ -14,7 +14,6 @@ SparkFlow/
 │   ├── web/          # Next.js 16 frontend (port 3001) + BullMQ ingest worker
 │   ├── agent/        # LangGraph Python agents (port 2024) + ARQ digest worker
 │   ├── semops/       # FastAPI SemanticOperators / matcher (port 2025)
-│   ├── mcp-server/   # MCP server (port 3108)
 │   └── toolbox/      # Prebuilt tool definitions (YAML)
 ├── docs/
 ├── scripts/
@@ -155,7 +154,6 @@ in dev so `npm run dev` keeps fast HMR on the host.
 |---------|-------------|---------|
 | MinerU | 8000 | PDF-to-image extraction |
 | Semops | 2025 | FastAPI SemanticOperators + matcher |
-| MCP Server | 3108 | Model Context Protocol server |
 
 ## Getting Started
 
