@@ -45,7 +45,8 @@ def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[Base
     return {"messages": [response]}
 
 
-async def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
+def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
+    import asyncio
     last = state["messages"][-1]
     if not isinstance(last, AIMessage) or not last.tool_calls:
         return {"messages": []}
@@ -59,8 +60,8 @@ async def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
             ))
             continue
         try:
-            if hasattr(tool, "ainvoke"):
-                raw = await tool.ainvoke(call["args"])
+            if asyncio.iscoroutinefunction(getattr(tool, "func", None)):
+                raw = asyncio.run(tool.ainvoke(call["args"]))
             else:
                 raw = tool.invoke(call["args"])
         except Exception as exc:

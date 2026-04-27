@@ -13,9 +13,13 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 
 def _fake_model_factory(responses):
-    """Return a callable mimicking init_chat_model().bind_tools(...).invoke().
+    """Return a model object mimicking init_chat_model().bind_tools(...).invoke().
 
     `responses` is a list of AIMessage instances; each invoke returns the next.
+
+    IMPORTANT: always pass the *same* factory object back from the
+    init_chat_model lambda so the shared response iterator advances correctly
+    across multiple llm_call invocations (one per graph iteration).
     """
     iter_responses = iter(responses)
     bound = MagicMock()
@@ -36,11 +40,16 @@ def test_notebook_dispatches_backend_tool(monkeypatch):
         ]),
         AIMessage(content="here are your sources"),
     ]
-    monkeypatch.setattr(nb, "init_chat_model",
-                        lambda *a, **kw: _fake_model_factory(responses))
-    # Mock source_list tool dispatch to avoid real HTTP
-    monkeypatch.setattr(nb.TOOLS_BY_NAME["source_list"], "invoke",
-                        lambda args: "Source A\nSource B")
+    # Same factory object on every init_chat_model call → shared iterator.
+    _factory = _fake_model_factory(responses)
+    monkeypatch.setattr(nb, "init_chat_model", lambda *a, **kw: _factory)
+    # Replace the tool entry with a simple MagicMock to avoid real HTTP.
+    # func=None signals to tool_node that this is a sync tool (invoke path).
+    fake_tool = MagicMock()
+    fake_tool.name = "source_list"
+    fake_tool.invoke = MagicMock(return_value="Source A\nSource B")
+    fake_tool.func = None
+    monkeypatch.setitem(nb.TOOLS_BY_NAME, "source_list", fake_tool)
 
     ctx = nb.Ctx(model_provider="openai", model_name="gpt-4o", api_key="sk-test",
                  user_id="u1", session_id="s1", notebook_id="nb_1")
@@ -61,8 +70,8 @@ def test_notebook_unknown_tool_returns_error_toolmessage(monkeypatch):
         ]),
         AIMessage(content="oh well"),
     ]
-    monkeypatch.setattr(nb, "init_chat_model",
-                        lambda *a, **kw: _fake_model_factory(responses))
+    _factory = _fake_model_factory(responses)
+    monkeypatch.setattr(nb, "init_chat_model", lambda *a, **kw: _factory)
     ctx = nb.Ctx(model_provider="openai", model_name="gpt-4o", api_key="sk-test",
                  user_id="u1", session_id="s1", notebook_id="nb_1")
     out = nb.agent.invoke({"messages": [HumanMessage("hi")]}, context=ctx)
@@ -90,17 +99,19 @@ def test_hub_all_backend_tool_calls(monkeypatch):
         ]),
         AIMessage(content="here are publications"),
     ]
-    monkeypatch.setattr(h, "init_chat_model",
-                        lambda *a, **kw: _fake_model_factory(responses))
-    # Mock the toolbox dispatch
-    fake_tool = MagicMock()
-    fake_tool.ainvoke = MagicMock(return_value={"items": [], "total": 0})
-    monkeypatch.setitem(h.TOOLS_BY_NAME, "list_publications", fake_tool)
+    _factory = _fake_model_factory(responses)
+    monkeypatch.setattr(h, "init_chat_model", lambda *a, **kw: _factory)
+    # Hub toolbox tools are async; fake ainvoke via a coroutine function.
+    # func=None → sync path in tool_node; we patch ainvoke directly via a
+    # helper class since MagicMock.ainvoke() isn't awaitable.
+    class _FakeTool:
+        name = "list_publications"
+        func = None  # triggers sync invoke path
 
-    import asyncio
-    async def _patched_ainvoke(args):
-        return {"items": []}
-    fake_tool.ainvoke = _patched_ainvoke
+        def invoke(self, args):
+            return '{"items":[]}'
+
+    monkeypatch.setitem(h.TOOLS_BY_NAME, "list_publications", _FakeTool())
 
     ctx = h.Ctx(model_provider="openai", model_name="gpt-4o", api_key="sk-t",
                 user_id="u", session_id="s")
@@ -126,8 +137,8 @@ def test_hub_all_frontend_tool_calls_terminates_loop(monkeypatch):
             {"name": "show_table", "args": {"title": "T", "rows": []}, "id": "c1"}
         ]),
     ]
-    monkeypatch.setattr(h, "init_chat_model",
-                        lambda *a, **kw: _fake_model_factory(responses))
+    _factory = _fake_model_factory(responses)
+    monkeypatch.setattr(h, "init_chat_model", lambda *a, **kw: _factory)
 
     ctx = h.Ctx(model_provider="openai", model_name="gpt-4o", api_key="sk-t",
                 user_id="u", session_id="s")
@@ -147,13 +158,17 @@ def test_hub_mixed_frontend_and_backend(monkeypatch):
         ]),
         AIMessage(content="ok"),
     ]
-    monkeypatch.setattr(h, "init_chat_model",
-                        lambda *a, **kw: _fake_model_factory(responses))
-    fake = MagicMock()
-    async def _ainvoke(args):
-        return {"items": []}
-    fake.ainvoke = _ainvoke
-    monkeypatch.setitem(h.TOOLS_BY_NAME, "list_publications", fake)
+    _factory = _fake_model_factory(responses)
+    monkeypatch.setattr(h, "init_chat_model", lambda *a, **kw: _factory)
+
+    class _FakeTool:
+        name = "list_publications"
+        func = None  # triggers sync invoke path in tool_node
+
+        def invoke(self, args):
+            return '{"items":[]}'
+
+    monkeypatch.setitem(h.TOOLS_BY_NAME, "list_publications", _FakeTool())
 
     ctx = h.Ctx(model_provider="openai", model_name="gpt-4o", api_key="sk-t",
                 user_id="u", session_id="s")
@@ -174,8 +189,8 @@ def test_hub_unknown_backend_tool(monkeypatch):
         ]),
         AIMessage(content="recovered"),
     ]
-    monkeypatch.setattr(h, "init_chat_model",
-                        lambda *a, **kw: _fake_model_factory(responses))
+    _factory = _fake_model_factory(responses)
+    monkeypatch.setattr(h, "init_chat_model", lambda *a, **kw: _factory)
     ctx = h.Ctx(model_provider="openai", model_name="gpt-4o", api_key="sk-t",
                 user_id="u", session_id="s")
     out = h.agent.invoke({"messages": [HumanMessage("?")]}, context=ctx)
@@ -195,10 +210,14 @@ def test_deep_research_dispatches_web_search(monkeypatch):
         ]),
         AIMessage(content="results follow"),
     ]
-    monkeypatch.setattr(dr, "init_chat_model",
-                        lambda *a, **kw: _fake_model_factory(responses))
-    monkeypatch.setattr(dr.TOOLS_BY_NAME["search_web"], "invoke",
-                        lambda args: '[{"title":"a","url":"u","content":"c"}]')
+    _factory = _fake_model_factory(responses)
+    monkeypatch.setattr(dr, "init_chat_model", lambda *a, **kw: _factory)
+    # search_web is a sync tool; func=None signals sync path in tool_node.
+    fake_tool = MagicMock()
+    fake_tool.name = "search_web"
+    fake_tool.invoke = MagicMock(return_value='[{"title":"a","url":"u","content":"c"}]')
+    fake_tool.func = None
+    monkeypatch.setitem(dr.TOOLS_BY_NAME, "search_web", fake_tool)
 
     ctx = dr.Ctx(model_provider="openai", model_name="gpt-4o", api_key="sk-t",
                  user_id="u", session_id="s",

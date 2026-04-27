@@ -181,24 +181,3 @@ HUB_WECHAT_TOOLS = [
     list_wechat_articles,
     list_wechat_sources,
 ]
-
-
-# --- hermes.registry self-registration (P2) -------------------------------
-# Individual top-level call (not a for-loop) so discover_builtin_tools' AST
-# check identifies this module as a tool module.
-from hermes.registry import registry
-
-registry.register(
-    name=HUB_WECHAT_TOOLS[0].name,
-    toolset="wechat",
-    tool=HUB_WECHAT_TOOLS[0],
-    description=getattr(HUB_WECHAT_TOOLS[0], "description", "") or "",
-)
-
-for _t in HUB_WECHAT_TOOLS[1:]:
-    registry.register(
-        name=_t.name,
-        toolset="wechat",
-        tool=_t,
-        description=getattr(_t, "description", "") or "",
-    )

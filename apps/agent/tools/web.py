@@ -21,8 +21,6 @@ from typing import Annotated
 import httpx
 from langchain_core.tools import InjectedToolArg, tool
 
-from hermes.registry import registry
-
 
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://localhost:8888").rstrip("/")
 SEARCH_RESULT_LIMIT = 15
@@ -144,21 +142,3 @@ def url_fetch(url: str, max_chars: int = 10_000) -> str:
             return text
     except Exception as exc:  # noqa: BLE001
         return json.dumps({"error": f"url_fetch failed: {exc}"})
-
-
-# --- hermes.registry self-registration (P4) -----------------------------
-registry.register(
-    name=search_web.name,
-    toolset="web",
-    tool=search_web,
-    description=(
-        "Search the web. Default backend SearXNG (self-hosted); "
-        "upgrades to Tavily when a BYOK api_key is injected. Returns JSON."
-    ),
-)
-registry.register(
-    name=url_fetch.name,
-    toolset="web",
-    tool=url_fetch,
-    description="Fetch a URL's raw text (truncated).",
-)

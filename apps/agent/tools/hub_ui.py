@@ -195,27 +195,10 @@ HUB_UI_TOOLS = [
     show_navigation,
 ]
 
+# Alias used by agents/hub.py
+HUB_FRONTEND_TOOLS = HUB_UI_TOOLS
 
-# --- hermes.registry self-registration (P2) -------------------------------
-# Individual top-level call trips the AST discovery gate; rest via loop.
-# NOTE: frontend=True — these tools are NOT executed server-side. The LLM's
-# AIMessage tool_call reaches the client via the SDK and the frontend
-# renders the call args as a React component.
-from hermes.registry import registry
-
-registry.register(
-    name=HUB_UI_TOOLS[0].name,
-    toolset="ui",
-    tool=HUB_UI_TOOLS[0],
-    frontend=True,
-    description=getattr(HUB_UI_TOOLS[0], "description", "") or "",
-)
-
-for _t in HUB_UI_TOOLS[1:]:
-    registry.register(
-        name=_t.name,
-        toolset="ui",
-        tool=_t,
-        frontend=True,
-        description=getattr(_t, "description", "") or "",
-    )
+HUB_FRONTEND_TOOL_NAMES = {
+    "show_stat_card", "show_table", "show_chart",
+    "show_select", "show_confirm", "show_navigation",
+}

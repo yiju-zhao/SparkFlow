@@ -1,30 +1,14 @@
-"""
-LangChain tools for reading source documents.
-Used by the notebook surface to access original source content when wiki
-summaries lack detail.
+"""LangChain tools for reading source documents.
 
-P2 note: ``notebook_id`` is now passed explicitly as an argument to each
-tool. The old process-global ``_current_notebook_id`` and ``set_notebook_id``
-are retained as no-ops for backward compatibility with
-``graphs/rag_agent.py`` until that module is deleted post-P2.
+Used by the notebook agent to access original source content when wiki
+summaries lack detail.
 """
 
 import os
 import httpx
 from langchain_core.tools import tool
 
-from hermes.registry import registry
-
 SPARKFLOW_API_URL = os.getenv("SPARKFLOW_API_URL", "http://localhost:3001")
-
-# Deprecated: retained as a no-op so graphs/rag_agent.py keeps importing.
-_current_notebook_id: str = ""
-
-
-def set_notebook_id(notebook_id: str) -> None:
-    """Deprecated no-op. The notebook_id is now an explicit argument to
-    each wiki tool. This stub remains only to keep ``graphs/rag_agent.py``
-    importing until it is deleted in a post-P2 cleanup."""
 
 
 @tool
@@ -95,17 +79,3 @@ def source_list(notebook_id: str) -> str:
 
 
 wiki_tools = [source_read, source_list]
-
-registry.register(
-    name=source_read.name,
-    toolset="wiki",
-    tool=source_read,
-    description=source_read.description or "",
-)
-
-registry.register(
-    name=source_list.name,
-    toolset="wiki",
-    tool=source_list,
-    description=source_list.description or "",
-)
