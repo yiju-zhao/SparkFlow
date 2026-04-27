@@ -1,69 +1,76 @@
-"""Tests for workflows.search."""
+"""Tests for workflows.search — plain async (NOT Functional API)."""
 
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from __future__ import annotations
+
+from unittest.mock import AsyncMock
 
 import pytest
 
-from workflows.search import SearchRequest, run
+from workflows.search import SearchRequest, search
 
 
 @pytest.mark.asyncio
-async def test_web_source_type_calls_tavily(monkeypatch):
-    # Web path: Tavily single-shot, no semops
-    from tools.web import search_web
+async def test_web_branch_returns_tavily_items(monkeypatch):
     monkeypatch.setattr(
-        "workflows.search._invoke_web_search",
-        AsyncMock(return_value=[{"title": "A", "url": "https://a.test", "content": "a"}]),
+        "workflows.search._web_search",
+        AsyncMock(return_value=[{"title": "A", "url": "https://a.test", "content": "..."}]),
     )
-    req = SearchRequest(
-        query="diffusion",
-        source_type="web",
-        notebook_id="nb_1",
-        model_provider="openai",
-        model_name="gpt-4o",
-        top_k=10,
-    )
-    resp = await run(req)
+    req = SearchRequest(query="diffusion", source_type="web",
+                        model_provider="openai", model_name="gpt-4o",
+                        api_key="sk-t", top_k=10)
+    resp = await search(req)
     assert resp.items[0]["url"] == "https://a.test"
 
 
 @pytest.mark.asyncio
-async def test_wechat_source_type_calls_prefilter_then_semops(monkeypatch):
+async def test_wechat_branch_calls_prefilter_then_semops(monkeypatch):
     monkeypatch.setattr(
         "workflows.search._prefilter",
-        AsyncMock(return_value=[
-            {"id": 1, "text": "Article 1 ..."},
-            {"id": 2, "text": "Article 2 ..."},
-        ]),
+        AsyncMock(return_value=[{"id": 1, "text": "Article 1"},
+                                {"id": 2, "text": "Article 2"}]),
     )
     monkeypatch.setattr(
         "workflows.search._semops_rank",
-        AsyncMock(return_value={"ranked": [{"id": 2, "text": "Article 2 ..."}],
-                                 "reasons": {"2": "more relevant"}}),
+        AsyncMock(return_value={"ranked": [{"id": 1}], "reasons": {"1": "best match"}}),
     )
-    req = SearchRequest(
-        query="AI agents",
-        source_type="wechat",
-        notebook_id="nb_1",
-        model_provider="openai",
-        model_name="gpt-4o-mini",
-        top_k=5,
-    )
-    resp = await run(req)
-    assert len(resp.items) == 1
-    assert resp.items[0]["id"] == 2
+    req = SearchRequest(query="ai", source_type="wechat",
+                        model_provider="openai", model_name="gpt-4o",
+                        api_key="sk-t", top_k=10)
+    resp = await search(req)
+    assert resp.items == [{"id": 1}]
+    assert resp.reasons == {"1": "best match"}
 
 
 @pytest.mark.asyncio
-async def test_unsupported_source_type_returns_error():
-    req = SearchRequest(
-        query="x",
-        source_type="podcast",  # unsupported
-        notebook_id="nb_1",
-        model_provider="openai",
-        model_name="gpt-4o",
-        top_k=5,
-    )
-    with pytest.raises(ValueError):
-        await run(req)
+async def test_publication_branch(monkeypatch):
+    monkeypatch.setattr("workflows.search._prefilter",
+                        AsyncMock(return_value=[{"id": 7, "text": "..."}]))
+    monkeypatch.setattr("workflows.search._semops_rank",
+                        AsyncMock(return_value={"ranked": [{"id": 7}], "reasons": {}}))
+    req = SearchRequest(query="x", source_type="publication",
+                        model_provider="openai", model_name="gpt-4o",
+                        api_key="sk-t", top_k=5)
+    resp = await search(req)
+    assert resp.items == [{"id": 7}]
+
+
+@pytest.mark.asyncio
+async def test_empty_prefilter_short_circuits(monkeypatch):
+    monkeypatch.setattr("workflows.search._prefilter", AsyncMock(return_value=[]))
+    rank = AsyncMock()
+    monkeypatch.setattr("workflows.search._semops_rank", rank)
+    req = SearchRequest(query="zzz", source_type="wechat",
+                        model_provider="openai", model_name="gpt-4o",
+                        api_key="sk-t", top_k=10)
+    resp = await search(req)
+    assert resp.items == []
+    rank.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_unsupported_source_type_raises():
+    req = SearchRequest(query="x", source_type="unknown_type",
+                        model_provider="openai", model_name="gpt-4o",
+                        api_key="sk-t", top_k=10)
+    with pytest.raises(ValueError, match="Unsupported source_type"):
+        await search(req)

@@ -1,6 +1,6 @@
 """Shared pytest fixtures for apps/agent tests.
 
-Injects apps/agent on sys.path so tests can import `hermes`, `tools`, etc.
+Injects apps/agent on sys.path so tests can import `agents`, `tools`, etc.
 without an editable install.
 """
 

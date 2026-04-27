@@ -318,23 +318,3 @@ HUB_TOOLBOX_TOOLS = [
     list_venues,
 ]
 
-
-# --- hermes.registry self-registration (P2) -------------------------------
-# Individual top-level call (not a for-loop) so discover_builtin_tools' AST
-# check identifies this module as a tool module.
-from hermes.registry import registry
-
-registry.register(
-    name=HUB_TOOLBOX_TOOLS[0].name,
-    toolset="hub",
-    tool=HUB_TOOLBOX_TOOLS[0],
-    description=getattr(HUB_TOOLBOX_TOOLS[0], "description", "") or "",
-)
-
-for _t in HUB_TOOLBOX_TOOLS[1:]:
-    registry.register(
-        name=_t.name,
-        toolset="hub",
-        tool=_t,
-        description=getattr(_t, "description", "") or "",
-    )

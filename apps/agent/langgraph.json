@@ -2,9 +2,9 @@
     "$schema": "https://langgra.ph/schema.json",
     "dependencies": ["."],
     "graphs": {
-        "hub": "./graphs/surface.py:hub_graph",
-        "notebook": "./graphs/surface.py:notebook_graph",
-        "deep_research": "./graphs/surface.py:deep_research_graph"
+        "hub": "./agents/hub.py:agent",
+        "notebook": "./agents/notebook.py:agent",
+        "deep_research": "./agents/deep_research.py:agent"
     },
     "env": ".env",
     "image_distro": "wolfi"
