@@ -9,6 +9,12 @@ import prisma from "@/lib/prisma";
 // (including admins) configure their own keys via Settings. If the user
 // hasn't picked a wiki model OR hasn't set an API key for that provider,
 // this throws — the ingest pipeline surfaces the error to the client.
+//
+// The returned `client` is an OpenAI SDK instance pointed at apps/agent's
+// `/v1/llm/chat/completions` gateway, NOT directly at the LLM provider.
+// apps/web (Node) cannot reach LLM providers from the corporate network;
+// Python on the same host can. The gateway forwards via LiteLLM. BYOK
+// info is passed in custom headers per OpenAI SDK's `defaultHeaders`.
 async function resolveWikiClient(userId: string) {
   const { default: OpenAI } = await import("openai");
   const { resolveApiKey } = await import("@/lib/services/api-key-resolver");
@@ -24,22 +30,37 @@ async function resolveWikiClient(userId: string) {
     );
   }
 
-  // resolveApiKey throws if the user hasn't configured a BYOK key for
-  // this provider; the error message points them at /settings.
   const resolved = await resolveApiKey(userId, settings.wikiModelProvider);
 
-  // Explicit timeout/retries because the SDK default is 10 minutes — too
-  // long for an interactive ingest pipeline. Tunable via env so corporate
-  // networks with TLS-intercepting proxies can dial up if needed.
+  const gatewayBase = (
+    process.env.WORKFLOWS_API_URL || "http://localhost:2027"
+  ).replace(/\/$/, "");
+  const internalToken = process.env.INTERNAL_CALLBACK_TOKEN;
+  if (!internalToken) {
+    throw new Error(
+      "INTERNAL_CALLBACK_TOKEN is not configured — the LLM gateway will reject requests",
+    );
+  }
+
+  // Explicit timeout/retries because the SDK default is 10 minutes —
+  // too long for an interactive ingest pipeline. Tunable via env.
   const timeoutMs = Number(process.env.WIKI_LLM_TIMEOUT_MS ?? 180_000);
   const maxRetries = Number(process.env.WIKI_LLM_MAX_RETRIES ?? 2);
 
   return {
     client: new OpenAI({
-      apiKey: resolved.apiKey,
-      baseURL: resolved.baseUrl,
+      baseURL: `${gatewayBase}/v1/llm`,
+      // The gateway ignores Authorization; the real BYOK key is in
+      // X-Byok-Key. Passing a placeholder keeps the OpenAI SDK happy.
+      apiKey: "passthrough",
       timeout: timeoutMs,
       maxRetries,
+      defaultHeaders: {
+        "X-Internal-Token": internalToken,
+        "X-Byok-Provider": settings.wikiModelProvider,
+        "X-Byok-Key": resolved.apiKey,
+        ...(resolved.baseUrl ? { "X-Byok-Base-Url": resolved.baseUrl } : {}),
+      },
     }),
     model: settings.wikiModelName,
   };

@@ -30,6 +30,10 @@ dependencies = [
     # Workflow server (FastAPI surface)
     "fastapi>=0.109",
     "uvicorn[standard]>=0.27",
+    # LLM gateway — apps/web (Node) cannot reach LLM providers from inside
+    # the corporate network, so it calls back here. LiteLLM normalizes the
+    # 100+ provider chat-completions API and handles BYOK key + base URL.
+    "litellm>=1.50",
     # Daily-digest ARQ worker queue
     "arq>=0.25",
     # Matcher workflow (Excel ingestion + ranking)
