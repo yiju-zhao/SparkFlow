@@ -40,12 +40,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Copy only the source the workflows API touches transitively. The
 # `workflows` and `server` packages aren't in pyproject.toml's hatch
-# packages list, so they must be copied raw.
+# packages list, so they must be copied raw. `tools` is imported by
+# workflows.search (tools.web). `prompts` is read by workflows that
+# need system-prompt fragments (currently none — kept for forward
+# compat with future workflow LLM calls).
 COPY workflows ./workflows
 COPY server ./server
 COPY tools ./tools
-COPY hermes ./hermes
-COPY config ./config
 COPY prompts ./prompts
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
