@@ -95,7 +95,7 @@ make up  UP_PORT=2024     # if you want it on 2024 instead
 ### Postgres port conflict with `apps/web`
 
 `langgraph up` spins up its own `langgraph-postgres` sibling that wants
-host port `5433`. `apps/web/docker-compose.yml` already maps host `5433`
+host port `5433`. The root `docker-compose.yml` already maps host `5433`
 to its own postgres, so running both at the same time fails with:
 
 ```

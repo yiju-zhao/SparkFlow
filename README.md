@@ -199,7 +199,6 @@ Set `ADMIN_EMAILS=your@email` in `apps/web/.env` so your account auto-promotes o
 2. **Start shared services (postgres, redis, searxng, workers)**
 
 ```bash
-cd apps/web
 docker compose up -d
 ```
 
@@ -271,7 +270,6 @@ domains the user's browser can reach (not docker service names).
 3. **Bring up the full stack**
 
 ```bash
-cd apps/web
 docker compose --profile prod up -d --build
 ```
 
@@ -291,7 +289,6 @@ curl https://workflows.your-domain.com/v1/healthz       # {"ok":true}
 
 ```bash
 git pull
-cd apps/web
 docker compose --profile prod up -d --build
 # migrate auto-runs `prisma migrate deploy` before web restarts.
 ```

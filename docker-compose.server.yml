@@ -3,7 +3,7 @@
 #
 # Usage on the server:
 #   1. Place a full CA bundle (system roots + corporate CA, concatenated) at
-#        apps/web/ca-certificates.crt
+#        ca-certificates.crt
 #      A missing host file makes Docker create an empty dir at the mount
 #      path and break all TLS in the container; an empty file breaks all
 #      TLS via missing roots — hence the bundle MUST exist before `up`.
@@ -44,7 +44,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: sparkflow-postgres
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sparkflow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sparkflow}
@@ -93,11 +93,11 @@ services:
 
   ingest-worker:
     build:
-      context: .
+      context: ./apps/web
       dockerfile: Dockerfile.worker
     container_name: sparkflow-ingest-worker
     command: ["npm", "run", "worker:ingest"]
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       <<: [*no_proxy_env, *ca_cert_env]
       REDIS_URL: redis://redis:6379
@@ -113,11 +113,11 @@ services:
 
   digest-worker:
     build:
-      context: ../agent
+      context: ./apps/langgraph
       dockerfile: Dockerfile.worker
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
-    env_file: ../agent/.env
+    env_file: ./apps/langgraph/.env
     environment:
       <<: [*no_proxy_env, *ca_cert_env]
       REDIS_URL: redis://redis:6379
@@ -137,10 +137,10 @@ services:
   workflows-api:
     profiles: ["prod"]
     build:
-      context: ../agent
+      context: ./apps/langgraph
       dockerfile: Dockerfile.workflows-api
     container_name: sparkflow-workflows-api
-    env_file: ../agent/.env
+    env_file: ./apps/langgraph/.env
     environment:
       <<: [*no_proxy_env, *ca_cert_env]
       REDIS_URL: redis://redis:6379
@@ -163,7 +163,7 @@ services:
   migrate:
     profiles: ["prod"]
     build:
-      context: .
+      context: ./apps/web
       dockerfile: Dockerfile
       # Use builder stage: it has full node_modules (incl. prisma CLI's
       # transitive deps like `effect`). The slim runner stage only carries
@@ -171,7 +171,7 @@ services:
       target: builder
     container_name: sparkflow-migrate
     command: ["npx", "prisma", "migrate", "deploy"]
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       <<: *no_proxy_env
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
@@ -183,11 +183,11 @@ services:
   web:
     profiles: ["prod"]
     build:
-      context: .
+      context: ./apps/web
       dockerfile: Dockerfile
       target: runner
     container_name: sparkflow-web
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       <<: [*no_proxy_env, *ca_cert_env]
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}

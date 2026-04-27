@@ -14,7 +14,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: sparkflow-postgres
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sparkflow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sparkflow}
@@ -63,11 +63,11 @@ services:
 
   ingest-worker:
     build:
-      context: .
+      context: ./apps/web
       dockerfile: Dockerfile.worker
     container_name: sparkflow-ingest-worker
     command: ["npm", "run", "worker:ingest"]
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       # Override host-side localhost URLs with docker service hostnames.
       # apps/web/.env uses localhost so `npm run dev` works on the host.
@@ -82,11 +82,11 @@ services:
 
   digest-worker:
     build:
-      context: ../agent
+      context: ./apps/langgraph
       dockerfile: Dockerfile.worker
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
-    env_file: ../agent/.env
+    env_file: ./apps/langgraph/.env
     environment:
       # Override host-side localhost URL with docker service hostname.
       REDIS_URL: redis://redis:6379
@@ -110,10 +110,10 @@ services:
   workflows-api:
     profiles: ["prod"]
     build:
-      context: ../agent
+      context: ./apps/langgraph
       dockerfile: Dockerfile.workflows-api
     container_name: sparkflow-workflows-api
-    env_file: ../agent/.env
+    env_file: ./apps/langgraph/.env
     environment:
       # In-container service hostnames override host-side localhost URLs.
       REDIS_URL: redis://redis:6379
@@ -135,7 +135,7 @@ services:
   migrate:
     profiles: ["prod"]
     build:
-      context: .
+      context: ./apps/web
       dockerfile: Dockerfile
       # Use builder stage: it has full node_modules (incl. prisma CLI's
       # transitive deps like `effect`). The slim runner stage only carries
@@ -143,7 +143,7 @@ services:
       target: builder
     container_name: sparkflow-migrate
     command: ["npx", "prisma", "migrate", "deploy"]
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
     depends_on:
@@ -154,11 +154,11 @@ services:
   web:
     profiles: ["prod"]
     build:
-      context: .
+      context: ./apps/web
       dockerfile: Dockerfile
       target: runner
     container_name: sparkflow-web
-    env_file: .env
+    env_file: ./apps/web/.env
     environment:
       # Override host-side localhost URLs with docker service hostnames.
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
