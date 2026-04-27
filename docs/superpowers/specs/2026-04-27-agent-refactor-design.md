@@ -47,11 +47,11 @@ The deletion list below was verified by grep before this spec was written. Each 
 | `tools/_echo.py` + `prompts/surfaces/echo_test.md` | Debug-only smoke surface | Drop |
 | `deepagents` dependency in `pyproject.toml` | `grep deepagents apps/agent --include="*.py"` → **0 hits** | Drop |
 | `graphs/`, `surfaces/`, `config/` directories | Each holds 1-2 files of glue around `build_graph(SurfaceConfig)` | Collapse into one `agents/<name>.py` file per surface |
-| `apps/agent/server/routes/llm_gateway.py` (~299 LOC) | Two consumers: `apps/web/lib/services/graph-service.ts` (wiki ingest LLM calls) and `apps/web/lib/providers/list-models.ts` (BYOK validation in Settings UI). Both are rewritten as part of this work. | Drop after wiki-ingest cutover (step 11) |
+| `apps/agent/server/routes/llm_gateway.py` (~299 LOC) | Two consumers: `apps/web/lib/services/graph-service.ts` (wiki ingest LLM calls — replaced by direct Python LLM calls in `workflows/wiki_ingest.py`) and `apps/web/lib/providers/list-models.ts` (BYOK validation — moved to a new `server/routes/llm_models.py`, plain httpx, no litellm). Both consumer rewrites land in step 11. | Drop in step 11 cutover |
 | `litellm>=1.50` dep in `pyproject.toml` | `grep litellm apps/agent` → only `server/routes/llm_gateway.py` imports it. Every provider in PROVIDER_MAP is OpenAI-compatible (`f"openai/{model}"` at line 257) so litellm is dispatching through its openai adapter for every call — no value over `langchain-openai` which apps/agent already uses elsewhere. | Drop with the gateway |
-| `apps/web/lib/services/graph-service.ts` (~720 LOC TS) | Knowledge-graph extraction + Louvain clustering + wiki-page assembly currently in Node. Verified ~70% is "LLM calls + pure graph algorithms + types" with zero Node/Prisma affinity. | Replace with `workflows/wiki_ingest.py`; delete TS file at cutover |
-| `apps/web/lib/providers/list-models.ts` (~225 LOC TS) | Wraps the `/v1/llm/models` gateway endpoint to power Settings → "Validate BYOK key" UX. | Replace with a slim ~40-LOC client calling a new `POST /v1/workflows/llm/list-models` (or fold validation into a tiny route inside `wiki_ingest.py`'s router) |
-| `openai` Node SDK in `apps/web/package.json` | Only consumer is graph-service.ts. | Drop after graph-service.ts is deleted |
+| `apps/web/lib/services/graph-service.ts` (~720 LOC TS) | Knowledge-graph extraction + Louvain clustering + wiki-page assembly currently in Node. Verified ~70% is "LLM calls + pure graph algorithms + types" with zero Node/Prisma affinity. | Replace with `workflows/wiki_ingest.py`; delete TS file in step 11 |
+| `apps/web/lib/providers/list-models.ts` (~225 LOC TS) | Wraps the `/v1/llm/models` gateway endpoint to power Settings → "Validate BYOK key" UX. | Slim to ~40-LOC client calling the new `POST /v1/workflows/llm/list-models` route (extracted from llm_gateway.py into a litellm-free `routes/llm_models.py`) |
+| `openai` Node SDK in `apps/web/package.json` | Only consumer is graph-service.ts:19 (`const { default: OpenAI } = await import("openai")`). | Drop in step 11 along with graph-service.ts |
 
 ## 4. Target architecture
 
@@ -91,10 +91,11 @@ apps/agent/
 ├── server/
 │   ├── app.py
 │   ├── matcher_types.py
-│   ├── wiki_ingest_types.py    (new — Pydantic request/response models for the wiki extract route)
+│   ├── wiki_ingest_types.py    (new — Pydantic discriminated-union request models)
 │   └── routes/
 │       ├── matcher_jobs.py
-│       └── wiki_ingest.py      (new — POST /v1/workflows/wiki/extract; replaces deleted llm_gateway.py)
+│       ├── wiki_ingest.py      (new — POST /v1/workflows/wiki/extract)
+│       └── llm_models.py       (new — POST /v1/workflows/llm/list-models, extracted from llm_gateway.py; httpx only, no litellm)
 ├── prompt_builder.py
 ├── embeddings/
 ├── scripts/
@@ -170,7 +171,24 @@ HUB_FRONTEND_TOOL_NAMES = {"show_stat_card","show_table","show_chart","show_sele
 HUB_FRONTEND_TOOLS = [show_stat_card, show_table, show_chart, show_select, show_confirm, show_navigation]
 ```
 
-`agents/hub.py` includes both backend and frontend tools in `TOOLS` (so the LLM sees the schema and can emit calls), and the local `tool_node` skips dispatch when the call name is in `HUB_FRONTEND_TOOL_NAMES`. No `frontend=True` registry flag, no `ToolEntry` indirection.
+`agents/hub.py` includes both backend and frontend tools in `TOOLS` (so the LLM sees the schema and can emit calls). No `frontend=True` registry flag, no `ToolEntry` indirection.
+
+**Loop-exit semantics**: hub's `_should_continue` MUST route to `END` when *every* tool_call on the last `AIMessage` is in `HUB_FRONTEND_TOOL_NAMES`. The current `graphs/common.py:tool_node` returns `[]` for an all-frontend turn, but `_should_continue` only checks `bool(tool_calls)` — so the loop re-enters `llm_call` with no `ToolMessage` answers, and the LLM either repeats the call (burning a turn) or hallucinates a follow-up. The new shape fixes this:
+
+```python
+def _should_continue(state: MessagesState):
+    last = state["messages"][-1]
+    tool_calls = getattr(last, "tool_calls", None) or []
+    if not tool_calls:
+        return END
+    if all(tc["name"] in HUB_FRONTEND_TOOL_NAMES for tc in tool_calls):
+        return END   # frontend renders these; nothing to dispatch server-side
+    return "tool_node"
+```
+
+For mixed turns (one frontend + one backend), `_should_continue` routes to `tool_node`, which dispatches the backend tool and skips the frontend ones (same skip logic as today). The frontend `AIMessage` reaches the client via the SDK regardless of which branch we took.
+
+Notebook and deep_research surfaces have no frontend tools — their `_should_continue` is the canonical `if last.tool_calls: "tool_node" else: END`.
 
 ## 6. `prompt_builder.py` contract
 
@@ -199,27 +217,48 @@ No class. No cache. No memory. No skills. No ContextRef Protocol. Recomputed per
 
 The OpenAI-hint family list (openai/gpt/codex/deepseek/glm/zhipu/minimax/kimi/moonshot/custom) and Gemini-hint family list (google/gemini) move from `hermes.prompt_builder` to module-level constants in `prompt_builder.py`.
 
-## 7. Workflow contracts (Functional API)
+## 6.1 Functional API runtime contract
 
-### 7.1 `workflows/search.py` — chain (ref doc §Functional API)
+The Functional API (`@entrypoint`, `@task`) interacts with three runtimes in this codebase: FastAPI's anyio-backed BackgroundTasks, the ARQ async worker, and direct `await` from HTTP route handlers. Pin the runtime contract here so the implementation plan doesn't have to re-derive it.
+
+**Library version pin** (added to `pyproject.toml`): `langgraph>=0.6,<0.7`. The Functional API stabilized in 0.5; pinning to 0.6.x keeps the API surface stable across the migration. Bump explicitly when upgrading; do not let a transitive upgrade move us off this line.
+
+**`@task` invocation idiom** (per ref doc §Functional API parallelization and orchestrator-worker examples): tasks are kicked off without await, then aggregated with **sync `.result()`**, even inside `async def` entrypoints. The runtime resolves the futures whether the task wraps a sync `def` or `async def`. **Do not write `await fut.result()`** — it either fails on a SyncFuture or breaks the deterministic-replay contract on an AsyncFuture. The aggregator pattern across this spec is:
 
 ```python
-@task async def web_search(req: SearchRequest) -> list[dict]: ...
-@task async def prefilter(source_type: str, query: str, limit: int) -> list[dict]: ...
-@task async def semops_rank(candidates, query_text, top_k, lm_config) -> dict: ...
+futs = [task_func(x) for x in items]   # no await
+results = [f.result() for f in futs]   # sync, runtime resolves
+```
 
-@entrypoint()
+**Checkpointer**: entrypoints in this codebase do **not** declare a checkpointer. Each request is a fresh run; there is no resume-after-restart requirement (the matcher's persistence is handled by `JobStore`; the digest's by ARQ). Default in-memory checkpointer is acceptable. If a future feature wants Postgres-backed entrypoint replay, add it surface-by-surface.
+
+**Cross-runtime safety**:
+- **FastAPI BackgroundTasks**: the matcher entrypoint is Graph API (§7.3) and runs sync via `asyncio.to_thread(graph.invoke, ...)` — pandas + FAISS would block the event loop otherwise. Verified pattern.
+- **ARQ workers**: the digest entrypoint runs via `await generate_section.ainvoke(req)` from `arq_generate_section`. ARQ owns the loop; the entrypoint must be loop-agnostic at module-import time (no `asyncio.get_event_loop()` at decoration) — the Functional API satisfies this since it doesn't bind to a loop until the entrypoint is invoked.
+- **HTTP routes**: search is plain `async def` (§7.1). Wiki-ingest and digest's HTTP-triggered call sites use `await entrypoint.ainvoke(req)` directly — runtime is the FastAPI worker loop.
+
+**Exception propagation**: `@task` exceptions surface via `fut.result()` raising. Inside `async def` entrypoints, wrap aggregator steps in try/except where the spec requires structured error envelopes (digest §7.2, wiki-ingest §7.4). The graph-API matcher catches at `_run_and_persist` boundary (§7.3).
+
+## 7. Workflow contracts (Functional API + Graph API)
+
+### 7.1 `workflows/search.py` — plain `async def` (NOT Functional API)
+
+`search.py` does **not** use `@entrypoint`/`@task`. The chain is a single branch (`web` vs `wechat`/`publication`), each branch is 1–3 sequential awaited HTTP calls with no parallelism, no checkpoint replay value, and no streaming consumer. Wrapping in Functional API would add ceremony with zero payoff. **Search is the deliberate exception** to the "all workflows on Functional API" rule.
+
+```python
 async def search(req: SearchRequest) -> SearchResponse:
     if req.source_type == "web":
-        return SearchResponse(items=await web_search(req).result())
-    candidates = await prefilter(req.source_type, req.query, PREFILTER_LIMIT).result()
+        return SearchResponse(items=await _web_search(req))
+    if req.source_type not in ("wechat", "publication"):
+        raise ValueError(f"Unsupported source_type: {req.source_type!r}")
+    candidates = await _prefilter(req.source_type, req.query, PREFILTER_LIMIT)
     if not candidates:
         return SearchResponse(items=[])
-    ranked = await semops_rank(candidates, req.query, req.top_k, _lm(req)).result()
+    ranked = await _semops_rank(candidates, req.query, req.top_k, _lm(req))
     return SearchResponse(items=ranked.get("ranked", []), reasons=ranked.get("reasons") or {})
 ```
 
-The HTTP route in `server/app.py` becomes `await search.ainvoke(req)`.
+The HTTP route in `server/app.py` calls `await search(req)` directly. Helpers stay module-private.
 
 ### 7.2 `workflows/daily_digest.py` — parallelization + chain (ref doc §Parallelization, Functional API)
 
@@ -234,72 +273,135 @@ Per-query prefilter calls run in parallel via `[task(q) for q in enabled]` then 
 @entrypoint()
 async def generate_section(req: GenerateSectionRequest) -> None:
     enabled = [q for q in req.queries if q.get("enabled")]
+    # Per ref doc §Parallelization Functional API: tasks are kicked off without await,
+    # then aggregated with sync .result(). Even inside an async entrypoint, the canonical
+    # aggregator shape is sync — runtime resolves the futures.
     futures = [prefilter_query(q["text"], req.subscribed_source_ids) for q in enabled]
-    pool = await merge_pool([await f.result() for f in futures]).result()
+    pool = merge_pool([f.result() for f in futures]).result()
     if not pool:
-        await callback(req.section_id, "EMPTY", items=[]).result()
+        callback(req.section_id, "EMPTY", items=[]).result()
         return
     semops_candidates = _build_semops_candidates(pool)   # plain helper
     joint_query = " ".join(q["text"] for q in enabled)
     try:
-        ranked = await semops_rank(semops_candidates, joint_query, req.top_n, _lm(req)).result()
+        ranked = semops_rank(semops_candidates, joint_query, req.top_n, _lm(req)).result()
     except Exception as exc:
-        await callback(req.section_id, "FAILED", error=str(exc)).result()
+        callback(req.section_id, "FAILED", error=str(exc)).result()
         return
     items = _to_digest_items(pool, ranked)               # plain helper
-    await callback(req.section_id, "COMPLETED", items=items, model_used=f"{req.model_provider}/{req.model_name}",
-                   completed_at=datetime.now(tz=timezone.utc).isoformat()).result()
+    callback(req.section_id, "COMPLETED", items=items, model_used=f"{req.model_provider}/{req.model_name}",
+             completed_at=datetime.now(tz=timezone.utc).isoformat()).result()
 ```
 
 ARQ adapter (`workflows/digest_tasks.py:arq_generate_section`) calls `await generate_section.ainvoke(req)` instead of `await daily_digest.generate_section(req)`. Worker semantics unchanged.
 
-### 7.3 `workflows/matcher/job.py` — orchestrator-worker (ref doc §Orchestrator-worker, Functional API)
+### 7.3 `workflows/matcher/job.py` — orchestrator-worker via **Graph API + `Send`** (ref doc §Creating workers in LangGraph)
 
-The current `JobRunner.run_job` (337 LOC) collapses to:
+The matcher fits the canonical `Send` shape exactly: BUs are unknown at graph-build time, dispatch is dynamic, results aggregate, and progress reporting is incremental. Graph API + `Send` (per ref doc §"Creating workers in LangGraph") is the right pattern — Functional API would force sync `.result()` blocking and re-implement aggregation manually. Bonus: per-BU updates land naturally in `astream(stream_mode="updates")`, unlocking the §12 SSE-from-stream follow-up for free.
 
 ```python
-@task def optimize_bu(bu, queries, target_type, lm: LMConfig) -> OptimizedQuery: ...
-@task def rank_bu(bu, optimized: OptimizedQuery, target_df, top_k, search_k,
-                  include_reasons, index_dir, lm: LMConfig) -> pd.DataFrame: ...
-@task def synthesize(target_df, results_by_bu, include_reasons) -> bytes: ...
-@task def report_progress(job_id, **fields) -> None: ...   # JobStore writeback
+from typing import Annotated, TypedDict
+import operator
+from langgraph.graph import START, END, StateGraph
+from langgraph.types import Send
 
-@entrypoint()
-def run_match_job(job_id: str, req: MatchJobRequest) -> JobResult:
-    report_progress(job_id, status="PROCESSING", started_at=now()).result()
-    queries_by_bu = _group_by_bu(req.queries)
+class JobState(TypedDict):
+    job_id: str
+    target_df: pd.DataFrame
+    queries_by_bu: dict[str, list[str]]
+    optimized: dict[str, OptimizedQuery]
+    results_by_bu: Annotated[dict[str, pd.DataFrame], _merge_dict]   # workers append here
+    excel_bytes: bytes
+    total_matches: int
+    req: MatchJobRequest
 
-    optimize_futs = {bu: optimize_bu(bu, qs, req.target_type, req.lm) for bu, qs in queries_by_bu.items()}
-    optimized = {bu: f.result() for bu, f in optimize_futs.items()}
-    report_progress(job_id, progress=30, query_data=_enriched(req.queries, optimized)).result()
+class WorkerState(TypedDict):
+    bu: str
+    optimized: OptimizedQuery
+    target_df: pd.DataFrame
+    req: MatchJobRequest
 
-    rank_futs = {bu: rank_bu(bu, opt, req.target_df, req.top_k, req.search_k,
-                              req.include_reasons, req.index_dir, req.lm)
-                  for bu, opt in optimized.items()}
-    results_by_bu = {bu: f.result() for bu, f in rank_futs.items()}
-    report_progress(job_id, progress=85, error_message="Creating result file...").result()
+def orchestrator(state: JobState) -> dict:
+    """Group queries by BU, optimize each (LLM call per BU)."""
+    job_store.update_job(state["job_id"], status="PROCESSING", started_at=datetime.utcnow())
+    queries_by_bu = _group_by_bu(state["req"].queries)
+    optimized = {
+        bu: query_optimizer.optimize(bu, qs, state["req"].target_type, state["req"].lm)
+        for bu, qs in queries_by_bu.items()
+    }
+    job_store.update_job(state["job_id"], progress=30,
+                         query_data=_enriched(state["req"].queries, optimized))
+    return {"queries_by_bu": queries_by_bu, "optimized": optimized}
 
-    excel_bytes = synthesize(req.target_df, results_by_bu, req.include_reasons).result()
-    total_matches = sum(len(df) for df in results_by_bu.values())
-    return JobResult(excel_bytes=excel_bytes, total_matches=total_matches)
+def assign_workers(state: JobState) -> list[Send]:
+    """Dispatch one rank_bu worker per BU. Mirrors ref doc §Creating workers in LangGraph."""
+    return [
+        Send("rank_bu", {"bu": bu, "optimized": opt, "target_df": state["target_df"],
+                         "req": state["req"]})
+        for bu, opt in state["optimized"].items()
+    ]
+
+def rank_bu(ws: WorkerState) -> dict:
+    """Worker — runs LOTUS pipeline for one BU. Writes one entry into results_by_bu."""
+    matches_df = LotusMatcher().run_pipeline(
+        df=ws["target_df"], query_text=ws["optimized"].optimized_query_en,
+        query_name=ws["bu"], top_k=ws["req"].top_k, search_k=ws["req"].search_k,
+        include_reasons=ws["req"].include_reasons, index_dir=ws["req"].index_dir,
+        model_provider=ws["req"].lm.provider, model_name=ws["req"].lm.model,
+        api_key=ws["req"].lm.api_key, api_base=ws["req"].lm.api_base,
+    )
+    return {"results_by_bu": {ws["bu"]: matches_df}}
+
+def synthesize(state: JobState) -> dict:
+    """Aggregate per-BU DataFrames into the master Excel file."""
+    job_store.update_job(state["job_id"], progress=85, error_message="Creating result file...")
+    excel_bytes = ExcelProcessor().create_result_excel(
+        results_by_query=state["results_by_bu"],
+        master_df=_build_master(state["target_df"], state["results_by_bu"], state["req"].include_reasons),
+    )
+    return {"excel_bytes": excel_bytes,
+            "total_matches": sum(len(df) for df in state["results_by_bu"].values())}
+
+def _merge_dict(left: dict, right: dict) -> dict:
+    return {**left, **right}
+
+builder = StateGraph(JobState)
+builder.add_node("orchestrator", orchestrator)
+builder.add_node("rank_bu", rank_bu)
+builder.add_node("synthesize", synthesize)
+builder.add_edge(START, "orchestrator")
+builder.add_conditional_edges("orchestrator", assign_workers, ["rank_bu"])
+builder.add_edge("rank_bu", "synthesize")
+builder.add_edge("synthesize", END)
+match_job_graph = builder.compile()
 ```
 
-`server/routes/matcher_jobs.py:create_job` previously called `BackgroundTasks.add_task(job_runner.run_job, ...)`. It will now `BackgroundTasks.add_task(_run_and_persist, job_id, req)` where `_run_and_persist` does:
+**JobStore writes stay as plain function calls inside nodes** — not wrapped in `@task`. JobStore is a process-local in-memory singleton; the SSE `/jobs/{id}/stream` reader polls it every 1s and expects strict ordering. Wrapping writes in `@task` would introduce checkpoint-materialization windows where the SSE shows stale progress.
+
+`server/routes/matcher_jobs.py:create_job` calls:
 
 ```python
-async def _run_and_persist(job_id, req):
+async def _run_and_persist(job_id: str, req: MatchJobRequest):
     try:
-        result = await run_match_job.ainvoke(job_id, req)
+        # match_job_graph.invoke is sync (pandas-heavy LOTUS pipeline blocks the loop);
+        # run it in a thread to keep FastAPI responsive.
+        final_state = await asyncio.to_thread(match_job_graph.invoke,
+                                              {"job_id": job_id, "target_df": pd.DataFrame(req.target_data),
+                                               "req": req, "results_by_bu": {}})
         job_store.update_job(job_id, status="COMPLETED", progress=100,
-                              result_data=result.excel_bytes, match_count=result.total_matches,
+                              result_data=final_state["excel_bytes"],
+                              match_count=final_state["total_matches"],
                               completed_at=datetime.utcnow(), error_message=None)
     except Exception as exc:
         logger.exception(f"Job {job_id} failed: {exc}")
         job_store.update_job(job_id, status="FAILED", error_message=str(exc),
                               completed_at=datetime.utcnow())
+
+# In the route:
+background_tasks.add_task(_run_and_persist, job_id, req)
 ```
 
-The `/jobs/{id}/stream` SSE endpoint reads `JobStore` exactly as before — the streaming contract is unchanged.
+The `/jobs/{id}/stream` SSE endpoint reads `JobStore` exactly as before — the streaming contract is unchanged. (Future enhancement: replace polling with `match_job_graph.astream(stream_mode="updates")` per §12.)
 
 ### 7.4 `workflows/wiki_ingest.py` — chain pattern (ref doc §Functional API)
 
@@ -321,31 +423,76 @@ async def extract_wiki(req: WikiExtractRequest) -> WikiExtractResult:
     # mode == "extract": new source ingest
     # mode == "remove": surgical source removal + re-cluster
     if req.mode == "extract":
-        extraction = await extract_graph(
+        extraction = extract_graph(
             req.source_content, req.source_title, req.source_id,
             req.existing_node_labels, _lm(req)
         ).result()
         merged = _merge_graph(req.existing_graph, extraction)
+        extraction_report = _build_extraction_report(req.existing_graph, extraction)
+        normalized_title = extraction.normalized_title or req.source_title
     else:  # remove
         merged = _filter_source(req.existing_graph, req.source_id)
         extraction = None
+        extraction_report = None
+        normalized_title = req.source_title
 
     communities = _cluster_graph(merged)
-    community_pages = await build_wiki_pages(
+    community_pages = build_wiki_pages(
         merged, communities, _source_map_from(req), _lm(req)
     ).result()
     index_page = _build_index_page(merged, communities, community_pages)
     log_entry = _format_log(req.source_id, extraction, len(community_pages))
 
     return WikiExtractResult(
-        normalized_title=req.source_title,
+        normalized_title=normalized_title,
         extraction=extraction,
+        extraction_report=extraction_report,
         merged_graph=merged,
         communities=communities,
         community_pages=community_pages,
         index_page=index_page,
         log_entry=log_entry,
     )
+```
+
+**Pydantic request schema** uses a discriminated union to make the mode-conditional fields explicit:
+
+```python
+from typing import Annotated, Literal, Optional, Union
+from pydantic import BaseModel, Field, model_validator
+
+class _BaseWikiReq(BaseModel):
+    notebook_id: str
+    source_id: str
+    user_id: str
+    source_title: str
+    existing_graph: Optional[dict] = None     # required when mode=remove; optional when extract
+    byok: BYOKConfig
+
+class WikiExtractMode(_BaseWikiReq):
+    mode: Literal["extract"] = "extract"
+    source_content: str                        # required
+    existing_node_labels: list[str] = []
+
+    @model_validator(mode="after")
+    def _content_required(self):
+        if not self.source_content:
+            raise ValueError("source_content required for mode=extract")
+        return self
+
+class WikiRemoveMode(_BaseWikiReq):
+    mode: Literal["remove"]
+
+    @model_validator(mode="after")
+    def _graph_required(self):
+        if not self.existing_graph:
+            raise ValueError("existing_graph required for mode=remove")
+        return self
+
+WikiExtractRequest = Annotated[
+    Union[WikiExtractMode, WikiRemoveMode],
+    Field(discriminator="mode"),
+]
 ```
 
 **HTTP contract** (`POST /v1/workflows/wiki/extract`, gated by `X-Internal-Token: ${INTERNAL_CALLBACK_TOKEN}`):
@@ -370,6 +517,11 @@ Response:
 {
   "normalizedTitle": "...",
   "extraction": {"nodes": [...], "edges": [...]} | null,
+  "extractionReport": {                           // null on mode=remove; present on mode=extract
+    "nodes": [...],                                // node projection for UI
+    "edges": [...],                                // edge projection
+    "crossRefs": [{"label":"...","existingSourceIds":["..."]}, ...]
+  } | null,
   "mergedGraph": {"nodes": [...], "edges": [...]},
   "communities": {"0": ["NodeA", "NodeB"], ...},
   "communityPages": [{"slug":"community-0","title":"...","markdown":"...","sourceIds":[...]}],
@@ -377,6 +529,14 @@ Response:
   "logEntry": "..."
 }
 ```
+
+**Hidden contracts that the port MUST preserve** (these were not in the per-section feature list of the original wiki-ingest spec; verified by reading `apps/web/lib/services/graph-service.ts:610-625` and `apps/web/lib/services/wiki-ingest.ts:42-54`):
+
+- `extractionReport.crossRefs` — synthesized in `_merge_graph` by comparing extracted nodes against the existing graph; consumed by the UI to surface "this concept already appears in source X" hints.
+- `Source.title = result.normalized_title` — the worker must write this on `mode=extract` (it currently happens before the `prisma.$transaction` in graph-service.ts).
+- `Source.metadata.extractionReport = result.extraction_report` — serialized into Source.metadata so the UI can render the cross-refs without re-running extraction.
+- `Source.metadata.wikiStatus` transitions: `starting → extracting → merging → clustering → generating → done | failed`. Today the Node code writes these at specific milestones via `prisma.source.update`. The port must preserve this granularity. Two options: (a) the worker streams progress by hitting the workflow API multiple times — rejected (Python becomes stateful); (b) the worker writes `wikiStatus` at the same logical milestones it does today, treating the Python call as one big "extracting → generating" span and updating before/after — **accepted**. Document explicitly in the worker pseudo-code below.
+- `Source.metadata.wikiError` — written on failure; preserved.
 
 Error envelope (matches the existing `/v1/workflows/daily_digest/*` shape):
 
@@ -406,6 +566,12 @@ async function processJob(job) {
                                     model: settings.wikiModelName, ...byok } }),
   }).then(r => r.json());
 
+  // Hidden-contract writes that today happen in graph-service.ts before/around the txn:
+  await prisma.source.update({ where: { id: sourceId },
+    data: { title: result.normalizedTitle,
+            metadata: { ...source.metadata, extractionReport: result.extractionReport,
+                        wikiStatus: "generating" }}});
+
   await prisma.$transaction(async (tx) => {
     await tx.notebookGraph.upsert({...});                                  // unchanged
     for (const page of [result.indexPage, ...result.communityPages]) {     // unchanged
@@ -414,13 +580,15 @@ async function processJob(job) {
     await tx.wikiPage.deleteMany({ where: orphanFilter });                 // unchanged
     await tx.wikiPageLog.create({ data: { content: result.logEntry, ... }});
   });
-  await prisma.source.update({ where: { id: sourceId }, data: { status: "READY" }});
+  await prisma.source.update({ where: { id: sourceId },
+    data: { status: "READY",
+            metadata: { ...source.metadata, wikiStatus: "done" }}});
 }
 ```
 
-The transactional commit is unchanged byte-for-byte; only the *production* of `result` moves. `removeSourceFromWiki` calls the same endpoint with `mode: "remove"` (the second branch in the entrypoint above), keeping surgical-remove behavior.
+The transactional commit body is unchanged byte-for-byte; what moves is the *production* of `result` (Python) and the addition of explicit `Source.title` / `Source.metadata.extractionReport` / `Source.metadata.wikiStatus` writes outside the txn (these existed in the TS code in scattered locations and are now consolidated). `removeSourceFromWiki` calls the same endpoint with `mode: "remove"` (the second branch in the entrypoint above), keeping surgical-remove behavior.
 
-**Cutover safety**: a `WIKI_INGEST_BACKEND={node|python}` env var defaults to `node` (current Phase-1 path) for one release cycle, then defaults to `python`, then the flag and the Node code are deleted. Implementation detail in §9 (steps 9–11).
+**Cutover safety**: there is no feature flag and no soak window. This is a 1-team internal-network deployment; the diff-test in step 9 (run identical input through both implementations and compare output) is the gate. If a regression appears post-cutover, the rollback is `git revert` of the cutover PR. The original Phase-1-style flag + multi-week soak proposal was rejected as ceremony exceeding the risk it mitigates.
 
 ## 8. `langgraph.json` & runtime config
 
@@ -451,7 +619,7 @@ The transactional commit is unchanged byte-for-byte; only the *production* of `r
 
 ## 9. Migration order
 
-12 steps. Each lands as an independent commit; the system stays runnable after every step. Steps 1–8 are agent-internal. Steps 9–12 are the wiki-ingest port and gateway demolition (cross-app — `apps/web` + `apps/agent`).
+11 steps. Each lands as an independent commit; the system stays runnable after every step. Steps 1–8 are agent-internal. Steps 9–11 are the wiki-ingest port and gateway demolition (cross-app — `apps/web` + `apps/agent`). No feature flag, no multi-week soak — the step-9 diff harness is the cutover gate; `git revert` is the rollback.
 
 | # | Step | Touch | Verification |
 |---|---|---|---|
@@ -463,10 +631,9 @@ The transactional commit is unchanged byte-for-byte; only the *production* of `r
 | 6 | Convert `workflows/daily_digest.py` to Functional API; per-query prefilter parallelized. ARQ adapter switches to `generate_section.ainvoke(req)`. | workflows/daily_digest.py + workflows/digest_tasks.py | `pytest tests/test_workflows_daily_digest.py + test_workflows_digest_tasks.py` (rewritten) |
 | 7 | Rename `workflows/matcher/job_runner.py` → `workflows/matcher/job.py`; convert to Functional API orchestrator-worker; update `server/routes/matcher_jobs.py`. | workflows/matcher/job.py + matcher_jobs.py | `pytest tests/test_matcher_workflow.py` (rewritten); manual `/v1/workflows/matcher/jobs` smoke |
 | 8 | Update `apps/agent/README.md`. Update root `CLAUDE.md` if it references hermes/graphs/surfaces by path. | docs | grep clean |
-| 9 | **Wiki-ingest spike (Python only).** Add `workflows/wiki_ingest.py` with `extract_graph` + `_merge_graph` + `_cluster_graph` + `build_wiki_pages` + `_build_index_page` + `extract_wiki` `@entrypoint`. Use the existing langchain-openai client pattern from `daily_digest.py`. Add `networkx>=3.0` to deps. No FastAPI route yet. Validate against a real source from a dev notebook: assert output shape and node/edge counts comparable to current TS output. | new workflows/wiki_ingest.py + tests | `pytest tests/test_wiki_ingest.py`; manual diff against TS output for one source |
-| 10 | **Wiki-ingest route.** Add `server/routes/wiki_ingest.py` with `POST /v1/workflows/wiki/extract` + `INTERNAL_CALLBACK_TOKEN` auth + structured error envelope + Pydantic models in `server/wiki_ingest_types.py`. Wire into `server/app.py`. | new route + types | `pytest tests/test_wiki_ingest_router.py`; `curl` smoke from inside docker network |
-| 11 | **Cutover behind feature flag.** Add `WIKI_INGEST_BACKEND={node|python}` env var to `apps/web/workers/ingest.ts`. When `python`, the worker calls `POST /v1/workflows/wiki/extract` and runs the existing `prisma.$transaction` on the result. When `node` (default), keep the old `graph-service.ts` path. Slim `apps/web/lib/services/wiki-ingest.ts` to ~60 LOC: status writes + Python call + transaction helper. Soak for ≥ 1 release with `python` available behind the flag. | apps/web/workers/ingest.ts + apps/web/lib/services/wiki-ingest.ts | E2E: upload a PDF, watch it complete; toggle the flag and re-run; diff `WikiPage` rows |
-| 12 | **Demolition.** Flip flag default to `python`; verify ≥ 1 week of zero rollbacks. Then in a single commit: `git rm apps/web/lib/services/graph-service.ts`; `git rm apps/agent/server/routes/llm_gateway.py`; remove `app.include_router(llm_gateway_router)` from `server/app.py`; drop `litellm` from `pyproject.toml`; drop `openai` from `apps/web/package.json`; slim `apps/web/lib/providers/list-models.ts` to ~40 LOC (or delete and replace its callsite); remove the `WIKI_INGEST_BACKEND` flag. Update `apps/web/CLAUDE.md` and `apps/agent/CLAUDE.md` to describe wiki ingest under `apps/agent/workflows/`. | bulk deletes across apps/web + apps/agent | grep verifies zero references; full E2E green |
+| 9 | **Wiki-ingest spike (Python only).** Add `workflows/wiki_ingest.py` with `extract_graph` + `_merge_graph` (incl. `crossRefs` synthesis) + `_cluster_graph` + `build_wiki_pages` + `_build_index_page` + `_filter_source` + `extract_wiki` `@entrypoint`. Use langchain-openai (same client pattern as `daily_digest.py`). Add `networkx>=3.0` to deps. No FastAPI route yet. **Diff harness**: pick 3 sources from a dev notebook (one short, one long, one with code blocks); run both the current TS path and the new Python path against each; assert node count within ±5%, edge count within ±10%, community count exact-match-or-±1, every source-id from input appears in some `WikiPage.sourceRefs`, `extractionReport.crossRefs` matches semantically. | new workflows/wiki_ingest.py + tests + diff harness script | `pytest tests/test_wiki_ingest.py`; manual diff harness output |
+| 10 | **Wiki-ingest route + `/v1/llm/models` extraction.** Add `server/routes/wiki_ingest.py` (`POST /v1/workflows/wiki/extract`, `INTERNAL_CALLBACK_TOKEN`, structured error envelope) + Pydantic discriminated-union models in `server/wiki_ingest_types.py`. Extract the `/v1/llm/models` route from `llm_gateway.py` into `server/routes/llm_models.py` using plain `httpx.AsyncClient` (no litellm) — preserves the BYOK validation contract Settings UI relies on. Wire both into `server/app.py`. | new routes + types | `pytest tests/test_wiki_ingest_router.py + test_llm_models.py`; `curl` smoke from inside docker network |
+| 11 | **Cutover** (single PR). Rewrite `apps/web/workers/ingest.ts` to call `POST /v1/workflows/wiki/extract` and run the existing `prisma.$transaction` on the response. Slim `apps/web/lib/services/wiki-ingest.ts` from ~203 LOC to ~60 LOC (status writes + Python call + transaction helper). Slim `apps/web/lib/providers/list-models.ts` from ~225 LOC to ~40 LOC (thin client to the new Python `/v1/llm/models` route). Delete `apps/web/lib/services/graph-service.ts`. Delete `apps/agent/server/routes/llm_gateway.py`. Remove `app.include_router(llm_gateway_router)` from `server/app.py`. Drop `litellm` from `pyproject.toml`. Drop `openai` from `apps/web/package.json`. Update `apps/web/CLAUDE.md` and `apps/agent/CLAUDE.md` to describe wiki ingest under `apps/agent/workflows/`. **No feature flag, no soak window** — the diff harness in step 9 is the gate; `git revert` is the rollback. | cross-app cutover | full E2E (upload PDF → wait → see wiki rendered); grep verifies zero references to removed modules |
 
 ## 10. Tests
 
@@ -489,11 +656,20 @@ Rewrite:
 - `tests/test_matcher_workflow.py` — exercise `await run_match_job.ainvoke(...)` with mocked semops + LotusMatcher; assert results-by-BU shape and Excel bytes are produced.
 
 Add:
-- `tests/test_agents.py` — for each surface, import the module-level `agent`, run `agent.invoke({"messages":[HumanMessage("ping")]}, context=Ctx(...))` against a fake LLM (langchain-core's `FakeListChatModel` or our own stub) that emits one tool call then a final answer. Assert the tool was dispatched (or skipped when frontend) and a final `AIMessage` was produced.
-- `tests/test_wiki_ingest.py` — round-trip: feed a fixed sourceContent into `extract_wiki.ainvoke(req)` with `litellm.acompletion` (or whichever client we use) mocked to return canned graph extractions; assert the returned shape matches the data contract (§7.4), `community-*` slugs render correctly, the index page enumerates communities, and the `mode: "remove"` branch correctly drops a source's nodes from the graph and re-clusters. One test that triggers an upstream error and asserts the apiKey does NOT appear in `caplog`.
-- `tests/test_wiki_ingest_router.py` — exercise `POST /v1/workflows/wiki/extract` with a TestClient: 401 without `X-Internal-Token`, 200 with a mocked `extract_wiki.ainvoke`, structured error envelope on internal exception.
+- `tests/test_agents.py` — for each surface, import the module-level `agent`, run `agent.invoke({"messages":[HumanMessage("ping")]}, context=Ctx(...))` against a fake LLM (langchain-core's `FakeListChatModel` or our own stub). Enumerate paths explicitly:
+  - **notebook**: backend tool dispatched correctly; unknown-tool name produces structured `{"error":"unknown tool ..."}` ToolMessage; final AIMessage produced after tool returns.
+  - **hub** — four paths required (regression-prone surface):
+    1. all-backend tool_calls → tool_node dispatches, ToolMessages produced, loop continues.
+    2. all-frontend tool_calls → `_should_continue` routes to END (no extra LLM turn, no repeated frontend call).
+    3. mixed (one frontend + one backend) → tool_node dispatches the backend, skips the frontend, returns one ToolMessage; loop continues; final AIMessage produced.
+    4. unknown-tool name → structured error ToolMessage; loop continues.
+  - **deep_research**: backend dispatch + unknown-tool error path.
+- `tests/test_wiki_ingest.py` — round-trip: feed fixed sourceContent into `extract_wiki.ainvoke(req)` with the langchain-openai client mocked to return canned graph extractions; assert the returned shape (incl. `extraction_report.crossRefs`), `community-*` slugs, index page content, source-id preservation. Test the `mode: "remove"` branch end-to-end (existing graph minus source → re-cluster → community pages don't reference removed source). Test the Pydantic discriminated-union: `mode=extract` without `source_content` raises ValidationError; `mode=remove` without `existing_graph` raises ValidationError. One test that triggers an upstream LLM error and asserts the apiKey does NOT appear in `caplog`.
+- `tests/test_wiki_ingest_router.py` — `POST /v1/workflows/wiki/extract` with a TestClient: 401 without `X-Internal-Token`, 200 with a mocked `extract_wiki.ainvoke`, structured error envelope on internal exception.
+- `tests/test_llm_models.py` — `POST /v1/workflows/llm/list-models` with mocked httpx upstream: 401 without token, 200 returns the upstream `/v1/models` payload filtered to chat models, error envelope on upstream failure.
+- `tests/test_matcher_workflow.py` (rewritten for Graph API) — invoke `match_job_graph.invoke({"job_id":"...","target_df":...,"req":..., "results_by_bu":{}})` with mocked `LotusMatcher.run_pipeline` and `query_optimizer.optimize`; assert the `Send` dispatch fires N workers for N BUs, results aggregate via `_merge_dict`, `synthesize` produces excel bytes. Add a test that asserts `JobStore` writes happen at the documented progress milestones (5/30/85/100).
 
-Existing tests preserved as-is: `tests/test_smoke.py` (rewrites the single hermes import), `tests/test_server_app.py` (drops llm_gateway route assertions in step 12), `tests/test_tools_web.py`.
+Existing tests preserved as-is: `tests/test_smoke.py` (rewrites the single hermes import), `tests/test_server_app.py` (loses llm_gateway route assertions in step 11; gains llm_models + wiki_ingest), `tests/test_tools_web.py`.
 
 ## 11. Risks
 
@@ -506,11 +682,11 @@ Existing tests preserved as-is: `tests/test_smoke.py` (rewrites the single herme
 | Frontend tool rendering breaks during step 2 | Hub agent's local `tool_node` keeps the `name in HUB_FRONTEND_TOOL_NAMES` skip semantics. Manual hub smoke after step 2. |
 | Tests reference `hermes.*` | Tests that test deleted subsystems are deleted, not adapted. The remaining tests (`test_smoke.py`, `test_server_app.py`, `test_tools_web.py`) only need import path fixups, which step 4 handles in the same commit as the bulk deletes. |
 | Concurrent reviewers / branches | Steps 1–8 are inside `apps/agent/`. Steps 9–12 touch `apps/web` (workers, lib/services, lib/providers, package.json). All changes funnel through this single spec. |
-| **Louvain community-id stability** between TS (`graphology-communities-louvain`) and Python (`networkx.community.louvain_communities`) | IDs differ across implementations due to random tie-breaks, but `community-{id}` slugs are regenerated every ingest and the orphan-page deletion handles re-numbering atomically — so this isn't a bug as long as no UI code caches community IDs across requests. Pre-cutover (step 11), grep `apps/web/components/deepdive/wiki/` for any code that caches community IDs. If found, file a separate issue — don't bundle the fix in. |
-| **BYOK key in transit** from Node→Python over HTTP | Stays inside docker compose network (workflows-api:2027), never on public internet. `INTERNAL_CALLBACK_TOKEN` already gates the entire `/v1/workflows/*` surface. Python side **never logs the request body at INFO**; only structured stages (e.g. `"extracted N nodes from sourceId=..."`) are logged. A pytest in `test_wiki_ingest.py` asserts the apiKey doesn't appear in `caplog` on error. Same threat model as the Phase-1 gateway (no new exposure). |
-| **`removeSourceFromWiki` path** (surgical-remove vs. re-ingest) | Folded into the same Python entrypoint via `mode: "remove"` (§7.4). Adds ~80 LOC to wiki_ingest.py; deletes the corresponding TS path. Rejected fallback: dropping surgical-remove and forcing full re-ingest on next user action — worse UX, not recommended. |
-| **Cutover regression** (Python output diverges from TS output for an edge-case source) | Step 11's feature flag is the safety net: flip back to `node` per-instance via env var. Soak ≥ 1 release with `python` opt-in, then ≥ 1 week with `python` default before deletion in step 12. |
-| **Dual implementation drift during soak** (Phase-1 gateway and Phase-2 direct path running simultaneously) | The soak window is bounded; step 12 removes the gateway and the flag together. Don't add new features to graph-service.ts or llm_gateway.py during the soak — see Phase-1 spec §Appendix B. |
+| **Louvain community-id stability** between TS (`graphology-communities-louvain`) and Python (`networkx.community.louvain_communities`) | IDs differ across implementations due to random tie-breaks. `community-{id}` slugs are regenerated every ingest and the worker's `wikiPage.deleteMany({where: {NOT IN writtenSlugs}})` orphan-page filter handles re-numbering atomically. Slug collisions across runs cause content overwrite via `upsert`, which is the desired behavior — the orphan-delete clause guarantees no stale community pages survive. **Pre-cutover (step 11)**: grep `apps/web/components/deepdive/wiki/` for any code that caches community IDs across requests. If found, file a separate issue — do not bundle the fix in. |
+| **BYOK key in transit** from Node→Python over HTTP | Same threat model as the existing `/v1/workflows/*` surface — gated by `INTERNAL_CALLBACK_TOKEN` and intended to be reachable only from `apps/web` and browsers via `NEXT_PUBLIC_WORKFLOWS_API_URL`. Production deployments are responsible for not exposing port 2027 publicly (the existing `/v1/workflows/daily_digest/*` surface already has this exposure today, so wiki-ingest does not expand attack surface). Python side **never logs the request body at INFO**; only structured stages are logged. `tests/test_wiki_ingest.py` asserts apiKey doesn't appear in `caplog` on error. |
+| **`removeSourceFromWiki` path** (surgical-remove vs. re-ingest) | Folded into the same Python entrypoint via `mode: "remove"` (§7.4). Pydantic discriminated-union enforces the schema split; `_filter_source` mirrors the TS `removeSourceFromGraph` rule (drop nodes whose only sourceRef is this source; drop edges touching removed nodes; preserve nodes co-referenced by other sources by removing only this sourceId from their `sourceRefs`). Rejected fallback: dropping surgical-remove and forcing full re-ingest — worse UX. |
+| **Cutover regression** (Python output diverges from TS output for an edge-case source) | The step-9 diff harness is the gate (3-source comparison; node count ±5%, edge count ±10%, communities exact-match-or-±1, no missing source-IDs in WikiPage.sourceRefs, semantic crossRefs match). If a regression appears post-cutover, `git revert` of step 11 is the rollback. No multi-week soak; the hazard of maintaining two implementations exceeds the hazard of relying on diff-test + revert for a 1-team internal-network deployment. |
+| **`@task` checkpointer + cross-runtime safety** | Pinned to `langgraph>=0.6,<0.7`. Functional API entrypoints don't declare a checkpointer (default in-memory is acceptable; per-request fresh runs). `@entrypoint` doesn't bind to an event loop at decoration; safe to call from FastAPI BackgroundTasks (matcher uses `asyncio.to_thread(graph.invoke, ...)` since LOTUS blocks) and from ARQ workers (digest uses `await generate_section.ainvoke(req)`). See §6.1 for the full runtime contract. |
 
 ## 12. Out-of-scope follow-ups (deliberate)
 
