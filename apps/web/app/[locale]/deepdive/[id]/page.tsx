@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { NotebookLayout } from "@/components/deepdive/notebook-layout";
 import { DeepdiveShell } from "@/components/deepdive/deepdive-shell";
-import type { GraphData } from "@/lib/services/graph-service";
+import type { GraphData } from "@/lib/types/graph";
 
 interface NotebookPageProps {
   params: Promise<{ id: string }>;

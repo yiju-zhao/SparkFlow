@@ -13,7 +13,7 @@ import { BookOpen, NotebookPen } from "lucide-react";
 import { useGuides } from "@/components/guides/guide-provider";
 
 import type { Source, Note, Notebook } from "@prisma/client";
-import type { GraphData } from "@/lib/services/graph-service";
+import type { GraphData } from "@/lib/types/graph";
 
 // Pre-transformed types from RSC (avoids client-side transformation)
 interface TransformedChatSession {
