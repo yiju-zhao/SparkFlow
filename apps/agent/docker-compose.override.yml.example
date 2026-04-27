@@ -7,6 +7,13 @@
 
 services:
   langgraph-api:
+    # Make `host.docker.internal` resolvable from inside the container on
+    # Linux (it's automatic on Docker Desktop). Required when CHECKPOINT_DB_URL
+    # points at apps/web's postgres via host.docker.internal:5433 to avoid the
+    # 5433 port-allocation conflict between web's postgres and langgraph's
+    # auto-managed sibling. Harmless on hosts that don't use it.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     environment:
@@ -19,5 +26,7 @@ services:
       # every container (corp networks), NO_PROXY must list every sibling
       # service hostname so postgres/redis traffic doesn't get proxied. Both
       # cases written: requests/httpx read NO_PROXY, libcurl reads no_proxy.
-      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},langgraph-postgres,langgraph-redis,langgraph-api
-      no_proxy: ${no_proxy:-localhost,127.0.0.1},langgraph-postgres,langgraph-redis,langgraph-api
+      # `host.docker.internal` is included so checkpointer traffic to apps/web's
+      # postgres doesn't get proxied either.
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},langgraph-postgres,langgraph-redis,langgraph-api,host.docker.internal
+      no_proxy: ${no_proxy:-localhost,127.0.0.1},langgraph-postgres,langgraph-redis,langgraph-api,host.docker.internal

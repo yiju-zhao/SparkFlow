@@ -59,12 +59,47 @@ make logs        # tail langgraph-api logs
 `LANGGRAPH_CLOUD_LICENSE_KEY` in production). Make sure both live in
 `apps/agent/.env`. `make dev` does not need a LangSmith key.
 
-The default port for `langgraph up` is `8123`; we override to `2024` in
-the Makefile so it matches `langgraph dev` and `apps/web/.env`'s
-`LANGGRAPH_API_URL=http://localhost:2024`. Set `PORT=...` to override:
+Ports follow the upstream LangGraph CLI convention so the two stacks can
+run side-by-side without colliding:
+
+- `make dev` → `:2024` (matches `apps/web/.env`'s `LANGGRAPH_API_URL` default,
+  so daily dev "just works")
+- `make up` / `up-recreate` / `up-fresh` → `:8123` (matches `langgraph up`'s
+  upstream default; point `LANGGRAPH_API_URL` at it when validating with the
+  Docker stack)
+
+Override either port at the make invocation:
 ```bash
-make up PORT=8123
+make dev DEV_PORT=2030
+make up  UP_PORT=2024     # if you want it on 2024 instead
 ```
+
+### Postgres port conflict with `apps/web`
+
+`langgraph up` spins up its own `langgraph-postgres` sibling that wants
+host port `5433`. `apps/web/docker-compose.yml` already maps host `5433`
+to its own postgres, so running both at the same time fails with:
+
+```
+Bind for 0.0.0.0:5433 failed: port is already allocated
+```
+
+The fix is to point langgraph at the web's postgres instead of letting
+the CLI start its own. Set `CHECKPOINT_DB_URL` in `apps/agent/.env`
+(the Makefile passes it to `langgraph up` as `--postgres-uri`):
+
+```bash
+# One-time: create a dedicated DB so checkpoint churn doesn't fight Prisma
+docker exec -it sparkflow-postgres psql -U sparkflow -c \
+  "CREATE DATABASE sparkflow_checkpoints;"
+
+# In apps/agent/.env:
+CHECKPOINT_DB_URL=postgresql://sparkflow:sparkflow@host.docker.internal:5433/sparkflow_checkpoints
+```
+
+Requires `docker-compose.override.yml` to be active so
+`host.docker.internal` resolves from inside the container (the override
+adds it via `extra_hosts: host-gateway`).
 
 ### Optional: pin the LangGraph API server version
 
