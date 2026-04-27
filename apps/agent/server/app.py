@@ -20,7 +20,7 @@ from server.routes.llm_gateway import router as llm_gateway_router
 from server.routes.matcher_jobs import router as matcher_jobs_router
 from workflows.daily_digest import GenerateSectionRequest, generate_section as run_generate_section
 from workflows.digest_worker import WorkerSettings
-from workflows.search import SearchRequest, SearchResponse, run as run_search
+from workflows.search import SearchRequest, SearchResponse, search
 
 
 @asynccontextmanager
@@ -47,8 +47,8 @@ async def healthz() -> dict[str, bool]:
 
 
 @app.post("/v1/workflows/search", response_model=None)
-async def search(req: SearchRequest) -> dict[str, Any]:
-    result = await run_search(req)
+async def search_route(req: SearchRequest) -> dict[str, Any]:
+    result = await search(req)
     return {"items": result.items, "reasons": result.reasons}
 
 

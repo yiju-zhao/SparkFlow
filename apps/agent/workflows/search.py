@@ -1,22 +1,20 @@
-"""Search workflow.
+"""Search workflow — plain async, NOT Functional API.
 
 Three source_types:
-- ``web``: Tavily single-shot; returns top Tavily results as-is.
-- ``wechat`` / ``publication``: pgvector prefilter (via Next.js /api/explore/search/<type>/prefilter)
-  → semops /operators/rank for ranking + reasons.
+- "web": Tavily single-shot
+- "wechat" / "publication": pgvector prefilter (Next.js) → semops rank
 
-Pure Python — HTTP orchestration only. No LLM calls in this file; the
-LLM work happens inside ``semops /operators/rank``.
+Pure HTTP orchestration. No LLM here; LLM ranking happens inside semops.
+NOT @entrypoint — single chain, no parallelism, no checkpoint payoff.
 """
-
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
-
 
 SPARKFLOW_API_URL = os.getenv("SPARKFLOW_API_URL", "http://localhost:3001")
 SEMOPS_API_URL = os.getenv("SEMOPS_API_URL", "http://localhost:2025")
@@ -27,7 +25,7 @@ DEFAULT_TOP_K = 10
 @dataclass
 class SearchRequest:
     query: str
-    source_type: str                     # "web" | "wechat" | "publication"
+    source_type: str
     notebook_id: str | None = None
     domains: list[str] = field(default_factory=list)
     model_provider: str = "openai"
@@ -43,9 +41,9 @@ class SearchResponse:
     reasons: dict[str, str] = field(default_factory=dict)
 
 
-async def run(req: SearchRequest) -> SearchResponse:
+async def search(req: SearchRequest) -> SearchResponse:
     if req.source_type == "web":
-        items = await _invoke_web_search(req)
+        items = await _web_search(req)
         return SearchResponse(items=items)
 
     if req.source_type not in ("wechat", "publication"):
@@ -56,27 +54,19 @@ async def run(req: SearchRequest) -> SearchResponse:
         return SearchResponse(items=[])
 
     ranked = await _semops_rank(
-        candidates=candidates,
-        query=req.query,
-        top_k=req.top_k,
-        provider=req.model_provider,
-        model=req.model_name,
-        api_key=req.api_key,
+        candidates=candidates, query=req.query, top_k=req.top_k,
+        provider=req.model_provider, model=req.model_name, api_key=req.api_key,
     )
-    return SearchResponse(
-        items=ranked.get("ranked", []),
-        reasons=ranked.get("reasons") or {},
-    )
+    return SearchResponse(items=ranked.get("ranked", []),
+                          reasons=ranked.get("reasons") or {})
 
 
-async def _invoke_web_search(req: SearchRequest) -> list[dict[str, Any]]:
-    """Run Tavily through the tools.web.search_web @tool (reuses the API key
-    resolution in there). Returns list of {title, url, content} dicts.
-    """
+async def _web_search(req: SearchRequest) -> list[dict[str, Any]]:
     from tools.web import search_web
-    import json
-
-    raw = search_web.invoke({"query": req.query, "domains": req.domains or None, "api_key": req.tavily_api_key})
+    raw = search_web.invoke({
+        "query": req.query, "domains": req.domains or None,
+        "api_key": req.tavily_api_key,
+    })
     try:
         parsed = json.loads(raw)
     except (TypeError, ValueError):
@@ -97,26 +87,9 @@ async def _prefilter(source_type: str, query: str, limit: int) -> list[dict[str,
 
 
 async def _semops_rank(
-    *,
-    candidates: list[dict[str, Any]],
-    query: str,
-    top_k: int,
-    provider: str,
-    model: str,
-    api_key: str,
-    api_base: str | None = None,
+    *, candidates: list[dict[str, Any]], query: str, top_k: int,
+    provider: str, model: str, api_key: str, api_base: str | None = None,
 ) -> dict[str, Any]:
-    """POST to semops /api/operators/rank.
-
-    The semops contract requires each candidate to carry a ``match_text``
-    field and the request to carry a ``query_text`` field. Callers may
-    pass candidates keyed by ``text``; this function renames that to
-    ``match_text`` before sending.
-
-    ``api_key`` is required — semops has no env-key fallback. Callers
-    must resolve the user's BYOK before invoking.
-    """
-
     normalized: list[dict[str, Any]] = []
     for c in candidates:
         if "match_text" in c:
@@ -126,26 +99,17 @@ async def _semops_rank(
             renamed["match_text"] = renamed.pop("text")
             normalized.append(renamed)
         else:
-            normalized.append(c)  # let semops' validator complain
-
+            normalized.append(c)
     lm_config: dict[str, Any] = {
-        "provider": provider,
-        "model": model,
-        "api_key": api_key,
+        "provider": provider, "model": model, "api_key": api_key,
     }
     if api_base:
         lm_config["api_base"] = api_base
-
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(
             f"{SEMOPS_API_URL}/api/operators/rank",
-            json={
-                "candidates": normalized,
-                "query_text": query,
-                "top_k": top_k,
-                "include_reasons": True,
-                "lm_config": lm_config,
-            },
+            json={"candidates": normalized, "query_text": query, "top_k": top_k,
+                  "include_reasons": True, "lm_config": lm_config},
         )
         resp.raise_for_status()
         return resp.json()
