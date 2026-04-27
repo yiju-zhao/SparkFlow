@@ -147,7 +147,6 @@ pip install -e ".[embeddings]"
 
 ## Key Environment Variables
 - `TOOLBOX_SERVER_URL`
-- `MCP_SERVER_URL`
 - `HUB_MODEL_PROVIDER`
 - `HUB_MODEL_NAME`
 - `REDIS_URL` — shared with the web app (BullMQ + ARQ)
