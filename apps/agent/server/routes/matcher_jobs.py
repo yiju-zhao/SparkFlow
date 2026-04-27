@@ -1,15 +1,17 @@
 """
 Matcher job management routes.
 
-Ported from apps/semops/api/routes/jobs.py. Mounted at
-/v1/workflows/matcher/jobs on the apps/agent FastAPI server.
+Dispatches via the LangGraph + Send orchestrator-worker in
+workflows.matcher.job. Background work runs through asyncio.to_thread so
+the FastAPI event loop stays responsive while LOTUS / pandas blocks.
 """
 
 import asyncio
 import json
 import logging
-from typing import Optional
+from datetime import datetime
 
+import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
@@ -20,8 +22,7 @@ from server.matcher_types import (
     MatchJobStatus,
     MatchTargetType,
 )
-from workflows.matcher.excel_processor import ExcelProcessor
-from workflows.matcher.job_runner import JobRunner
+from workflows.matcher.job import match_job_graph
 from workflows.matcher.job_store import JobStore
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,42 @@ def get_job_store() -> JobStore:
     return JobStore()
 
 
+async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data: list[dict]):
+    """Run match_job_graph in a worker thread (LOTUS / pandas blocks the loop)."""
+    store = JobStore()
+    try:
+        class _Lm:
+            provider = req.model_provider
+            model = req.model_name
+            api_key = req.api_key
+            api_base = req.api_base
+
+        class _Req:
+            queries = [q.model_dump() for q in req.queries]
+            target_type = req.target_type.value
+            top_k = req.top_k
+            search_k = req.search_k
+            include_reasons = req.include_reasons
+            lm = _Lm()
+
+        graph_req = _Req()
+        target_df = pd.DataFrame(target_data)
+        final = await asyncio.to_thread(
+            match_job_graph.invoke,
+            {"job_id": job_id, "target_df": target_df, "req": graph_req,
+             "results_by_bu": {}},
+        )
+        store.update_job(
+            job_id, status="COMPLETED", progress=100,
+            result_data=final["excel_bytes"], match_count=final["total_matches"],
+            completed_at=datetime.utcnow(), error_message=None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(f"Job {job_id} failed: {exc}")
+        store.update_job(job_id, status="FAILED", error_message=str(exc),
+                         completed_at=datetime.utcnow())
+
+
 @router.post("/jobs", response_model=MatchJobResponse)
 async def create_job(
     req: CreateMatchJobRequest,
@@ -40,26 +77,14 @@ async def create_job(
     request: Request,
     job_store: JobStore = Depends(get_job_store),
 ):
-    """
-    Create a new match job.
-
-    All data (queries and target_data) is passed directly from Next.js.
-    No callbacks needed - matcher processes everything in one request.
-    """
-    queries = req.queries
-    target_data = req.target_data
-
-    if not queries:
+    if not req.queries:
         raise HTTPException(status_code=400, detail="No queries provided")
-
-    if not target_data:
+    if not req.target_data:
         raise HTTPException(status_code=400, detail="No target data provided")
 
     logger.info(
-        f"Creating job with {len(queries)} queries and {len(target_data)} target items"
+        f"Creating job with {len(req.queries)} queries and {len(req.target_data)} target items"
     )
-
-    # Create job record
     job_id = job_store.create_job(
         user_id=req.user_id,
         instance_id=req.instance_id,
@@ -67,28 +92,13 @@ async def create_job(
         top_k=req.top_k,
         search_k=req.search_k,
         include_reasons=req.include_reasons,
-        query_data=[q.model_dump() for q in queries],
-        query_count=len(queries),
-        target_data=target_data,
+        query_data=[q.model_dump() for q in req.queries],
+        query_count=len(req.queries),
+        target_data=req.target_data,
         model_provider=req.model_provider,
         model_name=req.model_name,
     )
-
-    # Start background processing
-    from workflows.matcher.lotus import LotusMatcher
-
-    job_runner = JobRunner(
-        matcher=LotusMatcher(),
-        excel_processor=ExcelProcessor(),
-        job_store=job_store,
-        model_provider=req.model_provider,
-        model_name=req.model_name,
-        api_key=req.api_key,
-        api_base=req.api_base,
-    )
-    background_tasks.add_task(job_runner.run_job, job_id, target_data)
-
-    # Return the created job
+    background_tasks.add_task(_run_and_persist, job_id, req, req.target_data)
     job = job_store.get_job(job_id)
     return _job_to_response(job)
 
@@ -98,7 +108,6 @@ async def get_job(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
 ):
-    """Get full job details including parsed queries."""
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -110,11 +119,9 @@ async def get_job_progress(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
 ):
-    """Get job progress (single request - use /stream for real-time updates)."""
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
     return JobProgressResponse(
         id=job["id"],
         status=MatchJobStatus(job["status"]),
@@ -130,18 +137,15 @@ async def stream_job_progress(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
 ):
-    """Stream job progress updates via Server-Sent Events (SSE)."""
+    """Stream job progress updates via SSE."""
 
     async def event_generator():
         last_progress = None
-
         while True:
             job = job_store.get_job(job_id)
             if not job:
                 yield f"event: error\ndata: {json.dumps({'error': 'Job not found'})}\n\n"
                 break
-
-            # Build progress data
             progress_data = {
                 "id": job["id"],
                 "status": job["status"],
@@ -150,17 +154,11 @@ async def stream_job_progress(
                 "query_count": job["query_count"],
                 "match_count": job["match_count"],
             }
-
-            # Only send if progress changed
             if progress_data != last_progress:
                 yield f"data: {json.dumps(progress_data)}\n\n"
                 last_progress = progress_data
-
-            # Stop if job is complete
             if job["status"] in ["COMPLETED", "FAILED", "CANCELLED"]:
                 break
-
-            # Wait before next check
             await asyncio.sleep(1)
 
     return StreamingResponse(
@@ -179,17 +177,11 @@ async def cancel_job(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
 ):
-    """Cancel a running job."""
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    if job["status"] not in [
-        MatchJobStatus.PENDING.value,
-        MatchJobStatus.PROCESSING.value,
-    ]:
+    if job["status"] not in [MatchJobStatus.PENDING.value, MatchJobStatus.PROCESSING.value]:
         raise HTTPException(status_code=400, detail="Job cannot be cancelled")
-
     job_store.update_job(job_id, status=MatchJobStatus.CANCELLED.value)
     return {"message": "Job cancelled"}
 
@@ -199,22 +191,17 @@ async def download_results(
     job_id: str,
     job_store: JobStore = Depends(get_job_store),
 ):
-    """Download the result Excel file from in-memory store."""
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
     if job["status"] != MatchJobStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="Job not completed")
-
     result_data = job_store.get_result_data(job_id)
     if not result_data:
         raise HTTPException(
             status_code=404, detail="Result data not available (may have been cleared)"
         )
-
     filename = f"match-results-{job_id}.xlsx"
-
     return Response(
         content=result_data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -223,7 +210,6 @@ async def download_results(
 
 
 def _job_to_response(job: dict) -> MatchJobResponse:
-    """Convert job dict to response model."""
     return MatchJobResponse(
         id=job["id"],
         user_id=job["user_id"],
