@@ -60,3 +60,13 @@ coverage/
 
 # Prisma backups
 *.prisma.bak
+
+# Corporate CA bundle (per-host, mounted into docker images at build time;
+# empty placeholder ok). Same-name files exist in apps/web/ and apps/langgraph/
+# because each Dockerfile COPYs from its own build context.
+ca-certificates.crt
+apps/web/ca-certificates.crt
+apps/langgraph/ca-certificates.crt
+
+# SearXNG runtime data (created by docker compose; per-host)
+searxng/
