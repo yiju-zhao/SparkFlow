@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     serverActions: {
-      bodySizeLimit: "50mb",
+      bodySizeLimit: "1gb",
     },
     // Optimize barrel file imports for faster cold starts and smaller bundles
     optimizePackageImports: [
