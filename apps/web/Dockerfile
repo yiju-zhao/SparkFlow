@@ -23,7 +23,12 @@ COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-RUN npm ci && npx prisma generate
+# NODE_TLS_REJECT_UNAUTHORIZED=0 scoped to prisma generate only — Prisma
+# downloads its engine binaries from binaries.prisma.sh, which on TLS-
+# intercepting corporate networks fails the cert chain even with
+# NODE_EXTRA_CA_CERTS set. Disable verification just for this one fetch;
+# all subsequent stages run with normal cert validation.
+RUN npm ci && NODE_TLS_REJECT_UNAUTHORIZED=0 npx prisma generate
 
 COPY . .
 

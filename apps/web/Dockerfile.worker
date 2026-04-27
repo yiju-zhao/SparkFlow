@@ -21,7 +21,11 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-RUN npm ci && npx prisma generate
+# NODE_TLS_REJECT_UNAUTHORIZED=0 scoped to prisma generate only — Prisma
+# downloads its engine binaries from binaries.prisma.sh, which on TLS-
+# intercepting corporate networks fails the cert chain even with
+# NODE_EXTRA_CA_CERTS set. Disable verification just for this one fetch.
+RUN npm ci && NODE_TLS_REJECT_UNAUTHORIZED=0 npx prisma generate
 
 FROM base AS runtime
 COPY --from=deps /app/node_modules ./node_modules
