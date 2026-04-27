@@ -1,10 +1,16 @@
 import {
   PROVIDER_MAP,
-  NON_CHAT_MODEL_SUBSTRINGS,
   CUSTOM_PROVIDER_PREFIX,
 } from "@/lib/types/providers";
 
-const FETCH_TIMEOUT_MS = 10_000;
+/**
+ * Apps/web (Node) cannot reach LLM providers directly from the
+ * corporate network — outbound TLS is intercepted or blocked. All
+ * BYOK calls go through apps/agent's `/v1/llm/*` gateway, which uses
+ * Python's working httpx + CA trust chain.
+ */
+
+const FETCH_TIMEOUT_MS = 12_000;
 
 export type FetchModelsErrorCode =
   | "INVALID_KEY"
@@ -12,7 +18,8 @@ export type FetchModelsErrorCode =
   | "TIMEOUT"
   | "NETWORK_ERROR"
   | "BAD_RESPONSE"
-  | "PROVIDER_UNKNOWN";
+  | "PROVIDER_UNKNOWN"
+  | "GATEWAY_NOT_CONFIGURED";
 
 export class FetchModelsError extends Error {
   public readonly code: FetchModelsErrorCode;
@@ -33,12 +40,35 @@ export class FetchModelsError extends Error {
 }
 
 /**
- * Reject baseUrls that point inside the docker network or back at the
- * server itself. Defends against SSRF via a user-supplied custom
- * endpoint. Called from both the POST /api/settings validation path
- * AND immediately before the fetch in fetchProviderModels (defense in
- * depth — the URL might bypass zod if a built-in provider's baseUrl
- * is later overridden).
+ * Resolves the URL of the apps/agent LLM gateway. Defaults to
+ * localhost:2027 (host-side dev), overridden in production via
+ * WORKFLOWS_API_URL or the docker-compose service hostname.
+ */
+function gatewayBase(): string {
+  return (
+    process.env.WORKFLOWS_API_URL ||
+    process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
+    "http://localhost:2027"
+  ).replace(/\/$/, "");
+}
+
+function internalToken(): string {
+  const t = process.env.INTERNAL_CALLBACK_TOKEN;
+  if (!t) {
+    throw new FetchModelsError(
+      "GATEWAY_NOT_CONFIGURED",
+      "_",
+      "INTERNAL_CALLBACK_TOKEN is not set; the Node side cannot authenticate to the LLM gateway",
+    );
+  }
+  return t;
+}
+
+/**
+ * Lightweight SSRF check on the user-supplied custom baseUrl. The
+ * Python gateway re-checks before issuing the upstream call (defense
+ * in depth) — this version just gives the user fast feedback when
+ * they typo a localhost URL into the settings form.
  */
 export function assertSafeUrl(raw: string, providerId: string): URL {
   let parsed: URL;
@@ -83,27 +113,13 @@ export function assertSafeUrl(raw: string, providerId: string): URL {
   return parsed;
 }
 
-function sanitizeError(err: unknown, apiKey: string): string {
-  const raw = err instanceof Error ? err.message : String(err);
-  return apiKey ? raw.replaceAll(apiKey, "***") : raw;
-}
-
-export function isChatModel(id: string): boolean {
-  const lower = id.toLowerCase();
-  return !NON_CHAT_MODEL_SUBSTRINGS.some((s) => lower.includes(s));
-}
-
-interface ProviderListResponse {
-  data?: Array<{ id?: string }>;
-}
-
 /**
- * GET ${baseUrl}${modelsPath} with Bearer auth. Returns the chat-model
- * IDs only. Built-in providers resolve `baseUrl` from PROVIDER_MAP;
- * `custom-*` providers must pass `baseUrl` explicitly.
+ * Fetch the chat-capable model id list for `providerId`. Built-in
+ * providers resolve their baseUrl via PROVIDER_MAP; custom providers
+ * (id `custom` or `custom-…`) require an explicit `baseUrl`.
  *
- * Throws FetchModelsError on any failure — never leaks the apiKey
- * into messages, never returns a partial result.
+ * Implementation: POST to apps/agent's /v1/llm/models gateway. The
+ * Python side handles the actual upstream call + response filtering.
  */
 export async function fetchProviderModels(
   providerId: string,
@@ -111,37 +127,20 @@ export async function fetchProviderModels(
   baseUrl?: string,
   signal?: AbortSignal,
 ): Promise<string[]> {
-  // Providers without a /v1/models endpoint (e.g. Minimax) get a
-  // hardcoded fallback. We still validate the apiKey though — see
-  // validateApiKey() below. This branch is purely about returning the
-  // model list for the dropdown.
-  const cfg = PROVIDER_MAP.get(providerId);
-  if (cfg?.noModelsEndpoint && cfg.fallbackModels) {
-    return cfg.fallbackModels.filter(isChatModel);
-  }
-
-  // Resolve the actual URL. Custom providers MUST supply baseUrl;
-  // built-ins fall back to PROVIDER_MAP.
+  // Built-in providers don't carry baseUrl from the caller — fill it
+  // from PROVIDER_MAP so the gateway can route.
   let resolvedBaseUrl = baseUrl;
   if (!resolvedBaseUrl) {
     const provider = PROVIDER_MAP.get(providerId);
-    if (!provider?.baseUrl) {
+    if (!provider) {
       throw new FetchModelsError(
         "PROVIDER_UNKNOWN",
         providerId,
-        `Unknown provider "${providerId}" or missing baseUrl`,
+        `Unknown provider "${providerId}"`,
       );
     }
     resolvedBaseUrl = provider.baseUrl;
   }
-  // SSRF guard runs on every fetch, even for built-ins, so a future
-  // misconfigured PROVIDERS entry can't accidentally bypass.
-  const safe = assertSafeUrl(resolvedBaseUrl, providerId);
-  const provider = PROVIDER_MAP.get(providerId);
-  const path = provider?.modelsPath ?? "/models";
-  // strip trailing slash from base, leading slash from path consistency
-  const base = safe.toString().replace(/\/$/, "");
-  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -152,11 +151,17 @@ export async function fetchProviderModels(
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetch(`${gatewayBase()}/v1/llm/models`, {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Internal-Token": internalToken(),
       },
+      body: JSON.stringify({
+        providerId,
+        apiKey,
+        ...(resolvedBaseUrl ? { baseUrl: resolvedBaseUrl } : {}),
+      }),
       signal: ctrl.signal,
       cache: "no-store",
     });
@@ -165,68 +170,58 @@ export async function fetchProviderModels(
       throw new FetchModelsError(
         "TIMEOUT",
         providerId,
-        `Request to ${providerId} /models timed out after ${FETCH_TIMEOUT_MS}ms`,
+        `LLM gateway timed out after ${FETCH_TIMEOUT_MS}ms`,
       );
     }
+    if (err instanceof FetchModelsError) throw err;
     throw new FetchModelsError(
       "NETWORK_ERROR",
       providerId,
-      sanitizeError(err, apiKey),
+      (err as Error)?.message ?? "fetch failed",
     );
   } finally {
     clearTimeout(timer);
   }
 
-  if (!res.ok) {
-    if (res.status === 401 || res.status === 403) {
+  if (res.ok) {
+    const body = (await res.json()) as { models?: string[] };
+    if (!Array.isArray(body.models)) {
       throw new FetchModelsError(
-        "INVALID_KEY",
+        "BAD_RESPONSE",
         providerId,
-        `Provider rejected the API key (HTTP ${res.status})`,
-        res.status,
+        "Gateway response missing models[]",
       );
     }
-    throw new FetchModelsError(
-      "BAD_RESPONSE",
-      providerId,
-      `Provider returned HTTP ${res.status}`,
-      res.status,
-    );
+    return body.models;
   }
 
-  let body: ProviderListResponse;
+  // FastAPI puts our structured detail in `body.detail`.
+  let detail: unknown;
   try {
-    body = (await res.json()) as ProviderListResponse;
-  } catch (err) {
+    detail = (await res.json())?.detail;
+  } catch {
+    detail = undefined;
+  }
+  if (detail && typeof detail === "object") {
+    const d = detail as {
+      code?: FetchModelsErrorCode;
+      message?: string;
+      upstreamStatus?: number;
+    };
     throw new FetchModelsError(
-      "BAD_RESPONSE",
+      d.code ?? "BAD_RESPONSE",
       providerId,
-      sanitizeError(err, apiKey),
+      d.message ?? `Gateway returned HTTP ${res.status}`,
+      d.upstreamStatus,
     );
   }
-
-  if (!Array.isArray(body.data)) {
-    throw new FetchModelsError(
-      "BAD_RESPONSE",
-      providerId,
-      "Response missing data[] array",
-    );
-  }
-
-  const ids = body.data
-    .map((m) => m.id)
-    .filter((id): id is string => typeof id === "string" && id.length > 0)
-    .filter(isChatModel)
-    .sort();
-
-  return ids;
+  throw new FetchModelsError(
+    "BAD_RESPONSE",
+    providerId,
+    `Gateway returned HTTP ${res.status}`,
+  );
 }
 
-/**
- * True when this providerId belongs to a user-defined custom endpoint
- * (id is `custom` literal or `custom-…`). Built-in providers always
- * have an entry in PROVIDER_MAP.
- */
 export function isCustomProviderId(providerId: string): boolean {
   return providerId === "custom" || providerId.startsWith(CUSTOM_PROVIDER_PREFIX);
 }
