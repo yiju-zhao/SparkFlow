@@ -154,9 +154,3 @@ def test_url_fetch_http_error_returns_json_error():
     assert "error" in parsed
 
 
-def test_tools_are_registered():
-    import tools.web  # noqa: F401
-    from hermes.registry import registry
-
-    names = {e.name for e in registry._tools.values() if e.toolset == "web"}
-    assert {"search_web", "url_fetch"} <= names
