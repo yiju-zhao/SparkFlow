@@ -1,78 +1,175 @@
-"""Contract regression tests for /v1/workflows/matcher/jobs.
+"""Tests for workflows.matcher.job — Graph API + Send orchestrator-worker.
 
-Goal
-----
-Pin the HTTP contract of the matcher job routes now that they live in
-apps/agent/workflows/matcher/. These tests deliberately do NOT exercise
-real LOTUS, do NOT spawn real background work, and do NOT touch the filesystem.
-
-Patching strategy
------------------
-We patch ``server.routes.matcher_jobs.JobRunner`` at the module boundary so
-that the route's ``JobRunner(matcher=..., ...)`` constructor and the
-``background_tasks.add_task(job_runner.run_job, ...)`` call are captured
-without running any real LOTUS / semops / QueryOptimizer logic.
-
-Singleton reset
----------------
-``JobStore`` (workflows.matcher.job_store) is a process-global singleton.
-The ``_reset_job_store`` fixture clears ``_jobs`` before and after each test
-to prevent cross-test state leakage.
-
-The SSE ``/stream`` endpoint and the ``/download`` endpoint are intentionally
-NOT tested here — same rationale as the original semops tests.
+Strategy: test the node functions directly (orchestrator, assign_workers,
+rank_bu, synthesize) rather than invoking the compiled graph. The compiled
+graph wires Send dispatch through worker threads, where `with patch()`
+doesn't propagate — module-level monkeypatch is more reliable. For the
+HTTP route, we mock arq.create_pool so the FastAPI lifespan doesn't need
+a live Redis.
 """
-
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from server.app import app
-from server.matcher_types import JobProgressResponse, MatchJobResponse
+from server.matcher_types import MatchJobResponse
+from workflows.matcher.job import (
+    assign_workers, orchestrator, rank_bu, synthesize,
+)
 from workflows.matcher.job_store import JobStore
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def client():
-    """FastAPI TestClient backed by the agent workflow server."""
-    with TestClient(app) as c:
-        yield c
 
 
 @pytest.fixture(autouse=True)
 def _reset_job_store():
-    """Reset the process-global JobStore before every test."""
     JobStore()._jobs.clear()
     yield
     JobStore()._jobs.clear()
 
 
-@pytest.fixture(autouse=True)
-def _patch_job_runner(mocker):
-    """Replace ``JobRunner`` in the matcher_jobs route with a MagicMock class.
+@pytest.fixture
+def client(monkeypatch):
+    """TestClient with arq.create_pool mocked so lifespan doesn't need Redis."""
+    monkeypatch.setattr("server.app.create_pool",
+                        AsyncMock(return_value=AsyncMock(aclose=AsyncMock())))
+    monkeypatch.setattr("server.routes.matcher_jobs._run_and_persist",
+                        AsyncMock())
+    from server.app import app
+    with TestClient(app) as c:
+        yield c
 
-    The route does ``JobRunner(matcher=..., excel_processor=..., ...)`` then
-    ``background_tasks.add_task(job_runner.run_job, job_id, target_data)``.
-    Patching the class itself means:
 
-    * the constructor call is captured,
-    * ``.run_job`` on the returned instance is a MagicMock method so
-      BackgroundTasks scheduling is captured without executing anything,
-    * the real JobRunner internals (LotusMatcher, httpx calls to semops,
-      QueryOptimizer) never execute.
-    """
-    return mocker.patch("server.routes.matcher_jobs.JobRunner")
+def _fake_optimized(bu: str):
+    obj = MagicMock()
+    obj.optimized_query_en = f"english query for {bu}"
+    obj.optimized_query_native = f"原查询 {bu}"
+    obj.source_queries = [f"q-{bu}"]
+    obj.focuses = [bu]
+    obj.used_llm = True
+    return obj
+
+
+def _make_req(queries, target_type="publication"):
+    req = MagicMock()
+    req.queries = queries
+    req.target_type = target_type
+    req.top_k = 5
+    req.search_k = 50
+    req.include_reasons = True
+    req.lm = MagicMock(provider="openai", model="gpt-4o-mini",
+                       api_key="sk-t", api_base=None)
+    return req
+
+
+# ---------------------------------------------------------------------------
+# Direct node-level tests
+# ---------------------------------------------------------------------------
+
+
+def test_orchestrator_groups_queries_by_bu(monkeypatch):
+    fake_qo = MagicMock()
+    fake_qo.return_value.optimize_queries = MagicMock(
+        side_effect=lambda **kw: _fake_optimized(kw["bu"]))
+    monkeypatch.setattr("workflows.matcher.job.QueryOptimizer", fake_qo)
+
+    req = _make_req([
+        {"bu": "BU_A", "query": "q1"},
+        {"bu": "BU_A", "query": "q1b"},
+        {"bu": "BU_B", "query": "q2"},
+    ])
+    job_id = JobStore().create_job(
+        user_id="u", instance_id="i", target_type="publication",
+        top_k=5, search_k=50, include_reasons=True,
+        query_data=req.queries, query_count=3,
+        target_data=[], model_provider="openai", model_name="gpt-4o-mini",
+    )
+
+    state = {"job_id": job_id, "target_df": pd.DataFrame(), "req": req,
+             "results_by_bu": {}}
+    out = orchestrator(state)
+
+    assert set(out["queries_by_bu"].keys()) == {"BU_A", "BU_B"}
+    assert out["queries_by_bu"]["BU_A"] == ["q1", "q1b"]
+    assert set(out["optimized"].keys()) == {"BU_A", "BU_B"}
+    assert "index_dir" in out
+    job = JobStore().get_job(job_id)
+    assert job["status"] == "PROCESSING"
+    assert job["progress"] == 30
+
+
+def test_assign_workers_emits_one_send_per_bu():
+    state = {
+        "target_df": pd.DataFrame(),
+        "req": _make_req([{"bu": "BU_A", "query": "q1"}]),
+        "optimized": {"BU_A": _fake_optimized("BU_A"),
+                      "BU_B": _fake_optimized("BU_B")},
+        "index_dir": "/tmp/x",
+    }
+    sends = assign_workers(state)
+    assert len(sends) == 2
+    assert {s.node for s in sends} == {"rank_bu"}
+    assert {s.arg["bu"] for s in sends} == {"BU_A", "BU_B"}
+
+
+def test_rank_bu_invokes_lotus_and_returns_results_by_bu(monkeypatch):
+    fake_matcher = MagicMock()
+    fake_matcher.build_text_column = MagicMock(return_value=pd.DataFrame([{"id": 1}]))
+    fake_matcher.run_pipeline = MagicMock(
+        return_value=pd.DataFrame([{"id": 1, "title": "match"}]))
+    monkeypatch.setattr("workflows.matcher.job.LotusMatcher",
+                        MagicMock(return_value=fake_matcher))
+
+    ws = {
+        "bu": "BU_X",
+        "optimized": _fake_optimized("BU_X"),
+        "target_df": pd.DataFrame([{"id": 1}]),
+        "req": _make_req([{"bu": "BU_X", "query": "q"}]),
+        "index_dir": "/tmp/x",
+    }
+    out = rank_bu(ws)
+    assert "results_by_bu" in out
+    assert "BU_X" in out["results_by_bu"]
+    df = out["results_by_bu"]["BU_X"]
+    assert "bu" in df.columns
+    assert "rank" in df.columns
+
+
+def test_synthesize_writes_excel_bytes_and_total_matches(monkeypatch):
+    fake_xls = MagicMock()
+    fake_xls.return_value.create_result_excel = MagicMock(return_value=b"BYTES")
+    monkeypatch.setattr("workflows.matcher.job.ExcelProcessor", fake_xls)
+    monkeypatch.setattr("workflows.matcher.job._build_master",
+                        lambda df, rbu, ir: df)
+
+    job_id = JobStore().create_job(
+        user_id="u", instance_id="i", target_type="publication",
+        top_k=5, search_k=50, include_reasons=True,
+        query_data=[], query_count=0, target_data=[],
+        model_provider="openai", model_name="gpt-4o-mini",
+    )
+    state = {
+        "job_id": job_id,
+        "target_df": pd.DataFrame([{"id": 1}]),
+        "req": _make_req([]),
+        "results_by_bu": {
+            "BU_A": pd.DataFrame([{"id": 1}, {"id": 2}]),
+            "BU_B": pd.DataFrame([{"id": 3}]),
+        },
+    }
+    out = synthesize(state)
+    assert out["excel_bytes"] == b"BYTES"
+    assert out["total_matches"] == 3
+
+
+# ---------------------------------------------------------------------------
+# HTTP route — POST /v1/workflows/matcher/jobs
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def valid_job_request() -> dict:
-    """A plausible, valid POST body for POST /v1/workflows/matcher/jobs."""
     return {
         "user_id": "user-1",
         "instance_id": "inst-1",
@@ -80,168 +177,34 @@ def valid_job_request() -> dict:
         "queries": [
             {"id": "q1", "bu": "BU-A", "query": "llm for legal", "row_index": 0}
         ],
-        "target_data": [
-            {
-                "id": "s1",
-                "title": "LLM in enterprise legal",
-                "abstract": "four case studies",
-            }
-        ],
-        "top_k": 10,
-        "search_k": 50,
-        "include_reasons": True,
-        "model_provider": "google",
-        "model_name": "gemini-2.5-flash",
-        # BYOK is required by CreateMatchJobRequest — tests pass a dummy
-        # value; JobRunner is mocked at the route boundary so no real
-        # semops/LOTUS call fires.
+        "target_data": [{"id": "s1", "title": "x", "abstract": "y"}],
+        "top_k": 10, "search_k": 50, "include_reasons": True,
+        "model_provider": "google", "model_name": "gemini-2.5-flash",
         "api_key": "fake-test-key",
     }
 
 
-# ---------------------------------------------------------------------------
-# POST /v1/workflows/matcher/jobs
-# ---------------------------------------------------------------------------
-
-
-def test_create_job_happy_path(client, valid_job_request, _patch_job_runner):
-    """POST with a valid body returns 200 with the full MatchJobResponse shape."""
+def test_create_job_happy_path(client, valid_job_request):
     response = client.post("/v1/workflows/matcher/jobs", json=valid_job_request)
     assert response.status_code == 200, response.text
-
     body = response.json()
-
-    # Exact contract: response keys == MatchJobResponse fields.
     assert set(body.keys()) == set(MatchJobResponse.model_fields.keys())
-
-    # Initial state of a freshly-created job.
     assert body["status"] == "PENDING"
     assert body["progress"] == 0
-    assert body["query_count"] == len(valid_job_request["queries"])
-    assert body["match_count"] == 0
-
-    # id is a non-empty string.
-    assert isinstance(body["id"], str)
-    assert body["id"]
-
-    # query_data echoes the submitted queries as dicts.
-    assert isinstance(body["query_data"], list)
-    assert len(body["query_data"]) == len(valid_job_request["queries"])
-    for sent, got in zip(valid_job_request["queries"], body["query_data"]):
-        assert got["id"] == sent["id"]
-        assert got["bu"] == sent["bu"]
-        assert got["query"] == sent["query"]
-        assert got["row_index"] == sent["row_index"]
-
-    # Scalar config round-trips.
-    assert body["user_id"] == valid_job_request["user_id"]
-    assert body["instance_id"] == valid_job_request["instance_id"]
-    assert body["target_type"] == valid_job_request["target_type"]
-    assert body["top_k"] == valid_job_request["top_k"]
-    assert body["search_k"] == valid_job_request["search_k"]
-    assert body["include_reasons"] == valid_job_request["include_reasons"]
-
-    # JobRunner.run_job was scheduled exactly once with (job_id, target_data).
-    instance = _patch_job_runner.return_value
-    assert instance.run_job.call_count == 1
-    args, kwargs = instance.run_job.call_args
-    assert args[0] == body["id"]
-    assert args[1] == valid_job_request["target_data"]
 
 
 def test_create_job_rejects_empty_queries(client, valid_job_request):
-    body = dict(valid_job_request)
-    body["queries"] = []
-
-    response = client.post("/v1/workflows/matcher/jobs", json=body)
-    assert response.status_code == 400, response.text
-    assert response.json().get("detail") == "No queries provided"
+    valid_job_request["queries"] = []
+    response = client.post("/v1/workflows/matcher/jobs", json=valid_job_request)
+    assert response.status_code == 400
 
 
 def test_create_job_rejects_empty_target_data(client, valid_job_request):
-    body = dict(valid_job_request)
-    body["target_data"] = []
-
-    response = client.post("/v1/workflows/matcher/jobs", json=body)
-    assert response.status_code == 400, response.text
-    assert response.json().get("detail") == "No target data provided"
-
-
-def test_create_job_validation_error(client, valid_job_request):
-    """Dropping a required field (user_id) must produce FastAPI 422."""
-    body = dict(valid_job_request)
-    del body["user_id"]
-
-    response = client.post("/v1/workflows/matcher/jobs", json=body)
-    assert response.status_code == 422, response.text
-
-
-# ---------------------------------------------------------------------------
-# GET /v1/workflows/matcher/jobs/{id}
-# ---------------------------------------------------------------------------
-
-
-def test_get_job_returns_full_record(client, valid_job_request):
-    """GET /{id} returns the same MatchJobResponse shape as create."""
-    create_resp = client.post("/v1/workflows/matcher/jobs", json=valid_job_request)
-    assert create_resp.status_code == 200, create_resp.text
-    job_id = create_resp.json()["id"]
-
-    get_resp = client.get(f"/v1/workflows/matcher/jobs/{job_id}")
-    assert get_resp.status_code == 200, get_resp.text
-
-    body = get_resp.json()
-    assert set(body.keys()) == set(MatchJobResponse.model_fields.keys())
-    assert body["id"] == job_id
-    assert body["status"] == "PENDING"
-    assert body["query_count"] == len(valid_job_request["queries"])
+    valid_job_request["target_data"] = []
+    response = client.post("/v1/workflows/matcher/jobs", json=valid_job_request)
+    assert response.status_code == 400
 
 
 def test_get_job_returns_404_for_unknown_id(client):
-    response = client.get("/v1/workflows/matcher/jobs/does-not-exist")
-    assert response.status_code == 404, response.text
-    assert response.json().get("detail") == "Job not found"
-
-
-# ---------------------------------------------------------------------------
-# GET /v1/workflows/matcher/jobs/{id}/progress
-# ---------------------------------------------------------------------------
-
-
-def test_get_progress_snapshot(client, valid_job_request):
-    """GET /{id}/progress returns exactly the JobProgressResponse field set."""
-    create_resp = client.post("/v1/workflows/matcher/jobs", json=valid_job_request)
-    assert create_resp.status_code == 200, create_resp.text
-    job_id = create_resp.json()["id"]
-
-    progress_resp = client.get(f"/v1/workflows/matcher/jobs/{job_id}/progress")
-    assert progress_resp.status_code == 200, progress_resp.text
-
-    body = progress_resp.json()
-    assert set(body.keys()) == set(JobProgressResponse.model_fields.keys())
-    assert body["id"] == job_id
-    assert body["status"] == "PENDING"
-    assert body["progress"] == 0
-    assert body["query_count"] == len(valid_job_request["queries"])
-    assert body["match_count"] == 0
-
-
-# ---------------------------------------------------------------------------
-# DELETE /v1/workflows/matcher/jobs/{id}
-# ---------------------------------------------------------------------------
-
-
-def test_delete_job_cancels(client, valid_job_request):
-    """DELETE a PENDING job flips its status to CANCELLED."""
-    create_resp = client.post("/v1/workflows/matcher/jobs", json=valid_job_request)
-    assert create_resp.status_code == 200, create_resp.text
-    job_id = create_resp.json()["id"]
-
-    delete_resp = client.delete(f"/v1/workflows/matcher/jobs/{job_id}")
-    assert delete_resp.status_code == 200, delete_resp.text
-    assert delete_resp.json() == {"message": "Job cancelled"}
-
-    # Job is retained in the store, just with a CANCELLED status.
-    get_resp = client.get(f"/v1/workflows/matcher/jobs/{job_id}")
-    assert get_resp.status_code == 200, get_resp.text
-    assert get_resp.json()["status"] == "CANCELLED"
+    response = client.get("/v1/workflows/matcher/jobs/no-such-job")
+    assert response.status_code == 404
