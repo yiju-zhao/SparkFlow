@@ -3,16 +3,34 @@
 This directory hosts the LangGraph agent runtime and its supporting modules.
 
 ## Layout
-- `graphs/`: LangGraph entrypoints (wired in `langgraph.json`)
-- `prompts/`: System prompts used by graphs
-- `tools/`: Tool implementations and MCP/Toolbox adapters
-- `config/`: Shared configuration models/constants
+- `agents/`: One file per surface (`notebook.py`, `hub.py`, `deep_research.py`).
+  Each is a `StateGraph(MessagesState)` built from `llm_call ↔ tool_node`
+  primitives per LangGraph's "Agents → Graph API" pattern.
+- `prompts/`: Markdown fragments concatenated by `prompt_builder.py`
+  (base_identity, tool_use_enforcement, model_hints/{openai,gemini},
+  surfaces/{notebook,hub,deep_research}).
+- `tools/`: `@tool` functions; agents import them directly (no registry).
+- `workflows/`: Functional API and Graph API workflows.
+  - `search.py` — plain `async def` (single chain, no parallelism payoff)
+  - `daily_digest.py` — Functional API, per-query parallelization via `asyncio.gather`
+  - `matcher/job.py` — Graph API + `Send` orchestrator-worker
+  - `wiki_ingest.py` — Functional API chain (added in Phase 8 of the refactor)
+- `server/`: FastAPI shell at `:2027` for workflow HTTP endpoints
+  (`/v1/workflows/{search,daily_digest,matcher,wiki/extract}`,
+  `/v1/workflows/llm/list-models`).
+- `prompt_builder.py`: 64-LOC flat function `build_system_prompt(...)` —
+  replaces the old 9-layer `hermes/prompt_builder.PromptBuilder` class.
 
-## Graphs
-- `agent`: DeepDive / RAG agent
-- `hub`: Research Hub orchestration agent
+## Surfaces (LangGraph graphs registered in `langgraph.json`)
+- `notebook`: DeepDive RAG over notebook sources (uses `tools/wiki.py`).
+- `hub`: Research Hub assistant with generative UI (Conferences, Sessions,
+  Publications, WeChat) — frontend tools are skipped server-side and rendered
+  by CopilotKit on the client.
+- `deep_research`: Open-web research via SearXNG / Tavily + URL fetch.
 
-The `hub` graph uses GenAI Toolbox for deterministic database querying and relies on CopilotKit-provided MCP Apps actions for workflow/presentation rendering.
+The `hub` surface uses GenAI Toolbox for deterministic database querying and
+declares frontend tools (`show_table`, `show_chart`, etc.) which the LangGraph
+SDK passes through to CopilotKit for rendering.
 
 ## Run Locally
 
@@ -169,21 +187,13 @@ arq workflows.digest_worker.WorkerSettings
 - FastAPI `lifespan` opens / closes the ARQ pool on the `/v1/workflows/daily_digest/*` handler side.
 
 ## Model Configuration
-- DeepDive defaults: `config/rag_agent.py`
-- Hub defaults: `config/hub_agent.py`
 
-## Hermes Harness (P1)
+Per-user BYOK is mandatory. Each request carries `model_provider`, `model_name`,
+and `api_key` in its runtime context (`Ctx` dataclass in each agent module);
+no env-var fallback. The frontend's `/api/settings/resolve-key` route resolves
+the user's encrypted key from `UserSettings.apiKeys` before each LangGraph call.
 
-`apps/agent/hermes/` is the shared primitives layer used by all agent surfaces
-and workflows (see `docs/superpowers/specs/2026-04-22-hermes-harness-design.md`
-for the architecture and `docs/superpowers/plans/2026-04-22-hermes-harness-p1.md`
-for this phase's plan).
-
-- `registry.py` — central tool registry + AST-based auto-discovery.
-- `prompt_builder.py` — 9-layer system prompt assembly with per-session cache.
-- `context/references.py` — context-ref injectors (wiki / sources / page / web).
-
-### Running tests
+## Running tests
 
 ```bash
 cd apps/agent
@@ -191,11 +201,14 @@ uv pip install --python .venv/bin/python -e '.[dev]'   # first time only
 .venv/bin/python -m pytest -v
 ```
 
-### Current status
+## Refactor history
 
-- P1 (2026-04-22): primitives skeleton — lands here. No surfaces refactored yet; the three legacy LangGraph graphs (`rag_agent`, `hub_agent`, `search_agent`) remain in production.
-- P2: notebook + hub surfaces on shared harness.
-- P3: memory + skills.
-- P4: search workflow + deep-research surface.
-- P5: matcher workflow out of apps/semops.
-- P6: digest orchestrator from Node to Python.
+This codebase was refactored in 2026-04-27 (`docs/superpowers/specs/2026-04-27-agent-refactor-design.md`)
+to strip the previous `hermes/` harness and adopt LangGraph reference patterns:
+- Tool-calling agents from `StateGraph(MessagesState)` primitives (one file per surface)
+- Functional API (`@entrypoint`/`@task`) for `daily_digest` (parallelization)
+  and `wiki_ingest` (chain)
+- Graph API with `Send` for `matcher/job.py` (orchestrator-worker)
+- `search.py` stays plain `async def` — single chain, no parallelism payoff
+The 9-layer `PromptBuilder` collapsed to a 64-LOC `build_system_prompt(...)`;
+AST-based tool discovery replaced with explicit imports per surface.

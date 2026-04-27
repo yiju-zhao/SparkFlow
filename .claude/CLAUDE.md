@@ -122,18 +122,19 @@ Users can configure their own API keys per LLM provider in Settings:
 
 ### Agent Architecture
 
-Two LangGraph agents registered in `apps/agent/langgraph.json`:
+Three LangGraph agents registered in `apps/agent/langgraph.json`, one file per surface:
 
 | Graph | Entry | Purpose |
 |-------|-------|---------|
-| `agent` | `graphs/rag_agent.py:agent` | Document RAG with wiki context injection (multi-provider) |
-| `hub` | `graphs/hub_agent.py:agent` | Conference/session discovery with generative UI |
+| `notebook` | `agents/notebook.py:agent` | DeepDive RAG over notebook sources |
+| `hub` | `agents/hub.py:agent` | Conference/session discovery with generative UI |
+| `deep_research` | `agents/deep_research.py:agent` | Open-web research via SearXNG/Tavily |
 
-Both agents are LLM-provider-agnostic via `init_chat_model` — support OpenAI-compatible APIs and Google (Gemini). Provider/model configured per-user through BYOK settings.
+Each surface is a `StateGraph(MessagesState)` with `llm_call ↔ tool_node` per the LangGraph reference doc's "Agents → Graph API" pattern. Tools are imported directly (no registry); the system prompt is assembled by the flat `prompt_builder.build_system_prompt(...)` from markdown fragments under `prompts/`.
 
-The RAG agent injects wiki knowledge into the system prompt and has wiki search/navigation tools. It cites original sources, not wiki pages.
+All surfaces are LLM-provider-agnostic via `init_chat_model` — support OpenAI-compatible APIs and Google (Gemini). Provider/model configured per-user through BYOK settings (Ctx dataclass in each agent module).
 
-The hub agent uses a tool execution loop with conditional routing: backend tool calls (DB queries via `tools/hub_toolbox.py`) execute server-side and loop back to the LLM; frontend tool calls pass through to CopilotKit for React rendering.
+The hub agent's `tool_node` skips dispatch for tools in `HUB_FRONTEND_TOOL_NAMES` (`show_table`, `show_chart`, etc.) — those AIMessage tool_calls reach CopilotKit via the LangGraph SDK and render as React components. `should_continue` routes to END when all tool_calls in a turn are frontend (otherwise the loop would re-invoke `llm_call` with no answering ToolMessages and the LLM would repeat or hallucinate).
 
 ## Services
 
