@@ -10,11 +10,11 @@ Two modes:
     # article_hash has changed since their last embedding. Also removes
     # embedding rows whose upstream article was deleted. Safe to run on a
     # cron — idempotent and self-healing.
-    python apps/agent/scripts/backfill_wechat_embeddings.py
+    python apps/langgraph/scripts/backfill_wechat_embeddings.py
 
     # Full re-embed: truncate the mirror table then re-embed every upstream
     # row. Useful after changing the embedding model or chunking strategy.
-    python apps/agent/scripts/backfill_wechat_embeddings.py --full
+    python apps/langgraph/scripts/backfill_wechat_embeddings.py --full
 
 Env:
     WECHAT_DATABASE_URL   external WeChat Postgres (read-only for this script)

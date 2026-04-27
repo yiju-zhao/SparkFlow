@@ -1,7 +1,7 @@
 """ARQ worker configuration for daily-digest jobs.
 
 Run the worker:
-    cd apps/agent
+    cd apps/langgraph
     arq workflows.digest_worker.WorkerSettings
 
 The worker connects to the same Redis instance used by the web app's

@@ -5,8 +5,8 @@ Prereq: run `prisma migrate deploy` in apps/web so the migration
 columns + HNSW indexes.
 
 Usage:
-    uv run python apps/agent/scripts/backfill_publication_embeddings.py
-    uv run python apps/agent/scripts/backfill_publication_embeddings.py --batch 32 --limit 5000
+    uv run python apps/langgraph/scripts/backfill_publication_embeddings.py
+    uv run python apps/langgraph/scripts/backfill_publication_embeddings.py --batch 32 --limit 5000
 
 Env:
     DATABASE_URL    main SparkFlow Postgres DSN

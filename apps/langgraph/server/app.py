@@ -1,4 +1,4 @@
-"""FastAPI server hosting apps/agent workflows.
+"""FastAPI server hosting apps/langgraph workflows.
 
 Runs alongside ``langgraph dev`` (which handles agent surfaces). Workflow
 routes are stateless; each request carries its own config + model settings.
@@ -9,7 +9,17 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
+
+# Load apps/langgraph/.env at import time. Uvicorn does NOT auto-load
+# .env files (unlike `langgraph dev`), so without this, env-dependent
+# routes like /v1/workflows/llm/list-models reject every request with
+# 401 "Unauthorized" because INTERNAL_CALLBACK_TOKEN comes back empty.
+# python-dotenv is already a dependency.
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from fastapi import FastAPI, HTTPException, Request
 

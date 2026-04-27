@@ -1,6 +1,6 @@
-"""Shared pytest fixtures for apps/agent tests.
+"""Shared pytest fixtures for apps/langgraph tests.
 
-Injects apps/agent on sys.path so tests can import `agents`, `tools`, etc.
+Injects apps/langgraph on sys.path so tests can import `agents`, `tools`, etc.
 without an editable install.
 """
 

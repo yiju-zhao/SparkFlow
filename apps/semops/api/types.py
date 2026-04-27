@@ -105,7 +105,7 @@ class RankCandidate(BaseModel):
 class OperatorModelConfig(BaseModel):
     """Per-request LLM credentials + model selection for LOTUS.
 
-    Callers (apps/agent workflows) resolve the user's BYOK via
+    Callers (apps/langgraph workflows) resolve the user's BYOK via
     ``resolveApiKey`` and forward the result here. The apps/semops service
     does NOT carry its own provider keys — missing BYOK is a 401 at the
     Node layer before the request ever reaches this endpoint.

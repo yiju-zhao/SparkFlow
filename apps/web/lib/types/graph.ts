@@ -2,7 +2,7 @@
  * Knowledge-graph type definitions consumed by the wiki UI and the
  * Prisma JSON columns (notebookGraph.graphData / .communities).
  *
- * Authoritative implementation lives in apps/agent/workflows/wiki_ingest.py;
+ * Authoritative implementation lives in apps/langgraph/workflows/wiki_ingest.py;
  * the Python side serializes to snake_case (source_refs etc.) and the
  * Node-side wiki-ingest.ts converts to the camelCase shape declared here
  * before storing in Prisma. The wiki UI components consume this shape.

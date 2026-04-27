@@ -75,7 +75,7 @@ make logs        # tail langgraph-api logs
 
 `langgraph up` requires `LANGSMITH_API_KEY` for local testing (and a
 `LANGGRAPH_CLOUD_LICENSE_KEY` in production). Make sure both live in
-`apps/agent/.env`. `make dev` does not need a LangSmith key.
+`apps/langgraph/.env`. `make dev` does not need a LangSmith key.
 
 Ports follow the upstream LangGraph CLI convention so the two stacks can
 run side-by-side without colliding:
@@ -95,7 +95,7 @@ make up  UP_PORT=2024     # if you want it on 2024 instead
 ### Postgres port conflict with `apps/web`
 
 `langgraph up` spins up its own `langgraph-postgres` sibling that wants
-host port `5433`. `apps/web/docker-compose.yml` already maps host `5433`
+host port `5433`. The root `docker-compose.yml` already maps host `5433`
 to its own postgres, so running both at the same time fails with:
 
 ```
@@ -103,7 +103,7 @@ Bind for 0.0.0.0:5433 failed: port is already allocated
 ```
 
 The fix is to point langgraph at the web's postgres instead of letting
-the CLI start its own. Set `CHECKPOINT_DB_URL` in `apps/agent/.env`
+the CLI start its own. Set `CHECKPOINT_DB_URL` in `apps/langgraph/.env`
 (the Makefile passes it to `langgraph up` as `--postgres-uri`):
 
 ```bash
@@ -111,7 +111,7 @@ the CLI start its own. Set `CHECKPOINT_DB_URL` in `apps/agent/.env`
 docker exec -it sparkflow-postgres psql -U sparkflow -c \
   "CREATE DATABASE sparkflow_checkpoints;"
 
-# In apps/agent/.env:
+# In apps/langgraph/.env:
 CHECKPOINT_DB_URL=postgresql://sparkflow:sparkflow@host.docker.internal:5433/sparkflow_checkpoints
 ```
 
@@ -178,7 +178,7 @@ BYOK is mandatory on all user-facing paths; there is no `OPENAI_API_KEY` env fal
 User-triggered digest generation is durable: `POST /v1/workflows/daily_digest/sections/{id}/generate` enqueues an ARQ job and returns `{accepted, job_id, reused}` immediately. Poll `GET /v1/workflows/daily_digest/jobs/{job_id}/status` for `{status, result?, error?}`. The worker runs in its own process and must be started separately:
 
 ```bash
-# From apps/agent
+# From apps/langgraph
 arq workflows.digest_worker.WorkerSettings
 ```
 
@@ -196,7 +196,7 @@ the user's encrypted key from `UserSettings.apiKeys` before each LangGraph call.
 ## Running tests
 
 ```bash
-cd apps/agent
+cd apps/langgraph
 uv pip install --python .venv/bin/python -e '.[dev]'   # first time only
 .venv/bin/python -m pytest -v
 ```

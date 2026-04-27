@@ -2,7 +2,7 @@
  * Wiki ingest service — thin client around POST /v1/workflows/wiki/extract.
  *
  * The actual extraction (LLM calls + Louvain clustering + page generation)
- * runs in apps/agent/workflows/wiki_ingest.py. This module:
+ * runs in apps/langgraph/workflows/wiki_ingest.py. This module:
  *  - resolves the user's BYOK key
  *  - posts the request to the Python workflow
  *  - converts the snake_case response into the camelCase shape the
@@ -180,7 +180,7 @@ function snakeifyGraphForPython(g: UiGraph): PyGraph {
 }
 
 // ============================================================
-// HTTP call to apps/agent
+// HTTP call to apps/langgraph
 // ============================================================
 
 interface ExtractRequestBase {

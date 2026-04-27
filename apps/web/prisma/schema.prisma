@@ -368,7 +368,7 @@ model Publication {
   status     String?
 
   // BGE-M3 (1024-dim) embeddings for agent prefilter — indexed via HNSW in a
-  // raw-SQL migration step. Populated by the backfill script in apps/agent.
+  // raw-SQL migration step. Populated by the backfill script in apps/langgraph.
   titleEmbedding    Unsupported("vector(1024)")?
   abstractEmbedding Unsupported("vector(1024)")?
 
@@ -384,7 +384,7 @@ model Publication {
 
 // Mirror of BGE-M3 (1024-dim) embeddings for WeChat articles whose source rows
 // live in the external wechat_articles DB. Keyed by wechat_articles.articles.id
-// (int4). Populated by the backfill script in apps/agent; kept in sync
+// (int4). Populated by the backfill script in apps/langgraph; kept in sync
 // incrementally — rows removed upstream are cleaned up on next run.
 model WechatArticleEmbedding {
   articleId        Int                          @id

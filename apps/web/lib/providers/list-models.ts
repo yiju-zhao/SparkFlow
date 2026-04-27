@@ -183,23 +183,37 @@ export async function fetchProviderModels(
   }
 
   // FastAPI returns the structured detail in `body.detail`. The new
-  // /v1/workflows/llm/list-models route returns plain HTTPException
-  // detail strings ("Upstream openai: ...") on 4xx and "Upstream error: ..."
-  // on 502 — both surface here as the message.
+  // /v1/workflows/llm/list-models route returns plain detail strings:
+  //   - "Unauthorized" → our own X-Internal-Token check failed; this is
+  //     an INTERNAL gateway misconfig, NOT the user's BYOK key being bad
+  //   - "Upstream <providerId>: <body[:200]>" → upstream provider's HTTP
+  //     status code (e.g. DeepSeek returned 401 / 403 → INVALID_KEY)
+  //   - "Upstream error: <transport message>" → 502 networking
   let detail: unknown;
   try {
     detail = (await res.json())?.detail;
   } catch {
     detail = undefined;
   }
-  const code: FetchModelsErrorCode =
-    res.status === 401 || res.status === 403 ? "INVALID_KEY"
-    : res.status === 502 || res.status === 503 || res.status === 504 ? "NETWORK_ERROR"
-    : "BAD_RESPONSE";
+  const detailStr = typeof detail === "string" ? detail : "";
+  const isInternalAuth =
+    (res.status === 401 || res.status === 403) &&
+    !detailStr.startsWith("Upstream ");
+
+  let code: FetchModelsErrorCode;
+  if (isInternalAuth) {
+    code = "GATEWAY_NOT_CONFIGURED";
+  } else if (res.status === 401 || res.status === 403) {
+    code = "INVALID_KEY";
+  } else if (res.status === 502 || res.status === 503 || res.status === 504) {
+    code = "NETWORK_ERROR";
+  } else {
+    code = "BAD_RESPONSE";
+  }
   const message =
-    typeof detail === "string"
-      ? detail
-      : `Workflows API returned HTTP ${res.status}`;
+    isInternalAuth
+      ? "Workflows API rejected our internal token (INTERNAL_CALLBACK_TOKEN mismatch between apps/web and apps/langgraph)."
+      : detailStr || `Workflows API returned HTTP ${res.status}`;
   throw new FetchModelsError(code, providerId, message, res.status);
 }
 
