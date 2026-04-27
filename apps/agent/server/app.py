@@ -16,7 +16,6 @@ from fastapi import FastAPI, HTTPException, Request
 from arq import create_pool
 from arq.connections import ArqRedis
 
-from server.routes.llm_gateway import router as llm_gateway_router
 from server.routes.llm_models import router as llm_models_router
 from server.routes.matcher_jobs import router as matcher_jobs_router
 from server.routes.wiki_ingest import router as wiki_ingest_router
@@ -38,14 +37,9 @@ async def _lifespan(app: FastAPI):
 app = FastAPI(title="SparkFlow Workflows", version="0.1.0", lifespan=_lifespan)
 
 app.include_router(matcher_jobs_router, prefix="/v1/workflows/matcher")
-# LLM gateway — Node BYOK chat completions + model-list passthrough.
-# Mounted at root because the routes already include /v1/llm/* prefixes.
-# Slated for deletion in cutover (Phase 10) once apps/web stops calling it.
-app.include_router(llm_gateway_router)
-# Replacement for /v1/llm/models (httpx, no litellm). apps/web's
-# list-models.ts will switch to this in the cutover.
+# /v1/workflows/llm/list-models — BYOK validation (httpx, no litellm).
 app.include_router(llm_models_router)
-# Wiki extract — Python implementation of graph-service.ts.
+# /v1/workflows/wiki/extract — Python implementation, replaced graph-service.ts.
 app.include_router(wiki_ingest_router)
 
 

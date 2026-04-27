@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import type { GraphData } from "./graph-service";
+import type { GraphData } from "@/lib/types/graph";
 
 export interface HealthIssue {
   type: "orphan" | "missing_page" | "stale";

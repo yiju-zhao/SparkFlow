@@ -47,7 +47,7 @@ apps/web/
 │   ├── services/           # Backend services
 │   │   ├── api-key-resolver.ts  # BYOK key resolution (user → admin fallback)
 │   │   ├── wiki-ingest.ts       # Wiki knowledge graph extraction pipeline
-│   │   ├── graph-service.ts     # Graph operations + Louvain clustering
+│   │   #   (knowledge graph extraction + Louvain clustering moved to apps/agent/workflows/wiki_ingest.py)
 │   │   └── wiki-health.ts       # Wiki health monitoring
 │   └── hooks/              # Shared React hooks
 ├── workers/                # Out-of-process workers
@@ -108,7 +108,7 @@ and returns immediately with a `jobId`; the worker drains the queue.
 - **Per-user fairness**: `lib/queue/user-slot.ts` uses a single Lua `EVAL` (`ZREMRANGEBYSCORE` + `ZCARD` + `ZADD`) so atomicity holds even when two workers race on the same user. Counter lives in Redis → scales across worker replicas.
 - **Per-notebook mutex**: `lib/queue/notebook-lock.ts` uses Redis `SET NX PX` with a 60 s heartbeat that extends TTL to 10 min — the lock survives long LLM runs without ever expiring mid-ingest.
 - **Reschedule protocol**: when contention is hit, the worker calls `job.moveToDelayed(...)` and throws BullMQ's `DelayedError` — the reschedule does NOT burn the `attempts: 3` budget.
-- **Transactional commit**: `lib/services/graph-service.ts::runGraphPipeline` builds all wiki page content first (LLM calls outside any tx), then opens one `prisma.$transaction` (`maxWait: 10s, timeout: 60s`) that upserts the graph + every wiki page + deletes orphaned `community-*` slugs + appends the log entry — all-or-nothing.
+- **Transactional commit**: `lib/services/wiki-ingest.ts::ingestSourceToWiki` POSTs to `/v1/workflows/wiki/extract` (Python implementation in `apps/agent/workflows/wiki_ingest.py` runs the LLM extraction + Louvain clustering + page generation), then opens one `prisma.$transaction` (`maxWait: 10s, timeout: 60s`) on the response that upserts the graph + every wiki page + deletes orphaned `community-*` slugs + appends the log entry — all-or-nothing.
 - **Status endpoint**: `GET /api/notebooks/[id]/ingest/status?jobId=...` returns `{ state, progress, failedReason, result }`; wrapped in a 2 s `Promise.race` so a down Redis fails fast with 503.
 
 ## Prisma Migration Workflow
