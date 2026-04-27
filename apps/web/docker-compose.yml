@@ -18,6 +18,27 @@ x-no-proxy-env: &no_proxy_env
   NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},postgres,redis,searxng,web,workflows-api,ingest-worker,digest-worker,migrate
   no_proxy: ${no_proxy:-localhost,127.0.0.1},postgres,redis,searxng,web,workflows-api,ingest-worker,digest-worker,migrate
 
+# Corporate CA bundle wiring for containers behind a TLS-intercepting proxy.
+# DISABLED on this machine (no corporate proxy / no cert file present).
+# To enable on the server:
+#   1. Place the full bundle (system roots + corporate CA, concatenated) at
+#      apps/web/ca-certificates.crt
+#   2. Uncomment the `x-ca-cert-env` anchor below
+#   3. In each of `ingest-worker` / `digest-worker` / `workflows-api` / `web`:
+#        - swap `<<: *no_proxy_env` for `<<: [*no_proxy_env, *ca_cert_env]`
+#        - uncomment the `volumes:` block that mounts ca-certificates.crt
+# The three env vars cover every TLS code path:
+#   SSL_CERT_FILE       — Python's ssl module / OpenSSL CLI
+#   REQUESTS_CA_BUNDLE  — `requests` and `httpx`
+#   CURL_CA_BUNDLE      — libcurl
+# A missing host file makes Docker create an empty dir at the mount path
+# and break all TLS in the container; an empty file breaks all TLS via
+# missing roots — hence the bundle must exist before enabling.
+# x-ca-cert-env: &ca_cert_env
+#   SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+#   REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+#   CURL_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+
 services:
   postgres:
     image: pgvector/pgvector:pg17
@@ -77,11 +98,13 @@ services:
     command: ["npm", "run", "worker:ingest"]
     env_file: .env
     environment:
-      <<: *no_proxy_env
+      <<: *no_proxy_env  # server: <<: [*no_proxy_env, *ca_cert_env]
       # Override host-side localhost URLs with docker service hostnames.
       # apps/web/.env uses localhost so `npm run dev` works on the host.
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+    # volumes:  # uncomment on server (corporate CA mount)
+    #   - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,13 +120,15 @@ services:
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
     env_file: ../agent/.env
     environment:
-      <<: *no_proxy_env
+      <<: *no_proxy_env  # server: <<: [*no_proxy_env, *ca_cert_env]
       # Override host-side localhost URL with docker service hostname.
       REDIS_URL: redis://redis:6379
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
       SEMOPS_API_URL: ${SEMOPS_API_URL}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
       DIGEST_WORKER_CONCURRENCY: ${DIGEST_WORKER_CONCURRENCY:-4}
+    # volumes:  # uncomment on server (corporate CA mount)
+    #   - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -126,7 +151,7 @@ services:
     container_name: sparkflow-workflows-api
     env_file: ../agent/.env
     environment:
-      <<: *no_proxy_env
+      <<: *no_proxy_env  # server: <<: [*no_proxy_env, *ca_cert_env]
       # In-container service hostnames override host-side localhost URLs.
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
@@ -137,6 +162,8 @@ services:
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
     ports:
       - "${WORKFLOWS_PORT:-2027}:2027"
+    # volumes:  # uncomment on server (corporate CA mount)
+    #   - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,7 +200,7 @@ services:
     container_name: sparkflow-web
     env_file: .env
     environment:
-      <<: *no_proxy_env
+      <<: *no_proxy_env  # server: <<: [*no_proxy_env, *ca_cert_env]
       # Override host-side localhost URLs with docker service hostnames.
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
       REDIS_URL: redis://redis:6379
@@ -189,6 +216,8 @@ services:
       NEXT_PUBLIC_WORKFLOWS_API_URL: ${NEXT_PUBLIC_WORKFLOWS_API_URL:-http://localhost:2027}
     ports:
       - "${WEB_PORT:-3001}:3001"
+    # volumes:  # uncomment on server (corporate CA mount)
+    #   - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
       postgres:
         condition: service_healthy
