@@ -1,14 +1,16 @@
-import {
-  PROVIDER_MAP,
-  CUSTOM_PROVIDER_PREFIX,
-} from "@/lib/types/providers";
-
 /**
- * Apps/web (Node) cannot reach LLM providers directly from the
- * corporate network — outbound TLS is intercepted or blocked. All
- * BYOK calls go through apps/agent's `/v1/llm/*` gateway, which uses
- * Python's working httpx + CA trust chain.
+ * Thin client around POST /v1/workflows/llm/list-models.
+ *
+ * apps/web (Node) cannot reach LLM providers directly from the corporate
+ * network — outbound TLS to api.openai.com / api.deepseek.com / etc. is
+ * intercepted or blocked. The Python workflows-API has working httpx +
+ * CA trust, so all BYOK validation calls are proxied through there.
+ *
+ * Replaces the old graph-service-style OpenAI-SDK passthrough through
+ * the deleted /v1/llm/models gateway.
  */
+
+import { PROVIDER_MAP, CUSTOM_PROVIDER_PREFIX } from "@/lib/types/providers";
 
 const FETCH_TIMEOUT_MS = 12_000;
 
@@ -39,12 +41,7 @@ export class FetchModelsError extends Error {
   }
 }
 
-/**
- * Resolves the URL of the apps/agent LLM gateway. Defaults to
- * localhost:2027 (host-side dev), overridden in production via
- * WORKFLOWS_API_URL or the docker-compose service hostname.
- */
-function gatewayBase(): string {
+function workflowsBase(): string {
   return (
     process.env.WORKFLOWS_API_URL ||
     process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
@@ -58,17 +55,15 @@ function internalToken(): string {
     throw new FetchModelsError(
       "GATEWAY_NOT_CONFIGURED",
       "_",
-      "INTERNAL_CALLBACK_TOKEN is not set; the Node side cannot authenticate to the LLM gateway",
+      "INTERNAL_CALLBACK_TOKEN is not set; the Node side cannot authenticate to the workflows API",
     );
   }
   return t;
 }
 
 /**
- * Lightweight SSRF check on the user-supplied custom baseUrl. The
- * Python gateway re-checks before issuing the upstream call (defense
- * in depth) — this version just gives the user fast feedback when
- * they typo a localhost URL into the settings form.
+ * Lightweight SSRF check on the user-supplied custom baseUrl. Gives the
+ * user fast feedback when they typo a localhost URL into the settings form.
  */
 export function assertSafeUrl(raw: string, providerId: string): URL {
   let parsed: URL;
@@ -113,22 +108,12 @@ export function assertSafeUrl(raw: string, providerId: string): URL {
   return parsed;
 }
 
-/**
- * Fetch the chat-capable model id list for `providerId`. Built-in
- * providers resolve their baseUrl via PROVIDER_MAP; custom providers
- * (id `custom` or `custom-…`) require an explicit `baseUrl`.
- *
- * Implementation: POST to apps/agent's /v1/llm/models gateway. The
- * Python side handles the actual upstream call + response filtering.
- */
 export async function fetchProviderModels(
   providerId: string,
   apiKey: string,
   baseUrl?: string,
   signal?: AbortSignal,
 ): Promise<string[]> {
-  // Built-in providers don't carry baseUrl from the caller — fill it
-  // from PROVIDER_MAP so the gateway can route.
   let resolvedBaseUrl = baseUrl;
   if (!resolvedBaseUrl) {
     const provider = PROVIDER_MAP.get(providerId);
@@ -140,6 +125,8 @@ export async function fetchProviderModels(
       );
     }
     resolvedBaseUrl = provider.baseUrl;
+  } else {
+    assertSafeUrl(resolvedBaseUrl, providerId);
   }
 
   const ctrl = new AbortController();
@@ -151,7 +138,7 @@ export async function fetchProviderModels(
 
   let res: Response;
   try {
-    res = await fetch(`${gatewayBase()}/v1/llm/models`, {
+    res = await fetch(`${workflowsBase()}/v1/workflows/llm/list-models`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -170,7 +157,7 @@ export async function fetchProviderModels(
       throw new FetchModelsError(
         "TIMEOUT",
         providerId,
-        `LLM gateway timed out after ${FETCH_TIMEOUT_MS}ms`,
+        `workflows API timed out after ${FETCH_TIMEOUT_MS}ms`,
       );
     }
     if (err instanceof FetchModelsError) throw err;
@@ -189,37 +176,31 @@ export async function fetchProviderModels(
       throw new FetchModelsError(
         "BAD_RESPONSE",
         providerId,
-        "Gateway response missing models[]",
+        "Workflows API response missing models[]",
       );
     }
     return body.models;
   }
 
-  // FastAPI puts our structured detail in `body.detail`.
+  // FastAPI returns the structured detail in `body.detail`. The new
+  // /v1/workflows/llm/list-models route returns plain HTTPException
+  // detail strings ("Upstream openai: ...") on 4xx and "Upstream error: ..."
+  // on 502 — both surface here as the message.
   let detail: unknown;
   try {
     detail = (await res.json())?.detail;
   } catch {
     detail = undefined;
   }
-  if (detail && typeof detail === "object") {
-    const d = detail as {
-      code?: FetchModelsErrorCode;
-      message?: string;
-      upstreamStatus?: number;
-    };
-    throw new FetchModelsError(
-      d.code ?? "BAD_RESPONSE",
-      providerId,
-      d.message ?? `Gateway returned HTTP ${res.status}`,
-      d.upstreamStatus,
-    );
-  }
-  throw new FetchModelsError(
-    "BAD_RESPONSE",
-    providerId,
-    `Gateway returned HTTP ${res.status}`,
-  );
+  const code: FetchModelsErrorCode =
+    res.status === 401 || res.status === 403 ? "INVALID_KEY"
+    : res.status === 502 || res.status === 503 || res.status === 504 ? "NETWORK_ERROR"
+    : "BAD_RESPONSE";
+  const message =
+    typeof detail === "string"
+      ? detail
+      : `Workflows API returned HTTP ${res.status}`;
+  throw new FetchModelsError(code, providerId, message, res.status);
 }
 
 export function isCustomProviderId(providerId: string): boolean {
