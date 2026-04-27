@@ -1,28 +1,36 @@
-# `apps/agent` Refactor — First-Principles Simplification
+# `apps/agent` Refactor — First-Principles Simplification + Wiki-Ingest Port
 
 > **Date**: 2026-04-27
 > **Branch**: `agent-dev`
 > **Reference**: `docs/reference/langgraph-agent-and-workflow.md`
-> **Supersedes** (operationally, not formally): the post-P1/P2 state of `docs/superpowers/specs/2026-04-22-hermes-harness-design.md`. Hermes was a real consolidation; the parts that scaled are preserved as flat helpers, the parts that ossified into placeholders are removed.
+> **Supersedes** (operationally, not formally):
+> - the post-P1/P2 state of `docs/superpowers/specs/2026-04-22-hermes-harness-design.md` — Hermes was a real consolidation; the parts that scaled are preserved as flat helpers, the parts that ossified into placeholders are removed.
+> - `docs/superpowers/specs/2026-04-27-wiki-ingest-port-to-python-design.md` — that doc's "Phase 2" is folded in here as the fourth workflow (`workflows/wiki_ingest.py`). Doing it inside the refactor (rather than after) is correct because the new `workflows/` directory and Functional API conventions are the natural home; sequencing the port after the refactor is stable means writing `wiki_ingest.py` against the *new* shape from day one instead of porting twice.
 
 ## 1. Goal
 
-Strip `apps/agent` back to the patterns shown in the reference doc:
+Strip `apps/agent` back to the patterns shown in the reference doc, and adopt `apps/agent/workflows/` as the single home for every LLM-driven workflow in the repo:
+
 - **Tool-calling agent** (`StateGraph(MessagesState)` with `llm_call ↔ tool_node` + `should_continue`) per surface — built from primitives, not a prebuilt or a parameterized factory.
-- **Functional API** (`@entrypoint` / `@task`) for the three workflows, using prompt-chaining, parallelization, and orchestrator-worker patterns where each fits naturally.
+- **Functional API** (`@entrypoint` / `@task`) for **four** workflows — `search`, `daily_digest`, `matcher`, and the newly-ported `wiki_ingest` — using prompt-chaining, parallelization, and orchestrator-worker patterns where each fits naturally.
+- **Eliminate the Node→LLM path entirely**: porting wiki-ingest from `apps/web/lib/services/graph-service.ts` (~720 LOC TS) to Python lets us delete the only Node→LLM gateway (`apps/agent/server/routes/llm_gateway.py` ~299 LOC) and the `litellm` dep that exists solely to back it.
 
-Drop everything that built abstraction without consumers: AST tool discovery, the 9-layer prompt builder, ContextRef placeholder classes, the unmounted skills subsystem, the unseeded memory subsystem, `extra_caller_system`, per-session prompt caching.
+Drop everything that built abstraction without consumers: AST tool discovery, the 9-layer prompt builder, ContextRef placeholder classes, the unmounted skills subsystem, the unseeded memory subsystem, `extra_caller_system`, per-session prompt caching, the LLM gateway and its TS client.
 
-Net effect: `apps/agent` shrinks by an estimated 1,200+ LOC of harness, and the agent code reads paragraph-for-paragraph like the reference doc.
+Net effect: `apps/agent` harness shrinks by ~1,200 LOC; `apps/web` shrinks by ~900 LOC of TS; one new ~430-LOC Python workflow lands. Repo-wide: ~1,700 LOC net deletion. Agent code reads paragraph-for-paragraph like the reference doc; every LLM-bound pipeline lives in `apps/agent/workflows/`.
 
 ## 2. Non-goals
 
 - **Not** changing the LangGraph runtime, checkpointer, dev/up CLI, or `langgraph.json` shape.
 - **Not** changing CopilotKit integration on the frontend.
-- **Not** changing the FastAPI workflow server's route surface (`/v1/workflows/*`, `/v1/llm/*`).
-- **Not** changing the ARQ digest worker semantics or the BullMQ ingest worker on the web side.
-- **Not** changing semops, MinerU, or the LLM gateway protocol.
+- **Not** changing the FastAPI workflow server's `/v1/workflows/*` route surface for existing endpoints. The `/v1/llm/*` gateway routes are deleted at the end of the wiki-ingest cutover (no external consumers — only `apps/web/lib/services/graph-service.ts` and `apps/web/lib/providers/list-models.ts`, both of which we own and rewrite as part of this work).
+- **Not** changing the ARQ digest worker semantics or the BullMQ ingest worker process / queue / per-user fairness / per-notebook lock on the web side. Only the *body* of the per-job handler changes (it calls `POST /v1/workflows/wiki/extract` instead of running graph-service.ts inline).
+- **Not** changing semops or MinerU.
 - **Not** dropping Prisma `UserMemory` / `NotebookMemory` tables (we drop only the Python access layer; the tables remain so memory can be re-added later without a migration).
+- **Not** dropping the existing `NotebookGraph` / `WikiPage` / `Source` tables or wiki UI components — wiki-ingest port preserves the public schema and the React components consume the same `WikiPage` rows.
+- **Not** moving the `prisma.$transaction` commit (wiki upsert + WikiPage upsert + orphan delete + log append) into Python. That stays in Node; Python returns a payload, Node commits.
+- **Not** streaming wiki extraction. (Future work; orthogonal.)
+- **Not** switching wiki ingest off BullMQ onto ARQ. Queue boundary unchanged.
 
 ## 3. Current-state inventory & deletion verification
 
@@ -39,6 +47,11 @@ The deletion list below was verified by grep before this spec was written. Each 
 | `tools/_echo.py` + `prompts/surfaces/echo_test.md` | Debug-only smoke surface | Drop |
 | `deepagents` dependency in `pyproject.toml` | `grep deepagents apps/agent --include="*.py"` → **0 hits** | Drop |
 | `graphs/`, `surfaces/`, `config/` directories | Each holds 1-2 files of glue around `build_graph(SurfaceConfig)` | Collapse into one `agents/<name>.py` file per surface |
+| `apps/agent/server/routes/llm_gateway.py` (~299 LOC) | Two consumers: `apps/web/lib/services/graph-service.ts` (wiki ingest LLM calls) and `apps/web/lib/providers/list-models.ts` (BYOK validation in Settings UI). Both are rewritten as part of this work. | Drop after wiki-ingest cutover (step 11) |
+| `litellm>=1.50` dep in `pyproject.toml` | `grep litellm apps/agent` → only `server/routes/llm_gateway.py` imports it. Every provider in PROVIDER_MAP is OpenAI-compatible (`f"openai/{model}"` at line 257) so litellm is dispatching through its openai adapter for every call — no value over `langchain-openai` which apps/agent already uses elsewhere. | Drop with the gateway |
+| `apps/web/lib/services/graph-service.ts` (~720 LOC TS) | Knowledge-graph extraction + Louvain clustering + wiki-page assembly currently in Node. Verified ~70% is "LLM calls + pure graph algorithms + types" with zero Node/Prisma affinity. | Replace with `workflows/wiki_ingest.py`; delete TS file at cutover |
+| `apps/web/lib/providers/list-models.ts` (~225 LOC TS) | Wraps the `/v1/llm/models` gateway endpoint to power Settings → "Validate BYOK key" UX. | Replace with a slim ~40-LOC client calling a new `POST /v1/workflows/llm/list-models` (or fold validation into a tiny route inside `wiki_ingest.py`'s router) |
+| `openai` Node SDK in `apps/web/package.json` | Only consumer is graph-service.ts. | Drop after graph-service.ts is deleted |
 
 ## 4. Target architecture
 
@@ -68,6 +81,7 @@ apps/agent/
 │   ├── daily_digest.py
 │   ├── digest_worker.py
 │   ├── digest_tasks.py
+│   ├── wiki_ingest.py      (new — port of apps/web/lib/services/graph-service.ts)
 │   └── matcher/
 │       ├── job.py          (was job_runner.py)
 │       ├── lotus.py
@@ -77,7 +91,10 @@ apps/agent/
 ├── server/
 │   ├── app.py
 │   ├── matcher_types.py
-│   └── routes/{llm_gateway.py,matcher_jobs.py}
+│   ├── wiki_ingest_types.py    (new — Pydantic request/response models for the wiki extract route)
+│   └── routes/
+│       ├── matcher_jobs.py
+│       └── wiki_ingest.py      (new — POST /v1/workflows/wiki/extract; replaces deleted llm_gateway.py)
 ├── prompt_builder.py
 ├── embeddings/
 ├── scripts/
@@ -86,7 +103,24 @@ apps/agent/
 └── README.md
 ```
 
-Deleted: `hermes/`, `graphs/`, `surfaces/`, `config/`, `tools/_echo.py`, `tools/skills.py`, `tools/memory.py`, `apps/agent/skills/`, `prompts/surfaces/echo_test.md`.
+Deleted: `hermes/`, `graphs/`, `surfaces/`, `config/`, `tools/_echo.py`, `tools/skills.py`, `tools/memory.py`, `apps/agent/skills/`, `prompts/surfaces/echo_test.md`, `server/routes/llm_gateway.py` (after wiki-ingest cutover).
+
+Cross-app deletions / changes (apps/web):
+
+```
+apps/web/
+├── lib/services/
+│   ├── graph-service.ts          DELETED (~720 LOC)
+│   └── wiki-ingest.ts            slimmed from ~203 LOC to ~60 LOC: only marks Source.status,
+│                                 calls POST /v1/workflows/wiki/extract, and runs the
+│                                 prisma.$transaction on the returned payload
+├── lib/providers/
+│   └── list-models.ts            slimmed from ~225 LOC to ~40 LOC (or deleted if Settings UI
+│                                 calls a new tiny BYOK-validation endpoint directly)
+├── workers/
+│   └── ingest.ts                 body rewritten (~80 LOC) — same queue boundary, new HTTP call
+└── package.json                  drop `openai` Node SDK dep after graph-service.ts is gone
+```
 
 ### 4.2 Layering rules
 
@@ -267,6 +301,127 @@ async def _run_and_persist(job_id, req):
 
 The `/jobs/{id}/stream` SSE endpoint reads `JobStore` exactly as before — the streaming contract is unchanged.
 
+### 7.4 `workflows/wiki_ingest.py` — chain pattern (ref doc §Functional API)
+
+Port of `apps/web/lib/services/graph-service.ts`. Five logical steps; first and last are LLM-bound, the middle three are pure Python.
+
+```python
+@task async def extract_graph(content: str, title: str, source_id: str,
+                              existing_labels: list[str], lm: LMConfig) -> Extraction: ...
+@task async def build_wiki_pages(graph: Graph, communities: dict[int, list[str]],
+                                  source_map: dict[str, SourceMeta], lm: LMConfig) -> list[WikiPagePayload]: ...
+
+# Pure helpers — not @task; inlined into the entrypoint
+def _merge_graph(existing: Graph | None, new: Extraction) -> Graph: ...
+def _cluster_graph(merged: Graph) -> dict[int, list[str]]: ...   # networkx.community.louvain_communities
+def _build_index_page(graph, communities, community_pages) -> WikiPagePayload: ...
+
+@entrypoint()
+async def extract_wiki(req: WikiExtractRequest) -> WikiExtractResult:
+    # mode == "extract": new source ingest
+    # mode == "remove": surgical source removal + re-cluster
+    if req.mode == "extract":
+        extraction = await extract_graph(
+            req.source_content, req.source_title, req.source_id,
+            req.existing_node_labels, _lm(req)
+        ).result()
+        merged = _merge_graph(req.existing_graph, extraction)
+    else:  # remove
+        merged = _filter_source(req.existing_graph, req.source_id)
+        extraction = None
+
+    communities = _cluster_graph(merged)
+    community_pages = await build_wiki_pages(
+        merged, communities, _source_map_from(req), _lm(req)
+    ).result()
+    index_page = _build_index_page(merged, communities, community_pages)
+    log_entry = _format_log(req.source_id, extraction, len(community_pages))
+
+    return WikiExtractResult(
+        normalized_title=req.source_title,
+        extraction=extraction,
+        merged_graph=merged,
+        communities=communities,
+        community_pages=community_pages,
+        index_page=index_page,
+        log_entry=log_entry,
+    )
+```
+
+**HTTP contract** (`POST /v1/workflows/wiki/extract`, gated by `X-Internal-Token: ${INTERNAL_CALLBACK_TOKEN}`):
+
+Request:
+```json
+{
+  "mode": "extract" | "remove",
+  "notebookId": "...",
+  "sourceId": "...",
+  "userId": "...",
+  "sourceTitle": "...",
+  "sourceContent": "<MinerU-extracted markdown>",
+  "existingNodeLabels": ["..."],
+  "existingGraph": { "nodes": [...], "edges": [...] } | null,
+  "byok": {"provider": "...", "model": "...", "apiKey": "...", "baseUrl": "..."}
+}
+```
+
+Response:
+```json
+{
+  "normalizedTitle": "...",
+  "extraction": {"nodes": [...], "edges": [...]} | null,
+  "mergedGraph": {"nodes": [...], "edges": [...]},
+  "communities": {"0": ["NodeA", "NodeB"], ...},
+  "communityPages": [{"slug":"community-0","title":"...","markdown":"...","sourceIds":[...]}],
+  "indexPage": {"slug":"index","title":"Wiki Index","markdown":"..."},
+  "logEntry": "..."
+}
+```
+
+Error envelope (matches the existing `/v1/workflows/daily_digest/*` shape):
+
+```json
+{"error": {"code": "INVALID_KEY|TIMEOUT|UPSTREAM_ERROR|BAD_INPUT|EXTRACTION_FAILED",
+           "providerId": "...", "message": "..."}}
+```
+
+**Worker side** (`apps/web/workers/ingest.ts`) becomes:
+
+```ts
+async function processJob(job) {
+  const source = await prisma.source.findUniqueOrThrow({...});
+  const graph  = await prisma.notebookGraph.findUnique({...});
+  const byok   = await resolveApiKey(userId, settings.wikiModelProvider);
+
+  await prisma.source.update({ where: { id: sourceId }, data: { status: "INGESTING" } });
+
+  const result = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/wiki/extract`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Internal-Token": INTERNAL_CALLBACK_TOKEN },
+    body: JSON.stringify({ mode: "extract", notebookId, sourceId, userId,
+                            sourceTitle: source.title, sourceContent: source.markdown,
+                            existingNodeLabels: graph?.graphData?.nodes.map(n => n.label) ?? [],
+                            existingGraph: graph?.graphData ?? null,
+                            byok: { provider: settings.wikiModelProvider,
+                                    model: settings.wikiModelName, ...byok } }),
+  }).then(r => r.json());
+
+  await prisma.$transaction(async (tx) => {
+    await tx.notebookGraph.upsert({...});                                  // unchanged
+    for (const page of [result.indexPage, ...result.communityPages]) {     // unchanged
+      await tx.wikiPage.upsert({...});
+    }
+    await tx.wikiPage.deleteMany({ where: orphanFilter });                 // unchanged
+    await tx.wikiPageLog.create({ data: { content: result.logEntry, ... }});
+  });
+  await prisma.source.update({ where: { id: sourceId }, data: { status: "READY" }});
+}
+```
+
+The transactional commit is unchanged byte-for-byte; only the *production* of `result` moves. `removeSourceFromWiki` calls the same endpoint with `mode: "remove"` (the second branch in the entrypoint above), keeping surgical-remove behavior.
+
+**Cutover safety**: a `WIKI_INGEST_BACKEND={node|python}` env var defaults to `node` (current Phase-1 path) for one release cycle, then defaults to `python`, then the flag and the Node code are deleted. Implementation detail in §9 (steps 9–11).
+
 ## 8. `langgraph.json` & runtime config
 
 ```json
@@ -287,11 +442,16 @@ The `/jobs/{id}/stream` SSE endpoint reads `JobStore` exactly as before — the 
 
 `pyproject.toml` changes:
 - Drop `deepagents` (unused).
-- `[tool.hatch.build.targets.wheel].packages = ["agents", "tools", "prompts", "embeddings", "workflows"]` (drop `graphs`, `hermes`, `config`, `surfaces`; add `agents`).
+- Drop `litellm` (only used by the about-to-be-deleted `llm_gateway.py`; verified zero other consumers).
+- Add `networkx>=3.0` (replaces `graphology` + `graphology-communities-louvain` from the TS side). NetworkX 3+ ships `community.louvain_communities` built-in — no extra packages needed.
+- `[tool.hatch.build.targets.wheel].packages = ["agents", "tools", "prompts", "embeddings", "workflows"]` (drop `graphs`, `hermes`, `config`, `surfaces`; add `agents`; `server` already present).
+
+`apps/web/package.json` change (after wiki-ingest cutover, step 11):
+- Drop `openai` Node SDK dep (verified only consumer is `graph-service.ts`).
 
 ## 9. Migration order
 
-Each step lands as an independent commit; the system stays runnable after every step.
+12 steps. Each lands as an independent commit; the system stays runnable after every step. Steps 1–8 are agent-internal. Steps 9–12 are the wiki-ingest port and gateway demolition (cross-app — `apps/web` + `apps/agent`).
 
 | # | Step | Touch | Verification |
 |---|---|---|---|
@@ -303,6 +463,10 @@ Each step lands as an independent commit; the system stays runnable after every 
 | 6 | Convert `workflows/daily_digest.py` to Functional API; per-query prefilter parallelized. ARQ adapter switches to `generate_section.ainvoke(req)`. | workflows/daily_digest.py + workflows/digest_tasks.py | `pytest tests/test_workflows_daily_digest.py + test_workflows_digest_tasks.py` (rewritten) |
 | 7 | Rename `workflows/matcher/job_runner.py` → `workflows/matcher/job.py`; convert to Functional API orchestrator-worker; update `server/routes/matcher_jobs.py`. | workflows/matcher/job.py + matcher_jobs.py | `pytest tests/test_matcher_workflow.py` (rewritten); manual `/v1/workflows/matcher/jobs` smoke |
 | 8 | Update `apps/agent/README.md`. Update root `CLAUDE.md` if it references hermes/graphs/surfaces by path. | docs | grep clean |
+| 9 | **Wiki-ingest spike (Python only).** Add `workflows/wiki_ingest.py` with `extract_graph` + `_merge_graph` + `_cluster_graph` + `build_wiki_pages` + `_build_index_page` + `extract_wiki` `@entrypoint`. Use the existing langchain-openai client pattern from `daily_digest.py`. Add `networkx>=3.0` to deps. No FastAPI route yet. Validate against a real source from a dev notebook: assert output shape and node/edge counts comparable to current TS output. | new workflows/wiki_ingest.py + tests | `pytest tests/test_wiki_ingest.py`; manual diff against TS output for one source |
+| 10 | **Wiki-ingest route.** Add `server/routes/wiki_ingest.py` with `POST /v1/workflows/wiki/extract` + `INTERNAL_CALLBACK_TOKEN` auth + structured error envelope + Pydantic models in `server/wiki_ingest_types.py`. Wire into `server/app.py`. | new route + types | `pytest tests/test_wiki_ingest_router.py`; `curl` smoke from inside docker network |
+| 11 | **Cutover behind feature flag.** Add `WIKI_INGEST_BACKEND={node|python}` env var to `apps/web/workers/ingest.ts`. When `python`, the worker calls `POST /v1/workflows/wiki/extract` and runs the existing `prisma.$transaction` on the result. When `node` (default), keep the old `graph-service.ts` path. Slim `apps/web/lib/services/wiki-ingest.ts` to ~60 LOC: status writes + Python call + transaction helper. Soak for ≥ 1 release with `python` available behind the flag. | apps/web/workers/ingest.ts + apps/web/lib/services/wiki-ingest.ts | E2E: upload a PDF, watch it complete; toggle the flag and re-run; diff `WikiPage` rows |
+| 12 | **Demolition.** Flip flag default to `python`; verify ≥ 1 week of zero rollbacks. Then in a single commit: `git rm apps/web/lib/services/graph-service.ts`; `git rm apps/agent/server/routes/llm_gateway.py`; remove `app.include_router(llm_gateway_router)` from `server/app.py`; drop `litellm` from `pyproject.toml`; drop `openai` from `apps/web/package.json`; slim `apps/web/lib/providers/list-models.ts` to ~40 LOC (or delete and replace its callsite); remove the `WIKI_INGEST_BACKEND` flag. Update `apps/web/CLAUDE.md` and `apps/agent/CLAUDE.md` to describe wiki ingest under `apps/agent/workflows/`. | bulk deletes across apps/web + apps/agent | grep verifies zero references; full E2E green |
 
 ## 10. Tests
 
@@ -326,8 +490,10 @@ Rewrite:
 
 Add:
 - `tests/test_agents.py` — for each surface, import the module-level `agent`, run `agent.invoke({"messages":[HumanMessage("ping")]}, context=Ctx(...))` against a fake LLM (langchain-core's `FakeListChatModel` or our own stub) that emits one tool call then a final answer. Assert the tool was dispatched (or skipped when frontend) and a final `AIMessage` was produced.
+- `tests/test_wiki_ingest.py` — round-trip: feed a fixed sourceContent into `extract_wiki.ainvoke(req)` with `litellm.acompletion` (or whichever client we use) mocked to return canned graph extractions; assert the returned shape matches the data contract (§7.4), `community-*` slugs render correctly, the index page enumerates communities, and the `mode: "remove"` branch correctly drops a source's nodes from the graph and re-clusters. One test that triggers an upstream error and asserts the apiKey does NOT appear in `caplog`.
+- `tests/test_wiki_ingest_router.py` — exercise `POST /v1/workflows/wiki/extract` with a TestClient: 401 without `X-Internal-Token`, 200 with a mocked `extract_wiki.ainvoke`, structured error envelope on internal exception.
 
-Existing tests preserved as-is: `tests/test_smoke.py` (rewrites the single hermes import), `tests/test_server_app.py`, `tests/test_tools_web.py`.
+Existing tests preserved as-is: `tests/test_smoke.py` (rewrites the single hermes import), `tests/test_server_app.py` (drops llm_gateway route assertions in step 12), `tests/test_tools_web.py`.
 
 ## 11. Risks
 
@@ -339,7 +505,12 @@ Existing tests preserved as-is: `tests/test_smoke.py` (rewrites the single herme
 | Prisma `UserMemory` / `NotebookMemory` rows orphaned | No migration; the tables remain. Note in README that the Python access layer is removed and can be re-added later. |
 | Frontend tool rendering breaks during step 2 | Hub agent's local `tool_node` keeps the `name in HUB_FRONTEND_TOOL_NAMES` skip semantics. Manual hub smoke after step 2. |
 | Tests reference `hermes.*` | Tests that test deleted subsystems are deleted, not adapted. The remaining tests (`test_smoke.py`, `test_server_app.py`, `test_tools_web.py`) only need import path fixups, which step 4 handles in the same commit as the bulk deletes. |
-| Concurrent reviewers / branches | All changes are inside `apps/agent/`. The web app changes are zero (or one rename) so there's no cross-app coordination beyond the `langgraph.json` audit. |
+| Concurrent reviewers / branches | Steps 1–8 are inside `apps/agent/`. Steps 9–12 touch `apps/web` (workers, lib/services, lib/providers, package.json). All changes funnel through this single spec. |
+| **Louvain community-id stability** between TS (`graphology-communities-louvain`) and Python (`networkx.community.louvain_communities`) | IDs differ across implementations due to random tie-breaks, but `community-{id}` slugs are regenerated every ingest and the orphan-page deletion handles re-numbering atomically — so this isn't a bug as long as no UI code caches community IDs across requests. Pre-cutover (step 11), grep `apps/web/components/deepdive/wiki/` for any code that caches community IDs. If found, file a separate issue — don't bundle the fix in. |
+| **BYOK key in transit** from Node→Python over HTTP | Stays inside docker compose network (workflows-api:2027), never on public internet. `INTERNAL_CALLBACK_TOKEN` already gates the entire `/v1/workflows/*` surface. Python side **never logs the request body at INFO**; only structured stages (e.g. `"extracted N nodes from sourceId=..."`) are logged. A pytest in `test_wiki_ingest.py` asserts the apiKey doesn't appear in `caplog` on error. Same threat model as the Phase-1 gateway (no new exposure). |
+| **`removeSourceFromWiki` path** (surgical-remove vs. re-ingest) | Folded into the same Python entrypoint via `mode: "remove"` (§7.4). Adds ~80 LOC to wiki_ingest.py; deletes the corresponding TS path. Rejected fallback: dropping surgical-remove and forcing full re-ingest on next user action — worse UX, not recommended. |
+| **Cutover regression** (Python output diverges from TS output for an edge-case source) | Step 11's feature flag is the safety net: flip back to `node` per-instance via env var. Soak ≥ 1 release with `python` opt-in, then ≥ 1 week with `python` default before deletion in step 12. |
+| **Dual implementation drift during soak** (Phase-1 gateway and Phase-2 direct path running simultaneously) | The soak window is bounded; step 12 removes the gateway and the flag together. Don't add new features to graph-service.ts or llm_gateway.py during the soak — see Phase-1 spec §Appendix B. |
 
 ## 12. Out-of-scope follow-ups (deliberate)
 
@@ -349,4 +520,8 @@ These come up naturally in the refactor and are deferred:
 - **Routing pattern (ref doc §Routing)** — currently no surface needs to dispatch between sub-graphs. If `deep_research` later wants to choose between web-search and RAG paths via a structured-output classifier, that's a follow-up.
 - **Evaluator-optimizer (ref doc §Evaluator-optimizer)** — currently no surface or workflow has a self-feedback loop.
 - **Streaming progress for matcher via the Functional API's native stream** — the SSE endpoint stays read-from-JobStore; converting it to consume `entrypoint.stream(...)` is a follow-up.
-- **Re-evaluating ContextRef-as-protocol if real wiki/source injection lands** — for now the placeholders are deleted; if/when wiki context becomes real (notebook surface needs it), a small `_render_wiki_context(notebook_id) -> str` helper is the minimum addition, not a Protocol hierarchy.
+- **Streaming wiki extraction** — wiki ingest stays request/response; LLM calls happen in sequence inside Python. Streaming chunked extraction back to the worker is a future enhancement.
+- **Switching wiki ingest off BullMQ to ARQ** — the queue boundary stays where it is; the migration is about *what runs inside the worker*, not where the queue lives.
+- **LangSmith tracing for wiki ingest** — once the work runs in Python, LangSmith tracing comes along with langchain-openai for free; adopt in a follow-up.
+- **Refactoring `apps/web/lib/services/wiki-ingest.ts` further** (e.g., moving the transactional commit into a Prisma extension) — keep the slim version minimal in step 11.
+- **Re-evaluating ContextRef-as-protocol if real wiki/source injection lands inside the agent surface** — for now the placeholders are deleted; if/when the *notebook agent's* system prompt needs to inject wiki text from `NotebookGraph` (separate concern from the wiki *ingest* workflow above), a small `_render_wiki_context(notebook_id) -> str` helper is the minimum addition, not a Protocol hierarchy.
