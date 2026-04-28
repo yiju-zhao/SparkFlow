@@ -82,6 +82,27 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # SemOps — LOTUS-backed semantic operators (sem_rank etc.) used by the
+  # matcher / daily_digest / search workflows in apps/langgraph. Stateless
+  # FastAPI service; no DB, no Redis. First build is slow (lotus-ai pulls
+  # torch + transformers + faiss-cpu).
+  semops:
+    build:
+      context: ./apps/semops
+      dockerfile: Dockerfile
+      additional_contexts:
+        certs: ./
+    container_name: sparkflow-semops
+    ports:
+      - "${SEMOPS_PORT:-2025}:2025"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2025/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
   digest-worker:
     build:
       context: ./apps/langgraph
@@ -92,14 +113,16 @@ services:
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
     env_file: ./apps/langgraph/.env
     environment:
-      # Override host-side localhost URL with docker service hostname.
+      # Override host-side localhost URLs with docker service hostnames.
       REDIS_URL: redis://redis:6379
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
-      SEMOPS_API_URL: ${SEMOPS_API_URL}
+      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
       DIGEST_WORKER_CONCURRENCY: ${DIGEST_WORKER_CONCURRENCY:-4}
     depends_on:
       redis:
+        condition: service_healthy
+      semops:
         condition: service_healthy
     restart: unless-stopped
 
@@ -125,7 +148,7 @@ services:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL:-http://web:3001}
-      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://host.docker.internal:2025}
+      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
       # SearXNG runs in the same compose network — use the service name.
       SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
@@ -135,6 +158,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      semops:
         condition: service_healthy
     restart: unless-stopped
 

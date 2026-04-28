@@ -26,8 +26,8 @@ name: sparkflow
 # workflows-api, migrate). Anchors are merged into each service's
 # environment via `<<: [*no_proxy_env, *ca_cert_env]`.
 x-no-proxy-env: &no_proxy_env
-  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},postgres,redis,searxng,web,workflows-api,ingest-worker,digest-worker,migrate
-  no_proxy: ${no_proxy:-localhost,127.0.0.1},postgres,redis,searxng,web,workflows-api,ingest-worker,digest-worker,migrate
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},postgres,redis,searxng,semops,web,workflows-api,ingest-worker,digest-worker,migrate
+  no_proxy: ${no_proxy:-localhost,127.0.0.1},postgres,redis,searxng,semops,web,workflows-api,ingest-worker,digest-worker,migrate
 
 # Corporate CA bundle env vars — paired with the bind-mount of
 # ./ca-certificates.crt onto /etc/ssl/certs/ca-certificates.crt below.
@@ -111,6 +111,12 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  semops:
+    environment:
+      <<: [*no_proxy_env, *ca_cert_env]
+    volumes:
+      - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+
   digest-worker:
     build:
       context: ./apps/langgraph
@@ -122,13 +128,15 @@ services:
       <<: [*no_proxy_env, *ca_cert_env]
       REDIS_URL: redis://redis:6379
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
-      SEMOPS_API_URL: ${SEMOPS_API_URL}
+      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
       DIGEST_WORKER_CONCURRENCY: ${DIGEST_WORKER_CONCURRENCY:-4}
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
       redis:
+        condition: service_healthy
+      semops:
         condition: service_healthy
     restart: unless-stopped
 
@@ -146,7 +154,7 @@ services:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
       SPARKFLOW_API_URL: ${SPARKFLOW_API_URL:-http://web:3001}
-      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://host.docker.internal:2025}
+      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
       SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
       INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
     ports:
@@ -157,6 +165,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      semops:
         condition: service_healthy
     restart: unless-stopped
 

@@ -222,12 +222,17 @@ cd apps/langgraph && make dev
 # Terminal 3 — Workflows FastAPI (port 2027)
 cd apps/langgraph && make serve
 
-# Terminal 4 — Semops (port 2025)
-cd apps/semops && python main.py
+# Semops (port 2025) now runs inside docker compose by default —
+# no separate terminal needed. If you'd rather run it on the host
+# during dev (faster iteration on the LOTUS code):
+#   docker compose stop semops
+#   cd apps/semops && python main.py
+# Then `apps/langgraph/.env` should point SEMOPS_API_URL at host:
+#   SEMOPS_API_URL=http://host.docker.internal:2025
 ```
 
-The wiki-ingest and daily-digest workers run inside docker compose, no
-host process needed.
+The wiki-ingest worker, daily-digest worker, and semops all run inside
+docker compose by default — no extra host processes needed.
 
 5. **Access the application**
 
