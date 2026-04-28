@@ -109,27 +109,9 @@ cd apps/langgraph
 
 ## Environment variables
 
-In docker, the workflows-api / digest-worker services load **two** env files via compose's `env_file:` list:
+**In docker** (`docker-compose.server.yml`): every service reads from the **root `.env`** via `env_file: ./.env`. All vars — `INTERNAL_CALLBACK_TOKEN`, `DATABASE_URL`, `REDIS_URL`, `SPARKFLOW_API_URL`, `SEMOPS_API_URL`, `SEARXNG_URL`, `CHECKPOINT_DB_URL`, `DIGEST_WORKER_CONCURRENCY`, `LANGSMITH_*` — live in that one file. See root `.env.example` for the canonical list.
 
-```yaml
-env_file:
-  - ./apps/web/.env        # shared cross-cutting vars
-  - ./apps/langgraph/.env  # langgraph-only (this directory)
-```
-
-So **cross-cutting vars live ONLY in `apps/web/.env`** (no duplication, no sync risk):
-
-- `INTERNAL_CALLBACK_TOKEN`, `SPARKFLOW_API_URL`, `SEMOPS_API_URL`, `SEARXNG_URL`, `REDIS_URL`, `DATABASE_URL`, `WECHAT_DATABASE_URL`
-
-`apps/langgraph/.env` is narrow — only langgraph-specific:
-
-| Variable | Required | Note |
-|---|---|---|
-| `CHECKPOINT_DB_URL` | — | LangGraph checkpointer DB; recommended in prod |
-| `DIGEST_WORKER_CONCURRENCY` | — | Default 4 |
-| `LANGSMITH_*` | — | Optional tracing |
-
-For local `make dev` / `make serve` on the host (outside docker), `apps/langgraph/.env` is loaded directly by `python-dotenv` in `server/app.py`, and you'll need to put cross-cutting vars there too — or symlink to `apps/web/.env` for a single source of truth.
+**On the host** (`make dev` / `make serve`): `apps/langgraph/.env` is loaded directly by `python-dotenv` in `server/app.py`. Use `apps/langgraph/.env.example` as the template — it has localhost URLs for host-side workflows. Anything in the root `.env` is invisible to host Python (python-dotenv only reads files passed to it).
 
 BYOK is mandatory on all user-facing paths; no `OPENAI_API_KEY` env fallback.
 

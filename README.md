@@ -219,20 +219,14 @@ git clone https://github.com/yiju-zhao/SparkFlow.git /opt/SparkFlow
 cd /opt/SparkFlow
 git checkout agent-dev   # or main once merged
 
-# 1. Configure env files. Four-file model (one role per file, no overlap):
-#      .env                  → compose meta (port mappings, SEARXNG_SECRET)
-#      apps/web/.env         → all cross-cutting + web-only app config
-#      apps/langgraph/.env   → narrow: langgraph-only (CHECKPOINT_DB_URL, LANGSMITH_*)
-#      .env.proxy            → server-only NO_PROXY + corporate CA paths
-#    Cross-cutting vars (INTERNAL_CALLBACK_TOKEN, POSTGRES_*, DATABASE_URL,
-#    REDIS_URL, SEMOPS_API_URL, SEARXNG_URL) live ONLY in apps/web/.env;
-#    langgraph services pick them up via docker-compose's env_file lists.
-cp .env.example                           .env             # root: WEB_PORT etc. for ${...} substitution
-cp apps/web/.env.production.example       apps/web/.env
-cp apps/langgraph/.env.production.example apps/langgraph/.env
-cp .env.proxy.example                     .env.proxy
+# 1. Configure env. ONE file at repo root — every secret, every URL, every
+#    port mapping lives here. Compose reads it both for ${VAR} substitution
+#    and via env_file: ./.env on every service.
+cp .env.example .env
+# Edit .env: rotate secrets (NEXTAUTH_SECRET, POSTGRES_PASSWORD,
+# INTERNAL_CALLBACK_TOKEN, API_KEY_ENCRYPTION_SECRET, SEARXNG_SECRET).
 # Set NEXTAUTH_URL and NEXT_PUBLIC_* to public URLs the browser can reach.
-# Override WEB_PORT etc. in the root .env if the default ports collide.
+# Override WEB_PORT etc. if the defaults collide.
 
 # 2. Drop CA bundle (or empty placeholder for open networks)
 cp /path/to/your-ca.crt ./ca-certificates.crt   # or `touch ca-certificates.crt`
@@ -269,38 +263,36 @@ dcprod logs -f workflows-api
 
 ## Environment Variables
 
-### How env files are loaded
+### Server: one file
 
-The compose files use **`env_file:` for app config + a root `.env` for compose-level meta**. No same-var-resolvable-two-ways footgun: each variable lives in exactly one file with one role.
+`docker-compose.server.yml` reads **only** the root `.env`. Every service uses `env_file: ./.env`, and Compose also uses it for `${VAR}` substitution at parse time. Same file, both layers — no precedence puzzle.
 
-| File | Role | Read by |
+```bash
+cp .env.example .env
+# edit .env (rotate secrets, set public URLs)
+docker compose -f docker-compose.server.yml --profile prod up -d --build
+```
+
+The `.env.example` is sectioned (compose meta → auth → postgres → redis → service URLs → workers → MinerU → observability → corporate proxy/CA) so you can scan it top-to-bottom. Comments inline document every variable.
+
+### Local dev: per-app files (unchanged)
+
+The host processes (`npm run dev`, `make dev`, `make serve`) read their own files because Next.js and python-dotenv don't read the repo-root `.env`:
+
+| File | Read by | Notes |
 |---|---|---|
-| `.env` (repo root) | Compose **meta**: port mappings (`WEB_PORT`, etc.) + `${...}`-substituted secrets (`SEARXNG_SECRET`) | `docker compose` itself, at parse time |
-| `apps/web/.env` | All cross-cutting vars (`POSTGRES_*`, `DATABASE_URL`, `REDIS_URL`, `INTERNAL_CALLBACK_TOKEN`, `SEMOPS_API_URL`, `SEARXNG_URL`, `SPARKFLOW_API_URL`) **plus** web-only config | postgres, ingest-worker, migrate, web, **and** workflows-api / digest-worker (via env_file list) |
-| `apps/langgraph/.env` | Narrow: langgraph-only (`CHECKPOINT_DB_URL`, `DIGEST_WORKER_CONCURRENCY`, `LANGSMITH_*`) | workflows-api, digest-worker |
-| `.env.proxy` | Server-only: `NO_PROXY` + corporate CA paths (`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`) | every outbound-talking service in `docker-compose.server.yml` |
-| `apps/web/.env.local` | **Host-only override** for `npm run dev` — point `DATABASE_URL` / `REDIS_URL` at `localhost:5433` / `localhost:6379`. Next.js auto-picks; docker ignores. | Host Node process only |
+| `apps/web/.env` (or `.env.local`) | `npm run dev` (Next.js) | Has localhost URLs; docker ignores it |
+| `apps/langgraph/.env` | `make dev` / `make serve` (python-dotenv) | Has localhost URLs; docker ignores it |
+| Root `.env` | `docker compose up -d` (the local-dev workers) | Optional in dev — `docker-compose.yml` has literal in-network URL overrides for the workers |
 
-**Why two files at repo level?** docker compose's `${VAR}` substitution looks for a `.env` *next to the compose file* — not in `apps/web/.env`. Putting port mappings in `apps/web/.env` would silently fall back to compose defaults. Splitting compose meta (`.env`) from container env (`apps/web/.env`) makes each layer obvious.
+If you only run docker locally for `postgres + redis + searxng + workers + semops` and run web/langgraph on the host, no root `.env` is needed; the dev compose has sensible defaults and literal `environment:` overrides for in-docker hostnames.
 
-Templates ship as `*.example` files (committed); runtime files (`.env`, `.env.local`, `.env.proxy`) are gitignored.
+Templates ship as `*.example` files (committed); runtime files (`.env`, `.env.local`) are gitignored.
 
 | Environment | Templates |
 |---|---|
-| Dev (host) | `apps/web/.env.example`, `apps/langgraph/.env.example` |
-| Prod (server) | `.env.example`, `apps/web/.env.production.example`, `apps/langgraph/.env.production.example`, `.env.proxy.example` |
-
-### Required keys at a glance
-
-The example files are the source of truth — they document every variable inline. Highlights:
-
-**`apps/web/.env`** — must rotate: `NEXTAUTH_SECRET`, `API_KEY_ENCRYPTION_SECRET`, `POSTGRES_PASSWORD`, `INTERNAL_CALLBACK_TOKEN`. Must set per environment: `NEXTAUTH_URL`, `NEXT_PUBLIC_LANGGRAPH_API_URL`, `NEXT_PUBLIC_WORKFLOWS_API_URL` (these reach the browser, so they must be publicly resolvable URLs). On the server, `DATABASE_URL` and `REDIS_URL` use docker hostnames (`postgres:5432`, `redis:6379`); locally, override in `.env.local` with `localhost:5433` / `localhost:6379`.
-
-**`apps/langgraph/.env`** — narrow file. `CHECKPOINT_DB_URL` (separate DB recommended in prod), `DIGEST_WORKER_CONCURRENCY` (default 4), `LANGSMITH_*` (optional tracing). BYOK is mandatory on all user-facing paths; no `OPENAI_API_KEY` env fallback for user requests.
-
-**`.env.proxy`** — server only. Lists every docker service hostname in `NO_PROXY` so library-level proxy code skips inter-container traffic; points the three CA-bundle env vars at `/etc/ssl/certs/ca-certificates.crt` (the bind-mount target). On non-MITM hosts this file is harmless but still required (compose `env_file` is mandatory).
-
-**`apps/semops/.env`** — optional, `SEMOPS_RANK_POOL_SIZE` only (default `min(4, cpu_count)`).
+| Server (prod, single file) | `.env.example` |
+| Local dev (host processes) | `apps/web/.env.example`, `apps/langgraph/.env.example` |
 
 ## Data Models
 
