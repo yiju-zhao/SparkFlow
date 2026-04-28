@@ -260,17 +260,11 @@ const SourceItem = memo(function SourceItem({
       onClick={onSelect}
     >
       {/* Source type icon */}
-      <Icon
-        className={`${meta.color} h-[22px] w-[22px] shrink-0`}
-        strokeWidth={1.75}
-        aria-hidden
-      />
+      <Icon className={`${meta.color} h-[22px] w-[22px] shrink-0`} strokeWidth={1.75} aria-hidden />
 
       {/* Title + meta */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-sf-ink leading-tight">
-          {source.title}
-        </p>
+        <p className="truncate text-sm font-semibold text-sf-ink leading-tight">{source.title}</p>
         <p className="mt-0.5 text-[11px] text-sf-ink-4 font-mono tabular-nums">
           <span className="font-sans uppercase tracking-[0.08em] font-semibold text-sf-ink-3">
             {meta.label}
@@ -423,7 +417,12 @@ function SourceContentView({ source, onBack }: { source: Source; onBack: () => v
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Header with back button and TOC button */}
       <div className="flex items-center gap-2 border-b border-sf-line px-4 py-2.5 bg-sf-surface shrink-0">
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt" onClick={onBack}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0 rounded-[6px] hover:bg-sf-bg-alt"
+          onClick={onBack}
+        >
           <ArrowLeft className="h-4 w-4 text-sf-ink-3" />
         </Button>
         <div className="min-w-0 flex-1">

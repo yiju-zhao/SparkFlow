@@ -109,7 +109,12 @@ const API_KEY_PROVIDERS: {
   placeholder: string;
 }[] = [
   { id: "openai", label: "OpenAI", description: "GPT-4, GPT-3.5-Turbo", placeholder: "sk-..." },
-  { id: "gemini", label: "Google Gemini", description: "Gemini 1.5 Pro, Flash", placeholder: "AIza..." },
+  {
+    id: "gemini",
+    label: "Google Gemini",
+    description: "Gemini 1.5 Pro, Flash",
+    placeholder: "AIza...",
+  },
   { id: "deepseek", label: "DeepSeek", description: "DeepSeek Chat, Coder", placeholder: "sk-..." },
   { id: "glm", label: "GLM (Zhipu)", description: "GLM-4, GLM-4-Air", placeholder: "..." },
   { id: "minimax", label: "Minimax", description: "MiniMax-ABAB, Text", placeholder: "..." },
@@ -243,10 +248,7 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
               />
             )}
             {active === "api-keys" && (
-              <ApiKeysSection
-                apiKeyStatus={apiKeyStatus}
-                setApiKeyStatus={setApiKeyStatus}
-              />
+              <ApiKeysSection apiKeyStatus={apiKeyStatus} setApiKeyStatus={setApiKeyStatus} />
             )}
             {active === "account" && <AccountSection user={user} />}
           </div>
@@ -288,9 +290,7 @@ function SettingsSidebar({
               data-guide={`settings-nav-${id}`}
               onClick={() => onSelect(id)}
               className={`flex items-center gap-3 h-10 px-3 rounded-[8px] text-[13.5px] font-medium transition-colors ${
-                isActive
-                  ? "bg-sf-black text-white"
-                  : "text-sf-ink-2 hover:bg-sf-surface"
+                isActive ? "bg-sf-black text-white" : "text-sf-ink-2 hover:bg-sf-surface"
               }`}
             >
               <Icon
@@ -330,26 +330,16 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-function Card({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={`bg-sf-surface border border-sf-line rounded-[10px] ${className}`}
-    >
+    <div className={`bg-sf-surface border border-sf-line rounded-[10px] ${className}`}>
       {children}
     </div>
   );
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="text-[13px] font-semibold text-sf-ink-2 block mb-1.5">{children}</label>
-  );
+  return <label className="text-[13px] font-semibold text-sf-ink-2 block mb-1.5">{children}</label>;
 }
 
 function StatusBadge({
@@ -396,9 +386,7 @@ function AiModelsSection({
   const [chatModel, setChatModel] = useState(initialSettings?.modelName ?? "");
   const [wikiProvider, setWikiProvider] = useState(initialSettings?.wikiModelProvider ?? "");
   const [wikiModel, setWikiModel] = useState(initialSettings?.wikiModelName ?? "");
-  const [searchProvider, setSearchProvider] = useState(
-    initialSettings?.searchModelProvider ?? "",
-  );
+  const [searchProvider, setSearchProvider] = useState(initialSettings?.searchModelProvider ?? "");
   const [searchModel, setSearchModel] = useState(initialSettings?.searchModelName ?? "");
   const [matcherProvider, setMatcherProvider] = useState(
     initialSettings?.semopsModelProvider ?? "",
@@ -544,7 +532,10 @@ function AiModelsSection({
             first; only providers with a saved key will appear in the dropdowns below.
           </div>
         )}
-        <ModelsGroup title="Deepdive" description="Configure the models powering the Deepdive research and synthesis capabilities.">
+        <ModelsGroup
+          title="Deepdive"
+          description="Configure the models powering the Deepdive research and synthesis capabilities."
+        >
           <ModelRow
             label="Chat Model"
             description="Used for general conversational interactions and reasoning."
@@ -577,7 +568,10 @@ function AiModelsSection({
           />
         </ModelsGroup>
 
-        <ModelsGroup title="Research Hub" description="Configure models used in the Research Hub environment.">
+        <ModelsGroup
+          title="Research Hub"
+          description="Configure models used in the Research Hub environment."
+        >
           <ModelRow
             label="Matcher Model"
             description="Used for matching entity relationships and classification tasks."
@@ -784,33 +778,33 @@ function ApiKeysSection({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
         {API_KEY_PROVIDERS.map((provider) => (
-          <div key={provider.id} data-guide={provider.id === "openai" ? "provider-card-openai" : undefined}>
-          <ProviderKeyCard
-            provider={provider}
-            status={apiKeyStatus[provider.id]}
-            onSaved={async () => {
-              const res = await fetch("/api/settings");
-              if (res.ok) {
-                const data = await res.json();
-                setApiKeyStatus(data.apiKeyStatus || {});
-              }
-            }}
-            onRemoved={() => {
-              setApiKeyStatus((prev) => {
-                const next = { ...prev };
-                delete next[provider.id];
-                return next;
-              });
-            }}
-          />
+          <div
+            key={provider.id}
+            data-guide={provider.id === "openai" ? "provider-card-openai" : undefined}
+          >
+            <ProviderKeyCard
+              provider={provider}
+              status={apiKeyStatus[provider.id]}
+              onSaved={async () => {
+                const res = await fetch("/api/settings");
+                if (res.ok) {
+                  const data = await res.json();
+                  setApiKeyStatus(data.apiKeyStatus || {});
+                }
+              }}
+              onRemoved={() => {
+                setApiKeyStatus((prev) => {
+                  const next = { ...prev };
+                  delete next[provider.id];
+                  return next;
+                });
+              }}
+            />
           </div>
         ))}
       </div>
 
-      <CustomEndpointsSection
-        apiKeyStatus={apiKeyStatus}
-        setApiKeyStatus={setApiKeyStatus}
-      />
+      <CustomEndpointsSection apiKeyStatus={apiKeyStatus} setApiKeyStatus={setApiKeyStatus} />
     </>
   );
 }
@@ -856,7 +850,8 @@ function CustomEndpointsSection({
       <div className="mb-4">
         <h3 className="text-[17px] font-bold text-sf-ink tracking-tight">Custom Endpoints</h3>
         <p className="mt-1 text-[13px] text-sf-ink-3">
-          Connect any OpenAI-compatible provider — vLLM, Ollama, or self-hosted. Add as many as you need.
+          Connect any OpenAI-compatible provider — vLLM, Ollama, or self-hosted. Add as many as you
+          need.
         </p>
       </div>
 
@@ -941,9 +936,7 @@ function CustomEndpointCard({
   const [apiKey, setApiKey] = useState("");
   // Comma- or newline-separated model IDs typed by the user (custom
   // endpoints don't auto-probe /v1/models).
-  const [modelNamesText, setModelNamesText] = useState(
-    initialModelNames.join(", "),
-  );
+  const [modelNamesText, setModelNamesText] = useState(initialModelNames.join(", "));
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1022,7 +1015,9 @@ function CustomEndpointCard({
             className="h-8 rounded-[6px] border-sf-line-strong text-sm font-semibold"
           />
         ) : (
-          <h4 className="text-[15px] font-bold text-sf-ink truncate">{label || "Custom endpoint"}</h4>
+          <h4 className="text-[15px] font-bold text-sf-ink truncate">
+            {label || "Custom endpoint"}
+          </h4>
         )}
         {hasKey ? <StatusBadge tone="success">Configured</StatusBadge> : null}
       </div>
@@ -1468,7 +1463,8 @@ function DataSourcesSection({
               className="h-4 w-4 rounded-[3px] border-sf-line-strong accent-sf-accent"
             />
             <span>
-              Select All <span className="font-mono tabular-nums text-sf-ink-3">({sources.length})</span>
+              Select All{" "}
+              <span className="font-mono tabular-nums text-sf-ink-3">({sources.length})</span>
             </span>
           </label>
         </div>
@@ -1596,10 +1592,7 @@ function AccountSection({ user }: { user: SettingsUser }) {
 
   return (
     <>
-      <SectionHeader
-        title="Account"
-        description="Manage your profile and security settings."
-      />
+      <SectionHeader title="Account" description="Manage your profile and security settings." />
 
       <Card className="overflow-hidden mb-6">
         <div className="px-6 pt-5 pb-4 border-b border-sf-line">

@@ -42,10 +42,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         .split(",")
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
-      if (
-        adminEmails.includes(dbUser.email.toLowerCase()) &&
-        dbUser.role !== "ADMIN"
-      ) {
+      if (adminEmails.includes(dbUser.email.toLowerCase()) && dbUser.role !== "ADMIN") {
         try {
           await prisma.user.update({
             where: { id: dbUser.id },

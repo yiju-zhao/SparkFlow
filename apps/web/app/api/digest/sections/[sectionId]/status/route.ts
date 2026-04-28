@@ -31,10 +31,7 @@ export async function GET(
 
   const workflowsUrl = process.env.WORKFLOWS_API_URL;
   if (!workflowsUrl) {
-    return NextResponse.json(
-      { error: "WORKFLOWS_API_URL not configured" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "WORKFLOWS_API_URL not configured" }, { status: 500 });
   }
 
   const STATUS_TIMEOUT_MS = 3_000;

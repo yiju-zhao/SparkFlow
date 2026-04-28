@@ -2,14 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  FileText,
-  Lightbulb,
-  Pencil,
-  RefreshCw,
-  Maximize2,
-} from "lucide-react";
+import { ArrowLeft, FileText, Lightbulb, Pencil, RefreshCw, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { ResizableDivider } from "@/components/ui/resizable-divider";
@@ -368,9 +361,7 @@ export function WikiPanel({
               title="Refresh graph"
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 text-sf-ink-3 ${
-                  isRefreshingGraph ? "animate-spin" : ""
-                }`}
+                className={`h-3.5 w-3.5 text-sf-ink-3 ${isRefreshingGraph ? "animate-spin" : ""}`}
               />
             </Button>
             <Button
@@ -414,9 +405,7 @@ export function WikiPanel({
                 title="Refresh graph"
               >
                 <RefreshCw
-                  className={`h-3.5 w-3.5 text-sf-ink-3 ${
-                    isRefreshingGraph ? "animate-spin" : ""
-                  }`}
+                  className={`h-3.5 w-3.5 text-sf-ink-3 ${isRefreshingGraph ? "animate-spin" : ""}`}
                 />
               </Button>
               <Button
@@ -726,7 +715,12 @@ function WikiPageView({
             <p className="text-xs text-sf-ink-4 mt-1">
               This entity exists in the graph but doesn&apos;t have its own page yet
             </p>
-            <Button variant="ghost" size="sm" className="mt-3 text-xs rounded-[6px]" onClick={onBack}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3 text-xs rounded-[6px]"
+              onClick={onBack}
+            >
               Go back
             </Button>
           </div>

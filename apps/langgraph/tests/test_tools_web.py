@@ -4,10 +4,7 @@ import json
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from tools.web import search_web, url_fetch
-
 
 # ---------------------------------------------------------------------------
 # search_web — default SearXNG path
@@ -146,11 +143,7 @@ def test_url_fetch_success(monkeypatch):
 
 def test_url_fetch_http_error_returns_json_error():
     with patch("tools.web.httpx.Client") as Client:
-        Client.return_value.__enter__.return_value.get.side_effect = Exception(
-            "network down"
-        )
+        Client.return_value.__enter__.return_value.get.side_effect = Exception("network down")
         result = url_fetch.invoke({"url": "https://example.test"})
     parsed = json.loads(result)
     assert "error" in parsed
-
-

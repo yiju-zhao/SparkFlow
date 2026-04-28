@@ -199,6 +199,10 @@ HUB_UI_TOOLS = [
 HUB_FRONTEND_TOOLS = HUB_UI_TOOLS
 
 HUB_FRONTEND_TOOL_NAMES = {
-    "show_stat_card", "show_table", "show_chart",
-    "show_select", "show_confirm", "show_navigation",
+    "show_stat_card",
+    "show_table",
+    "show_chart",
+    "show_select",
+    "show_confirm",
+    "show_navigation",
 }

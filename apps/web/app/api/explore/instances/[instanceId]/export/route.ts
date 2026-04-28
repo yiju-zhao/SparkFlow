@@ -117,9 +117,20 @@ export async function GET(
     }
     const pubSheet = XLSX.utils.aoa_to_sheet(pubRows);
     pubSheet["!cols"] = [
-      { wch: 50 }, { wch: 40 }, { wch: 80 }, { wch: 80 }, { wch: 40 }, { wch: 25 },
-      { wch: 35 }, { wch: 25 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 40 },
-      { wch: 40 }, { wch: 40 },
+      { wch: 50 },
+      { wch: 40 },
+      { wch: 80 },
+      { wch: 80 },
+      { wch: 40 },
+      { wch: 25 },
+      { wch: 35 },
+      { wch: 25 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 30 },
+      { wch: 40 },
+      { wch: 40 },
+      { wch: 40 },
     ];
     XLSX.utils.book_append_sheet(wb, pubSheet, "Publications");
 
@@ -167,9 +178,23 @@ export async function GET(
     }
     const sessSheet = XLSX.utils.aoa_to_sheet(sessRows);
     sessSheet["!cols"] = [
-      { wch: 50 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 25 },
-      { wch: 40 }, { wch: 80 }, { wch: 80 }, { wch: 80 }, { wch: 40 }, { wch: 35 },
-      { wch: 40 }, { wch: 35 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+      { wch: 50 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 25 },
+      { wch: 40 },
+      { wch: 80 },
+      { wch: 80 },
+      { wch: 80 },
+      { wch: 40 },
+      { wch: 35 },
+      { wch: 40 },
+      { wch: 35 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 25 },
     ];
     XLSX.utils.book_append_sheet(wb, sessSheet, "Sessions");
 

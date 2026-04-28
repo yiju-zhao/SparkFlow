@@ -8,10 +8,7 @@ import { processWebpage } from "@/lib/services/source-processors/webpage-process
 import { processTextDocument } from "@/lib/services/source-processors/text-processor";
 import { processMineruDocument } from "@/lib/services/source-processors/mineru-processor";
 import type { ProcessingContext } from "@/lib/services/source-processors/types";
-import {
-  MAX_SOURCES_PER_NOTEBOOK,
-  formatSourceLimitError,
-} from "@/lib/constants/sources";
+import { MAX_SOURCES_PER_NOTEBOOK, formatSourceLimitError } from "@/lib/constants/sources";
 
 const MINERU_EXTENSIONS = ["pdf", "docx", "doc", "pptx", "ppt"];
 const TEXT_EXTENSIONS = ["txt", "md"];
@@ -21,11 +18,7 @@ const MAX_FILE_SIZE_LABEL = "100MB";
 
 type PrismaLike = Prisma.TransactionClient | typeof prisma;
 
-async function assertSourceCapacity(
-  tx: PrismaLike,
-  notebookId: string,
-  adding: number,
-) {
+async function assertSourceCapacity(tx: PrismaLike, notebookId: string, adding: number) {
   if (adding <= 0) return;
   const current = await tx.source.count({ where: { notebookId } });
   if (current + adding > MAX_SOURCES_PER_NOTEBOOK) {
@@ -552,12 +545,7 @@ export async function deleteSource(sourceId: string) {
   // client can invalidate its queries with the updated data in one shot.
   try {
     const { removeSourceFromWiki } = await import("@/lib/services/wiki-ingest");
-    const result = await removeSourceFromWiki(
-      notebookId,
-      sourceId,
-      sourceTitle,
-      session.user.id,
-    );
+    const result = await removeSourceFromWiki(notebookId, sourceId, sourceTitle, session.user.id);
     console.log(
       `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`,
     );

@@ -11,17 +11,19 @@ The Node-side worker calls POST /v1/workflows/wiki/extract with a Pydantic
 discriminated-union request (see server/wiki_ingest_types.py) and runs the
 prisma.$transaction on the response — that part stays in Node.
 """
+
 from __future__ import annotations
 
 import asyncio
-import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import networkx as nx
+import psycopg
 from langchain_openai import ChatOpenAI
 from langgraph.func import entrypoint, task
-
+from pydantic import BaseModel, Field
 
 # --- types ---
 
@@ -71,7 +73,12 @@ class WikiExtractRequest:
     """Plain dataclass form. The HTTP route binds this from the Pydantic
     discriminated-union (server/wiki_ingest_types.py) so this dataclass
     is what the Functional API entrypoint actually consumes.
+
+    Existing notebook state (graph, communities, prior community pages)
+    is loaded directly from Postgres by `_load_state` keyed on
+    notebook_id — it's no longer carried in the HTTP body.
     """
+
     mode: Literal["extract", "remove"]
     notebook_id: str
     source_id: str
@@ -79,7 +86,6 @@ class WikiExtractRequest:
     source_title: str
     source_content: str = ""
     existing_node_labels: list[str] = field(default_factory=list)
-    existing_graph: Graph | None = None
     source_map: dict[str, str] = field(default_factory=dict)
     lm: dict = field(default_factory=dict)
 
@@ -106,8 +112,9 @@ def _merge_graph(existing: Graph | None, extracted: Extraction) -> Graph:
     union source_refs; new nodes append; edges append (no dedup).
     """
     merged_nodes: dict[str, Node] = {
-        n.id: Node(id=n.id, label=n.label, type=n.type, summary=n.summary,
-                   source_refs=list(n.source_refs))
+        n.id: Node(
+            id=n.id, label=n.label, type=n.type, summary=n.summary, source_refs=list(n.source_refs)
+        )
         for n in (existing.nodes if existing else [])
     }
     for n in extracted.nodes:
@@ -117,16 +124,19 @@ def _merge_graph(existing: Graph | None, extracted: Extraction) -> Graph:
                 if ref not in existing_refs:
                     existing_refs.append(ref)
         else:
-            merged_nodes[n.id] = Node(id=n.id, label=n.label, type=n.type,
-                                       summary=n.summary,
-                                       source_refs=list(n.source_refs))
+            merged_nodes[n.id] = Node(
+                id=n.id,
+                label=n.label,
+                type=n.type,
+                summary=n.summary,
+                source_refs=list(n.source_refs),
+            )
     merged_edges = list((existing.edges if existing else []))
     merged_edges.extend(extracted.edges)
     return Graph(nodes=list(merged_nodes.values()), edges=merged_edges)
 
 
-def _build_extraction_report(existing: Graph | None,
-                              extracted: Extraction) -> dict[str, Any]:
+def _build_extraction_report(existing: Graph | None, extracted: Extraction) -> dict[str, Any]:
     """Build the {nodes, edges, crossRefs} payload the Node-side UI consumes
     (graph-service.ts:610-625 equivalent). crossRefs lists nodes the LLM
     extracted that already exist in the prior graph, with their existing
@@ -136,10 +146,12 @@ def _build_extraction_report(existing: Graph | None,
     cross_refs = []
     for n in extracted.nodes:
         if n.id in existing_node_ids:
-            cross_refs.append({
-                "label": n.label,
-                "existingSourceIds": list(existing_node_ids[n.id].source_refs),
-            })
+            cross_refs.append(
+                {
+                    "label": n.label,
+                    "existingSourceIds": list(existing_node_ids[n.id].source_refs),
+                }
+            )
     return {
         "nodes": [n.__dict__ for n in extracted.nodes],
         "edges": [e.__dict__ for e in extracted.edges],
@@ -179,10 +191,12 @@ def _filter_source(g: Graph, source_id: str) -> Graph:
         if not new_refs:
             dropped_node_ids.add(n.id)
             continue
-        surviving_nodes.append(Node(id=n.id, label=n.label, type=n.type,
-                                     summary=n.summary, source_refs=new_refs))
+        surviving_nodes.append(
+            Node(id=n.id, label=n.label, type=n.type, summary=n.summary, source_refs=new_refs)
+        )
     surviving_edges = [
-        e for e in g.edges
+        e
+        for e in g.edges
         if e.source not in dropped_node_ids
         and e.target not in dropped_node_ids
         and e.source_ref != source_id
@@ -249,95 +263,269 @@ def _resolve_llm(lm: dict) -> ChatOpenAI:
     )
 
 
-def _strip_codefence(s: str) -> str:
-    s = s.strip()
-    if s.startswith("```"):
-        # Drop opening ```lang\n
-        s = s.split("\n", 1)[1] if "\n" in s else s[3:]
-        if s.endswith("```"):
-            s = s.rsplit("```", 1)[0]
-    return s.strip()
+# --- Pydantic schemas for structured-output LLM calls ---
 
 
-async def _extract_graph_impl(content: str, title: str, source_id: str,
-                               existing_labels: list[str], lm: dict) -> Extraction:
+class _NodeOut(BaseModel):
+    id: str
+    label: str
+    type: str = "concept"
+    summary: str = ""
+
+
+class _EdgeOut(BaseModel):
+    source: str
+    target: str
+    relation: str = ""
+    confidence: Literal["EXTRACTED", "INFERRED"] = "EXTRACTED"
+    weight: int = 1
+
+
+class _ExtractOut(BaseModel):
+    normalized_title: str = ""
+    nodes: list[_NodeOut] = Field(default_factory=list)
+    edges: list[_EdgeOut] = Field(default_factory=list)
+
+
+class _PageOut(BaseModel):
+    title: str = ""
+    markdown: str = ""
+
+
+async def _llm_json(prompt: str, schema: type[BaseModel], lm: dict) -> Any:
+    """Call the LLM and validate the response against `schema`.
+
+    Uses ``method="json_mode"`` so any OpenAI-compatible provider works
+    (DeepSeek, Kimi, GLM, MiniMax, Gemini-OpenAI-compat) without
+    function-calling support — all that's needed is a JSON-mode
+    response_format. The prompts already say "Output JSON: { ... }".
+
+    Tests can monkeypatch this helper to bypass the network entirely.
+    """
+    llm = _resolve_llm(lm)
+    return await llm.with_structured_output(schema, method="json_mode").ainvoke(prompt)
+
+
+async def _extract_graph_impl(
+    content: str, title: str, source_id: str, existing_labels: list[str], lm: dict
+) -> Extraction:
     """LLM call: extract nodes + edges from source content. Plain async so tests
     can call it directly outside an entrypoint context.
     """
-    llm = _resolve_llm(lm)
+    # 60k chars ≈ 15k tokens — fits in every modern LLM context window
+    # (gpt-4o, gemini, deepseek all 128k+) without dropping mid-paper
+    # sections the way the old 20k cap silently did. Anything above that
+    # would call for chunked map-reduce extraction, not a bigger cap.
     prompt = _EXTRACT_PROMPT.format(
         existing_labels=", ".join(existing_labels) or "(none)",
-        title=title, content=content[:20000],
+        title=title,
+        content=content[:60000],
     )
-    raw = (await llm.ainvoke(prompt)).content
-    data = json.loads(_strip_codefence(raw))
-    nodes = [Node(id=n["id"], label=n["label"], type=n.get("type", "concept"),
-                   summary=n.get("summary", ""), source_refs=[source_id])
-             for n in data.get("nodes", [])]
-    edges = [Edge(source=e["source"], target=e["target"],
-                   relation=e.get("relation", ""),
-                   confidence=e.get("confidence", "EXTRACTED"),
-                   weight=int(e.get("weight", 1)), source_ref=source_id)
-             for e in data.get("edges", [])]
-    return Extraction(normalized_title=data.get("normalized_title", title),
-                      nodes=nodes, edges=edges)
+    out: _ExtractOut = await _llm_json(prompt, _ExtractOut, lm)
+    nodes = [
+        Node(id=n.id, label=n.label, type=n.type, summary=n.summary, source_refs=[source_id])
+        for n in out.nodes
+    ]
+    edges = [
+        Edge(
+            source=e.source,
+            target=e.target,
+            relation=e.relation,
+            confidence=e.confidence,
+            weight=e.weight,
+            source_ref=source_id,
+        )
+        for e in out.edges
+    ]
+    return Extraction(normalized_title=out.normalized_title or title, nodes=nodes, edges=edges)
 
 
-async def _build_wiki_pages_impl(g: Graph, communities: dict[int, list[str]],
-                                  source_map: dict[str, str], lm: dict) -> list[WikiPagePayload]:
-    """LLM call per community. Plain async so tests can call it directly."""
-    llm = _resolve_llm(lm)
+def _build_page_cache(
+    existing_graph: Graph | None,
+    existing_communities: dict[str, list[str]] | None,
+    existing_pages: list[dict] | None,
+) -> dict[tuple[frozenset, frozenset], dict]:
+    """Index prior community pages by their (node_id_set, source_ref_set)
+    fingerprint. A new community whose fingerprint matches one of these
+    keys can reuse the stored markdown without an LLM call.
+    """
+    if not existing_graph or not existing_communities or not existing_pages:
+        return {}
+    nodes_by_id = {n.id: n for n in existing_graph.nodes}
+    pages_by_slug = {p["slug"]: p for p in existing_pages}
+    cache: dict[tuple[frozenset, frozenset], dict] = {}
+    for cid_str, node_ids in existing_communities.items():
+        page = pages_by_slug.get(f"community-{cid_str}")
+        if not page:
+            continue
+        node_set = frozenset(node_ids)
+        source_set = frozenset(
+            s
+            for nid in node_ids
+            for s in (nodes_by_id[nid].source_refs if nid in nodes_by_id else [])
+        )
+        cache[(node_set, source_set)] = {
+            "title": page["title"],
+            "markdown": page["markdown"],
+        }
+    return cache
+
+
+async def _build_wiki_pages_impl(
+    g: Graph,
+    communities: dict[int, list[str]],
+    source_map: dict[str, str],
+    lm: dict,
+    cache: dict[tuple[frozenset, frozenset], dict] | None = None,
+) -> list[WikiPagePayload]:
+    """LLM call per community, fanned out concurrently via asyncio.gather.
+
+    Communities whose (node_id_set, source_ref_set) fingerprint matches
+    an entry in `cache` skip the LLM entirely and reuse the stored
+    markdown — typical incremental ingest hits cache for most existing
+    communities, dropping wall-clock to ~max(LLM_call) for the deltas.
+    """
+    if not communities:
+        return []
     nodes_by_id = {n.id: n for n in g.nodes}
-    pages: list[WikiPagePayload] = []
-    for cid, node_ids in communities.items():
+    empty = Node(id="", label="", type="", summary="")
+    cache = cache or {}
+
+    def _fingerprint(node_ids: list[str]) -> tuple[frozenset, frozenset]:
+        return (
+            frozenset(node_ids),
+            frozenset(s for nid in node_ids for s in nodes_by_id.get(nid, empty).source_refs),
+        )
+
+    async def _build_one(cid: int, node_ids: list[str]) -> WikiPagePayload:
+        node_set, source_set = _fingerprint(node_ids)
+        source_ids = sorted(source_set)
+        cached = cache.get((node_set, source_set))
+        if cached is not None:
+            return WikiPagePayload(
+                slug=f"community-{cid}",
+                title=cached["title"],
+                markdown=cached["markdown"],
+                source_ids=source_ids,
+            )
         community_nodes = "\n".join(
             f"- {nodes_by_id[nid].label} ({nodes_by_id[nid].type}): {nodes_by_id[nid].summary}"
-            for nid in node_ids if nid in nodes_by_id
+            for nid in node_ids
+            if nid in nodes_by_id
         )
-        source_ids = sorted({s for nid in node_ids for s in nodes_by_id.get(
-            nid, Node(id="", label="", type="", summary="")).source_refs})
-        source_lines = "\n".join(f"- [{sid}] {source_map.get(sid, sid)}"
-                                  for sid in source_ids)
-        prompt = _PAGE_PROMPT.format(community_nodes=community_nodes,
-                                      source_map=source_lines)
-        raw = (await llm.ainvoke(prompt)).content
-        data = json.loads(_strip_codefence(raw))
-        pages.append(WikiPagePayload(
-            slug=f"community-{cid}", title=data.get("title", f"Community {cid}"),
-            markdown=data.get("markdown", ""), source_ids=source_ids,
-        ))
-    return pages
+        source_lines = "\n".join(f"- [{sid}] {source_map.get(sid, sid)}" for sid in source_ids)
+        prompt = _PAGE_PROMPT.format(community_nodes=community_nodes, source_map=source_lines)
+        out: _PageOut = await _llm_json(prompt, _PageOut, lm)
+        return WikiPagePayload(
+            slug=f"community-{cid}",
+            title=out.title or f"Community {cid}",
+            markdown=out.markdown,
+            source_ids=source_ids,
+        )
+
+    return list(await asyncio.gather(*(_build_one(cid, nids) for cid, nids in communities.items())))
 
 
 # @task wrappers — call from inside an @entrypoint
 @task
-async def extract_graph(content: str, title: str, source_id: str,
-                         existing_labels: list[str], lm: dict) -> Extraction:
+async def extract_graph(
+    content: str, title: str, source_id: str, existing_labels: list[str], lm: dict
+) -> Extraction:
     return await _extract_graph_impl(content, title, source_id, existing_labels, lm)
 
 
 @task
-async def build_wiki_pages(g: Graph, communities: dict[int, list[str]],
-                            source_map: dict[str, str], lm: dict) -> list[WikiPagePayload]:
-    return await _build_wiki_pages_impl(g, communities, source_map, lm)
+async def build_wiki_pages(
+    g: Graph,
+    communities: dict[int, list[str]],
+    source_map: dict[str, str],
+    lm: dict,
+    cache: dict[tuple[frozenset, frozenset], dict] | None = None,
+) -> list[WikiPagePayload]:
+    return await _build_wiki_pages_impl(g, communities, source_map, lm, cache)
 
 
-def _build_index_page(g: Graph, communities: dict[int, list[str]],
-                      pages: list[WikiPagePayload]) -> WikiPagePayload:
+def _build_index_page(
+    g: Graph, communities: dict[int, list[str]], pages: list[WikiPagePayload]
+) -> WikiPagePayload:
     """Generate the deterministic index page (no LLM call)."""
     lines = ["# Wiki Index\n"]
     for p in pages:
         lines.append(f"- [{p.title}](./{p.slug}.md)")
-    return WikiPagePayload(slug="index", title="Wiki Index",
-                           markdown="\n".join(lines),
-                           source_ids=sorted({s for p in pages for s in p.source_ids}))
+    return WikiPagePayload(
+        slug="index",
+        title="Wiki Index",
+        markdown="\n".join(lines),
+        source_ids=sorted({s for p in pages for s in p.source_ids}),
+    )
 
 
 def _format_log(source_id: str, extraction: Extraction | None, n_pages: int) -> str:
     n_nodes = len(extraction.nodes) if extraction else 0
     n_edges = len(extraction.edges) if extraction else 0
-    return (f"{source_id} extracted {n_nodes} nodes, {n_edges} edges; "
-            f"{n_pages} community pages")
+    return f"{source_id} extracted {n_nodes} nodes, {n_edges} edges; {n_pages} community pages"
+
+
+# --- DB state loader ---
+
+
+async def _load_state(
+    notebook_id: str,
+) -> tuple[Graph | None, dict[str, list[str]] | None, list[dict] | None]:
+    """Load existing graph + communities + community pages from Postgres.
+
+    Returns `(None, None, None)` when no graph row exists yet (first
+    ingest into a fresh notebook). Mirrors the connection pattern in
+    ``apps/langgraph/tools/hub_toolbox.py``: per-call async connection,
+    positional ``%s`` placeholders, no shared state.
+    """
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL environment variable is not set")
+    async with await psycopg.AsyncConnection.connect(conninfo=dsn) as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                'SELECT "graphData", communities FROM notebook_graphs WHERE "notebookId" = %s',
+                (notebook_id,),
+            )
+            row = await cur.fetchone()
+            if row is None:
+                return None, None, None
+            graph_data, communities = row
+            graph = Graph(
+                nodes=[
+                    Node(
+                        id=n["id"],
+                        label=n["label"],
+                        type=n["type"],
+                        summary=n.get("summary", ""),
+                        source_refs=list(n.get("source_refs") or n.get("sourceRefs") or []),
+                    )
+                    for n in (graph_data or {}).get("nodes", [])
+                ],
+                edges=[
+                    Edge(
+                        source=e["source"],
+                        target=e["target"],
+                        relation=e.get("relation", ""),
+                        confidence=e.get("confidence", "EXTRACTED"),
+                        weight=int(e.get("weight", 1)),
+                        source_ref=e.get("source_ref") or e.get("sourceRef") or "",
+                    )
+                    for e in (graph_data or {}).get("edges", [])
+                ],
+            )
+            await cur.execute(
+                "SELECT slug, title, content FROM wiki_pages "
+                "WHERE \"notebookId\" = %s AND slug LIKE 'community-%%'",
+                (notebook_id,),
+            )
+            page_rows = await cur.fetchall()
+            pages = [
+                {"slug": slug, "title": title, "markdown": content}
+                for (slug, title, content) in page_rows
+            ]
+    return graph, communities, pages
 
 
 # --- entrypoint ---
@@ -345,25 +533,58 @@ def _format_log(source_id: str, extraction: Extraction | None, n_pages: int) -> 
 
 @entrypoint()
 async def extract_wiki(req: WikiExtractRequest) -> WikiExtractResult:
+    existing_graph, existing_communities, existing_pages = await _load_state(
+        req.notebook_id,
+    )
+
     if req.mode == "extract":
         extraction = await extract_graph(
-            req.source_content, req.source_title, req.source_id,
-            req.existing_node_labels, req.lm,
+            req.source_content,
+            req.source_title,
+            req.source_id,
+            req.existing_node_labels,
+            req.lm,
         )
-        merged = _merge_graph(req.existing_graph, extraction)
-        extraction_report = _build_extraction_report(req.existing_graph, extraction)
+        merged = _merge_graph(existing_graph, extraction)
+        extraction_report = _build_extraction_report(existing_graph, extraction)
         normalized_title = extraction.normalized_title or req.source_title
     else:  # remove
-        if req.existing_graph is None:
-            raise ValueError("existing_graph required for mode=remove")
-        merged = _filter_source(req.existing_graph, req.source_id)
+        if existing_graph is None:
+            # No graph yet → nothing to remove. Return an empty payload so
+            # the Node side can short-circuit without entering its commit
+            # transaction.
+            return WikiExtractResult(
+                normalized_title=req.source_title,
+                extraction=None,
+                extraction_report=None,
+                merged_graph=Graph(nodes=[], edges=[]),
+                communities={},
+                community_pages=[],
+                index_page=WikiPagePayload(
+                    slug="index",
+                    title="Wiki Index",
+                    markdown="",
+                    source_ids=[],
+                ),
+                log_entry="",
+            )
+        merged = _filter_source(existing_graph, req.source_id)
         extraction = None
         extraction_report = None
         normalized_title = req.source_title
 
     communities = _cluster_graph(merged)
+    page_cache = _build_page_cache(
+        existing_graph,
+        existing_communities,
+        existing_pages,
+    )
     community_pages = await build_wiki_pages(
-        merged, communities, req.source_map, req.lm,
+        merged,
+        communities,
+        req.source_map,
+        req.lm,
+        page_cache,
     )
     index_page = _build_index_page(merged, communities, community_pages)
     log_entry = _format_log(req.source_id, extraction, len(community_pages))

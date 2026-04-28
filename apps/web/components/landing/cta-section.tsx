@@ -34,7 +34,11 @@ export function CtaSection({ isLoggedIn }: { isLoggedIn: boolean }) {
               {t("title")}
             </h2>
             <p className="mx-auto mb-10 max-w-[52ch] text-lg text-white/85">{t("subtitle")}</p>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="inline-block">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-block"
+            >
               <Button
                 size="lg"
                 className="bg-sf-black text-white hover:bg-sf-black/85 h-auto px-7 py-3 text-sm"

@@ -1,4 +1,10 @@
-"""Pydantic discriminated-union models for POST /v1/workflows/wiki/extract."""
+"""Pydantic discriminated-union models for POST /v1/workflows/wiki/extract.
+
+Existing notebook state (graph + communities + community pages) is no
+longer carried in the HTTP body — the workflow loads it from Postgres
+directly via _load_state(notebook_id).
+"""
+
 from __future__ import annotations
 
 from typing import Annotated, Literal, Optional, Union
@@ -13,17 +19,11 @@ class BYOKConfig(BaseModel):
     baseUrl: Optional[str] = None
 
 
-class _GraphData(BaseModel):
-    nodes: list[dict] = []
-    edges: list[dict] = []
-
-
 class _BaseWikiReq(BaseModel):
     notebookId: str
     sourceId: str
     userId: str
     sourceTitle: str
-    existingGraph: Optional[_GraphData] = None
     byok: BYOKConfig
     sourceMap: dict[str, str] = Field(default_factory=dict)
 
@@ -42,12 +42,6 @@ class WikiExtractMode(_BaseWikiReq):
 
 class WikiRemoveMode(_BaseWikiReq):
     mode: Literal["remove"]
-
-    @model_validator(mode="after")
-    def _graph_required(self):
-        if self.existingGraph is None:
-            raise ValueError("existingGraph required for mode=remove")
-        return self
 
 
 WikiExtractRequest = Annotated[

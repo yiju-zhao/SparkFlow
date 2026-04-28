@@ -5,6 +5,7 @@ summaries lack detail.
 """
 
 import os
+
 import httpx
 from langchain_core.tools import tool
 

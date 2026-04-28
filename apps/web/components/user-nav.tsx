@@ -15,7 +15,16 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Monitor, Moon, Sun, User as UserIcon, Settings, Shield, Loader2 } from "lucide-react";
+import {
+  LogOut,
+  Monitor,
+  Moon,
+  Sun,
+  User as UserIcon,
+  Settings,
+  Shield,
+  Loader2,
+} from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -120,10 +129,7 @@ export function UserNav({ user }: UserNavProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={isSigningOut}
-          onSelect={handleSignOut}
-        >
+        <DropdownMenuItem disabled={isSigningOut} onSelect={handleSignOut}>
           {isSigningOut ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (

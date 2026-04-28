@@ -84,7 +84,7 @@ export function PublicationsFilterBar({ filters, searchPlaceholder }: Props) {
           const active = selected && selected !== "all";
           const selectedLabel =
             active && selected
-              ? filter.options.find((o) => o.value === selected)?.label ?? selected
+              ? (filter.options.find((o) => o.value === selected)?.label ?? selected)
               : filter.defaultLabel;
 
           return (

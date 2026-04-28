@@ -2,10 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
-import {
-  getRecentConferences,
-  getPublications,
-} from "@/lib/explore/queries";
+import { getRecentConferences, getPublications } from "@/lib/explore/queries";
 import { getWechatArticles, getWechatSources } from "@/lib/wechat/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -265,9 +262,7 @@ function SidePublicationCard({
         <p className="text-sf-accent text-[10px] font-bold uppercase tracking-[0.18em] mb-2">
           {eyebrow} · {pub.instance.venue.name}
         </p>
-        <h4 className="text-[17px] font-bold leading-snug text-sf-ink line-clamp-3">
-          {pub.title}
-        </h4>
+        <h4 className="text-[17px] font-bold leading-snug text-sf-ink line-clamp-3">{pub.title}</h4>
         <p className="text-sm text-sf-ink-3 mt-2 line-clamp-1">
           {pub.authors.slice(0, 2).join(", ")}
           {pub.authors.length > 2 && ` +${pub.authors.length - 2}`}
@@ -476,8 +471,7 @@ function FeaturedSocialCard({
         aria-hidden
         className="absolute inset-0 opacity-15"
         style={{
-          backgroundImage:
-            "linear-gradient(to right, rgba(255,255,255,0.4) 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.4) 1px, transparent 1px)",
           backgroundSize: "32px 32px",
         }}
       />
@@ -588,13 +582,7 @@ function SourcesMini({ sources }: { sources: { id: number; name: string }[] }) {
   );
 }
 
-function SocialArticleCard({
-  locale,
-  article,
-}: {
-  locale: string;
-  article: WechatArticleSummary;
-}) {
+function SocialArticleCard({ locale, article }: { locale: string; article: WechatArticleSummary }) {
   const date = article.publish_time
     ? new Date(article.publish_time).toLocaleDateString("en-US", {
         month: "short",
@@ -625,9 +613,7 @@ function SocialArticleCard({
         <h4 className="font-bold text-[14px] leading-snug text-sf-ink line-clamp-3 min-h-[3rem]">
           {article.title}
         </h4>
-        {date && (
-          <p className="mt-3 text-[11px] font-mono tabular-nums text-sf-ink-4">{date}</p>
-        )}
+        {date && <p className="mt-3 text-[11px] font-mono tabular-nums text-sf-ink-4">{date}</p>}
       </div>
     </Link>
   );
@@ -643,7 +629,8 @@ function ToolboxSection({ locale }: { locale: string }) {
       icon: GitFork,
       eyebrow: "Coming Soon",
       title: "Citation Graph Explorer",
-      description: "Traverse the citation network of any paper, cluster by topic, export subgraphs.",
+      description:
+        "Traverse the citation network of any paper, cluster by topic, export subgraphs.",
       tag: "SOON",
     },
     {
@@ -651,7 +638,8 @@ function ToolboxSection({ locale }: { locale: string }) {
       icon: Scan,
       eyebrow: "Coming Soon",
       title: "Author Disambiguation",
-      description: "Resolve duplicate author records, merge affiliations, build clean researcher profiles.",
+      description:
+        "Resolve duplicate author records, merge affiliations, build clean researcher profiles.",
       tag: "SOON",
     },
   ];
@@ -785,8 +773,8 @@ function FeaturedToolCard({ locale }: { locale: string }) {
           </h3>
         </div>
         <p className="text-white/75 text-[15px] leading-relaxed max-w-[56ch] mb-6">
-          Drop in an arbitrary research query — get ranked publications and sessions with
-          rationale, impact score, and direct citations.
+          Drop in an arbitrary research query — get ranked publications and sessions with rationale,
+          impact score, and direct citations.
         </p>
         <div className="flex items-center gap-6 flex-wrap">
           <span className="inline-flex items-center gap-2 bg-white text-sf-black font-bold px-5 py-2.5 text-[11px] uppercase tracking-[0.16em] transition-all group-hover:bg-sf-accent group-hover:text-white rounded-[6px]">
@@ -840,17 +828,12 @@ function SideToolCard({
   );
   if (href) {
     return (
-      <Link
-        href={href}
-        className="sf-card card-hoverable p-6 flex flex-col justify-between"
-      >
+      <Link href={href} className="sf-card card-hoverable p-6 flex flex-col justify-between">
         {content}
       </Link>
     );
   }
-  return (
-    <div className="sf-card p-6 flex flex-col justify-between opacity-85">{content}</div>
-  );
+  return <div className="sf-card p-6 flex flex-col justify-between opacity-85">{content}</div>;
 }
 
 // ─────────────────────────────────────────────────────────────

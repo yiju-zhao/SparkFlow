@@ -57,7 +57,9 @@ export function FirstRunTour() {
       }
       // 2. Triggers (single or array).
       if (current?.trigger) {
-        const list: GuideTrigger[] = Array.isArray(current.trigger) ? current.trigger : [current.trigger];
+        const list: GuideTrigger[] = Array.isArray(current.trigger)
+          ? current.trigger
+          : [current.trigger];
         for (const trigger of list) {
           if (trigger.kind === "navigate") tour.navigate(trigger.route);
           else await runGuideAction(trigger.name);
@@ -107,7 +109,11 @@ export function FirstRunTour() {
             <h2 className="mb-2 text-lg font-semibold">{t("welcomeTitle")}</h2>
             <p className="mb-4 text-sm text-muted-foreground">{t("welcomeBody")}</p>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={handleSkip} className="text-xs text-muted-foreground hover:text-foreground">
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
                 {t("skip")}
               </button>
               <button

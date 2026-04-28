@@ -49,7 +49,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     id: section.id,
     sourceType: section.sourceType,
     status: section.status,
-    items: Array.isArray(section.items) ? (section.items as unknown as DigestSectionStatus["items"]) : [],
+    items: Array.isArray(section.items)
+      ? (section.items as unknown as DigestSectionStatus["items"])
+      : [],
     candidatePool: section.candidatePool,
     modelUsed: section.modelUsed,
     error: section.error,

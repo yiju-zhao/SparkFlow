@@ -138,10 +138,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
           </div>
 
           {/* Search + filter chips */}
-          <PublicationsFilterBar
-            filters={filterConfigs}
-            searchPlaceholder={searchPlaceholder}
-          />
+          <PublicationsFilterBar filters={filterConfigs} searchPlaceholder={searchPlaceholder} />
 
           {/* Status toggles (reject/withdrawal) */}
           <StatusToggles />
@@ -153,9 +150,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
         {result.data.length === 0 ? (
           <EmptyState title={t("empty.title")} description={t("empty.description")} />
         ) : (
-          result.data.map((pub) => (
-            <PublicationRow key={pub.id} locale={locale} pub={pub} />
-          ))
+          result.data.map((pub) => <PublicationRow key={pub.id} locale={locale} pub={pub} />)
         )}
       </section>
 
@@ -188,10 +183,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
             </Link>
             {paginationPages.map((p, idx) =>
               p === "ellipsis" ? (
-                <span
-                  key={`e-${idx}`}
-                  className="px-2 text-sf-ink-4 font-mono select-none"
-                >
+                <span key={`e-${idx}`} className="px-2 text-sf-ink-4 font-mono select-none">
                   …
                 </span>
               ) : (
@@ -223,8 +215,7 @@ export default async function PublicationsPage({ params, searchParams }: PagePro
           </nav>
 
           <div className="text-sm font-medium text-sf-ink-3">
-            Page{" "}
-            <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
+            Page <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
             <span className="text-sf-ink font-bold tabular-nums">{totalPages}</span>
           </div>
         </div>

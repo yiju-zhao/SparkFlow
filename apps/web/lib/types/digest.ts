@@ -4,15 +4,15 @@ export type { DigestSourceType, DigestStatus };
 
 /** One entry inside DigestSection.items (JSON). */
 export interface DigestItem {
-  rank: number;                  // 1..topN
-  externalId: string;            // source-native id as string
+  rank: number; // 1..topN
+  externalId: string; // source-native id as string
   sourceRefId: string | number;
   sourceName: string;
   title: string;
   author?: string;
-  publishedAt: string;           // ISO 8601
+  publishedAt: string; // ISO 8601
   url: string;
-  score: number;                 // 0..1
+  score: number; // 0..1
   matchedQueries: string[];
   reason: string;
   summary: string;
@@ -22,15 +22,15 @@ export interface DigestItem {
 /** User's `digestConfig` JSON on UserSettings. */
 export interface DigestConfig {
   queries: {
-    id: string;                  // stable uuid
-    text: string;                // <= 200 chars
+    id: string; // stable uuid
+    text: string; // <= 200 chars
     enabled: boolean;
-    createdAt: string;           // ISO 8601
+    createdAt: string; // ISO 8601
   }[];
   sources: {
     wechat?: {
-      subscribedSourceIds: number[];   // empty = all
-      topN: number;                     // 1..10, default 5
+      subscribedSourceIds: number[]; // empty = all
+      topN: number; // 1..10, default 5
     };
   };
 }
@@ -48,6 +48,6 @@ export interface DigestSectionStatus {
 }
 
 export interface DigestGenerateRequest {
-  date: string;                  // "YYYY-MM-DD"; defaults to today server-side
-  sources?: DigestSourceType[];  // defaults to all configured
+  date: string; // "YYYY-MM-DD"; defaults to today server-side
+  sources?: DigestSourceType[]; // defaults to all configured
 }

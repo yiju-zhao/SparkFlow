@@ -267,7 +267,12 @@ function NoteViewer({
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-sf-line px-4 py-2.5 bg-sf-surface shrink-0">
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-[6px] hover:bg-sf-bg-alt" onClick={onBack}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-[6px] hover:bg-sf-bg-alt"
+          onClick={onBack}
+        >
           <ArrowLeft className="h-4 w-4 text-sf-ink-3" />
         </Button>
         <div className="flex items-center gap-1">
@@ -294,7 +299,12 @@ function NoteViewer({
               </Button>
             </>
           ) : (
-            <Button variant="ghost" size="sm" className="h-7 text-xs rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink" onClick={onEdit}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs rounded-[6px] text-sf-ink-3 hover:bg-sf-bg-alt hover:text-sf-ink"
+              onClick={onEdit}
+            >
               <Pencil className="mr-1 h-3.5 w-3.5" />
               Edit
             </Button>

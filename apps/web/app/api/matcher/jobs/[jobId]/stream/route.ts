@@ -6,9 +6,7 @@
 
 import { NextRequest } from "next/server";
 
-const WORKFLOWS_API_URL =
-  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
-  "http://localhost:2027";
+const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
 
 export async function GET(
   request: NextRequest,

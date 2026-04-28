@@ -20,18 +20,12 @@ const HOP_BY_HOP_HEADERS = new Set([
 ]);
 
 function getUpstreamBaseUrl(): string | null {
-  const url =
-    process.env.LANGGRAPH_API_URL ??
-    process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ??
-    null;
+  const url = process.env.LANGGRAPH_API_URL ?? process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ?? null;
   if (!url) return null;
   return url.replace(/\/+$/, "");
 }
 
-async function proxy(
-  req: NextRequest,
-  ctx: { params: Promise<{ path?: string[] }> },
-) {
+async function proxy(req: NextRequest, ctx: { params: Promise<{ path?: string[] }> }) {
   const session = await auth();
   if (!session?.user?.id) {
     return new Response("Unauthorized", { status: 401 });
@@ -39,10 +33,7 @@ async function proxy(
 
   const upstreamBase = getUpstreamBaseUrl();
   if (!upstreamBase) {
-    return new Response(
-      "LANGGRAPH_API_URL is not configured on the server.",
-      { status: 500 },
-    );
+    return new Response("LANGGRAPH_API_URL is not configured on the server.", { status: 500 });
   }
 
   const { path } = await ctx.params;

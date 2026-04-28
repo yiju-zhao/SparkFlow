@@ -112,8 +112,7 @@ class QueryOptimizer:
             prompt = OPTIMIZER_USER_PROMPT_TEMPLATE.format(
                 target_type=target_type,
                 queries="\n".join(
-                    f"{index}. {query}"
-                    for index, query in enumerate(normalized_queries, start=1)
+                    f"{index}. {query}" for index, query in enumerate(normalized_queries, start=1)
                 ),
             )
             response = client.models.generate_content(
@@ -190,6 +189,4 @@ class QueryOptimizer:
             return ""
         if len(queries) == 1:
             return queries[0]
-        return "\n".join(
-            f"{index}. {query}" for index, query in enumerate(queries, start=1)
-        )
+        return "\n".join(f"{index}. {query}" for index, query in enumerate(queries, start=1))

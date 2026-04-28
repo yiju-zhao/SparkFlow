@@ -72,9 +72,7 @@ def _load_upstream_catalog(wechat_dsn: str) -> dict[int, str | None]:
     return catalog
 
 
-def _fetch_upstream_rows(
-    wechat_dsn: str, ids: list[int]
-) -> list[tuple[int, str | None, str, str]]:
+def _fetch_upstream_rows(wechat_dsn: str, ids: list[int]) -> list[tuple[int, str | None, str, str]]:
     """Fetch (id, article_hash, title, content_snippet) for the given ids."""
     if not ids:
         return []
@@ -179,7 +177,11 @@ async def run(mode: str, batch_size: int, hard_limit: int | None) -> dict[str, i
             embedded += await _embed_and_upsert(main_dsn, batch)
             logger.info("embedded %d / %d", embedded, len(to_embed))
             if hard_limit is not None and embedded >= hard_limit:
-                return {"embedded": embedded, "deleted": deleted, "pending": len(to_embed) - embedded}
+                return {
+                    "embedded": embedded,
+                    "deleted": deleted,
+                    "pending": len(to_embed) - embedded,
+                }
 
     return {"embedded": embedded, "deleted": deleted, "pending": 0}
 

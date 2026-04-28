@@ -18,19 +18,12 @@ export interface ExploreHeaderProps {
   isScrolled?: boolean;
 }
 
-export function ExploreHeader({
-  navLinks,
-  actionButton,
-  user,
-  isScrolled,
-}: ExploreHeaderProps) {
+export function ExploreHeader({ navLinks, actionButton, user, isScrolled }: ExploreHeaderProps) {
   return (
     <nav
       aria-label="Primary"
       className={`pointer-events-auto shrink-0 border-b border-sf-line transition-all duration-300 ${
-        isScrolled
-          ? "bg-sf-surface/85 backdrop-blur-lg"
-          : "bg-sf-surface"
+        isScrolled ? "bg-sf-surface/85 backdrop-blur-lg" : "bg-sf-surface"
       }`}
     >
       <div className="flex h-16 items-center px-8 gap-10">

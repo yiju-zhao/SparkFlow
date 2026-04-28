@@ -41,10 +41,7 @@ function impactTag(id: number, idx: number) {
   return null;
 }
 
-export function WechatArticleRow({
-  article,
-  index = 0,
-}: Props & { index?: number }) {
+export function WechatArticleRow({ article, index = 0 }: Props & { index?: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const publishedAt = article.publish_time ? new Date(article.publish_time) : null;

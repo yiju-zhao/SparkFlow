@@ -36,10 +36,7 @@ export function SparkflowLockup({
       {withGlyph && (
         <span className={cn("text-sf-accent", dim.glyph)} aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" className="h-full w-full">
-            <path
-              d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"
-              fill="currentColor"
-            />
+            <path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z" fill="currentColor" />
           </svg>
         </span>
       )}

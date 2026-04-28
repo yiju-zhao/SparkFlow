@@ -166,11 +166,7 @@ function NotebookCard({ notebook }: { notebook: Notebook }) {
         <div className="mt-auto flex flex-col gap-2.5">
           <div className="flex items-center gap-4">
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sf-ink-2 tabular-nums">
-              <Book
-                className="h-4 w-4 text-sf-ink-3 shrink-0"
-                strokeWidth={1.75}
-                aria-hidden
-              />
+              <Book className="h-4 w-4 text-sf-ink-3 shrink-0" strokeWidth={1.75} aria-hidden />
               {notebook._count.sources}
             </span>
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sf-ink-2 tabular-nums">

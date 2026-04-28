@@ -6,9 +6,7 @@
 
 import type { CreateMatchJobInput, JobProgress, MatchJob } from "./types";
 
-const WORKFLOWS_API_URL =
-  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
-  "http://localhost:2027";
+const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
 
 class MatcherClient {
   private baseUrl: string;

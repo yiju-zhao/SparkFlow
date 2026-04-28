@@ -197,8 +197,7 @@ export async function fetchProviderModels(
   }
   const detailStr = typeof detail === "string" ? detail : "";
   const isInternalAuth =
-    (res.status === 401 || res.status === 403) &&
-    !detailStr.startsWith("Upstream ");
+    (res.status === 401 || res.status === 403) && !detailStr.startsWith("Upstream ");
 
   let code: FetchModelsErrorCode;
   if (isInternalAuth) {
@@ -210,10 +209,9 @@ export async function fetchProviderModels(
   } else {
     code = "BAD_RESPONSE";
   }
-  const message =
-    isInternalAuth
-      ? "Workflows API rejected our internal token (INTERNAL_CALLBACK_TOKEN mismatch between apps/web and apps/langgraph)."
-      : detailStr || `Workflows API returned HTTP ${res.status}`;
+  const message = isInternalAuth
+    ? "Workflows API rejected our internal token (INTERNAL_CALLBACK_TOKEN mismatch between apps/web and apps/langgraph)."
+    : detailStr || `Workflows API returned HTTP ${res.status}`;
   throw new FetchModelsError(code, providerId, message, res.status);
 }
 

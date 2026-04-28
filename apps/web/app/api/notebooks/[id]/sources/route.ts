@@ -118,8 +118,5 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
   }
 
-  return NextResponse.json(
-    { ...source, ingestJobId, ingestEnqueueError },
-    { status: 201 },
-  );
+  return NextResponse.json({ ...source, ingestJobId, ingestEnqueueError }, { status: 201 });
 }

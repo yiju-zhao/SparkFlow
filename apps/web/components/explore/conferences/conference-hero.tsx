@@ -83,9 +83,7 @@ export function ConferenceHero({ conference }: ConferenceHeroProps) {
               </>
             )}
           </div>
-          {conference.summary && (
-            <p className="sf-lede mt-4 text-[15px]">{conference.summary}</p>
-          )}
+          {conference.summary && <p className="sf-lede mt-4 text-[15px]">{conference.summary}</p>}
         </div>
 
         <div className="flex shrink-0 gap-2">

@@ -3,6 +3,7 @@
 Replaces the old /v1/llm/models gateway endpoint with a litellm-free path.
 Filters to chat-capable models (drops embedding/tts/whisper/etc.).
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,8 +19,19 @@ router = APIRouter()
 
 
 NON_CHAT_SUBSTRINGS = (
-    "embedding", "tts", "whisper", "dall-e", "audio", "image", "realtime",
-    "imagen", "veo", "cogview", "cogvideo", "moderation", "rerank",
+    "embedding",
+    "tts",
+    "whisper",
+    "dall-e",
+    "audio",
+    "image",
+    "realtime",
+    "imagen",
+    "veo",
+    "cogview",
+    "cogvideo",
+    "moderation",
+    "rerank",
 )
 
 
@@ -44,8 +56,11 @@ class ListModelsResponse(BaseModel):
     models: list[str]
 
 
-@router.post("/v1/workflows/llm/list-models", response_model=ListModelsResponse,
-              dependencies=[Depends(_verify_token)])
+@router.post(
+    "/v1/workflows/llm/list-models",
+    response_model=ListModelsResponse,
+    dependencies=[Depends(_verify_token)],
+)
 async def list_models(req: ListModelsRequest):
     base = (req.baseUrl or "https://api.openai.com/v1").rstrip("/")
     try:
@@ -57,8 +72,10 @@ async def list_models(req: ListModelsRequest):
             resp.raise_for_status()
             data = resp.json()
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code,
-                             detail=f"Upstream {req.providerId}: {exc.response.text[:200]}")
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Upstream {req.providerId}: {exc.response.text[:200]}",
+        )
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"Upstream error: {exc}")
 

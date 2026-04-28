@@ -14,8 +14,7 @@ import { resolveApiKey } from "@/lib/services/api-key-resolver";
 import type { DigestConfig } from "@/lib/types/digest";
 import { DigestSourceType } from "@prisma/client";
 
-const WORKFLOWS_API_URL =
-  process.env.WORKFLOWS_API_URL ?? "http://localhost:2027";
+const WORKFLOWS_API_URL = process.env.WORKFLOWS_API_URL ?? "http://localhost:2027";
 
 const INTERNAL_CALLBACK_TOKEN = process.env.INTERNAL_CALLBACK_TOKEN ?? "";
 
@@ -84,8 +83,7 @@ export async function POST(request: NextRequest) {
   if (enabledQueries.length === 0) {
     return NextResponse.json(
       {
-        error:
-          "No enabled interest queries — configure at /settings#daily-digest",
+        error: "No enabled interest queries — configure at /settings#daily-digest",
       },
       { status: 400 },
     );
@@ -107,10 +105,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (targetSources.length === 0) {
-    return NextResponse.json(
-      { error: "No valid source types to generate for." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "No valid source types to generate for." }, { status: 400 });
   }
 
   // ── Resolve model + API key ─────────────────────────────────────────────
@@ -236,11 +231,7 @@ export async function POST(request: NextRequest) {
 
       if (!agentResp.ok) {
         const detail = await agentResp.text().catch(() => "(no body)");
-        console.error(
-          "[digest/generate] agent enqueue failed:",
-          agentResp.status,
-          detail,
-        );
+        console.error("[digest/generate] agent enqueue failed:", agentResp.status, detail);
         enqueueErrors.push({
           sectionId: section.id,
           sourceType: section.sourceType,
@@ -270,11 +261,7 @@ export async function POST(request: NextRequest) {
   // If every attempt failed AND nothing was enqueued AND no prior conflicts,
   // the client has no usable result — surface a 502. Otherwise prefer a
   // partial-success 202 so the client can see which sections need retry.
-  if (
-    enqueued.length === 0 &&
-    enqueueErrors.length > 0 &&
-    conflicts.length === 0
-  ) {
+  if (enqueued.length === 0 && enqueueErrors.length > 0 && conflicts.length === 0) {
     return NextResponse.json(
       {
         error: "Digest enqueue failed. Try again shortly.",

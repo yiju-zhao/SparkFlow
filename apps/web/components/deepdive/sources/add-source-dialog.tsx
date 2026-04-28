@@ -29,10 +29,7 @@ import {
   addPublicationSource,
   addWechatSource,
 } from "@/lib/actions/sources";
-import {
-  MAX_SOURCES_PER_NOTEBOOK,
-  SOURCE_LIMIT_ERROR_PREFIX,
-} from "@/lib/constants/sources";
+import { MAX_SOURCES_PER_NOTEBOOK, SOURCE_LIMIT_ERROR_PREFIX } from "@/lib/constants/sources";
 import { collectFilesFromDataTransfer } from "@/lib/utils/file-tree";
 import type { Source } from "@prisma/client";
 import type { SourceSearchType, SearchResult, SearchStatusResponse } from "@/lib/types/search";
@@ -126,9 +123,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const getCurrentSourceCount = useCallback(() => {
-    return (
-      queryClient.getQueryData<Source[]>(["notebook-sources", notebookId])?.length ?? 0
-    );
+    return queryClient.getQueryData<Source[]>(["notebook-sources", notebookId])?.length ?? 0;
   }, [queryClient, notebookId]);
 
   const currentCount = getCurrentSourceCount();
@@ -352,7 +347,9 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
     if (accepted.length === 0) {
       setUploadError(
         `No supported files. Allowed: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => "." + e).join(", ")}${
-          rejected.length > 0 ? ` (skipped: ${rejected.slice(0, 5).join(", ")}${rejected.length > 5 ? "…" : ""})` : ""
+          rejected.length > 0
+            ? ` (skipped: ${rejected.slice(0, 5).join(", ")}${rejected.length > 5 ? "…" : ""})`
+            : ""
         }`,
       );
       return;
@@ -729,9 +726,7 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
                     fileInputRef.current?.click();
                   }}
                 >
-                  <p className="text-lg text-muted-foreground">
-                    Drop files or a folder here
-                  </p>
+                  <p className="text-lg text-muted-foreground">Drop files or a folder here</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     or click Upload — pdf, docx, txt, md
                   </p>
@@ -763,7 +758,8 @@ export function AddSourceDialog({ notebookId, open, onOpenChange }: AddSourceDia
 
                 {isLimitReached && !uploadError && (
                   <div className="mx-6 -mt-2 mb-3 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2">
-                    Source limit reached ({MAX_SOURCES_PER_NOTEBOOK}/{MAX_SOURCES_PER_NOTEBOOK}). Delete some sources to add more.
+                    Source limit reached ({MAX_SOURCES_PER_NOTEBOOK}/{MAX_SOURCES_PER_NOTEBOOK}).
+                    Delete some sources to add more.
                   </div>
                 )}
 

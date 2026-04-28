@@ -15,10 +15,7 @@ import {
   isCustomProviderId,
   FetchModelsError,
 } from "@/lib/providers/list-models";
-import {
-  invalidateModelsCache,
-  primeModelsCache,
-} from "@/app/api/models/route";
+import { invalidateModelsCache, primeModelsCache } from "@/app/api/models/route";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,9 +107,7 @@ const PostBodySchema = z.object({
   searchModelName: z.string().nullable().optional(),
   semopsModelProvider: z.string().nullable().optional(),
   semopsModelName: z.string().nullable().optional(),
-  apiKeys: z
-    .record(z.string(), z.union([z.null(), ApiKeyEntrySchema]))
-    .optional(),
+  apiKeys: z.record(z.string(), z.union([z.null(), ApiKeyEntrySchema])).optional(),
   wechatExcludedSourceIds: z.array(z.number().int()).optional(),
 });
 
@@ -224,11 +219,7 @@ export async function POST(request: Request) {
               { status: 400 },
             );
           }
-          const models = await fetchProviderModels(
-            providerId,
-            value.apiKey,
-            value.baseUrl,
-          );
+          const models = await fetchProviderModels(providerId, value.apiKey, value.baseUrl);
           validatedModelLists.push({
             providerId,
             models,

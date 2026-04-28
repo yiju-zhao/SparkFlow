@@ -10,9 +10,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveApiKey } from "@/lib/services/api-key-resolver";
 
-const WORKFLOWS_API_URL =
-  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
-  "http://localhost:2027";
+const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
 
 // Convert camelCase to snake_case for matcher service
 function toSnakeCase(str: string): string {

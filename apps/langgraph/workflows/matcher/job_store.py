@@ -8,8 +8,8 @@ For production, consider using Redis or database.
 import logging
 import threading
 import uuid
-from datetime import datetime
-from typing import Any, Optional
+from datetime import datetime, timezone
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class JobStore:
     ) -> str:
         """Create a new job and return its ID."""
         job_id = str(uuid.uuid4())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         with self._job_lock:
             self._jobs[job_id] = {
@@ -85,7 +85,7 @@ class JobStore:
         with self._job_lock:
             if job_id in self._jobs:
                 self._jobs[job_id].update(kwargs)
-                self._jobs[job_id]["updated_at"] = datetime.utcnow()
+                self._jobs[job_id]["updated_at"] = datetime.now(timezone.utc)
 
     def get_result_data(self, job_id: str) -> Optional[bytes]:
         """Get result Excel bytes for a job."""

@@ -36,7 +36,9 @@ interface PatchBody {
   resetTour?: boolean;
 }
 
-export async function PATCH(request: Request): Promise<NextResponse<GuideState | { error: string }>> {
+export async function PATCH(
+  request: Request,
+): Promise<NextResponse<GuideState | { error: string }>> {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });

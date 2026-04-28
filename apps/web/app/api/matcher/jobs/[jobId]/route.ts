@@ -11,9 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import path from "path";
 
-const WORKFLOWS_API_URL =
-  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
-  "http://localhost:2027";
+const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 
@@ -129,7 +127,9 @@ export async function GET(
           // If job just completed, download Excel from matcher and store locally
           if (matcherJob.status === "COMPLETED" && !updatedJob.resultFileKey) {
             try {
-              const dlRes = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs/${jobId}/download`);
+              const dlRes = await fetch(
+                `${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs/${jobId}/download`,
+              );
               if (dlRes.ok) {
                 const buffer = Buffer.from(await dlRes.arrayBuffer());
                 const fileKey = `match-results/${jobId}.xlsx`;

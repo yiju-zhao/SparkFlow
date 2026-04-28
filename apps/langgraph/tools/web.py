@@ -21,7 +21,6 @@ from typing import Annotated
 import httpx
 from langchain_core.tools import InjectedToolArg, tool
 
-
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://localhost:8888").rstrip("/")
 SEARCH_RESULT_LIMIT = 15
 
@@ -85,14 +84,10 @@ def _search_via_searxng(query: str, domains: list[str] | None) -> str:
             ensure_ascii=False,
         )
     except Exception as exc:  # noqa: BLE001
-        return json.dumps(
-            {"error": f"searxng_search failed: {exc}"}, ensure_ascii=False
-        )
+        return json.dumps({"error": f"searxng_search failed: {exc}"}, ensure_ascii=False)
 
 
-def _search_via_tavily(
-    query: str, domains: list[str] | None, api_key: str
-) -> str:
+def _search_via_tavily(query: str, domains: list[str] | None, api_key: str) -> str:
     try:
         from tavily import TavilyClient  # type: ignore
 
@@ -119,9 +114,7 @@ def _search_via_tavily(
             ensure_ascii=False,
         )
     except Exception as exc:  # noqa: BLE001
-        return json.dumps(
-            {"error": f"tavily_search failed: {exc}"}, ensure_ascii=False
-        )
+        return json.dumps({"error": f"tavily_search failed: {exc}"}, ensure_ascii=False)
 
 
 @tool

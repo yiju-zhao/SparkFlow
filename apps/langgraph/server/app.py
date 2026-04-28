@@ -6,7 +6,6 @@ routes are stateless; each request carries its own config + model settings.
 
 from __future__ import annotations
 
-import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
@@ -21,17 +20,19 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from fastapi import FastAPI, HTTPException, Request
+# E402: imports below run after load_dotenv on purpose — workflow modules
+# read env vars at import time (LangChain/LangGraph SDKs initialise their
+# clients on import) so the .env values must already be in os.environ.
+from arq import create_pool  # noqa: E402
+from arq.connections import ArqRedis  # noqa: E402
+from fastapi import FastAPI, HTTPException, Request  # noqa: E402
+from workflows.daily_digest import GenerateSectionRequest  # noqa: E402
+from workflows.digest_worker import WorkerSettings  # noqa: E402
+from workflows.search import SearchRequest, search  # noqa: E402
 
-from arq import create_pool
-from arq.connections import ArqRedis
-
-from server.routes.llm_models import router as llm_models_router
-from server.routes.matcher_jobs import router as matcher_jobs_router
-from server.routes.wiki_ingest import router as wiki_ingest_router
-from workflows.daily_digest import GenerateSectionRequest, generate_section as run_generate_section
-from workflows.digest_worker import WorkerSettings
-from workflows.search import SearchRequest, SearchResponse, search
+from server.routes.llm_models import router as llm_models_router  # noqa: E402
+from server.routes.matcher_jobs import router as matcher_jobs_router  # noqa: E402
+from server.routes.wiki_ingest import router as wiki_ingest_router  # noqa: E402
 
 
 @asynccontextmanager

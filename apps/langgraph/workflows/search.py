@@ -7,6 +7,7 @@ Three source_types:
 Pure HTTP orchestration. No LLM here; LLM ranking happens inside semops.
 NOT @entrypoint — single chain, no parallelism, no checkpoint payoff.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,19 +55,26 @@ async def search(req: SearchRequest) -> SearchResponse:
         return SearchResponse(items=[])
 
     ranked = await _semops_rank(
-        candidates=candidates, query=req.query, top_k=req.top_k,
-        provider=req.model_provider, model=req.model_name, api_key=req.api_key,
+        candidates=candidates,
+        query=req.query,
+        top_k=req.top_k,
+        provider=req.model_provider,
+        model=req.model_name,
+        api_key=req.api_key,
     )
-    return SearchResponse(items=ranked.get("ranked", []),
-                          reasons=ranked.get("reasons") or {})
+    return SearchResponse(items=ranked.get("ranked", []), reasons=ranked.get("reasons") or {})
 
 
 async def _web_search(req: SearchRequest) -> list[dict[str, Any]]:
     from tools.web import search_web
-    raw = search_web.invoke({
-        "query": req.query, "domains": req.domains or None,
-        "api_key": req.tavily_api_key,
-    })
+
+    raw = search_web.invoke(
+        {
+            "query": req.query,
+            "domains": req.domains or None,
+            "api_key": req.tavily_api_key,
+        }
+    )
     try:
         parsed = json.loads(raw)
     except (TypeError, ValueError):
@@ -87,8 +95,14 @@ async def _prefilter(source_type: str, query: str, limit: int) -> list[dict[str,
 
 
 async def _semops_rank(
-    *, candidates: list[dict[str, Any]], query: str, top_k: int,
-    provider: str, model: str, api_key: str, api_base: str | None = None,
+    *,
+    candidates: list[dict[str, Any]],
+    query: str,
+    top_k: int,
+    provider: str,
+    model: str,
+    api_key: str,
+    api_base: str | None = None,
 ) -> dict[str, Any]:
     normalized: list[dict[str, Any]] = []
     for c in candidates:
@@ -101,15 +115,22 @@ async def _semops_rank(
         else:
             normalized.append(c)
     lm_config: dict[str, Any] = {
-        "provider": provider, "model": model, "api_key": api_key,
+        "provider": provider,
+        "model": model,
+        "api_key": api_key,
     }
     if api_base:
         lm_config["api_base"] = api_base
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(
             f"{SEMOPS_API_URL}/api/operators/rank",
-            json={"candidates": normalized, "query_text": query, "top_k": top_k,
-                  "include_reasons": True, "lm_config": lm_config},
+            json={
+                "candidates": normalized,
+                "query_text": query,
+                "top_k": top_k,
+                "include_reasons": True,
+                "lm_config": lm_config,
+            },
         )
         resp.raise_for_status()
         return resp.json()

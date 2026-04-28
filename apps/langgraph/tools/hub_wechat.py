@@ -18,7 +18,6 @@ from typing import Any
 import psycopg
 from langchain.tools import tool
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
