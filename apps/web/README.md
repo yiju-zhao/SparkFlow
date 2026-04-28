@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# `apps/web` — SparkFlow frontend
 
-## Getting Started
+Next.js 16 (App Router, Turbopack) + React 19 + Prisma 7 + CopilotKit. Serves the user-facing UI on port `3001`. Hosts the BullMQ wiki-ingest queue + worker.
 
-First, run the development server:
+For setup, environment vars, and full architecture see the **root `README.md`**. For frontend-specific conventions (Prisma migration workflow, BullMQ wiki-ingest internals, Tailwind 4 patterns, CopilotKit hooks) see **`apps/web/CLAUDE.md`**.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Layout
+
+```
+app/
+  [locale]/                # i18n-scoped routes (en, zh)
+    (auth)/                # Login / signup
+    admin/                 # Admin panel
+    deepdive/[id]/         # Per-notebook research workspace
+    explore/               # Research Hub
+  api/                     # Route handlers
+components/{ui,landing,deepdive,explore,settings}/
+lib/
+  services/wiki-ingest.ts        # Thin client → POST /v1/workflows/wiki/extract
+  providers/list-models.ts       # Thin client → POST /v1/workflows/llm/list-models
+  queue/{ingest-queue,user-slot,notebook-lock,redis}.ts
+  types/graph.ts                 # Knowledge-graph types (shared with Python via JSON)
+  crypto.ts                      # BYOK key encryption
+  prisma.ts                      # Singleton Prisma client
+workers/ingest.ts          # BullMQ wiki-ingest consumer
+prisma/                    # Schema + migrations (use `migrate deploy`, never `db push`)
+Dockerfile                 # Production image (builder → dev → runner stages)
+Dockerfile.worker          # Slim image for `npm run worker:ingest`
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Common commands
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run dev                # Dev server on :3001 (Turbopack HMR)
+npm run worker:ingest      # BullMQ ingest worker (separate process)
+npm run build              # Production build
+npm run lint               # ESLint
+npx tsc --noEmit           # Type check
+npx prisma generate        # Regenerate client after schema edits
+npx prisma migrate dev --name <what_changed>   # Create + apply migration (dev)
+npx prisma migrate deploy                       # Apply pending migrations (prod)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Never run `npx prisma db push`** — the repo is baselined to Prisma Migrate. See `apps/web/CLAUDE.md` for the schema-edit workflow.
