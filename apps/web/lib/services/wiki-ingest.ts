@@ -65,6 +65,7 @@ interface PyNode {
   type: string;
   summary: string;
   source_refs: string[];
+  community?: number | null;
 }
 
 interface PyEdge {
@@ -110,6 +111,10 @@ interface UiNode {
   type: string;
   summary: string;
   sourceRefs: string[];
+  // Louvain cluster id baked in by the workflow. The wiki panel groups
+  // nodes by this field to render topics — leaving it out collapses the
+  // topic list to zero even though entities are present.
+  community?: number;
 }
 interface UiEdge {
   source: string;
@@ -125,7 +130,15 @@ interface UiGraph {
 }
 
 function camelizeNode(n: PyNode): UiNode {
-  return { id: n.id, label: n.label, type: n.type, summary: n.summary, sourceRefs: n.source_refs };
+  const node: UiNode = {
+    id: n.id,
+    label: n.label,
+    type: n.type,
+    summary: n.summary,
+    sourceRefs: n.source_refs,
+  };
+  if (n.community != null) node.community = n.community;
+  return node;
 }
 function camelizeEdge(e: PyEdge): UiEdge {
   return {
