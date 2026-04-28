@@ -18,7 +18,6 @@ prompts/                                 # System-prompt fragments
 prompt_builder.py                        # 64-LOC concatenator
 tools/                                   # @tool functions
   web.py / wiki.py / hub_toolbox.py / hub_ui.py / hub_nav.py / hub_wechat.py
-  toolbox_client.py                      # MCP client for GenAI Toolbox
 workflows/                               # Functional API + Graph API
   search.py            # plain async (no parallelism payoff)
   daily_digest.py      # @entrypoint + per-query parallel prefilter

@@ -12,9 +12,6 @@ dependencies = [
     "langchain-core",
     "langchain-openai",
     "langchain-deepseek",
-    "langchain-mcp-adapters",
-    # Model Context Protocol (used by tools/toolbox_client.py)
-    "mcp",
     # Other AI / SDK
     "openai",
     "deepagents",

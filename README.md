@@ -17,8 +17,7 @@ SparkFlow/
 │   ├── web/        # Next.js 16 frontend (port 3001) + BullMQ ingest worker
 │   ├── langgraph/  # Python: 3 LangGraph agents (port 2024) + FastAPI workflows
 │   │               # server (port 2027) + ARQ digest worker
-│   ├── semops/     # Python FastAPI LOTUS semantic operators (port 2025)
-│   └── toolbox/    # Prebuilt MCP tool definitions (YAML)
+│   └── semops/     # Python FastAPI LOTUS semantic operators (port 2025)
 └── docs/
     ├── reference/                  # LangGraph / LangChain reference docs
     └── superpowers/{specs,plans}/  # Design docs + implementation plans
