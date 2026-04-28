@@ -3,21 +3,10 @@
 #   docker compose up -d                    # postgres + redis + searxng + workers
 #   docker compose --profile prod up -d     # also brings up web + workflows-api + migrate
 #
-# ============================================================================
-# ⚠️  LOCAL DEVELOPMENT ONLY — DO NOT USE ON THE SHARED SERVER.
-# ============================================================================
-# This file hard-codes LANGGRAPH_API_URL=http://host.docker.internal:2024 in
-# the `web` service — the assumption is `langgraph dev` runs on the *host*
-# next to the compose stack. On a corporate-proxy server (HTTP_PROXY set)
-# requests to host.docker.internal will be intercepted by the proxy and
-# return 504 Gateway Timeout, even when langgraph IS running.
-#
-# Server deploys MUST use docker-compose.server.yml, which:
-#   • respects ${LANGGRAPH_API_URL} from .env (no hardcoded internal hostname)
-#   • mounts ./ca-certificates.crt for TLS-MITM corporate proxies
-#   • includes NO_PROXY entries for every in-network service
-#     docker compose -f docker-compose.server.yml --profile prod up -d --build
-# ============================================================================
+# This file is the LOCAL version: NO corporate-proxy (NO_PROXY) wiring,
+# NO TLS-MITM CA bundle mount. For production / corporate-network deploys,
+# use docker-compose.server.yml instead:
+#   docker compose -f docker-compose.server.yml --profile prod up -d --build
 #
 # Configuration model: ALL container env comes from `env_file:` — there is
 # NO ${VAR} substitution for app config in this file. The only ${...}
@@ -212,18 +201,12 @@ services:
     container_name: sparkflow-web
     env_file: ./apps/web/.env
     # Local-dev override: in-docker hostnames + LangGraph on host.
-    # NO_PROXY adds host.docker.internal so a corporate HTTP_PROXY (if the
-    # dev's machine has one) doesn't intercept the loopback hop into the
-    # host-side `langgraph dev` instance — symptom otherwise is 504 from
-    # the langgraph proxy on every chat request.
     environment:
       DATABASE_URL: postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
       REDIS_URL: redis://redis:6379
       LANGGRAPH_API_URL: http://host.docker.internal:2024
       WORKFLOWS_API_URL: http://workflows-api:2027
       NEXT_PUBLIC_WORKFLOWS_API_URL: http://localhost:2027
-      NO_PROXY: localhost,127.0.0.1,host.docker.internal,postgres,redis,searxng,semops,web,workflows-api,ingest-worker,digest-worker,migrate
-      no_proxy: localhost,127.0.0.1,host.docker.internal,postgres,redis,searxng,semops,web,workflows-api,ingest-worker,digest-worker,migrate
     ports:
       - "${WEB_PORT:-3001}:3001"
     depends_on:
