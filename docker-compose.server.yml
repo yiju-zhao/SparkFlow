@@ -61,6 +61,8 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile.worker
+      additional_contexts:
+        certs: ./       # Dockerfiles do `COPY --from=certs ca-certificates.crt …`
     container_name: sparkflow-ingest-worker
     command: ["npm", "run", "worker:ingest"]
     env_file: ./.env
@@ -77,6 +79,8 @@ services:
     build:
       context: ./apps/semops
       dockerfile: Dockerfile
+      additional_contexts:
+        certs: ./
     container_name: sparkflow-semops
     env_file: ./.env
     ports:
@@ -95,6 +99,8 @@ services:
     build:
       context: ./apps/langgraph
       dockerfile: Dockerfile.worker
+      additional_contexts:
+        certs: ./
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
     env_file: ./.env
@@ -114,6 +120,8 @@ services:
     build:
       context: ./apps/langgraph
       dockerfile: Dockerfile.workflows-api
+      additional_contexts:
+        certs: ./
     container_name: sparkflow-workflows-api
     env_file: ./.env
     ports:
@@ -138,6 +146,8 @@ services:
       # transitive deps like `effect`). The slim runner stage only carries
       # cherry-picked @prisma/* dirs and breaks at CLI load time.
       target: builder
+      additional_contexts:
+        certs: ./
     container_name: sparkflow-migrate
     command: ["npx", "prisma", "migrate", "deploy"]
     env_file: ./.env
@@ -152,6 +162,8 @@ services:
       context: ./apps/web
       dockerfile: Dockerfile
       target: runner
+      additional_contexts:
+        certs: ./
     container_name: sparkflow-web
     env_file: ./.env
     ports:
