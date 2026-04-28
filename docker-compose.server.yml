@@ -29,6 +29,37 @@ services:
       timeout: 5s
       retries: 5
 
+  # One-shot postgres bootstrap. Creates sparkflow_checkpoints (used by the
+  # langgraph CLI's --postgres-uri so it doesn't need to spin up a sibling
+  # langgraph-postgres of its own — corp-network docker DNS can't resolve
+  # sibling hostnames reliably). Idempotent: skips when the DB already
+  # exists, so re-running `up -d` is safe. `restart: "no"` because this
+  # exits 0 once done.
+  postgres-init:
+    image: pgvector/pgvector:pg17
+    container_name: sparkflow-postgres-init
+    env_file: ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: []
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        export PGPASSWORD="$$POSTGRES_PASSWORD"
+        if psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc \
+             "SELECT 1 FROM pg_database WHERE datname='sparkflow_checkpoints'" \
+             | grep -q 1; then
+          echo "[postgres-init] sparkflow_checkpoints already exists"
+        else
+          psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" \
+            -c "CREATE DATABASE sparkflow_checkpoints"
+          echo "[postgres-init] created sparkflow_checkpoints"
+        fi
+    restart: "no"
+
   redis:
     image: redis:7-alpine
     container_name: sparkflow-redis
