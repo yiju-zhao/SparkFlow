@@ -62,9 +62,21 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path?: string[] 
   try {
     upstream = await fetch(target, init);
   } catch (err) {
-    console.error("[langgraph proxy] upstream fetch failed:", err);
+    // The previous generic 502 body hid whether this was DNS, refused
+    // connection, TLS, or timeout — surface the cause both to the
+    // server log and to the response body so the operator can read it
+    // off Network tab without SSH'ing in.
+    const cause = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    const causeChain = err instanceof Error && err.cause ? ` (cause: ${String(err.cause)})` : "";
+    const masked = upstreamBase.replace(/:\/\/([^@/]+)@/, "://***@");
+    const detail = `target=${masked} method=${req.method} path=/${subPath} — ${cause}${causeChain}`;
+    console.error("[langgraph proxy] upstream fetch failed:", detail);
     return new Response(
-      "Failed to reach LangGraph upstream. Check server LANGGRAPH_API_URL and that the agent is running.",
+      `Failed to reach LangGraph upstream. ${detail}\n\n` +
+        "Diagnostics:\n" +
+        "  • on server: echo $LANGGRAPH_API_URL  (env var actually loaded)\n" +
+        "  • on server: curl -sv $LANGGRAPH_API_URL/ok  (reachability)\n" +
+        "  • on server: pgrep -fa langgraph  (process running?)\n",
       { status: 502 },
     );
   }
