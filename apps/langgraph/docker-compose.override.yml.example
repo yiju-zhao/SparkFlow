@@ -22,6 +22,15 @@ services:
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       CURL_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
       LANGGRAPH_API_HOST: 0.0.0.0
+      # `localhost` in .env is the host's perspective (used by `make dev`).
+      # Inside the container, `localhost` is the container itself — so
+      # rewrite both URLs to `host.docker.internal:5433` (apps/web's
+      # postgres). Same pattern docker-compose.server.yml uses for the web
+      # / worker services that reach a sibling postgres. Without this the
+      # agent code uses .env's localhost and fails inside the container,
+      # even after the runtime's --postgres-uri starts working.
+      DATABASE_URL: postgresql://sparkflow:sparkflow@host.docker.internal:5433/sparkflow
+      CHECKPOINT_DB_URL: postgresql://sparkflow:sparkflow@host.docker.internal:5433/sparkflow_checkpoints
       # On hosts where ~/.docker/config.json injects HTTP_PROXY/HTTPS_PROXY into
       # every container (corp networks), NO_PROXY must list every sibling
       # service hostname so postgres/redis traffic doesn't get proxied. Both
