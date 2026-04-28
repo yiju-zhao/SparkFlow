@@ -219,18 +219,20 @@ git clone https://github.com/yiju-zhao/SparkFlow.git /opt/SparkFlow
 cd /opt/SparkFlow
 git checkout agent-dev   # or main once merged
 
-# 1. Configure env files (rotate every secret; INTERNAL_CALLBACK_TOKEN must match in both)
+# 1. Configure env files. Cross-cutting vars (INTERNAL_CALLBACK_TOKEN,
+#    POSTGRES_*, DATABASE_URL, REDIS_URL, SEMOPS_API_URL, SEARXNG_URL)
+#    live ONLY in apps/web/.env; langgraph services pick them up via
+#    docker-compose's env_file lists. No duplication, no sync risk.
 cp apps/web/.env.production.example       apps/web/.env
-cp apps/langgraph/.env.production.example apps/langgraph/.env
+cp apps/langgraph/.env.production.example apps/langgraph/.env  # narrow: CHECKPOINT_DB_URL, LANGSMITH_*
+cp .env.proxy.example                     .env.proxy           # NO_PROXY + CA-bundle paths
 # Set NEXTAUTH_URL and NEXT_PUBLIC_* to public URLs the browser can reach.
 
 # 2. Drop CA bundle (or empty placeholder for open networks)
 cp /path/to/your-ca.crt ./ca-certificates.crt   # or `touch ca-certificates.crt`
 
 # 3. Bring up the full stack
-#    Open networks:        docker compose --profile prod up -d --build
-#    Corporate networks:
-docker compose -f docker-compose.yml -f docker-compose.server.yml --profile prod up -d --build
+docker compose -f docker-compose.server.yml --profile prod up -d --build
 ```
 
 Compose handles startup order: postgres + redis + searxng + semops healthy → migrate runs `prisma migrate deploy` → web + workflows-api start.
@@ -247,67 +249,49 @@ curl https://workflows.your-domain.com/v1/healthz       # {"ok":true}
 ```bash
 cd /opt/SparkFlow
 git pull
-docker compose -f docker-compose.yml -f docker-compose.server.yml --profile prod up -d --build
+docker compose -f docker-compose.server.yml --profile prod up -d --build
 # migrate auto-runs `prisma migrate deploy` before web restarts.
 ```
 
 If `pyproject.toml` / `package.json` / `Dockerfile` changed, add `--no-cache` to the `build`. Convenience alias:
 
 ```bash
-alias dcprod='docker compose -f docker-compose.yml -f docker-compose.server.yml --profile prod'
+alias dcprod='docker compose -f docker-compose.server.yml --profile prod'
 dcprod up -d --build
 dcprod logs -f workflows-api
 ```
 
 ## Environment Variables
 
-Two pairs of templates ship with the repo. Use the dev pair on your laptop, the prod pair on the server. **Don't mix.**
+### How env files are loaded
 
-| Environment | Frontend | Backend |
+The compose files use **`env_file:` only** — no `${VAR}` substitution for app config. Whatever you put in a `.env` file is exactly what the container sees. Cross-cutting vars live in **one** place; the langgraph services pick them up via env_file lists. No `INTERNAL_CALLBACK_TOKEN` sync risk, no "edit `.env` and silently get the default" footgun.
+
+| File | Purpose | Loaded by |
 |---|---|---|
-| Dev | `apps/web/.env.example` → `.env` | `apps/langgraph/.env.example` → `.env` |
-| Prod | `apps/web/.env.production.example` → `.env` | `apps/langgraph/.env.production.example` → `.env` |
+| `apps/web/.env` | Everything `apps/web` needs **plus** all cross-cutting vars (`POSTGRES_*`, `DATABASE_URL`, `REDIS_URL`, `INTERNAL_CALLBACK_TOKEN`, `SEMOPS_API_URL`, `SEARXNG_URL`, `SPARKFLOW_API_URL`) | postgres, ingest-worker, migrate, web, **and** workflows-api / digest-worker (via env_file list) |
+| `apps/langgraph/.env` | Narrow: only langgraph-specific (`CHECKPOINT_DB_URL`, `DIGEST_WORKER_CONCURRENCY`, `LANGSMITH_*`) | workflows-api, digest-worker |
+| `.env.proxy` | Server-only: `NO_PROXY` + corporate CA paths (`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`) | every outbound-talking service in `docker-compose.server.yml` |
+| `apps/web/.env.local` | **Host-only override** for `npm run dev` — point `DATABASE_URL` / `REDIS_URL` at `localhost:5433` / `localhost:6379`. Next.js auto-picks; docker ignores. | Host Node process only |
 
-The example files are the source of truth. Tables below cover what's required vs defaulted.
+Templates ship as `*.example` files (committed); runtime files (`.env`, `.env.local`, `.env.proxy`) are gitignored.
 
-### Frontend (`apps/web/.env`)
+| Environment | Templates |
+|---|---|
+| Dev (host) | `apps/web/.env.example`, `apps/langgraph/.env.example` |
+| Prod (server) | `apps/web/.env.production.example`, `apps/langgraph/.env.production.example`, `.env.proxy.example` |
 
-| Variable | Description | Required |
-|---|---|---|
-| `NEXTAUTH_SECRET` | JWT secret | Yes (rotate per env) |
-| `NEXTAUTH_URL` | Public URL the browser hits | Yes (prod); `http://localhost:3001` (dev default) |
-| `API_KEY_ENCRYPTION_SECRET` | Encrypts BYOK keys at rest | Yes |
-| `INTERNAL_CALLBACK_TOKEN` | Shared with `apps/langgraph` for Node↔Python auth | **Must be identical in both .env files** |
-| `ADMIN_EMAILS` | Comma-separated; auto-promote on login | Yes |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres credentials | Yes |
-| `REDIS_URL` | BullMQ broker | Default `redis://localhost:6379` (dev); compose injects `redis://redis:6379` (prod) |
-| `LANGGRAPH_API_URL` / `NEXT_PUBLIC_LANGGRAPH_API_URL` | LangGraph URL | Yes (no default works publicly) |
-| `WORKFLOWS_API_URL` | Server-side workflows URL | Default `http://localhost:2027` (dev) / `http://workflows-api:2027` (prod) |
-| `NEXT_PUBLIC_WORKFLOWS_API_URL` | **Browser-side** workflows URL — must be public | Yes in prod |
-| `INGEST_WORKER_CONCURRENCY` / `INGEST_PER_USER_CONCURRENCY` | BullMQ tuning | Default `4` / `2` |
-| `MINERU_MODE` / `MINERU_LOCAL_URL` / `MINERU_API_TOKEN` | PDF parser config | `MINERU_API_TOKEN` required when `MODE=api` |
+### Required keys at a glance
 
-### Backend (`apps/langgraph/.env`)
+The example files are the source of truth — they document every variable inline. Highlights:
 
-BYOK is mandatory on all user-facing paths — there is no `OPENAI_API_KEY` env fallback for user requests. Admin-only paths (e.g. backfill scripts) may still read env keys.
+**`apps/web/.env`** — must rotate: `NEXTAUTH_SECRET`, `API_KEY_ENCRYPTION_SECRET`, `POSTGRES_PASSWORD`, `INTERNAL_CALLBACK_TOKEN`. Must set per environment: `NEXTAUTH_URL`, `NEXT_PUBLIC_LANGGRAPH_API_URL`, `NEXT_PUBLIC_WORKFLOWS_API_URL` (these reach the browser, so they must be publicly resolvable URLs). On the server, `DATABASE_URL` and `REDIS_URL` use docker hostnames (`postgres:5432`, `redis:6379`); locally, override in `.env.local` with `localhost:5433` / `localhost:6379`.
 
-| Variable | Description | Required |
-|---|---|---|
-| `INTERNAL_CALLBACK_TOKEN` | **Must match `apps/web`** | Yes |
-| `SPARKFLOW_API_URL` | Node callback base (digest completion, wiki source content) | Yes |
-| `SEMOPS_API_URL` | LOTUS service URL | Default `http://semops:2025` (compose) |
-| `SEARXNG_URL` | Default web-search backend | Default `http://localhost:8888` (dev) / `http://searxng:8080` (prod) |
-| `DATABASE_URL` | Main DB (used by backfill scripts; NOT by workflows-api itself) | Yes |
-| `REDIS_URL` | Shared BullMQ + ARQ broker | Default `redis://localhost:6379` (dev) |
-| `DIGEST_WORKER_CONCURRENCY` | Digest sections per worker | Default `4` |
-| `LANGSMITH_*` | LangSmith tracing | Optional (recommended in prod) |
-| `WECHAT_DATABASE_URL` | External Postgres for WeChat features | Optional |
+**`apps/langgraph/.env`** — narrow file. `CHECKPOINT_DB_URL` (separate DB recommended in prod), `DIGEST_WORKER_CONCURRENCY` (default 4), `LANGSMITH_*` (optional tracing). BYOK is mandatory on all user-facing paths; no `OPENAI_API_KEY` env fallback for user requests.
 
-### Semops (`apps/semops/.env`)
+**`.env.proxy`** — server only. Lists every docker service hostname in `NO_PROXY` so library-level proxy code skips inter-container traffic; points the three CA-bundle env vars at `/etc/ssl/certs/ca-certificates.crt` (the bind-mount target). On non-MITM hosts this file is harmless but still required (compose `env_file` is mandatory).
 
-| Variable | Description | Required |
-|---|---|---|
-| `SEMOPS_RANK_POOL_SIZE` | `ProcessPoolExecutor` workers for `/api/operators/rank` | No (default `min(4, cpu_count)`) |
+**`apps/semops/.env`** — optional, `SEMOPS_RANK_POOL_SIZE` only (default `min(4, cpu_count)`).
 
 ## Data Models
 

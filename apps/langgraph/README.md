@@ -109,18 +109,27 @@ cd apps/langgraph
 
 ## Environment variables
 
-See `apps/langgraph/.env.example` and `.env.production.example` for the full list. Key ones:
+In docker, the workflows-api / digest-worker services load **two** env files via compose's `env_file:` list:
+
+```yaml
+env_file:
+  - ./apps/web/.env        # shared cross-cutting vars
+  - ./apps/langgraph/.env  # langgraph-only (this directory)
+```
+
+So **cross-cutting vars live ONLY in `apps/web/.env`** (no duplication, no sync risk):
+
+- `INTERNAL_CALLBACK_TOKEN`, `SPARKFLOW_API_URL`, `SEMOPS_API_URL`, `SEARXNG_URL`, `REDIS_URL`, `DATABASE_URL`, `WECHAT_DATABASE_URL`
+
+`apps/langgraph/.env` is narrow — only langgraph-specific:
 
 | Variable | Required | Note |
 |---|---|---|
-| `INTERNAL_CALLBACK_TOKEN` | Yes | Must match `apps/web/.env` |
-| `SPARKFLOW_API_URL` | Yes | Node callback (digest completion, source content fetch) |
-| `SEMOPS_API_URL` | — | Default `http://semops:2025` (compose) |
-| `SEARXNG_URL` | — | Default `http://searxng:8080` (compose) |
-| `REDIS_URL` | — | Default `redis://redis:6379` (compose) |
-| `DATABASE_URL` | Yes for backfill scripts | Otherwise unused by the runtime |
+| `CHECKPOINT_DB_URL` | — | LangGraph checkpointer DB; recommended in prod |
 | `DIGEST_WORKER_CONCURRENCY` | — | Default 4 |
 | `LANGSMITH_*` | — | Optional tracing |
+
+For local `make dev` / `make serve` on the host (outside docker), `apps/langgraph/.env` is loaded directly by `python-dotenv` in `server/app.py`, and you'll need to put cross-cutting vars there too — or symlink to `apps/web/.env` for a single source of truth.
 
 BYOK is mandatory on all user-facing paths; no `OPENAI_API_KEY` env fallback.
 

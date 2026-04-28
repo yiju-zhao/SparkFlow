@@ -7,6 +7,16 @@
 # NO TLS-MITM CA bundle mount. For production / corporate-network deploys,
 # use docker-compose.server.yml instead:
 #   docker compose -f docker-compose.server.yml --profile prod up -d --build
+#
+# Configuration model: ALL container env comes from `env_file:` — there is
+# NO ${VAR} substitution for app config in this file. The only ${...}
+# left is for compose-level meta (port mappings) which fall back to
+# sensible defaults if unset.
+#
+# Cross-cutting vars (INTERNAL_CALLBACK_TOKEN, POSTGRES_*, DATABASE_URL,
+# REDIS_URL, SEMOPS_API_URL, SEARXNG_URL, SPARKFLOW_API_URL) live ONLY
+# in apps/web/.env — langgraph services pick them up via env_file lists.
+# No duplication, no sync risk.
 
 name: sparkflow
 
@@ -14,17 +24,13 @@ services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: sparkflow-postgres
-    env_file: ./apps/web/.env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-sparkflow}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sparkflow}
-      POSTGRES_DB: ${POSTGRES_DB:-sparkflow}
+    env_file: ./apps/web/.env       # POSTGRES_USER/PASSWORD/DB
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sparkflow}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-sparkflow}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,7 +63,6 @@ services:
       - ./searxng/data:/var/cache/searxng:rw
     environment:
       SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8888}/
-      # Splits into settings.yml's `ultrasecretkey` placeholder at startup.
       SEARXNG_SECRET: ${SEARXNG_SECRET:-sparkflow-default-rotate-in-prod}
     restart: unless-stopped
 
@@ -70,11 +75,12 @@ services:
     container_name: sparkflow-ingest-worker
     command: ["npm", "run", "worker:ingest"]
     env_file: ./apps/web/.env
+    # Local-dev override: apps/web/.env points at localhost (so `npm run dev`
+    # on the host works), but the worker runs INSIDE the compose network.
+    # Literal values — no ${VAR} substitution, no footgun.
     environment:
-      # Override host-side localhost URLs with docker service hostnames.
-      # apps/web/.env uses localhost so `npm run dev` works on the host.
+      DATABASE_URL: postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,14 +117,14 @@ services:
         certs: ./
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
-    env_file: ./apps/langgraph/.env
+    env_file:
+      - ./apps/web/.env             # shared: INTERNAL_CALLBACK_TOKEN, SPARKFLOW_API_URL
+      - ./apps/langgraph/.env       # langgraph-only: DIGEST_WORKER_CONCURRENCY, LANGSMITH_*
+    # Local-dev override: in-docker hostname for redis + semops.
     environment:
-      # Override host-side localhost URLs with docker service hostnames.
       REDIS_URL: redis://redis:6379
-      SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
-      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
-      INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
-      DIGEST_WORKER_CONCURRENCY: ${DIGEST_WORKER_CONCURRENCY:-4}
+      SEMOPS_API_URL: http://semops:2025
+      SPARKFLOW_API_URL: http://host.docker.internal:3001  # web runs on host in dev mode
     depends_on:
       redis:
         condition: service_healthy
@@ -142,16 +148,15 @@ services:
       additional_contexts:
         certs: ./
     container_name: sparkflow-workflows-api
-    env_file: ./apps/langgraph/.env
+    env_file:
+      - ./apps/web/.env             # shared
+      - ./apps/langgraph/.env       # langgraph-only: CHECKPOINT_DB_URL, LANGSMITH_*
+    # Local-dev override: in-docker hostnames for postgres + redis + semops.
     environment:
-      # In-container service hostnames override host-side localhost URLs.
+      DATABASE_URL: postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
-      SPARKFLOW_API_URL: ${SPARKFLOW_API_URL:-http://web:3001}
-      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
-      # SearXNG runs in the same compose network — use the service name.
-      SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
-      INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
+      SEMOPS_API_URL: http://semops:2025
+      SEARXNG_URL: http://searxng:8080
     ports:
       - "${WORKFLOWS_PORT:-2027}:2027"
     depends_on:
@@ -177,8 +182,9 @@ services:
     container_name: sparkflow-migrate
     command: ["npx", "prisma", "migrate", "deploy"]
     env_file: ./apps/web/.env
+    # Local-dev override: in-docker hostname for postgres.
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+      DATABASE_URL: postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
     depends_on:
       postgres:
         condition: service_healthy
@@ -194,20 +200,13 @@ services:
         certs: ./
     container_name: sparkflow-web
     env_file: ./apps/web/.env
+    # Local-dev override: in-docker hostnames + LangGraph on host.
     environment:
-      # Override host-side localhost URLs with docker service hostnames.
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+      DATABASE_URL: postgresql://sparkflow:sparkflow@postgres:5432/sparkflow
       REDIS_URL: redis://redis:6379
-      # WORKFLOWS_API_URL is wired to the docker service hostname; LangGraph
-      # is NOT in this compose file (built/run separately via `langgraph
-      # up`), so it falls back to host.docker.internal. Override either
-      # via .env when deploying behind a reverse proxy.
-      LANGGRAPH_API_URL: ${LANGGRAPH_API_URL:-http://host.docker.internal:2024}
-      WORKFLOWS_API_URL: ${WORKFLOWS_API_URL:-http://workflows-api:2027}
-      # Browser-bundled URL — must be reachable from the user's browser,
-      # not from inside the docker network. Set to the public URL of the
-      # workflows server (e.g. https://workflows.example.com).
-      NEXT_PUBLIC_WORKFLOWS_API_URL: ${NEXT_PUBLIC_WORKFLOWS_API_URL:-http://localhost:2027}
+      LANGGRAPH_API_URL: http://host.docker.internal:2024
+      WORKFLOWS_API_URL: http://workflows-api:2027
+      NEXT_PUBLIC_WORKFLOWS_API_URL: http://localhost:2027
     ports:
       - "${WEB_PORT:-3001}:3001"
     depends_on:
