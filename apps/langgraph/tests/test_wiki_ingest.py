@@ -5,28 +5,39 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-
 from workflows.wiki_ingest import (
-    Extraction, Graph, Node, Edge, WikiExtractRequest,
-    _merge_graph, _build_extraction_report, _cluster_graph, _filter_source,
+    Edge,
+    Extraction,
+    Graph,
+    Node,
+    WikiExtractRequest,
+    _build_extraction_report,
+    _cluster_graph,
+    _filter_source,
+    _merge_graph,
 )
-
 
 # --- pure helper tests (no LLM) ---
 
 
 def test_merge_graph_adds_new_nodes_and_edges():
     existing = Graph(
-        nodes=[Node(id="n1", label="A", type="concept", summary="...",
-                    source_refs=["src_old"])],
+        nodes=[Node(id="n1", label="A", type="concept", summary="...", source_refs=["src_old"])],
         edges=[],
     )
     extracted = Extraction(
         normalized_title="t",
-        nodes=[Node(id="n2", label="B", type="concept", summary="...",
-                    source_refs=["src_new"])],
-        edges=[Edge(source="n1", target="n2", relation="rel",
-                    confidence="EXTRACTED", weight=1, source_ref="src_new")],
+        nodes=[Node(id="n2", label="B", type="concept", summary="...", source_refs=["src_new"])],
+        edges=[
+            Edge(
+                source="n1",
+                target="n2",
+                relation="rel",
+                confidence="EXTRACTED",
+                weight=1,
+                source_ref="src_new",
+            )
+        ],
     )
     merged = _merge_graph(existing, extracted)
     assert {n.id for n in merged.nodes} == {"n1", "n2"}
@@ -35,14 +46,12 @@ def test_merge_graph_adds_new_nodes_and_edges():
 
 def test_merge_graph_preserves_existing_source_refs():
     existing = Graph(
-        nodes=[Node(id="n1", label="A", type="c", summary="s",
-                    source_refs=["src_a"])],
+        nodes=[Node(id="n1", label="A", type="c", summary="s", source_refs=["src_a"])],
         edges=[],
     )
     extracted = Extraction(
         normalized_title="t",
-        nodes=[Node(id="n1", label="A", type="c", summary="s",
-                    source_refs=["src_b"])],
+        nodes=[Node(id="n1", label="A", type="c", summary="s", source_refs=["src_b"])],
         edges=[],
     )
     merged = _merge_graph(existing, extracted)
@@ -52,14 +61,12 @@ def test_merge_graph_preserves_existing_source_refs():
 
 def test_extraction_report_crossrefs_when_node_already_exists():
     existing = Graph(
-        nodes=[Node(id="n1", label="DPO", type="c", summary="...",
-                    source_refs=["paper_a"])],
+        nodes=[Node(id="n1", label="DPO", type="c", summary="...", source_refs=["paper_a"])],
         edges=[],
     )
     extracted = Extraction(
         normalized_title="t",
-        nodes=[Node(id="n1", label="DPO", type="c", summary="...",
-                    source_refs=["paper_b"])],
+        nodes=[Node(id="n1", label="DPO", type="c", summary="...", source_refs=["paper_b"])],
         edges=[],
     )
     report = _build_extraction_report(existing, extracted)
@@ -69,12 +76,28 @@ def test_extraction_report_crossrefs_when_node_already_exists():
 
 def test_cluster_graph_returns_dict_of_communities():
     g = Graph(
-        nodes=[Node(id=f"n{i}", label=f"L{i}", type="c", summary="",
-                    source_refs=["s"]) for i in range(4)],
-        edges=[Edge(source="n0", target="n1", relation="r",
-                    confidence="EXTRACTED", weight=1, source_ref="s"),
-               Edge(source="n2", target="n3", relation="r",
-                    confidence="EXTRACTED", weight=1, source_ref="s")],
+        nodes=[
+            Node(id=f"n{i}", label=f"L{i}", type="c", summary="", source_refs=["s"])
+            for i in range(4)
+        ],
+        edges=[
+            Edge(
+                source="n0",
+                target="n1",
+                relation="r",
+                confidence="EXTRACTED",
+                weight=1,
+                source_ref="s",
+            ),
+            Edge(
+                source="n2",
+                target="n3",
+                relation="r",
+                confidence="EXTRACTED",
+                weight=1,
+                source_ref="s",
+            ),
+        ],
     )
     communities = _cluster_graph(g)
     assert isinstance(communities, dict)
@@ -89,12 +112,20 @@ def test_cluster_graph_empty_returns_empty():
 
 def test_filter_source_drops_nodes_with_only_that_source():
     g = Graph(
-        nodes=[Node(id="n1", label="A", type="c", summary="",
-                    source_refs=["src_remove"]),
-               Node(id="n2", label="B", type="c", summary="",
-                    source_refs=["src_remove", "src_keep"])],
-        edges=[Edge(source="n1", target="n2", relation="r",
-                    confidence="EXTRACTED", weight=1, source_ref="src_remove")],
+        nodes=[
+            Node(id="n1", label="A", type="c", summary="", source_refs=["src_remove"]),
+            Node(id="n2", label="B", type="c", summary="", source_refs=["src_remove", "src_keep"]),
+        ],
+        edges=[
+            Edge(
+                source="n1",
+                target="n2",
+                relation="r",
+                confidence="EXTRACTED",
+                weight=1,
+                source_ref="src_remove",
+            )
+        ],
     )
     out = _filter_source(g, "src_remove")
     assert {n.id for n in out.nodes} == {"n2"}
@@ -108,35 +139,47 @@ def test_filter_source_drops_nodes_with_only_that_source():
 
 @pytest.mark.asyncio
 async def test_extract_graph_parses_llm_response(monkeypatch):
-    from workflows.wiki_ingest import _extract_graph_impl
+    from workflows.wiki_ingest import (
+        _extract_graph_impl,
+        _ExtractOut,
+        _NodeOut,
+    )
 
-    canned = AsyncMock()
-    canned.ainvoke = AsyncMock(return_value=type("R", (), {"content": """
-    {"normalized_title":"DPO Paper",
-     "nodes":[{"id":"dpo","label":"DPO","type":"method","summary":"..."}],
-     "edges":[]}
-    """})())
-    monkeypatch.setattr("workflows.wiki_ingest._resolve_llm", lambda lm: canned)
+    async def fake(prompt, schema, lm):
+        assert schema is _ExtractOut
+        return _ExtractOut(
+            normalized_title="DPO Paper",
+            nodes=[_NodeOut(id="dpo", label="DPO", type="method", summary="...")],
+            edges=[],
+        )
 
-    extraction = await _extract_graph_impl("body", "T", "src1", [], {
-        "provider": "openai", "model": "gpt-4o", "api_key": "k"})
+    monkeypatch.setattr("workflows.wiki_ingest._llm_json", fake)
+
+    extraction = await _extract_graph_impl(
+        "body", "T", "src1", [], {"provider": "openai", "model": "gpt-4o", "api_key": "k"}
+    )
     assert extraction.normalized_title == "DPO Paper"
     assert extraction.nodes[0].label == "DPO"
     assert extraction.nodes[0].source_refs == ["src1"]
 
 
 @pytest.mark.asyncio
-async def test_extract_graph_strips_markdown_codefence(monkeypatch):
-    from workflows.wiki_ingest import _extract_graph_impl
+async def test_extract_graph_falls_back_to_title_when_normalized_blank(monkeypatch):
+    """If the LLM returns empty normalized_title, fall back to the source title."""
+    from workflows.wiki_ingest import _extract_graph_impl, _ExtractOut
 
-    canned = AsyncMock()
-    canned.ainvoke = AsyncMock(return_value=type("R", (), {"content": """```json
-    {"normalized_title":"x","nodes":[],"edges":[]}
-    ```"""})())
-    monkeypatch.setattr("workflows.wiki_ingest._resolve_llm", lambda lm: canned)
-    extraction = await _extract_graph_impl("body", "T", "src1", [], {
-        "provider": "openai", "model": "gpt-4o", "api_key": "k"})
-    assert extraction.normalized_title == "x"
+    async def fake(prompt, schema, lm):
+        return _ExtractOut(normalized_title="", nodes=[], edges=[])
+
+    monkeypatch.setattr("workflows.wiki_ingest._llm_json", fake)
+    extraction = await _extract_graph_impl(
+        "body",
+        "Source Title",
+        "src1",
+        [],
+        {"provider": "openai", "model": "gpt-4o", "api_key": "k"},
+    )
+    assert extraction.normalized_title == "Source Title"
 
 
 # --- entrypoint end-to-end tests ---
@@ -144,25 +187,43 @@ async def test_extract_graph_strips_markdown_codefence(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_extract_wiki_end_to_end(monkeypatch):
-    from workflows.wiki_ingest import extract_wiki
+    from workflows.wiki_ingest import (
+        _EdgeOut,
+        _ExtractOut,
+        _NodeOut,
+        _PageOut,
+        extract_wiki,
+    )
 
-    iter_calls = iter([
-        type("R", (), {"content":
-            """{"normalized_title":"Paper","nodes":[
-                {"id":"a","label":"A","type":"c","summary":"s"},
-                {"id":"b","label":"B","type":"c","summary":"s"}],
-              "edges":[{"source":"a","target":"b","relation":"r","confidence":"EXTRACTED"}]}"""})(),
-        type("R", (), {"content":
-            """{"title":"Cluster 0","markdown":"about [source:src1]"}"""})(),
-    ])
-    canned = AsyncMock()
-    canned.ainvoke = AsyncMock(side_effect=lambda p: next(iter_calls))
-    monkeypatch.setattr("workflows.wiki_ingest._resolve_llm", lambda lm: canned)
+    async def fake(prompt, schema, lm):
+        if schema is _ExtractOut:
+            return _ExtractOut(
+                normalized_title="Paper",
+                nodes=[
+                    _NodeOut(id="a", label="A", type="c", summary="s"),
+                    _NodeOut(id="b", label="B", type="c", summary="s"),
+                ],
+                edges=[_EdgeOut(source="a", target="b", relation="r", confidence="EXTRACTED")],
+            )
+        if schema is _PageOut:
+            return _PageOut(title="Cluster 0", markdown="about [source:src1]")
+        raise AssertionError(f"unexpected schema {schema}")
+
+    monkeypatch.setattr("workflows.wiki_ingest._llm_json", fake)
+
+    async def fake_state(notebook_id):
+        return None, None, None
+
+    monkeypatch.setattr("workflows.wiki_ingest._load_state", fake_state)
 
     req = WikiExtractRequest(
-        mode="extract", notebook_id="nb1", source_id="src1", user_id="u",
-        source_title="t", source_content="body",
-        existing_node_labels=[], existing_graph=None,
+        mode="extract",
+        notebook_id="nb1",
+        source_id="src1",
+        user_id="u",
+        source_title="t",
+        source_content="body",
+        existing_node_labels=[],
         source_map={"src1": "Paper"},
         lm={"provider": "openai", "model": "gpt-4o", "api_key": "k"},
     )
@@ -175,23 +236,33 @@ async def test_extract_wiki_end_to_end(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_extract_wiki_remove_mode(monkeypatch):
-    from workflows.wiki_ingest import extract_wiki
+    from workflows.wiki_ingest import _PageOut, extract_wiki
 
-    canned = AsyncMock()
-    canned.ainvoke = AsyncMock(return_value=type("R", (), {"content":
-        """{"title":"page","markdown":"..."}"""})())
-    monkeypatch.setattr("workflows.wiki_ingest._resolve_llm", lambda lm: canned)
+    async def fake(prompt, schema, lm):
+        return _PageOut(title="page", markdown="...")
+
+    monkeypatch.setattr("workflows.wiki_ingest._llm_json", fake)
 
     existing = Graph(
-        nodes=[Node(id="x", label="X", type="c", summary="",
-                    source_refs=["src_remove", "src_other"]),
-               Node(id="y", label="Y", type="c", summary="",
-                    source_refs=["src_remove"])],
+        nodes=[
+            Node(id="x", label="X", type="c", summary="", source_refs=["src_remove", "src_other"]),
+            Node(id="y", label="Y", type="c", summary="", source_refs=["src_remove"]),
+        ],
         edges=[],
     )
+
+    async def fake_state(notebook_id):
+        return existing, None, None
+
+    monkeypatch.setattr("workflows.wiki_ingest._load_state", fake_state)
+
     req = WikiExtractRequest(
-        mode="remove", notebook_id="nb1", source_id="src_remove", user_id="u",
-        source_title="t", existing_graph=existing, source_map={},
+        mode="remove",
+        notebook_id="nb1",
+        source_id="src_remove",
+        user_id="u",
+        source_title="t",
+        source_map={},
         lm={"provider": "openai", "model": "gpt-4o", "api_key": "k"},
     )
     result = await extract_wiki.ainvoke(req)
@@ -201,31 +272,119 @@ async def test_extract_wiki_remove_mode(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_extract_wiki_remove_requires_existing_graph():
+async def test_build_wiki_pages_skips_llm_on_cache_hit(monkeypatch):
+    """Cached communities reuse stored markdown without an LLM call."""
+    from workflows.wiki_ingest import _build_wiki_pages_impl
+
+    fake = AsyncMock()
+    monkeypatch.setattr("workflows.wiki_ingest._llm_json", fake)
+
+    g = Graph(
+        nodes=[
+            Node(id="a", label="A", type="c", summary="", source_refs=["s1"]),
+            Node(id="b", label="B", type="c", summary="", source_refs=["s1"]),
+        ],
+        edges=[],
+    )
+    communities = {0: ["a", "b"]}
+    cache = {
+        (frozenset({"a", "b"}), frozenset({"s1"})): {
+            "title": "Cached",
+            "markdown": "cached body",
+        },
+    }
+    pages = await _build_wiki_pages_impl(
+        g, communities, {"s1": "S1"}, {"provider": "x", "model": "m", "api_key": "k"}, cache=cache
+    )
+    assert pages[0].title == "Cached"
+    assert pages[0].markdown == "cached body"
+    fake.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_build_wiki_pages_misses_call_llm(monkeypatch):
+    """Communities whose fingerprint isn't in the cache hit the LLM."""
+    from workflows.wiki_ingest import _build_wiki_pages_impl, _PageOut
+
+    fake = AsyncMock(return_value=_PageOut(title="Fresh", markdown="fresh body"))
+    monkeypatch.setattr("workflows.wiki_ingest._llm_json", fake)
+
+    g = Graph(
+        nodes=[Node(id="a", label="A", type="c", summary="", source_refs=["s1"])],
+        edges=[],
+    )
+    pages = await _build_wiki_pages_impl(
+        g, {0: ["a"]}, {"s1": "S1"}, {"provider": "x", "model": "m", "api_key": "k"}, cache={}
+    )
+    assert pages[0].title == "Fresh"
+    fake.assert_awaited_once()
+
+
+def test_build_page_cache_indexes_by_fingerprint():
+    from workflows.wiki_ingest import _build_page_cache
+
+    g = Graph(
+        nodes=[
+            Node(id="a", label="A", type="c", summary="", source_refs=["s1"]),
+            Node(id="b", label="B", type="c", summary="", source_refs=["s1"]),
+        ],
+        edges=[],
+    )
+    cache = _build_page_cache(
+        g,
+        {"0": ["a", "b"]},
+        [{"slug": "community-0", "title": "T", "markdown": "M"}],
+    )
+    key = (frozenset({"a", "b"}), frozenset({"s1"}))
+    assert cache[key] == {"title": "T", "markdown": "M"}
+
+
+@pytest.mark.asyncio
+async def test_extract_wiki_remove_no_graph_returns_empty(monkeypatch):
+    """When the notebook has no graph yet, mode=remove is a no-op."""
     from workflows.wiki_ingest import extract_wiki
+
+    async def fake_state(notebook_id):
+        return None, None, None
+
+    monkeypatch.setattr("workflows.wiki_ingest._load_state", fake_state)
+
     req = WikiExtractRequest(
-        mode="remove", notebook_id="n", source_id="s", user_id="u",
-        source_title="t", existing_graph=None,
+        mode="remove",
+        notebook_id="n",
+        source_id="s",
+        user_id="u",
+        source_title="t",
         lm={"provider": "openai", "model": "gpt-4o", "api_key": "k"},
     )
-    with pytest.raises(ValueError, match="existing_graph required"):
-        await extract_wiki.ainvoke(req)
+    result = await extract_wiki.ainvoke(req)
+    assert result.merged_graph.nodes == []
+    assert result.community_pages == []
+    assert result.communities == {}
 
 
 @pytest.mark.asyncio
 async def test_apikey_not_in_caplog_on_error(monkeypatch, caplog):
     from workflows.wiki_ingest import extract_wiki
 
-    async def boom(prompt):
+    async def boom(prompt, schema, lm):
         raise RuntimeError("upstream 502")
-    canned = AsyncMock()
-    canned.ainvoke = boom
-    monkeypatch.setattr("workflows.wiki_ingest._resolve_llm", lambda lm: canned)
+
+    monkeypatch.setattr("workflows.wiki_ingest._llm_json", boom)
+
+    async def fake_state(notebook_id):
+        return None, None, None
+
+    monkeypatch.setattr("workflows.wiki_ingest._load_state", fake_state)
+
     req = WikiExtractRequest(
-        mode="extract", notebook_id="n", source_id="s", user_id="u",
-        source_title="t", source_content="body",
-        lm={"provider": "openai", "model": "gpt-4o",
-            "api_key": "sk-SECRET-DO-NOT-LEAK"},
+        mode="extract",
+        notebook_id="n",
+        source_id="s",
+        user_id="u",
+        source_title="t",
+        source_content="body",
+        lm={"provider": "openai", "model": "gpt-4o", "api_key": "sk-SECRET-DO-NOT-LEAK"},
     )
     with pytest.raises(Exception):
         await extract_wiki.ainvoke(req)

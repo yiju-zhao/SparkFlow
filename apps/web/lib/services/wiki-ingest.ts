@@ -148,35 +148,8 @@ function camelizeGraph(g: PyGraph): UiGraph {
  * Convert Python's structured crossRefs into the human-readable string[]
  * shape the UI (components/deepdive/sources/ingest-report.tsx) consumes.
  */
-function flattenCrossRefs(
-  refs: { label: string; existingSourceIds: string[] }[],
-): string[] {
-  return refs.map(
-    (r) => `"${r.label}" already exists in the knowledge network`,
-  );
-}
-
-/**
- * Convert UiGraph → snake_case shape Python expects in `existingGraph` request body.
- */
-function snakeifyGraphForPython(g: UiGraph): PyGraph {
-  return {
-    nodes: g.nodes.map((n) => ({
-      id: n.id,
-      label: n.label,
-      type: n.type,
-      summary: n.summary,
-      source_refs: n.sourceRefs ?? [],
-    })),
-    edges: g.edges.map((e) => ({
-      source: e.source,
-      target: e.target,
-      relation: e.relation,
-      confidence: e.confidence,
-      weight: e.weight,
-      source_ref: e.sourceRef ?? "",
-    })),
-  };
+function flattenCrossRefs(refs: { label: string; existingSourceIds: string[] }[]): string[] {
+  return refs.map((r) => `"${r.label}" already exists in the knowledge network`);
 }
 
 // ============================================================
@@ -193,15 +166,15 @@ interface ExtractRequestBase {
 }
 
 async function callExtractRoute(
-  body: (ExtractRequestBase & {
-    mode: "extract";
-    sourceContent: string;
-    existingNodeLabels: string[];
-    existingGraph: PyGraph | null;
-  }) | (ExtractRequestBase & {
-    mode: "remove";
-    existingGraph: PyGraph;
-  }),
+  body:
+    | (ExtractRequestBase & {
+        mode: "extract";
+        sourceContent: string;
+        existingNodeLabels: string[];
+      })
+    | (ExtractRequestBase & {
+        mode: "remove";
+      }),
 ): Promise<PyExtractResponse> {
   const res = await fetch(`${workflowsBase()}/v1/workflows/wiki/extract`, {
     method: "POST",
@@ -238,23 +211,27 @@ export async function ingestSourceToWiki(
   const meta0 = (source.metadata as Record<string, unknown>) || {};
 
   try {
-    // wikiStatus: starting → extracting → generating → done
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: { metadata: { ...meta0, wikiStatus: "starting" } },
-    });
-
-    const existingGraphRow = await prisma.notebookGraph.findUnique({
-      where: { notebookId },
-    });
-    const existing: UiGraph = existingGraphRow?.graphData
-      ? (existingGraphRow.graphData as unknown as UiGraph)
-      : { nodes: [], edges: [] };
-
+    // wikiStatus is collapsed to two writes (extracting → done|failed) —
+    // the worker's job.updateProgress already carries fine-grained phase
+    // info, and the UI only needs an in-progress signal vs a terminal one.
     await prisma.source.update({
       where: { id: sourceId },
       data: { metadata: { ...meta0, wikiStatus: "extracting" } },
     });
+
+    // existingNodeLabels still helps the LLM dedupe at extraction time;
+    // it's a label-only projection so the wire payload stays small even
+    // for mature notebooks. The full graph + community pages are loaded
+    // server-side now via psycopg3.
+    const existingNodeLabels = await prisma.notebookGraph
+      .findUnique({
+        where: { notebookId },
+        select: { graphData: true },
+      })
+      .then((row) => {
+        const data = row?.graphData as { nodes?: { label: string }[] } | null;
+        return data?.nodes?.map((n) => n.label) ?? [];
+      });
 
     const byok = await resolveWikiByok(userId);
     const result = await callExtractRoute({
@@ -264,8 +241,7 @@ export async function ingestSourceToWiki(
       userId,
       sourceTitle: source.title,
       sourceContent: content,
-      existingNodeLabels: existing.nodes.map((n) => n.label),
-      existingGraph: existing.nodes.length > 0 ? snakeifyGraphForPython(existing) : null,
+      existingNodeLabels,
       sourceMap: { [sourceId]: source.title },
       byok,
     });
@@ -278,93 +254,80 @@ export async function ingestSourceToWiki(
       crossRefs: crossRefStrings,
     };
 
-    // Pre-transaction writes — preserves the hidden contracts the old code had:
-    // Source.title = result.normalizedTitle, Source.metadata.extractionReport,
-    // Source.metadata.wikiStatus = "generating".
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: {
-        title: result.normalizedTitle || source.title,
-        metadata: {
-          ...meta0,
-          extractionReport,
-          wikiStatus: "generating",
-        },
-      },
-    });
-
     const writtenSlugs = result.communityPages.map((p) => p.slug);
     const today = new Date().toISOString().split("T")[0];
     const logEntry = `\n## [${today}] ingest | ${result.normalizedTitle || source.title}\n${result.logEntry}`;
 
-    await prisma.$transaction(
-      async (tx) => {
-        await tx.notebookGraph.upsert({
-          where: { notebookId },
+    // Pre-read the log page so the transaction can be a flat operation
+    // array (one batched round-trip) instead of N awaited statements on
+    // the same connection. Safe under the per-notebook lock —
+    // ingestSourceToWiki is the only writer of slug='log'.
+    const logPage = await prisma.wikiPage.findUnique({
+      where: { notebookId_slug: { notebookId, slug: "log" } },
+      select: { id: true, content: true },
+    });
+
+    const ops: Prisma.PrismaPromise<unknown>[] = [
+      prisma.notebookGraph.upsert({
+        where: { notebookId },
+        create: {
+          notebookId,
+          graphData: mergedGraph as unknown as Prisma.InputJsonValue,
+          communities: result.communities as unknown as Prisma.InputJsonValue,
+        },
+        update: {
+          graphData: mergedGraph as unknown as Prisma.InputJsonValue,
+          communities: result.communities as unknown as Prisma.InputJsonValue,
+        },
+      }),
+      ...result.communityPages.map((p) =>
+        prisma.wikiPage.upsert({
+          where: { notebookId_slug: { notebookId, slug: p.slug } },
           create: {
             notebookId,
-            graphData: mergedGraph as unknown as Prisma.InputJsonValue,
-            communities: result.communities as unknown as Prisma.InputJsonValue,
+            slug: p.slug,
+            title: p.title,
+            content: p.markdown,
+            pageType: "CONCEPT",
+            sourceRefs: p.sourceIds,
           },
-          update: {
-            graphData: mergedGraph as unknown as Prisma.InputJsonValue,
-            communities: result.communities as unknown as Prisma.InputJsonValue,
-          },
-        });
-
-        for (const p of result.communityPages) {
-          await tx.wikiPage.upsert({
-            where: { notebookId_slug: { notebookId, slug: p.slug } },
-            create: {
-              notebookId,
-              slug: p.slug,
-              title: p.title,
-              content: p.markdown,
-              pageType: "CONCEPT",
-              sourceRefs: p.sourceIds,
-            },
-            update: { title: p.title, content: p.markdown, sourceRefs: p.sourceIds },
-          });
-        }
-
-        await tx.wikiPage.upsert({
-          where: { notebookId_slug: { notebookId, slug: result.indexPage.slug } },
-          create: {
-            notebookId,
-            slug: result.indexPage.slug,
-            title: result.indexPage.title,
-            content: result.indexPage.markdown,
-            pageType: "INDEX",
-            sourceRefs: [],
-          },
-          update: { content: result.indexPage.markdown },
-        });
-
-        await tx.wikiPage.deleteMany({
-          where: {
-            notebookId,
-            slug: { startsWith: "community-" },
-            NOT: { slug: { in: writtenSlugs } },
-          },
-        });
-
-        const logPage = await tx.wikiPage.findUnique({
-          where: { notebookId_slug: { notebookId, slug: "log" } },
-          select: { id: true, content: true },
-        });
-        if (logPage) {
-          await tx.wikiPage.update({
-            where: { id: logPage.id },
-            data: { content: logPage.content + logEntry },
-          });
-        }
-      },
-      { maxWait: 10_000, timeout: 60_000 },
-    );
+          update: { title: p.title, content: p.markdown, sourceRefs: p.sourceIds },
+        }),
+      ),
+      prisma.wikiPage.upsert({
+        where: { notebookId_slug: { notebookId, slug: result.indexPage.slug } },
+        create: {
+          notebookId,
+          slug: result.indexPage.slug,
+          title: result.indexPage.title,
+          content: result.indexPage.markdown,
+          pageType: "INDEX",
+          sourceRefs: [],
+        },
+        update: { content: result.indexPage.markdown },
+      }),
+      prisma.wikiPage.deleteMany({
+        where: {
+          notebookId,
+          slug: { startsWith: "community-" },
+          NOT: { slug: { in: writtenSlugs } },
+        },
+      }),
+    ];
+    if (logPage) {
+      ops.push(
+        prisma.wikiPage.update({
+          where: { id: logPage.id },
+          data: { content: logPage.content + logEntry },
+        }),
+      );
+    }
+    await prisma.$transaction(ops);
 
     await prisma.source.update({
       where: { id: sourceId },
       data: {
+        title: result.normalizedTitle || source.title,
         metadata: {
           ...meta0,
           extractionReport,
@@ -408,17 +371,21 @@ export async function removeSourceFromWiki(
   sourceTitle: string,
   userId: string,
 ): Promise<{ pagesDeleted: number; pagesUpdated: number }> {
-  const existingGraphRow = await prisma.notebookGraph.findUnique({
-    where: { notebookId },
-  });
-  if (!existingGraphRow?.graphData) {
+  // Tiny pre-check so a remove on a notebook with no wiki yet
+  // short-circuits without an HTTP round-trip. Also gives us an accurate
+  // "old pages count" for the audit log without re-reading content.
+  const [hasGraph, oldPagesCount] = await Promise.all([
+    prisma.notebookGraph.findUnique({
+      where: { notebookId },
+      select: { id: true },
+    }),
+    prisma.wikiPage.count({
+      where: { notebookId, slug: { startsWith: "community-" } },
+    }),
+  ]);
+  if (!hasGraph) {
     return { pagesDeleted: 0, pagesUpdated: 0 };
   }
-  const existing = existingGraphRow.graphData as unknown as UiGraph;
-
-  const oldPagesCount = await prisma.wikiPage.count({
-    where: { notebookId, slug: { startsWith: "community-" } },
-  });
 
   const byok = await resolveWikiByok(userId);
   const result = await callExtractRoute({
@@ -427,7 +394,6 @@ export async function removeSourceFromWiki(
     sourceId,
     userId,
     sourceTitle,
-    existingGraph: snakeifyGraphForPython(existing),
     sourceMap: {},
     byok,
   });
@@ -437,80 +403,86 @@ export async function removeSourceFromWiki(
   const today = new Date().toISOString().split("T")[0];
   const logEntry = `\n## [${today}] remove | ${sourceTitle}\nRemoved source, ${oldPagesCount} old pages deleted, ${writtenSlugs.length} pages regenerated`;
 
-  await prisma.$transaction(
-    async (tx) => {
-      await tx.notebookGraph.update({
-        where: { notebookId },
-        data: {
-          graphData: mergedGraph as unknown as Prisma.InputJsonValue,
-          communities: result.communities as unknown as Prisma.InputJsonValue,
-        },
-      });
+  const logPage = await prisma.wikiPage.findUnique({
+    where: { notebookId_slug: { notebookId, slug: "log" } },
+    select: { id: true, content: true },
+  });
 
-      if (mergedGraph.nodes.length > 0) {
-        for (const p of result.communityPages) {
-          await tx.wikiPage.upsert({
-            where: { notebookId_slug: { notebookId, slug: p.slug } },
-            create: {
-              notebookId,
-              slug: p.slug,
-              title: p.title,
-              content: p.markdown,
-              pageType: "CONCEPT",
-              sourceRefs: p.sourceIds,
-            },
-            update: { title: p.title, content: p.markdown, sourceRefs: p.sourceIds },
-          });
-        }
-        await tx.wikiPage.upsert({
-          where: { notebookId_slug: { notebookId, slug: result.indexPage.slug } },
+  const ops: Prisma.PrismaPromise<unknown>[] = [
+    prisma.notebookGraph.update({
+      where: { notebookId },
+      data: {
+        graphData: mergedGraph as unknown as Prisma.InputJsonValue,
+        communities: result.communities as unknown as Prisma.InputJsonValue,
+      },
+    }),
+  ];
+  if (mergedGraph.nodes.length > 0) {
+    for (const p of result.communityPages) {
+      ops.push(
+        prisma.wikiPage.upsert({
+          where: { notebookId_slug: { notebookId, slug: p.slug } },
           create: {
             notebookId,
-            slug: result.indexPage.slug,
-            title: result.indexPage.title,
-            content: result.indexPage.markdown,
-            pageType: "INDEX",
-            sourceRefs: [],
+            slug: p.slug,
+            title: p.title,
+            content: p.markdown,
+            pageType: "CONCEPT",
+            sourceRefs: p.sourceIds,
           },
-          update: { content: result.indexPage.markdown },
-        });
-      } else {
-        const emptyContent = "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.";
-        await tx.wikiPage.upsert({
-          where: { notebookId_slug: { notebookId, slug: "index" } },
-          create: {
-            notebookId,
-            slug: "index",
-            title: "Wiki Index",
-            content: emptyContent,
-            pageType: "INDEX",
-            sourceRefs: [],
-          },
-          update: { content: emptyContent },
-        });
-      }
-
-      await tx.wikiPage.deleteMany({
-        where: {
+          update: { title: p.title, content: p.markdown, sourceRefs: p.sourceIds },
+        }),
+      );
+    }
+    ops.push(
+      prisma.wikiPage.upsert({
+        where: { notebookId_slug: { notebookId, slug: result.indexPage.slug } },
+        create: {
           notebookId,
-          slug: { startsWith: "community-" },
-          NOT: { slug: { in: writtenSlugs } },
+          slug: result.indexPage.slug,
+          title: result.indexPage.title,
+          content: result.indexPage.markdown,
+          pageType: "INDEX",
+          sourceRefs: [],
         },
-      });
-
-      const logPage = await tx.wikiPage.findUnique({
-        where: { notebookId_slug: { notebookId, slug: "log" } },
-        select: { id: true, content: true },
-      });
-      if (logPage) {
-        await tx.wikiPage.update({
-          where: { id: logPage.id },
-          data: { content: logPage.content + logEntry },
-        });
-      }
-    },
-    { maxWait: 10_000, timeout: 60_000 },
+        update: { content: result.indexPage.markdown },
+      }),
+    );
+  } else {
+    const emptyContent = "# Wiki Index\n\nWiki is empty. Add sources to start building knowledge.";
+    ops.push(
+      prisma.wikiPage.upsert({
+        where: { notebookId_slug: { notebookId, slug: "index" } },
+        create: {
+          notebookId,
+          slug: "index",
+          title: "Wiki Index",
+          content: emptyContent,
+          pageType: "INDEX",
+          sourceRefs: [],
+        },
+        update: { content: emptyContent },
+      }),
+    );
+  }
+  ops.push(
+    prisma.wikiPage.deleteMany({
+      where: {
+        notebookId,
+        slug: { startsWith: "community-" },
+        NOT: { slug: { in: writtenSlugs } },
+      },
+    }),
   );
+  if (logPage) {
+    ops.push(
+      prisma.wikiPage.update({
+        where: { id: logPage.id },
+        data: { content: logPage.content + logEntry },
+      }),
+    );
+  }
+  await prisma.$transaction(ops);
 
   return { pagesDeleted: oldPagesCount, pagesUpdated: writtenSlugs.length };
 }

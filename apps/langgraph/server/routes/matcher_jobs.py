@@ -9,11 +9,13 @@ the FastAPI event loop stays responsive while LOTUS / pandas blocks.
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
+from workflows.matcher.job import match_job_graph
+from workflows.matcher.job_store import JobStore
 
 from server.matcher_types import (
     CreateMatchJobRequest,
@@ -22,8 +24,6 @@ from server.matcher_types import (
     MatchJobStatus,
     MatchTargetType,
 )
-from workflows.matcher.job import match_job_graph
-from workflows.matcher.job_store import JobStore
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
     """Run match_job_graph in a worker thread (LOTUS / pandas blocks the loop)."""
     store = JobStore()
     try:
+
         class _Lm:
             provider = req.model_provider
             model = req.model_name
@@ -56,18 +57,22 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
         target_df = pd.DataFrame(target_data)
         final = await asyncio.to_thread(
             match_job_graph.invoke,
-            {"job_id": job_id, "target_df": target_df, "req": graph_req,
-             "results_by_bu": {}},
+            {"job_id": job_id, "target_df": target_df, "req": graph_req, "results_by_bu": {}},
         )
         store.update_job(
-            job_id, status="COMPLETED", progress=100,
-            result_data=final["excel_bytes"], match_count=final["total_matches"],
-            completed_at=datetime.utcnow(), error_message=None,
+            job_id,
+            status="COMPLETED",
+            progress=100,
+            result_data=final["excel_bytes"],
+            match_count=final["total_matches"],
+            completed_at=datetime.now(timezone.utc),
+            error_message=None,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception(f"Job {job_id} failed: {exc}")
-        store.update_job(job_id, status="FAILED", error_message=str(exc),
-                         completed_at=datetime.utcnow())
+        store.update_job(
+            job_id, status="FAILED", error_message=str(exc), completed_at=datetime.now(timezone.utc)
+        )
 
 
 @router.post("/jobs", response_model=MatchJobResponse)

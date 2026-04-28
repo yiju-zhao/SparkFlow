@@ -7,12 +7,13 @@ synthesize assembles the master DataFrame and Excel bytes.
 JobStore writes are plain function calls inside nodes — NOT @task — to keep
 SSE polling deterministic.
 """
+
 from __future__ import annotations
 
 import logging
 import tempfile
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Any, TypedDict
 
 import pandas as pd
@@ -45,8 +46,9 @@ class JobState(TypedDict, total=False):
 
 
 def orchestrator(state: JobState) -> dict:
-    job_store.update_job(state["job_id"], status="PROCESSING",
-                          started_at=datetime.utcnow())
+    job_store.update_job(
+        state["job_id"], status="PROCESSING", started_at=datetime.now(timezone.utc)
+    )
     req = state["req"]
     queries_by_bu: dict[str, list[str]] = defaultdict(list)
     for q in req.queries:
@@ -57,20 +59,24 @@ def orchestrator(state: JobState) -> dict:
     queries_by_bu = dict(queries_by_bu)
     optimizer = QueryOptimizer(
         excel_processor=ExcelProcessor(),
-        model_provider=req.lm.provider, model_name=req.lm.model,
-        api_key=req.lm.api_key, api_base=req.lm.api_base,
+        model_provider=req.lm.provider,
+        model_name=req.lm.model,
+        api_key=req.lm.api_key,
+        api_base=req.lm.api_base,
     )
     optimized: dict[str, Any] = {}
     total_bus = max(len(queries_by_bu), 1)
     for i, (bu, qs) in enumerate(queries_by_bu.items()):
         progress = 5 + int((i / total_bus) * 20)
-        job_store.update_job(state["job_id"], progress=progress,
-                              error_message=f"Optimizing queries: {bu}")
-        optimized[bu] = optimizer.optimize_queries(
-            bu=bu, queries=qs, target_type=req.target_type,
+        job_store.update_job(
+            state["job_id"], progress=progress, error_message=f"Optimizing queries: {bu}"
         )
-    job_store.update_job(state["job_id"], progress=30,
-                          query_data=_enriched(req.queries, optimized))
+        optimized[bu] = optimizer.optimize_queries(
+            bu=bu,
+            queries=qs,
+            target_type=req.target_type,
+        )
+    job_store.update_job(state["job_id"], progress=30, query_data=_enriched(req.queries, optimized))
     return {
         "queries_by_bu": queries_by_bu,
         "optimized": optimized,
@@ -81,10 +87,16 @@ def orchestrator(state: JobState) -> dict:
 def assign_workers(state: JobState) -> list[Send]:
     """Send one rank_bu invocation per BU. Per ref doc §Creating workers in LangGraph."""
     return [
-        Send("rank_bu", {
-            "bu": bu, "optimized": opt, "target_df": state["target_df"],
-            "req": state["req"], "index_dir": state["index_dir"],
-        })
+        Send(
+            "rank_bu",
+            {
+                "bu": bu,
+                "optimized": opt,
+                "target_df": state["target_df"],
+                "req": state["req"],
+                "index_dir": state["index_dir"],
+            },
+        )
         for bu, opt in state["optimized"].items()
     ]
 
@@ -94,12 +106,18 @@ def rank_bu(ws: dict) -> dict:
     matcher = LotusMatcher()
     target_df = matcher.build_text_column(ws["target_df"], ws["req"].target_type)
     matches_df = matcher.run_pipeline(
-        df=target_df, query_text=ws["optimized"].optimized_query_en,
-        query_name=ws["bu"], top_k=ws["req"].top_k, search_k=ws["req"].search_k,
-        include_reasons=ws["req"].include_reasons, index_dir=ws["index_dir"],
+        df=target_df,
+        query_text=ws["optimized"].optimized_query_en,
+        query_name=ws["bu"],
+        top_k=ws["req"].top_k,
+        search_k=ws["req"].search_k,
+        include_reasons=ws["req"].include_reasons,
+        index_dir=ws["index_dir"],
         progress_callback=lambda *_: None,
-        model_provider=ws["req"].lm.provider, model_name=ws["req"].lm.model,
-        api_key=ws["req"].lm.api_key, api_base=ws["req"].lm.api_base,
+        model_provider=ws["req"].lm.provider,
+        model_name=ws["req"].lm.model,
+        api_key=ws["req"].lm.api_key,
+        api_base=ws["req"].lm.api_base,
     )
     matches_df.insert(0, "bu", ws["bu"])
     matches_df.insert(0, "rank", range(1, len(matches_df) + 1))
@@ -110,12 +128,11 @@ def rank_bu(ws: dict) -> dict:
 
 
 def synthesize(state: JobState) -> dict:
-    job_store.update_job(state["job_id"], progress=85,
-                          error_message="Creating result file...")
-    master = _build_master(state["target_df"], state["results_by_bu"],
-                           state["req"].include_reasons)
+    job_store.update_job(state["job_id"], progress=85, error_message="Creating result file...")
+    master = _build_master(state["target_df"], state["results_by_bu"], state["req"].include_reasons)
     excel_bytes = ExcelProcessor().create_result_excel(
-        results_by_query=state["results_by_bu"], master_df=master,
+        results_by_query=state["results_by_bu"],
+        master_df=master,
     )
     total = sum(len(df) for df in state["results_by_bu"].values())
     return {"excel_bytes": excel_bytes, "total_matches": total}
@@ -130,32 +147,34 @@ def _enriched(queries: list[dict], optimized: dict[str, Any]) -> list[dict]:
         rec = dict(q)
         opt = optimized.get(rec.get("bu", "Unknown"))
         if opt:
-            rec.update({
-                "optimized_query_native": opt.optimized_query_native,
-                "optimized_query_en": opt.optimized_query_en,
-                "optimization_focuses": opt.focuses,
-                "optimizer_used_llm": opt.used_llm,
-            })
+            rec.update(
+                {
+                    "optimized_query_native": opt.optimized_query_native,
+                    "optimized_query_en": opt.optimized_query_en,
+                    "optimization_focuses": opt.focuses,
+                    "optimizer_used_llm": opt.used_llm,
+                }
+            )
         out.append(rec)
     return out
 
 
-def _build_master(target_df: pd.DataFrame,
-                  results_by_bu: dict[str, pd.DataFrame],
-                  include_reasons: bool) -> pd.DataFrame:
+def _build_master(
+    target_df: pd.DataFrame, results_by_bu: dict[str, pd.DataFrame], include_reasons: bool
+) -> pd.DataFrame:
     master = target_df.drop(columns=["match_text"], errors="ignore").copy()
     bu_names = list(results_by_bu.keys())
     for bu in bu_names:
         bu_df = results_by_bu[bu]
-        id_col = "id" if "id" in bu_df.columns else (
-            "title" if "title" in bu_df.columns else None)
+        id_col = "id" if "id" in bu_df.columns else ("title" if "title" in bu_df.columns else None)
         if id_col and id_col in master.columns:
             rank_map = dict(zip(bu_df[id_col], bu_df["rank"]))
             master[bu] = master[id_col].map(rank_map)
         else:
             master[bu] = ""
-    if include_reasons and any("recommendation_reason" in results_by_bu[bu].columns
-                                for bu in bu_names):
+    if include_reasons and any(
+        "recommendation_reason" in results_by_bu[bu].columns for bu in bu_names
+    ):
         reason_maps: dict[str, dict] = {}
         for bu in bu_names:
             df = results_by_bu[bu]
@@ -166,6 +185,7 @@ def _build_master(target_df: pd.DataFrame,
                 reason_maps[bu] = dict(zip(df[key], df["recommendation_reason"]))
         if reason_maps:
             id_key = "id" if "id" in master.columns else "title"
+
             def agg(row):
                 parts = []
                 k = row[id_key]
@@ -174,6 +194,7 @@ def _build_master(target_df: pd.DataFrame,
                     if r and str(r).strip():
                         parts.append(f"[{bu}]\n{r}")
                 return "\n\n".join(parts)
+
             master["recommendation_reasons"] = master.apply(agg, axis=1)
     master = master.drop(columns=["id"], errors="ignore")
     for bu in results_by_bu:
