@@ -11,7 +11,6 @@ from typing import Any
 
 from langchain.tools import tool
 
-
 # ---------------------------------------------------------------------------
 # Page registry
 # ---------------------------------------------------------------------------
@@ -144,10 +143,7 @@ def suggest_navigation(intent: str) -> dict[str, Any]:
     """
     intent_words = set(intent.lower().split())
 
-    scored = [
-        (page, _score_page(page, intent_words))
-        for page in _PAGE_REGISTRY
-    ]
+    scored = [(page, _score_page(page, intent_words)) for page in _PAGE_REGISTRY]
 
     # Sort by score descending, then by title for deterministic ties
     scored.sort(key=lambda t: (-t[1], t[0]["title"]))
@@ -157,9 +153,7 @@ def suggest_navigation(intent: str) -> dict[str, Any]:
 
     if best_score == 0:
         # Fall back to general pages
-        result_pages = [
-            p for p in _PAGE_REGISTRY if p["url"] in _DEFAULT_PAGE_URLS
-        ]
+        result_pages = [p for p in _PAGE_REGISTRY if p["url"] in _DEFAULT_PAGE_URLS]
     else:
         result_pages = [page for page, _ in top_3]
 

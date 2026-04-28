@@ -49,10 +49,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!digest) {
-    return NextResponse.json(
-      { error: `No digest found for date ${rawDate}.` },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: `No digest found for date ${rawDate}.` }, { status: 404 });
   }
 
   // ── Serialize ─────────────────────────────────────────────────────────────

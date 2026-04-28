@@ -72,9 +72,7 @@ async def backfill(batch_size: int, hard_limit: int | None) -> int:
             abstracts = [r[2] or "" for r in rows]
 
             title_vecs = await embed_passages(titles, batch_size=batch_size, max_length=128)
-            abstract_vecs = await embed_passages(
-                abstracts, batch_size=batch_size, max_length=1024
-            )
+            abstract_vecs = await embed_passages(abstracts, batch_size=batch_size, max_length=1024)
 
             with conn.cursor() as cur:
                 for pub_id, tvec, avec in zip(ids, title_vecs, abstract_vecs):

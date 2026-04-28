@@ -8,6 +8,7 @@ Layer order (per refactor spec §6):
   5. page_context block                       (if provided)
   6. session metadata
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -16,8 +17,15 @@ from pathlib import Path
 ROOT = Path(__file__).parent / "prompts"
 
 OPENAI_HINT_FAMILIES = {
-    "openai", "gpt", "codex",
-    "deepseek", "glm", "zhipu", "minimax", "kimi", "moonshot",
+    "openai",
+    "gpt",
+    "codex",
+    "deepseek",
+    "glm",
+    "zhipu",
+    "minimax",
+    "kimi",
+    "moonshot",
     "custom",
 }
 GEMINI_HINT_FAMILIES = {"google", "gemini"}

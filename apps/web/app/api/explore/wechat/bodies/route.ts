@@ -17,11 +17,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as { ids?: (number | string)[] };
   const rawIds = Array.isArray(body.ids) ? body.ids : [];
   const ids = Array.from(
-    new Set(
-      rawIds
-        .map((v) => Number(v))
-        .filter((n) => Number.isFinite(n) && n > 0),
-    ),
+    new Set(rawIds.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0)),
   ).slice(0, MAX_IDS);
 
   if (ids.length === 0) {

@@ -128,10 +128,7 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
             <span className="text-sf-ink font-bold tabular-nums">
               {pageStart}-{pageEnd}
             </span>{" "}
-            of{" "}
-            <span className="text-sf-ink font-bold tabular-nums">
-              {total.toLocaleString()}
-            </span>{" "}
+            of <span className="text-sf-ink font-bold tabular-nums">{total.toLocaleString()}</span>{" "}
             articles
           </div>
 
@@ -149,10 +146,7 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
             </Link>
             {paginationPages.map((p, idx) =>
               p === "ellipsis" ? (
-                <span
-                  key={`e-${idx}`}
-                  className="px-2 text-sf-ink-4 font-mono select-none"
-                >
+                <span key={`e-${idx}`} className="px-2 text-sf-ink-4 font-mono select-none">
                   …
                 </span>
               ) : (
@@ -184,8 +178,7 @@ export default async function WechatArticlesPage({ params, searchParams }: PageP
           </nav>
 
           <div className="text-sm font-medium text-sf-ink-3">
-            Page{" "}
-            <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
+            Page <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
             <span className="text-sf-ink font-bold tabular-nums">{totalPages}</span>
           </div>
         </div>

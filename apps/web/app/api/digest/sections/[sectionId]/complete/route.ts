@@ -30,10 +30,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   // ── Shared-secret auth (no NextAuth) ──────────────────────────────────────
   const token = process.env.INTERNAL_CALLBACK_TOKEN;
   if (!token) {
-    return NextResponse.json(
-      { error: "INTERNAL_CALLBACK_TOKEN not configured" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "INTERNAL_CALLBACK_TOKEN not configured" }, { status: 500 });
   }
 
   const incomingToken = request.headers.get("x-internal-token") ?? "";
@@ -58,10 +55,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     DigestStatus.FAILED,
   ];
   if (!allowedStatuses.includes(status as DigestStatus)) {
-    return NextResponse.json(
-      { error: `Invalid status value: "${status}"` },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: `Invalid status value: "${status}"` }, { status: 400 });
   }
 
   // Parse completedAt
@@ -92,10 +86,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
   } catch (err) {
     console.error(`[digest/complete] Failed to update section ${sectionId}:`, err);
-    return NextResponse.json(
-      { error: "Failed to update section" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to update section" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

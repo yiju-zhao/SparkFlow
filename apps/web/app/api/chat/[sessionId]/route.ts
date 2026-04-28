@@ -7,11 +7,7 @@ interface RouteParams {
 }
 
 function getLangGraphApiUrl(): string | null {
-  return (
-    process.env.LANGGRAPH_API_URL ||
-    process.env.NEXT_PUBLIC_LANGGRAPH_API_URL ||
-    null
-  );
+  return process.env.LANGGRAPH_API_URL || process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || null;
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
@@ -118,9 +114,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
           },
         });
       } else {
-        console.warn(
-          "Skipping agent memory cleanup because LANGGRAPH_API_URL is not configured.",
-        );
+        console.warn("Skipping agent memory cleanup because LANGGRAPH_API_URL is not configured.");
       }
     } catch (agentError) {
       // Log but don't fail - agent memory cleanup is best-effort

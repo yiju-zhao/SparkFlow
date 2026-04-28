@@ -197,10 +197,7 @@ export function LandingHeader({
           {isLoggedIn ? (
             <>
               <Button size="sm" asChild>
-                <Link
-                  href={deepdiveHref}
-                  className="font-black uppercase tracking-[0.1em]"
-                >
+                <Link href={deepdiveHref} className="font-black uppercase tracking-[0.1em]">
                   DeepDive
                 </Link>
               </Button>
@@ -269,9 +266,7 @@ export function LandingHeader({
                   href={link.href}
                   className={cn(
                     "rounded-md px-3 py-2 text-left text-sm transition-colors",
-                    isActive
-                      ? "text-sf-accent font-semibold"
-                      : "text-sf-ink-3 hover:text-sf-ink-2",
+                    isActive ? "text-sf-accent font-semibold" : "text-sf-ink-3 hover:text-sf-ink-2",
                   )}
                 >
                   {link.label}

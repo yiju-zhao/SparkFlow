@@ -3,10 +3,7 @@
  * Used by the /digest page and any other frontend consumers.
  */
 
-import type {
-  DigestGenerateRequest,
-  DigestSectionStatus,
-} from "@/lib/types/digest";
+import type { DigestGenerateRequest, DigestSectionStatus } from "@/lib/types/digest";
 
 export async function createDigest(req: DigestGenerateRequest) {
   const res = await fetch("/api/digest/generate", {
@@ -19,9 +16,7 @@ export async function createDigest(req: DigestGenerateRequest) {
 }
 
 export async function readDigest(date?: string) {
-  const url = date
-    ? `/api/digest?date=${encodeURIComponent(date)}`
-    : "/api/digest";
+  const url = date ? `/api/digest?date=${encodeURIComponent(date)}` : "/api/digest";
   const res = await fetch(url);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`readDigest failed: ${res.status}`);
@@ -32,9 +27,7 @@ export async function pollSectionStatus(
   digestId: string,
   sectionId: string,
 ): Promise<DigestSectionStatus> {
-  const res = await fetch(
-    `/api/digest/${digestId}/sections/${sectionId}/status`,
-  );
+  const res = await fetch(`/api/digest/${digestId}/sections/${sectionId}/status`);
   if (!res.ok) throw new Error(`pollSectionStatus failed: ${res.status}`);
   return res.json();
 }

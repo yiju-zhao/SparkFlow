@@ -112,10 +112,14 @@ export function GuideProvider({
           if (body.markTourCompleted) next.tourCompletedAt = new Date().toISOString();
           if (body.resetTour) next.tourCompletedAt = null;
           if (typeof body.dismissGuideId === "string") {
-            next.dismissedGuides = Array.from(new Set([...prev.dismissedGuides, body.dismissGuideId]));
+            next.dismissedGuides = Array.from(
+              new Set([...prev.dismissedGuides, body.dismissGuideId]),
+            );
           }
           if (typeof body.undismissGuideId === "string") {
-            next.dismissedGuides = prev.dismissedGuides.filter((id) => id !== body.undismissGuideId);
+            next.dismissedGuides = prev.dismissedGuides.filter(
+              (id) => id !== body.undismissGuideId,
+            );
           }
           writeLocalState(next);
           return next;
@@ -192,7 +196,16 @@ export function GuideProvider({
       registerGuideAction,
       runGuideAction,
     }),
-    [state, isAuthenticated, loading, drawerOpen, activeGuideId, patch, registerGuideAction, runGuideAction],
+    [
+      state,
+      isAuthenticated,
+      loading,
+      drawerOpen,
+      activeGuideId,
+      patch,
+      registerGuideAction,
+      runGuideAction,
+    ],
   );
 
   return <GuideContext.Provider value={value}>{children}</GuideContext.Provider>;

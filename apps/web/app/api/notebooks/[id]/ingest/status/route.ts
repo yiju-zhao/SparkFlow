@@ -3,10 +3,7 @@ import prisma from "@/lib/prisma";
 import { getWikiIngestJobStatus } from "@/lib/queue/ingest-queue";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,10 +34,7 @@ export async function GET(
     ]);
   } catch (err) {
     console.error("[GET ingest status] redis unhealthy:", err);
-    return NextResponse.json(
-      { error: "Status unavailable, retry shortly." },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Status unavailable, retry shortly." }, { status: 503 });
   }
   if (!status) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });

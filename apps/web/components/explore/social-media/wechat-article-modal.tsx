@@ -173,7 +173,8 @@ export function WechatArticleModal({ article, related }: Props) {
 
               {article.author && (
                 <p className="text-sm text-sf-ink-3">
-                  {t("byAuthor")} <span className="text-sf-ink-2 font-medium">{article.author}</span>
+                  {t("byAuthor")}{" "}
+                  <span className="text-sf-ink-2 font-medium">{article.author}</span>
                 </p>
               )}
             </header>

@@ -24,7 +24,8 @@ const features = [
   {
     icon: Calendar,
     title: "Conference Tracking",
-    description: "Browse sessions, track schedules, and discover presentations aligned with your interests.",
+    description:
+      "Browse sessions, track schedules, and discover presentations aligned with your interests.",
   },
   {
     icon: FileText,

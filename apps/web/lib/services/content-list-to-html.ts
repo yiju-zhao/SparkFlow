@@ -254,10 +254,8 @@ function renderItemInner(
   // Image / chart
   if (type === "image" || type === "chart") {
     const imgSrc = resolveImage(getImagePath(content), imageMap);
-    const captionSource =
-      type === "chart" ? content.chart_caption : content.image_caption;
-    const footnoteSource =
-      type === "chart" ? content.chart_footnote : content.image_footnote;
+    const captionSource = type === "chart" ? content.chart_caption : content.image_caption;
+    const footnoteSource = type === "chart" ? content.chart_footnote : content.image_footnote;
     const caption = renderCaption(captionSource);
     const footnote = renderCaption(footnoteSource);
     if (!imgSrc) {
@@ -266,15 +264,16 @@ function renderItemInner(
     }
     // Use caption as alt text with no math delimiters, so screen readers aren't
     // confused by $...$ markers.
-    const altText = typeof captionSource === "string"
-      ? captionSource
-      : Array.isArray(captionSource)
+    const altText =
+      typeof captionSource === "string"
         ? captionSource
-            .map((item) =>
-              typeof item === "string" ? item : (item as { content?: unknown })?.content ?? "",
-            )
-            .join(" ")
-        : "";
+        : Array.isArray(captionSource)
+          ? captionSource
+              .map((item) =>
+                typeof item === "string" ? item : ((item as { content?: unknown })?.content ?? ""),
+              )
+              .join(" ")
+          : "";
     return (
       `<figure><img src="${imgSrc}" alt="${escapeHtml(altText)}" />` +
       (caption ? `<figcaption>${caption}</figcaption>` : "") +
@@ -299,8 +298,7 @@ function renderItemInner(
   // Caption as standalone block (legacy v1 shape — kept for defensive parsing).
   if (type === "image_caption" || type === "table_caption" || type === "chart_caption") {
     const caption = renderCaption(
-      (content.content as InlineContent | undefined) ??
-        (content.text as InlineContent | undefined),
+      (content.content as InlineContent | undefined) ?? (content.text as InlineContent | undefined),
     );
     return caption ? `<p>${caption}</p>` : "";
   }

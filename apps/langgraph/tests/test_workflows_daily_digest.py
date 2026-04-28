@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
-
 import pytest
-
 from workflows.daily_digest import GenerateSectionRequest, generate_section
 
 
@@ -14,8 +11,10 @@ def _make_req(**overrides):
         section_id="sec_1",
         source_type="WECHAT",
         digest_date="2026-04-27",
-        queries=[{"id": "q1", "text": "ai", "enabled": True},
-                 {"id": "q2", "text": "ml", "enabled": True}],
+        queries=[
+            {"id": "q1", "text": "ai", "enabled": True},
+            {"id": "q2", "text": "ml", "enabled": True},
+        ],
         subscribed_source_ids=[],
         top_n=5,
         model_provider="openai",
@@ -33,9 +32,20 @@ async def test_completed_path(monkeypatch):
 
     async def fake_prefilter(query_text, source_ids):
         prefilter_calls.append(query_text)
-        return [{"id": 1, "title": "T", "source_name": "S", "author": "A",
-                 "content_text": "c" * 50, "url": "u", "publish_time": "2026-04-26",
-                 "cover_url": None, "score": 0.9, "matched_queries": []}]
+        return [
+            {
+                "id": 1,
+                "title": "T",
+                "source_name": "S",
+                "author": "A",
+                "content_text": "c" * 50,
+                "url": "u",
+                "publish_time": "2026-04-26",
+                "cover_url": None,
+                "score": 0.9,
+                "matched_queries": [],
+            }
+        ]
 
     callback_payloads = []
 
@@ -60,9 +70,12 @@ async def test_completed_path(monkeypatch):
 async def test_empty_pool(monkeypatch):
     async def empty_prefilter(query_text, source_ids):
         return []
+
     callbacks = []
+
     async def fake_callback(section_id, status, **kw):
         callbacks.append((section_id, status, kw))
+
     monkeypatch.setattr("workflows.daily_digest._prefilter_query_impl", empty_prefilter)
     monkeypatch.setattr("workflows.daily_digest._callback_impl", fake_callback)
 
@@ -74,9 +87,12 @@ async def test_empty_pool(monkeypatch):
 async def test_rank_failure_emits_failed_callback(monkeypatch):
     async def fake_prefilter(query_text, source_ids):
         return [{"id": 1, "title": "T", "source_name": "S", "content_text": "c"}]
+
     async def failing_rank(**kw):
         raise RuntimeError("upstream 502")
+
     callbacks = []
+
     async def fake_callback(section_id, status, **kw):
         callbacks.append((section_id, status, kw))
 

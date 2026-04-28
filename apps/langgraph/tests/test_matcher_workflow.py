@@ -7,6 +7,7 @@ doesn't propagate — module-level monkeypatch is more reliable. For the
 HTTP route, we mock arq.create_pool so the FastAPI lifespan doesn't need
 a live Redis.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -14,10 +15,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-
 from server.matcher_types import MatchJobResponse
 from workflows.matcher.job import (
-    assign_workers, orchestrator, rank_bu, synthesize,
+    assign_workers,
+    orchestrator,
+    rank_bu,
+    synthesize,
 )
 from workflows.matcher.job_store import JobStore
 
@@ -32,11 +35,12 @@ def _reset_job_store():
 @pytest.fixture
 def client(monkeypatch):
     """TestClient with arq.create_pool mocked so lifespan doesn't need Redis."""
-    monkeypatch.setattr("server.app.create_pool",
-                        AsyncMock(return_value=AsyncMock(aclose=AsyncMock())))
-    monkeypatch.setattr("server.routes.matcher_jobs._run_and_persist",
-                        AsyncMock())
+    monkeypatch.setattr(
+        "server.app.create_pool", AsyncMock(return_value=AsyncMock(aclose=AsyncMock()))
+    )
+    monkeypatch.setattr("server.routes.matcher_jobs._run_and_persist", AsyncMock())
     from server.app import app
+
     with TestClient(app) as c:
         yield c
 
@@ -58,8 +62,7 @@ def _make_req(queries, target_type="publication"):
     req.top_k = 5
     req.search_k = 50
     req.include_reasons = True
-    req.lm = MagicMock(provider="openai", model="gpt-4o-mini",
-                       api_key="sk-t", api_base=None)
+    req.lm = MagicMock(provider="openai", model="gpt-4o-mini", api_key="sk-t", api_base=None)
     return req
 
 
@@ -71,23 +74,32 @@ def _make_req(queries, target_type="publication"):
 def test_orchestrator_groups_queries_by_bu(monkeypatch):
     fake_qo = MagicMock()
     fake_qo.return_value.optimize_queries = MagicMock(
-        side_effect=lambda **kw: _fake_optimized(kw["bu"]))
+        side_effect=lambda **kw: _fake_optimized(kw["bu"])
+    )
     monkeypatch.setattr("workflows.matcher.job.QueryOptimizer", fake_qo)
 
-    req = _make_req([
-        {"bu": "BU_A", "query": "q1"},
-        {"bu": "BU_A", "query": "q1b"},
-        {"bu": "BU_B", "query": "q2"},
-    ])
+    req = _make_req(
+        [
+            {"bu": "BU_A", "query": "q1"},
+            {"bu": "BU_A", "query": "q1b"},
+            {"bu": "BU_B", "query": "q2"},
+        ]
+    )
     job_id = JobStore().create_job(
-        user_id="u", instance_id="i", target_type="publication",
-        top_k=5, search_k=50, include_reasons=True,
-        query_data=req.queries, query_count=3,
-        target_data=[], model_provider="openai", model_name="gpt-4o-mini",
+        user_id="u",
+        instance_id="i",
+        target_type="publication",
+        top_k=5,
+        search_k=50,
+        include_reasons=True,
+        query_data=req.queries,
+        query_count=3,
+        target_data=[],
+        model_provider="openai",
+        model_name="gpt-4o-mini",
     )
 
-    state = {"job_id": job_id, "target_df": pd.DataFrame(), "req": req,
-             "results_by_bu": {}}
+    state = {"job_id": job_id, "target_df": pd.DataFrame(), "req": req, "results_by_bu": {}}
     out = orchestrator(state)
 
     assert set(out["queries_by_bu"].keys()) == {"BU_A", "BU_B"}
@@ -103,8 +115,7 @@ def test_assign_workers_emits_one_send_per_bu():
     state = {
         "target_df": pd.DataFrame(),
         "req": _make_req([{"bu": "BU_A", "query": "q1"}]),
-        "optimized": {"BU_A": _fake_optimized("BU_A"),
-                      "BU_B": _fake_optimized("BU_B")},
+        "optimized": {"BU_A": _fake_optimized("BU_A"), "BU_B": _fake_optimized("BU_B")},
         "index_dir": "/tmp/x",
     }
     sends = assign_workers(state)
@@ -116,10 +127,8 @@ def test_assign_workers_emits_one_send_per_bu():
 def test_rank_bu_invokes_lotus_and_returns_results_by_bu(monkeypatch):
     fake_matcher = MagicMock()
     fake_matcher.build_text_column = MagicMock(return_value=pd.DataFrame([{"id": 1}]))
-    fake_matcher.run_pipeline = MagicMock(
-        return_value=pd.DataFrame([{"id": 1, "title": "match"}]))
-    monkeypatch.setattr("workflows.matcher.job.LotusMatcher",
-                        MagicMock(return_value=fake_matcher))
+    fake_matcher.run_pipeline = MagicMock(return_value=pd.DataFrame([{"id": 1, "title": "match"}]))
+    monkeypatch.setattr("workflows.matcher.job.LotusMatcher", MagicMock(return_value=fake_matcher))
 
     ws = {
         "bu": "BU_X",
@@ -140,14 +149,20 @@ def test_synthesize_writes_excel_bytes_and_total_matches(monkeypatch):
     fake_xls = MagicMock()
     fake_xls.return_value.create_result_excel = MagicMock(return_value=b"BYTES")
     monkeypatch.setattr("workflows.matcher.job.ExcelProcessor", fake_xls)
-    monkeypatch.setattr("workflows.matcher.job._build_master",
-                        lambda df, rbu, ir: df)
+    monkeypatch.setattr("workflows.matcher.job._build_master", lambda df, rbu, ir: df)
 
     job_id = JobStore().create_job(
-        user_id="u", instance_id="i", target_type="publication",
-        top_k=5, search_k=50, include_reasons=True,
-        query_data=[], query_count=0, target_data=[],
-        model_provider="openai", model_name="gpt-4o-mini",
+        user_id="u",
+        instance_id="i",
+        target_type="publication",
+        top_k=5,
+        search_k=50,
+        include_reasons=True,
+        query_data=[],
+        query_count=0,
+        target_data=[],
+        model_provider="openai",
+        model_name="gpt-4o-mini",
     )
     state = {
         "job_id": job_id,
@@ -174,12 +189,13 @@ def valid_job_request() -> dict:
         "user_id": "user-1",
         "instance_id": "inst-1",
         "target_type": "SESSION",
-        "queries": [
-            {"id": "q1", "bu": "BU-A", "query": "llm for legal", "row_index": 0}
-        ],
+        "queries": [{"id": "q1", "bu": "BU-A", "query": "llm for legal", "row_index": 0}],
         "target_data": [{"id": "s1", "title": "x", "abstract": "y"}],
-        "top_k": 10, "search_k": 50, "include_reasons": True,
-        "model_provider": "google", "model_name": "gemini-2.5-flash",
+        "top_k": 10,
+        "search_k": 50,
+        "include_reasons": True,
+        "model_provider": "google",
+        "model_name": "gemini-2.5-flash",
         "api_key": "fake-test-key",
     }
 

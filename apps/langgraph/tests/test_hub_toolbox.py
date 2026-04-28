@@ -17,7 +17,6 @@ import re
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from tools.hub_toolbox import (
     HUB_TOOLBOX_TOOLS,
     aggregate_publications,
@@ -27,7 +26,6 @@ from tools.hub_toolbox import (
     list_publication_topics,
     list_venues,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -61,9 +59,7 @@ async def test_list_publication_affiliations_with_query_and_limit():
     """Fuzzy ``query`` becomes ``%query%``; limit is the trailing param."""
     fake = AsyncMock(return_value=[{"value": "Hugging Face", "count": 3}])
     with patch("tools.hub_toolbox._query", fake):
-        result = await list_publication_affiliations.ainvoke(
-            {"query": "hugging", "limit": 5}
-        )
+        result = await list_publication_affiliations.ainvoke({"query": "hugging", "limit": 5})
 
     assert result == {"items": [{"value": "Hugging Face", "count": 3}]}
     sql, params = fake.call_args.args
@@ -118,7 +114,7 @@ async def test_list_publication_topics_filter_uses_underlying_field_not_placehol
     sql, params = fake.call_args.args
     sql_n = _normalize(sql)
     # Filter uses the underlying-field COALESCE, NOT the display COALESCE.
-    assert 'COALESCE(p."researchTopic", \'\') ILIKE %s' in sql_n
+    assert "COALESCE(p.\"researchTopic\", '') ILIKE %s" in sql_n
     # Display projection still emits 'Unknown' for the empty rows.
     assert "'Unknown'" in sql_n
     assert params == ("%Unknown%", 5)
@@ -185,7 +181,7 @@ async def test_aggregate_publications_research_topic_substitutes_coalesce_expres
 
     sql, params = fake.call_args.args
     sql_n = _normalize(sql)
-    coalesce_expr = 'COALESCE(NULLIF(p."researchTopic", \'\'), \'Unknown\')'
+    coalesce_expr = "COALESCE(NULLIF(p.\"researchTopic\", ''), 'Unknown')"
     # SELECT and GROUP BY must use the SAME expression — postgres can't
     # group by an output alias.
     assert f"SELECT {coalesce_expr} AS label" in sql_n
@@ -212,7 +208,9 @@ async def test_aggregate_publications_unknown_group_rejected_at_tool_boundary():
 
 
 async def test_list_venues_left_joins_instances_for_count():
-    fake = AsyncMock(return_value=[{"id": 1, "name": "ICML", "type": "conference", "instance_count": 12}])
+    fake = AsyncMock(
+        return_value=[{"id": 1, "name": "ICML", "type": "conference", "instance_count": 12}]
+    )
     with patch("tools.hub_toolbox._query", fake):
         await list_venues.ainvoke({"query": "i", "limit": 4})
 

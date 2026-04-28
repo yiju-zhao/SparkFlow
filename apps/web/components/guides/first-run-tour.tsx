@@ -47,7 +47,9 @@ export function FirstRunTour() {
       }
       // 2. Triggers (single or array).
       if (current?.trigger) {
-        const list: GuideTrigger[] = Array.isArray(current.trigger) ? current.trigger : [current.trigger];
+        const list: GuideTrigger[] = Array.isArray(current.trigger)
+          ? current.trigger
+          : [current.trigger];
         for (const trigger of list) {
           if (trigger.kind === "navigate") tour.navigate(trigger.route);
           else await runGuideAction(trigger.name);
@@ -93,7 +95,11 @@ export function FirstRunTour() {
             <h2 className="mb-2 text-lg font-semibold">{t("welcomeTitle")}</h2>
             <p className="mb-4 text-sm text-muted-foreground">{t("welcomeBody")}</p>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={handleSkip} className="text-xs text-muted-foreground hover:text-foreground">
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
                 {t("skip")}
               </button>
               <button
@@ -107,29 +113,29 @@ export function FirstRunTour() {
           </div>
         </div>
       ) : null}
-      {tour.stage === "running" && steps.length > 0 ? (
-        (() => {
-          const current = steps[tour.stepIndex] ?? steps[steps.length - 1];
-          const stripPrefix = (k: string) => k.replace(/^guides\./, "");
-          return (
-            <Spotlight
-              selector={current.selector}
-              placement={current.placement}
-              title={tGuides(stripPrefix(current.titleKey))}
-              body={tGuides(stripPrefix(current.bodyKey))}
-              stepIndex={tour.stepIndex}
-              totalSteps={steps.length}
-              onNext={() => (tour.stepIndex === steps.length - 1 ? tour.finish() : tour.next())}
-              onPrev={tour.stepIndex > 0 ? tour.prev : undefined}
-              onClose={handleSkip}
-              nextLabel={t("next")}
-              prevLabel={t("prev")}
-              closeLabel={t("close")}
-              finishLabel={t("finish")}
-            />
-          );
-        })()
-      ) : null}
+      {tour.stage === "running" && steps.length > 0
+        ? (() => {
+            const current = steps[tour.stepIndex] ?? steps[steps.length - 1];
+            const stripPrefix = (k: string) => k.replace(/^guides\./, "");
+            return (
+              <Spotlight
+                selector={current.selector}
+                placement={current.placement}
+                title={tGuides(stripPrefix(current.titleKey))}
+                body={tGuides(stripPrefix(current.bodyKey))}
+                stepIndex={tour.stepIndex}
+                totalSteps={steps.length}
+                onNext={() => (tour.stepIndex === steps.length - 1 ? tour.finish() : tour.next())}
+                onPrev={tour.stepIndex > 0 ? tour.prev : undefined}
+                onClose={handleSkip}
+                nextLabel={t("next")}
+                prevLabel={t("prev")}
+                closeLabel={t("close")}
+                finishLabel={t("finish")}
+              />
+            );
+          })()
+        : null}
       {showSkipBanner ? (
         <div className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-border bg-background px-4 py-2 text-xs shadow-lg">
           {t("skipToast")}

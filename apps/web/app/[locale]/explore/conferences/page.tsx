@@ -26,8 +26,7 @@ export default async function ConferencesPage({ params, searchParams }: PageProp
   const q = (searchParamsResolved.q as string | undefined)?.toLowerCase() ?? "";
   const filtered = q
     ? conferences.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) || c.venue.name.toLowerCase().includes(q),
+        (c) => c.name.toLowerCase().includes(q) || c.venue.name.toLowerCase().includes(q),
       )
     : conferences;
 

@@ -52,11 +52,21 @@ function tooltipPosition(rect: Rect, placement: GuideStepPlacement) {
     case "top":
       return { top: rect.top - 12, left: rect.left + rect.width / 2, x: "-50%", y: "-100%" };
     case "bottom":
-      return { top: rect.top + rect.height + 12, left: rect.left + rect.width / 2, x: "-50%", y: 0 };
+      return {
+        top: rect.top + rect.height + 12,
+        left: rect.left + rect.width / 2,
+        x: "-50%",
+        y: 0,
+      };
     case "left":
       return { top: rect.top + rect.height / 2, left: rect.left - 12, x: "-100%", y: "-50%" };
     case "right":
-      return { top: rect.top + rect.height / 2, left: rect.left + rect.width + 12, x: 0, y: "-50%" };
+      return {
+        top: rect.top + rect.height / 2,
+        left: rect.left + rect.width + 12,
+        x: 0,
+        y: "-50%",
+      };
   }
 }
 

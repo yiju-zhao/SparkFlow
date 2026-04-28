@@ -116,10 +116,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
           </div>
 
           {/* Search + filter chips */}
-          <PublicationsFilterBar
-            filters={filterConfigs}
-            searchPlaceholder={searchPlaceholder}
-          />
+          <PublicationsFilterBar filters={filterConfigs} searchPlaceholder={searchPlaceholder} />
         </div>
       </section>
 
@@ -161,10 +158,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
             </Link>
             {paginationPages.map((p, idx) =>
               p === "ellipsis" ? (
-                <span
-                  key={`e-${idx}`}
-                  className="px-2 text-sf-ink-4 font-mono select-none"
-                >
+                <span key={`e-${idx}`} className="px-2 text-sf-ink-4 font-mono select-none">
                   …
                 </span>
               ) : (
@@ -196,8 +190,7 @@ export default async function SessionsPage({ params, searchParams }: PageProps) 
           </nav>
 
           <div className="text-sm font-medium text-sf-ink-3">
-            Page{" "}
-            <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
+            Page <span className="text-sf-ink font-bold tabular-nums">{currentPage}</span> of{" "}
             <span className="text-sf-ink font-bold tabular-nums">{totalPages}</span>
           </div>
         </div>

@@ -35,13 +35,27 @@ function filterGuides(guides: GuideDefinition[], q: string, dismissed: string[])
 
 export function GuideDrawer() {
   const t = useTranslations("guides");
-  const { drawerOpen, setDrawerOpen, dismissedGuides, dismissGuide, openGuide, resetTour, isAuthenticated } = useGuides();
+  const {
+    drawerOpen,
+    setDrawerOpen,
+    dismissedGuides,
+    dismissGuide,
+    openGuide,
+    resetTour,
+    isAuthenticated,
+  } = useGuides();
   const [q, setQ] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"actions" | "read">("actions");
 
-  const source = useMemo(() => (isAuthenticated ? GUIDES : GUIDES.filter((g) => g.publicOnLanding)), [isAuthenticated]);
-  const visible = useMemo(() => filterGuides(source, q, dismissedGuides), [source, q, dismissedGuides]);
+  const source = useMemo(
+    () => (isAuthenticated ? GUIDES : GUIDES.filter((g) => g.publicOnLanding)),
+    [isAuthenticated],
+  );
+  const visible = useMemo(
+    () => filterGuides(source, q, dismissedGuides),
+    [source, q, dismissedGuides],
+  );
   const grouped = useMemo(() => {
     const map = new Map<GuideCategory, GuideDefinition[]>();
     for (const cat of CATEGORY_ORDER) map.set(cat, []);
@@ -79,7 +93,10 @@ export function GuideDrawer() {
                     <BookOpen className="h-4 w-4" /> {t("drawer.title")}
                   </h2>
                   <Dialog.Close asChild>
-                    <button aria-label={t("drawer.close")} className="text-muted-foreground hover:text-foreground">
+                    <button
+                      aria-label={t("drawer.close")}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
                       <X className="h-4 w-4" />
                     </button>
                   </Dialog.Close>
@@ -105,11 +122,15 @@ export function GuideDrawer() {
                     return (
                       <section key={cat} className="mb-4">
                         <h3 className="mb-2 px-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                          {t(`category.${cat}`)} <span className="opacity-60">({items.length})</span>
+                          {t(`category.${cat}`)}{" "}
+                          <span className="opacity-60">({items.length})</span>
                         </h3>
                         <ul className="flex flex-col gap-1">
                           {items.map((g) => (
-                            <li key={g.id} className="rounded border border-transparent hover:border-border">
+                            <li
+                              key={g.id}
+                              className="rounded border border-transparent hover:border-border"
+                            >
                               <button
                                 type="button"
                                 aria-expanded={expandedId === g.id}
@@ -126,11 +147,20 @@ export function GuideDrawer() {
                               >
                                 {(() => {
                                   const Icon = resolveIcon(g.icon);
-                                  return <Icon className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden />;
+                                  return (
+                                    <Icon
+                                      className="mt-0.5 h-4 w-4 text-muted-foreground"
+                                      aria-hidden
+                                    />
+                                  );
                                 })()}
                                 <span className="flex-1">
-                                  <span className="block font-medium">{t(g.titleKey.replace(/^guides\./, ""))}</span>
-                                  <span className="block text-xs text-muted-foreground">{t(g.summaryKey.replace(/^guides\./, ""))}</span>
+                                  <span className="block font-medium">
+                                    {t(g.titleKey.replace(/^guides\./, ""))}
+                                  </span>
+                                  <span className="block text-xs text-muted-foreground">
+                                    {t(g.summaryKey.replace(/^guides\./, ""))}
+                                  </span>
                                 </span>
                               </button>
                               {expandedId === g.id ? (
@@ -148,7 +178,9 @@ export function GuideDrawer() {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => setViewMode(viewMode === "read" ? "actions" : "read")}
+                                      onClick={() =>
+                                        setViewMode(viewMode === "read" ? "actions" : "read")
+                                      }
                                       aria-pressed={viewMode === "read"}
                                       className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"
                                     >
@@ -169,8 +201,12 @@ export function GuideDrawer() {
                                           <div className="mb-1 text-xs font-semibold text-muted-foreground">
                                             {t("drawer.step", { n: i + 1, total: g.steps.length })}
                                           </div>
-                                          <div className="text-sm font-medium">{t(step.titleKey.replace(/^guides\./, ""))}</div>
-                                          <div className="text-sm text-muted-foreground">{t(step.bodyKey.replace(/^guides\./, ""))}</div>
+                                          <div className="text-sm font-medium">
+                                            {t(step.titleKey.replace(/^guides\./, ""))}
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">
+                                            {t(step.bodyKey.replace(/^guides\./, ""))}
+                                          </div>
                                         </div>
                                       ))}
                                     </div>

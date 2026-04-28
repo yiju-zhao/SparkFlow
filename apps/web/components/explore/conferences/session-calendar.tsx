@@ -108,9 +108,7 @@ function SessionCard({ session, color }: SessionCardProps) {
     >
       <Link href={`/explore/conferences/sessions/${session.id}`} className="block p-4 space-y-2.5">
         <div className="flex items-start justify-between gap-2">
-          {session.type && (
-            <span className="sf-badge sf-badge-muted">{session.type}</span>
-          )}
+          {session.type && <span className="sf-badge sf-badge-muted">{session.type}</span>}
           {durationLabel && (
             <span className="font-mono text-[10px] text-sf-ink-4 tabular-nums">
               {durationLabel}
@@ -151,7 +149,9 @@ function SessionCard({ session, color }: SessionCardProps) {
           <div className="flex items-center gap-1 flex-wrap pt-1">
             <Tag className="h-3 w-3 text-sf-ink-4 shrink-0" />
             {session.topic.slice(0, 2).map((t) => (
-              <span key={t} className="sf-badge sf-badge-soft">{t}</span>
+              <span key={t} className="sf-badge sf-badge-soft">
+                {t}
+              </span>
             ))}
             {session.topic.length > 2 && (
               <span className="text-[10px] text-sf-ink-4">+{session.topic.length - 2}</span>

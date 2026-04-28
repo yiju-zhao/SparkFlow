@@ -6,8 +6,8 @@ import { getBullmqConnection } from "./redis";
  * longer than the base TTL without losing mutual exclusion.
  */
 
-const BASE_TTL_MS = 5 * 60 * 1000;          // 5 min
-const HEARTBEAT_INTERVAL_MS = 60 * 1000;    // extend every 60s
+const BASE_TTL_MS = 5 * 60 * 1000; // 5 min
+const HEARTBEAT_INTERVAL_MS = 60 * 1000; // extend every 60s
 const HEARTBEAT_EXTEND_MS = 10 * 60 * 1000; // push TTL to now + 10 min
 
 function lockKey(notebookId: string): string {
@@ -20,9 +20,7 @@ export type NotebookLockHandle = {
   stopHeartbeat: () => void;
 };
 
-export async function acquireNotebookLock(
-  notebookId: string,
-): Promise<NotebookLockHandle | null> {
+export async function acquireNotebookLock(notebookId: string): Promise<NotebookLockHandle | null> {
   const token = `${Date.now()}:${Math.random().toString(36).slice(2, 12)}`;
   const result = await getBullmqConnection().set(
     lockKey(notebookId),
@@ -78,18 +76,8 @@ const EXTEND_SCRIPT = `
   end
 `;
 
-async function extendLock(
-  notebookId: string,
-  token: string,
-  extendMs: number,
-): Promise<void> {
-  await getBullmqConnection().eval(
-    EXTEND_SCRIPT,
-    1,
-    lockKey(notebookId),
-    token,
-    String(extendMs),
-  );
+async function extendLock(notebookId: string, token: string, extendMs: number): Promise<void> {
+  await getBullmqConnection().eval(EXTEND_SCRIPT, 1, lockKey(notebookId), token, String(extendMs));
 }
 
 const RELEASE_SCRIPT = `
@@ -103,12 +91,7 @@ const RELEASE_SCRIPT = `
 export async function releaseNotebookLock(handle: NotebookLockHandle): Promise<void> {
   handle.stopHeartbeat();
   try {
-    await getBullmqConnection().eval(
-      RELEASE_SCRIPT,
-      1,
-      lockKey(handle.notebookId),
-      handle.token,
-    );
+    await getBullmqConnection().eval(RELEASE_SCRIPT, 1, lockKey(handle.notebookId), handle.token);
   } catch (err) {
     console.warn(`[notebook-lock] release failed for ${handle.notebookId}:`, err);
   }

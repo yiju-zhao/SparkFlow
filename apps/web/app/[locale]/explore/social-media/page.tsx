@@ -97,25 +97,16 @@ async function WechatSection({ locale }: { locale: string }) {
       {sources.length > 0 && (
         <p className="text-xs text-sf-ink-4 pt-2 flex items-center gap-2">
           <Radio className="h-3 w-3 text-sf-accent" />
-          Tracking{" "}
-          <span className="font-bold text-sf-ink tabular-nums">{sources.length}</span> WeChat
-          accounts.
+          Tracking <span className="font-bold text-sf-ink tabular-nums">{sources.length}</span>{" "}
+          WeChat accounts.
         </p>
       )}
     </section>
   );
 }
 
-function WechatPreviewCard({
-  locale,
-  article,
-}: {
-  locale: string;
-  article: WechatArticleSummary;
-}) {
-  const rel = article.publish_time
-    ? getRelativeTimeLabel(new Date(article.publish_time))
-    : null;
+function WechatPreviewCard({ locale, article }: { locale: string; article: WechatArticleSummary }) {
+  const rel = article.publish_time ? getRelativeTimeLabel(new Date(article.publish_time)) : null;
   return (
     <Link
       href={`/${locale}/explore/social-media/wechat?article=${article.id}`}
@@ -139,9 +130,7 @@ function WechatPreviewCard({
             {article.source_name}
           </span>
           {rel && (
-            <span className="text-sf-ink-4 text-xs font-medium font-mono tabular-nums">
-              {rel}
-            </span>
+            <span className="text-sf-ink-4 text-xs font-medium font-mono tabular-nums">{rel}</span>
           )}
         </div>
         <h3 className="text-[17px] font-bold mb-2 leading-snug line-clamp-2 text-sf-ink group-hover:text-sf-accent transition-colors">
@@ -302,10 +291,7 @@ function GithubSection() {
             <p className="text-sm text-sf-ink-3 mb-6 flex-grow leading-relaxed">{r.description}</p>
             <div className="flex items-center gap-4 text-xs text-sf-ink-4 font-mono">
               <div className="flex items-center gap-1.5">
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: r.color }}
-                />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: r.color }} />
                 <span className="font-medium text-sf-ink-2">{r.language}</span>
               </div>
               <div className="flex items-center gap-1">
@@ -418,8 +404,8 @@ function SocialHero() {
         Social Insights Hub
       </h1>
       <p className="mt-5 max-w-[64ch] text-lg leading-relaxed text-sf-ink-3">
-        Aggregated signals and academic breakthroughs from the digital research ecosystem —
-        WeChat, Twitter/X, GitHub, and curated AI news streams.
+        Aggregated signals and academic breakthroughs from the digital research ecosystem — WeChat,
+        Twitter/X, GitHub, and curated AI news streams.
       </p>
     </section>
   );

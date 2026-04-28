@@ -556,7 +556,6 @@ export function ChatPanel({
     });
   };
 
-
   const displayMessages =
     streamSessionId && streamSessionId === activeSessionId && stream.messages.length > 0
       ? stream.messages
@@ -731,31 +730,31 @@ export function ChatPanel({
                           </div>
                         ) : (
                           <div className="min-w-0 flex-1">
-                          <div
-                            className="overflow-x-auto"
-                            onClick={(e) => {
-                              const target = e.target as HTMLElement;
-                              const wikiEl =
-                                target.tagName === "WIKI-LINK"
-                                  ? target
-                                  : target.closest("wiki-link");
-                              if (wikiEl) {
-                                const slug = wikiEl.getAttribute("data-slug");
-                                if (slug && onWikiNavigate) {
-                                  e.preventDefault();
-                                  onWikiNavigate(slug);
+                            <div
+                              className="overflow-x-auto"
+                              onClick={(e) => {
+                                const target = e.target as HTMLElement;
+                                const wikiEl =
+                                  target.tagName === "WIKI-LINK"
+                                    ? target
+                                    : target.closest("wiki-link");
+                                if (wikiEl) {
+                                  const slug = wikiEl.getAttribute("data-slug");
+                                  if (slug && onWikiNavigate) {
+                                    e.preventDefault();
+                                    onWikiNavigate(slug);
+                                  }
                                 }
-                              }
-                            }}
-                          >
-                            <Markdown className="text-[15px] leading-relaxed text-sf-ink-2 prose-p:mb-3 last:prose-p:mb-0">
-                              {content.replace(
-                                /\[\[([a-zA-Z0-9_-]+)\]\]/g,
-                                (_, slug) =>
-                                  `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`,
-                              )}
-                            </Markdown>
-                            <style>{`
+                              }}
+                            >
+                              <Markdown className="text-[15px] leading-relaxed text-sf-ink-2 prose-p:mb-3 last:prose-p:mb-0">
+                                {content.replace(
+                                  /\[\[([a-zA-Z0-9_-]+)\]\]/g,
+                                  (_, slug) =>
+                                    `<wiki-link data-slug="${slug}">${slug.replace(/-/g, " ")}</wiki-link>`,
+                                )}
+                              </Markdown>
+                              <style>{`
                               wiki-link {
                                 color: #0F5FFE;
                                 cursor: pointer;
@@ -768,7 +767,7 @@ export function ChatPanel({
                                 text-decoration-style: solid;
                               }
                             `}</style>
-                          </div>
+                            </div>
                           </div>
                         )}
                       </div>

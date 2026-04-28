@@ -1,14 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import {
-  ArrowUpRight,
-  FileSearch,
-  GitFork,
-  Scan,
-  Sparkles,
-  Waypoints,
-} from "lucide-react";
+import { ArrowUpRight, FileSearch, GitFork, Scan, Sparkles, Waypoints } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -88,9 +81,7 @@ export default async function ToolboxPage({ params }: PageProps) {
         <h1 className="text-[40px] md:text-[56px] font-black text-sf-ink tracking-[-0.025em] leading-[1.03] max-w-[24ch]">
           {t("title")}
         </h1>
-        <p className="mt-5 max-w-[64ch] text-lg leading-relaxed text-sf-ink-3">
-          {t("subtitle")}
-        </p>
+        <p className="mt-5 max-w-[64ch] text-lg leading-relaxed text-sf-ink-3">{t("subtitle")}</p>
       </section>
 
       {/* Tool grid */}
@@ -113,12 +104,7 @@ function ToolCard({ tool }: { tool: Tool }) {
         <span className="sf-icon-tile h-11 w-11">
           <Icon className="h-5 w-5" strokeWidth={1.5} />
         </span>
-        <span
-          className={cn(
-            "sf-badge",
-            isActive ? "sf-badge-success" : "sf-badge-muted",
-          )}
-        >
+        <span className={cn("sf-badge", isActive ? "sf-badge-success" : "sf-badge-muted")}>
           {isActive ? (
             <>
               <span className="dot" />
@@ -144,10 +130,7 @@ function ToolCard({ tool }: { tool: Tool }) {
 
   if (tool.href) {
     return (
-      <Link
-        href={tool.href}
-        className="sf-card card-hoverable p-6 h-full block transition-colors"
-      >
+      <Link href={tool.href} className="sf-card card-hoverable p-6 h-full block transition-colors">
         {content}
       </Link>
     );

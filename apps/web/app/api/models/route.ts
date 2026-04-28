@@ -96,11 +96,7 @@ export async function GET() {
           `Unknown provider "${providerId}"`,
         );
       }
-      const modelIds = await fetchProviderModels(
-        providerId,
-        entry.apiKey,
-        entry.baseUrl,
-      );
+      const modelIds = await fetchProviderModels(providerId, entry.apiKey, entry.baseUrl);
       return {
         providerId,
         label: provider.label,
@@ -126,10 +122,7 @@ export async function GET() {
         label: provider?.label ?? entry.label ?? providerId,
         source: "remote",
         models: [],
-        error:
-          err instanceof FetchModelsError
-            ? err.message
-            : "Failed to load models",
+        error: err instanceof FetchModelsError ? err.message : "Failed to load models",
       };
     }
   }

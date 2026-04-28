@@ -26,17 +26,12 @@ function typeTone(type: string | null | undefined) {
   if (s.includes("oral")) return "bg-sf-accent-soft text-sf-accent-ink";
   if (s.includes("spotlight")) return "bg-sf-accent text-white";
   if (s.includes("poster")) return "bg-[#EDEEF2] text-sf-ink-3";
-  if (s.includes("workshop") || s.includes("tutorial"))
-    return "bg-sf-warn-soft text-sf-warn";
+  if (s.includes("workshop") || s.includes("tutorial")) return "bg-sf-warn-soft text-sf-warn";
   if (s.includes("panel")) return "bg-sf-black text-white";
   return "bg-[#EDEEF2] text-sf-ink-3";
 }
 
-function formatDateTime(
-  date: Date | null,
-  startTime: string | null,
-  endTime: string | null,
-) {
+function formatDateTime(date: Date | null, startTime: string | null, endTime: string | null) {
   const parts: string[] = [];
   if (date) {
     parts.push(

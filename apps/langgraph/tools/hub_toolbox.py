@@ -18,6 +18,7 @@ Each tool's ``@tool`` signature matches the previous toolbox-wrapper
 file (``str | None = None`` defaults) so ``agents/hub.py`` needs no
 changes.
 """
+
 from __future__ import annotations
 
 import os
@@ -26,7 +27,6 @@ from typing import Any, Literal
 
 import psycopg
 from langchain.tools import tool
-
 
 # ---------------------------------------------------------------------------
 # Internal helpers (mirror hub_wechat.py)
@@ -116,8 +116,14 @@ async def describe_publications_schema() -> dict[str, Any]:
     return {
         "table": "publications",
         "fields": [
-            "id", "title", "venue", "year", "research_topic", "status",
-            "authors[]", "affiliations[]",
+            "id",
+            "title",
+            "venue",
+            "year",
+            "research_topic",
+            "status",
+            "authors[]",
+            "affiliations[]",
         ],
         "filters": {
             "venue": "fuzzy match on venue name",
@@ -137,8 +143,15 @@ async def describe_sessions_schema() -> dict[str, Any]:
     return {
         "table": "conference_sessions",
         "fields": [
-            "id", "title", "venue", "year", "type", "date", "location",
-            "speaker[]", "topic[]",
+            "id",
+            "title",
+            "venue",
+            "year",
+            "type",
+            "date",
+            "location",
+            "speaker[]",
+            "topic[]",
         ],
         "filters": {
             "venue": "fuzzy match on venue name",
@@ -196,8 +209,8 @@ async def describe_venues_schema() -> dict[str, Any]:
 
 async def _list_unnested_dimension(
     *,
-    array_field: str,            # e.g. 'p.affiliations'
-    alias: str,                  # e.g. 'aff'
+    array_field: str,  # e.g. 'p.affiliations'
+    alias: str,  # e.g. 'aff'
     query: str | None,
     venue: str | None,
     year: int | None,
@@ -232,7 +245,7 @@ async def _list_unnested_dimension(
 
 async def _list_scalar_dimension(
     *,
-    field: str,                  # e.g. 'p."researchTopic"' or 'p.status'
+    field: str,  # e.g. 'p."researchTopic"' or 'p.status'
     query: str | None,
     venue: str | None,
     year: int | None,
@@ -278,8 +291,12 @@ async def list_publication_affiliations(
 ) -> dict[str, Any]:
     """List distinct publication affiliations for filter verification."""
     return await _list_unnested_dimension(
-        array_field="p.affiliations", alias="aff",
-        query=query, venue=venue, year=year, limit=limit,
+        array_field="p.affiliations",
+        alias="aff",
+        query=query,
+        venue=venue,
+        year=year,
+        limit=limit,
     )
 
 
@@ -292,8 +309,12 @@ async def list_publication_authors(
 ) -> dict[str, Any]:
     """List distinct publication authors for filter verification."""
     return await _list_unnested_dimension(
-        array_field="p.authors", alias="author",
-        query=query, venue=venue, year=year, limit=limit,
+        array_field="p.authors",
+        alias="author",
+        query=query,
+        venue=venue,
+        year=year,
+        limit=limit,
     )
 
 
@@ -307,7 +328,10 @@ async def list_publication_topics(
     """List distinct publication research topics for filter verification."""
     return await _list_scalar_dimension(
         field='p."researchTopic"',
-        query=query, venue=venue, year=year, limit=limit,
+        query=query,
+        venue=venue,
+        year=year,
+        limit=limit,
     )
 
 
@@ -321,7 +345,10 @@ async def list_publication_statuses(
     """List distinct publication statuses for filter verification."""
     return await _list_scalar_dimension(
         field="p.status",
-        query=query, venue=venue, year=year, limit=limit,
+        query=query,
+        venue=venue,
+        year=year,
+        limit=limit,
     )
 
 
@@ -348,14 +375,10 @@ def _publication_filters(
         conditions.append("i.year = %s")
         params.append(year)
     if affiliation:
-        conditions.append(
-            "EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE %s)"
-        )
+        conditions.append("EXISTS (SELECT 1 FROM unnest(p.affiliations) aff WHERE aff ILIKE %s)")
         params.append(f"%{affiliation}%")
     if author:
-        conditions.append(
-            "EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE %s)"
-        )
+        conditions.append("EXISTS (SELECT 1 FROM unnest(p.authors) author WHERE author ILIKE %s)")
         params.append(f"%{author}%")
     if topic:
         conditions.append("COALESCE(p.\"researchTopic\", '') ILIKE %s")
@@ -480,14 +503,10 @@ def _session_filters(
         conditions.append("COALESCE(s.type, '') ILIKE %s")
         params.append(f"%{session_type}%")
     if topic:
-        conditions.append(
-            "EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE %s)"
-        )
+        conditions.append("EXISTS (SELECT 1 FROM unnest(s.topic) topic WHERE topic ILIKE %s)")
         params.append(f"%{topic}%")
     if speaker:
-        conditions.append(
-            "EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE %s)"
-        )
+        conditions.append("EXISTS (SELECT 1 FROM unnest(s.speaker) speaker WHERE speaker ILIKE %s)")
         params.append(f"%{speaker}%")
     return conditions, params
 

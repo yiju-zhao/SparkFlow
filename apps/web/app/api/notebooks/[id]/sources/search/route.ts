@@ -118,8 +118,12 @@ async function performSearch(
         results = items.map((item: Record<string, unknown>) => ({
           id: (item.id as string | undefined) || (item.url as string | undefined) || "",
           title: (item.title as string | undefined) || "Untitled",
-          snippet: (item.snippet as string | undefined) || (item.content as string | undefined) || "",
-          meta: reasons[(item.id as string) || (item.url as string) || ""] || (item.meta as string | undefined) || "",
+          snippet:
+            (item.snippet as string | undefined) || (item.content as string | undefined) || "",
+          meta:
+            reasons[(item.id as string) || (item.url as string) || ""] ||
+            (item.meta as string | undefined) ||
+            "",
           url: (item.url as string | undefined) || undefined,
           sourceType: sourceType as SearchResult["sourceType"],
         }));

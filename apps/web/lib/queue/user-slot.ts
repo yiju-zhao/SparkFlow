@@ -41,10 +41,7 @@ const RELEASE_SCRIPT = `
   return 1
 `;
 
-export async function acquireUserSlot(
-  userId: string,
-  limit: number,
-): Promise<string | null> {
+export async function acquireUserSlot(userId: string, limit: number): Promise<string | null> {
   const token = `${Date.now()}:${Math.random().toString(36).slice(2, 12)}`;
   const result = await getBullmqConnection().eval(
     ACQUIRE_SCRIPT,
@@ -58,14 +55,6 @@ export async function acquireUserSlot(
   return result ? String(result) : null;
 }
 
-export async function releaseUserSlot(
-  userId: string,
-  token: string,
-): Promise<void> {
-  await getBullmqConnection().eval(
-    RELEASE_SCRIPT,
-    1,
-    slotKey(userId),
-    token,
-  );
+export async function releaseUserSlot(userId: string, token: string): Promise<void> {
+  await getBullmqConnection().eval(RELEASE_SCRIPT, 1, slotKey(userId), token);
 }

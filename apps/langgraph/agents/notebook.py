@@ -2,6 +2,7 @@
 
 Built from StateGraph primitives per ref doc §Agents → Graph API.
 """
+
 from __future__ import annotations
 
 import json
@@ -11,9 +12,8 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.runtime import Runtime
-
 from prompt_builder import build_system_prompt
-from tools.wiki import source_read, source_list
+from tools.wiki import source_list, source_read
 
 TOOLS = [source_read, source_list]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
@@ -37,9 +37,12 @@ def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[Base
     if not ctx.api_key:
         raise ValueError(f"BYOK required for provider {ctx.model_provider!r}")
     system = build_system_prompt(
-        surface=SURFACE, surface_prompt=PROMPT_PATH,
-        provider=ctx.model_provider, model=ctx.model_name,
-        session_id=ctx.session_id, page_context=ctx.page_context,
+        surface=SURFACE,
+        surface_prompt=PROMPT_PATH,
+        provider=ctx.model_provider,
+        model=ctx.model_name,
+        session_id=ctx.session_id,
+        page_context=ctx.page_context,
     )
     model = init_chat_model(f"{ctx.model_provider}:{ctx.model_name}", api_key=ctx.api_key)
     bound = model.bind_tools(TOOLS)
@@ -49,6 +52,7 @@ def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[Base
 
 def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
     import asyncio
+
     last = state["messages"][-1]
     if not isinstance(last, AIMessage) or not last.tool_calls:
         return {"messages": []}
@@ -56,10 +60,12 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
     for call in last.tool_calls:
         tool = TOOLS_BY_NAME.get(call["name"])
         if tool is None:
-            results.append(ToolMessage(
-                content=json.dumps({"error": f"unknown tool {call['name']}"}),
-                tool_call_id=call["id"],
-            ))
+            results.append(
+                ToolMessage(
+                    content=json.dumps({"error": f"unknown tool {call['name']}"}),
+                    tool_call_id=call["id"],
+                )
+            )
             continue
         try:
             if asyncio.iscoroutinefunction(getattr(tool, "func", None)):

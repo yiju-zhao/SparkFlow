@@ -30,13 +30,7 @@ function statusTone(status: string | null | undefined) {
   return "bg-[#EDEEF2] text-sf-ink-3";
 }
 
-export function PublicationRow({
-  locale,
-  pub,
-}: {
-  locale: string;
-  pub: PublicationRowItem;
-}) {
+export function PublicationRow({ locale, pub }: { locale: string; pub: PublicationRowItem }) {
   const venueTag = `${pub.instance.venue.name} ${pub.instance.year}`;
   const authorsPreview = pub.authors.slice(0, 3);
   const extraAuthors = pub.authors.length - authorsPreview.length;

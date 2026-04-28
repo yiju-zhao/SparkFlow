@@ -6,7 +6,15 @@ import { NotebookList } from "@/components/deepdive/notebook-list";
 import { CreateNotebookDialog } from "@/components/deepdive/create-notebook-dialog";
 import { DeepdiveShell } from "@/components/deepdive/deepdive-shell";
 import { NotebookActionsRegistrar } from "@/components/deepdive/notebook-actions-registrar";
-import { Archive, Clock, Folder, Search, SlidersHorizontal, ArrowUpDown, Users } from "lucide-react";
+import {
+  Archive,
+  Clock,
+  Folder,
+  Search,
+  SlidersHorizontal,
+  ArrowUpDown,
+  Users,
+} from "lucide-react";
 
 interface DeepdivePageProps {
   params: Promise<{ locale: string }>;
