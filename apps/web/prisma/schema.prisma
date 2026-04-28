@@ -43,6 +43,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   tourCompletedAt DateTime?
+  welcomePending  Boolean   @default(false)
   dismissedGuides String[]  @default([])
 
   // Relations
@@ -69,28 +70,28 @@ model Session {
 
 // User preferences for AI model selection
 model UserSettings {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
   // Deepdive — Chat/RAG agent model
-  modelProvider       String   @default("openai")
-  modelName           String   @default("gpt-4o-mini")
+  modelProvider           String   @default("openai")
+  modelName               String   @default("gpt-4o-mini")
   // Deepdive — Wiki generation model
-  wikiModelProvider   String   @default("openai")
-  wikiModelName       String   @default("gpt-4o-mini")
+  wikiModelProvider       String   @default("openai")
+  wikiModelName           String   @default("gpt-4o-mini")
   // Deepdive — Source search agent model
-  searchModelProvider  String   @default("openai")
-  searchModelName      String   @default("gpt-4o-mini")
+  searchModelProvider     String   @default("openai")
+  searchModelName         String   @default("gpt-4o-mini")
   // Research Hub — SemOps agent model (formerly matcher)
-  semopsModelProvider String  @default("openai")
-  semopsModelName    String   @default("gpt-4o-mini")
+  semopsModelProvider     String   @default("openai")
+  semopsModelName         String   @default("gpt-4o-mini")
   // BYOK — encrypted JSON blob of API keys per provider
-  apiKeys             String?  @db.Text
+  apiKeys                 String?  @db.Text
   // WeChat — excluded source IDs for Add Source search (empty = all)
-  wechatExcludedSourceIds Int[]   @default([])
+  wechatExcludedSourceIds Int[]    @default([])
   // Daily Digest — user query + source configuration
-  digestConfig        Json     @default("{}")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  digestConfig            Json     @default("{}")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -112,7 +113,7 @@ model Notebook {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   sources      Source[]
   chatSessions ChatSession[]
   messages     ChatMessage[]
@@ -175,7 +176,7 @@ model SourceImage {
   id           String   @id @default(cuid())
   sourceId     String
   originalName String // Original filename (e.g., "image_0.png")
-  data         Bytes  // Raw image binary (bytea)
+  data         Bytes // Raw image binary (bytea)
   mimeType     String // MIME type (e.g., "image/png")
   width        Int?
   height       Int?
@@ -195,7 +196,7 @@ model WikiPage {
   title      String
   content    String       @db.Text
   pageType   WikiPageType
-  sourceRefs String[]     // Source IDs that contributed to this page
+  sourceRefs String[] // Source IDs that contributed to this page
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -209,11 +210,12 @@ model WikiPage {
 model NotebookGraph {
   id          String   @id @default(cuid())
   notebookId  String   @unique
-  graphData   Json     // {nodes: [...], edges: [...]}
-  communities Json     // {community_id: [node_ids]}
+  graphData   Json // {nodes: [...], edges: [...]}
+  communities Json // {community_id: [node_ids]}
   updatedAt   DateTime @updatedAt
 
   notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
   @@map("notebook_graphs")
 }
 
@@ -305,38 +307,38 @@ model Note {
 // ============================================
 
 model Venue {
-  id          String     @id @default(cuid())
-  name        String     @unique
+  id          String  @id @default(cuid())
+  name        String  @unique
   type        String?
   description String?
 
-  instances   Instance[]
+  instances Instance[]
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("venues")
 }
 
 model Instance {
-  id          String               @id @default(cuid())
-  venueId     String
-  venue       Venue                @relation(fields: [venueId], references: [id])
+  id      String @id @default(cuid())
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id])
 
-  year        Int
-  name        String
-  startDate   DateTime?
-  endDate     DateTime?
-  location    String?
-  website     String?
-  summary     String?              @db.Text
+  year      Int
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  location  String?
+  website   String?
+  summary   String?   @db.Text
 
   publications Publication[]
   sessions     ConferenceSession[]
   matchJobs    MatchJob[]
 
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([venueId, year])
   @@index([year])
@@ -344,36 +346,36 @@ model Instance {
 }
 
 model Publication {
-  id            String                 @id @default(cuid())
-  instanceId    String
-  instance      Instance               @relation(fields: [instanceId], references: [id])
+  id         String   @id @default(cuid())
+  instanceId String
+  instance   Instance @relation(fields: [instanceId], references: [id])
 
-  title         String
-  authors       String[]
-  abstract      String?                @db.Text
-  summary       String?                @db.Text
+  title    String
+  authors  String[]
+  abstract String?  @db.Text
+  summary  String?  @db.Text
 
   affiliations  String[]
   countries     String[]
   keywords      String[]
   researchTopic String?
 
-  rating        Float?
-  doi           String?
-  pdfUrl        String?
-  githubUrl     String?
-  websiteUrl    String?
-  status        String?
+  rating     Float?
+  doi        String?
+  pdfUrl     String?
+  githubUrl  String?
+  websiteUrl String?
+  status     String?
 
   // BGE-M3 (1024-dim) embeddings for agent prefilter — indexed via HNSW in a
   // raw-SQL migration step. Populated by the backfill script in apps/langgraph.
   titleEmbedding    Unsupported("vector(1024)")?
   abstractEmbedding Unsupported("vector(1024)")?
 
-  sessions      SessionPublication[]
+  sessions SessionPublication[]
 
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([instanceId])
   @@index([researchTopic])
@@ -395,35 +397,35 @@ model WechatArticleEmbedding {
 }
 
 model ConferenceSession {
-  id          String                 @id @default(cuid())
-  instanceId  String
-  instance    Instance               @relation(fields: [instanceId], references: [id])
+  id         String   @id @default(cuid())
+  instanceId String
+  instance   Instance @relation(fields: [instanceId], references: [id])
 
-  title       String
-  type        String?
-  date        DateTime?
-  startTime   String?
-  endTime     String?
-  location    String?
-  speaker     String[]               @default([])
+  title     String
+  type      String?
+  date      DateTime?
+  startTime String?
+  endTime   String?
+  location  String?
+  speaker   String[]  @default([])
 
-  abstract    String?                @db.Text
-  overview    String?                @db.Text
-  transcript  String?                @db.Text
-  sessionUrl  String?
+  abstract   String? @db.Text
+  overview   String? @db.Text
+  transcript String? @db.Text
+  sessionUrl String?
 
-  topic       String[]               @default([])
-  affiliation String[]               @default([])
-  technology  String[]               @default([])
+  topic       String[] @default([])
+  affiliation String[] @default([])
+  technology  String[] @default([])
 
   sessionFormat    SessionFormat?
-  hasRecording     Boolean           @default(false)
+  hasRecording     Boolean        @default(false)
   intendedAudience String?
 
   publications SessionPublication[]
 
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([instanceId])
   @@index([type])
@@ -460,27 +462,27 @@ enum MatchTargetType {
 }
 
 model MatchJob {
-  id              String           @id @default(cuid())
-  userId          String
-  instanceId      String           // Conference instance to match against
-  targetType      MatchTargetType  // SESSION or PUBLICATION
-  topK            Int              @default(50)
-  searchK         Int              @default(350)
-  includeReasons  Boolean          @default(true)
-  queryFileKey    String           // S3 key for uploaded Excel
-  queryData       Json?            // Parsed queries (cached)
-  resultFileKey   String?          // S3 key for result Excel
-  status          MatchJobStatus   @default(PENDING)
-  progress        Int              @default(0)
-  errorMessage    String?
-  queryCount      Int              @default(0)
-  matchCount      Int              @default(0)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  startedAt       DateTime?
-  completedAt     DateTime?
+  id             String          @id @default(cuid())
+  userId         String
+  instanceId     String // Conference instance to match against
+  targetType     MatchTargetType // SESSION or PUBLICATION
+  topK           Int             @default(50)
+  searchK        Int             @default(350)
+  includeReasons Boolean         @default(true)
+  queryFileKey   String // S3 key for uploaded Excel
+  queryData      Json? // Parsed queries (cached)
+  resultFileKey  String? // S3 key for result Excel
+  status         MatchJobStatus  @default(PENDING)
+  progress       Int             @default(0)
+  errorMessage   String?
+  queryCount     Int             @default(0)
+  matchCount     Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  startedAt      DateTime?
+  completedAt    DateTime?
 
-  instance        Instance         @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -494,7 +496,7 @@ model MatchJob {
 model UserMemory {
   id        String   @id @default(cuid())
   userId    String
-  category  String   // "profile" | "preference" | "fact" | "feedback"
+  category  String // "profile" | "preference" | "fact" | "feedback"
   content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -524,13 +526,13 @@ model NotebookMemory {
 // ============================================
 
 model DailyDigest {
-  id          String          @id @default(cuid())
+  id          String   @id @default(cuid())
   userId      String
-  digestDate  DateTime        @db.Date
-  generatedAt DateTime        @default(now())
+  digestDate  DateTime @db.Date
+  generatedAt DateTime @default(now())
 
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sections    DigestSection[]
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections DigestSection[]
 
   @@unique([userId, digestDate])
   @@index([userId, digestDate(sort: Desc)])
@@ -538,18 +540,18 @@ model DailyDigest {
 }
 
 model DigestSection {
-  id            String            @id @default(cuid())
+  id            String           @id @default(cuid())
   digestId      String
   sourceType    DigestSourceType
-  status        DigestStatus      @default(GENERATING)
-  items         Json              @default("[]")
-  candidatePool Int               @default(0)
+  status        DigestStatus     @default(GENERATING)
+  items         Json             @default("[]")
+  candidatePool Int              @default(0)
   modelUsed     String?
   error         String?
-  startedAt     DateTime          @default(now())
+  startedAt     DateTime         @default(now())
   completedAt   DateTime?
 
-  digest        DailyDigest       @relation(fields: [digestId], references: [id], onDelete: Cascade)
+  digest DailyDigest @relation(fields: [digestId], references: [id], onDelete: Cascade)
 
   @@unique([digestId, sourceType])
   @@map("digest_section")

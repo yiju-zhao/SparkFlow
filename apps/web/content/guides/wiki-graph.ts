@@ -6,6 +6,7 @@ export const wikiGraphGuide: GuideDefinition = {
   icon: "Network",
   titleKey: "guides.wikiGraph.title",
   summaryKey: "guides.wikiGraph.summary",
+  prereq: { hintKey: "guides.wikiGraph.prereq", setupGuideId: "create-notebook" },
   steps: [
     // 1 — Make sure we're in a notebook on the Wiki tab, then highlight the tab.
     {

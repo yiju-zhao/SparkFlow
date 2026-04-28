@@ -40,6 +40,8 @@ export async function POST(req: Request) {
         username,
         email,
         passwordHash,
+        // Auto-prompt the first-run tour on the next session — and only that one.
+        welcomePending: true,
       },
     });
 

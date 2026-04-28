@@ -7,8 +7,9 @@ export const addSourcesGuide: GuideDefinition = {
   titleKey: "guides.addSources.title",
   summaryKey: "guides.addSources.summary",
   publicOnLanding: true,
-  includeInFirstRunTour: true,
-  firstRunTourOrder: 2,
+  // Removed from the first-run tour — needs an existing notebook, which a
+  // brand-new user does not have. The drawer's prereq hint covers that case.
+  prereq: { hintKey: "guides.addSources.prereq", setupGuideId: "create-notebook" },
   // When the guide fully closes (Finish or user-close), return the page to
   // the exact state it was in before the demo started: close the dialog AND
   // wipe any transient state the guide changed along the way (view toggles,

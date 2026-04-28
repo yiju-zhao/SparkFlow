@@ -66,6 +66,17 @@ export function ActiveGuidePlayer() {
     closeGuide();
   }, [guide, runTriggers, closeGuide]);
 
+  // Gate render until setup finishes + pathname matches the step's route, so
+  // the GuideLayer doesn't flash with the new step's content while still on
+  // the previous page.
+  const [setupSettled, setSetupSettled] = useState(false);
+  const [lastSettledKey, setLastSettledKey] = useState<string>(`${activeGuideId}:${stepIndex}`);
+  const settleKey = `${activeGuideId}:${stepIndex}`;
+  if (settleKey !== lastSettledKey) {
+    setLastSettledKey(settleKey);
+    setSetupSettled(false);
+  }
+
   // Setup: navigate, run trigger, (optionally) wait for selector.
   // Runs whenever we move to a new step.
   const setupSeq = useRef(0);
@@ -103,6 +114,10 @@ export function ActiveGuidePlayer() {
         if (el instanceof HTMLElement) {
           el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
         }
+      }
+      // 5. Setup done — unblock the render gate.
+      if (!cancelled && seq === setupSeq.current) {
+        setSetupSettled(true);
       }
     }
     setup();
@@ -195,6 +210,12 @@ export function ActiveGuidePlayer() {
   }, [guide, step]);
 
   if (!guide || !step) return null;
+
+  // Hold the GuideLayer until the route + setup has flushed so the bubble
+  // never previews the next step on the previous page.
+  const stripped = pathname?.replace(/^\/(en|zh)(?=\/|$)/, "") || "/";
+  const onRoute = !step.route || stripped === step.route;
+  if (!onRoute || !setupSettled) return null;
 
   const stripPrefix = (k: string) => k.replace(/^guides\./, "");
 
