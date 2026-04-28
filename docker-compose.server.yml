@@ -10,13 +10,6 @@
 # also reads it for ${VAR} substitution at parse time. Same file, both
 # layers — no precedence puzzle, no cross-file sync to maintain.
 #
-# .env also sets COMPOSE_BAKE=false. Compose 2.32+ otherwise routes
-# parallel builds through `buildx bake`, which writes its metadata file
-# under /tmp on the build host — sandboxed buildkitd setups without a
-# usable /tmp fail with "invalid output path: stat /tmp: no such file or
-# directory" partway through `up --build`. Classic per-service build
-# parallelism still works; only the bake orchestrator is bypassed.
-#
 # For local dev (no proxy, host Next.js + langgraph), use docker-compose.yml.
 
 name: sparkflow
