@@ -22,6 +22,16 @@ else
 COMPOSE_FLAG :=
 endif
 
+# Auto-load .env so CHECKPOINT_DB_URL, DATABASE_URL, etc. are visible to
+# Make. langgraph CLI loads .env into the agent process via `env: .env` in
+# langgraph.json, but Make runs *before* the CLI — without this include, Make
+# sees CHECKPOINT_DB_URL as empty and `--postgres-uri` is never passed, so
+# `langgraph up` falls back to its sibling postgres (which fails to resolve
+# on corp-network hosts where embedded Docker DNS is broken). `-include` so a
+# missing .env doesn't error; values stay Make-local (no `export`) to keep
+# secrets like LANGSMITH_API_KEY out of recipe sub-shells.
+-include .env
+
 # Optional: point langgraph at an external Postgres for the checkpointer
 # instead of letting `langgraph up` spin up its own `langgraph-postgres`
 # sibling. Two scenarios where this is needed:
@@ -32,11 +42,16 @@ endif
 #      (langgraph's sibling lives in a CLI-managed volume that's easy to
 #      blow away accidentally).
 # When set, this is passed as `--postgres-uri` to `langgraph up`.
-# Read from .env automatically because `langgraph.json` declares `env: .env`,
-# but we ALSO surface it on the Make command line so the CLI sees it before
-# launching docker compose.
+#
+# CHECKPOINT_DB_URL in .env uses `@localhost:5433` so `make dev` (host-side
+# `langgraph dev`) can reach apps/web's postgres directly. `make up` runs
+# the same agent inside a container where `localhost` is the container, not
+# the host — so we rewrite `@localhost:` → `@host.docker.internal:` only
+# when constructing POSTGRES_FLAG. Containers see the right address; .env
+# stays single-source-of-truth.
 ifneq ($(CHECKPOINT_DB_URL),)
-POSTGRES_FLAG := --postgres-uri "$(CHECKPOINT_DB_URL)"
+DOCKER_CHECKPOINT_DB_URL := $(subst @localhost:,@host.docker.internal:,$(CHECKPOINT_DB_URL))
+POSTGRES_FLAG := --postgres-uri "$(DOCKER_CHECKPOINT_DB_URL)"
 else
 POSTGRES_FLAG :=
 endif
