@@ -11,7 +11,7 @@ ENV NODE_ENV=production
 # gitignored — populate with your CA on networks that need it, otherwise
 # leave empty. Done in `base` so every derived stage (deps build AND
 # runtime) trusts the CA, not just the install step.
-COPY ca-certificates.crt /tmp/corporate-ca.crt
+COPY --from=certs ca-certificates.crt /tmp/corporate-ca.crt
 RUN if [ -s /tmp/corporate-ca.crt ]; then \
       cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
       update-ca-certificates; \
