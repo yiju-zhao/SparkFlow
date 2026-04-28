@@ -4,7 +4,7 @@
 # empty is fine on open networks).
 FROM node:24 AS base
 WORKDIR /app
-COPY ca-certificates.crt /tmp/corporate-ca.crt
+COPY --from=certs ca-certificates.crt /tmp/corporate-ca.crt
 RUN if [ -s /tmp/corporate-ca.crt ]; then \
       cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
       update-ca-certificates; \

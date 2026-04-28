@@ -19,7 +19,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 # install no-ops. File MUST exist (gitignored — see apps/langgraph/.gitignore).
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
-COPY ca-certificates.crt /tmp/corporate-ca.crt
+COPY --from=certs ca-certificates.crt /tmp/corporate-ca.crt
 RUN if [ -s /tmp/corporate-ca.crt ]; then \
       cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate.crt && \
       update-ca-certificates; \
