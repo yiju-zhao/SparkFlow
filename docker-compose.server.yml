@@ -2,26 +2,15 @@
 # and TLS-MITM (corporate CA bundle) wiring.
 #
 # Usage on the server:
-#   1. Place a full CA bundle (system roots + corporate CA, concatenated) at
-#        ca-certificates.crt
-#      A missing host file makes Docker create an empty dir at the mount
-#      path and break all TLS in the container; an empty file breaks all
-#      TLS via missing roots — hence the bundle MUST exist before `up`.
-#      On non-MITM hosts: `touch ca-certificates.crt` is enough.
-#   2. cp .env.proxy.example .env.proxy   (server-only env file)
+#   1. cp .env.example .env       # the ONE file you edit; fill in secrets
+#   2. cp /path/to/your-ca.crt ./ca-certificates.crt   # or `touch` for open networks
 #   3. docker compose -f docker-compose.server.yml --profile prod up -d --build
 #
-# For local dev (no proxy / no corporate CA), use docker-compose.yml instead:
-#   docker compose up -d
+# Single source of truth: every service uses `env_file: ./.env`. Compose
+# also reads it for ${VAR} substitution at parse time. Same file, both
+# layers — no precedence puzzle, no cross-file sync to maintain.
 #
-# Configuration model: same as docker-compose.yml — no ${VAR} substitution
-# for app config, all env via env_file lists. The server file adds:
-#   - .env.proxy in the env_file list of every outbound-talking service
-#   - bind-mount of ./ca-certificates.crt onto /etc/ssl/certs/ca-certificates.crt
-#
-# .env.proxy contains NO_PROXY (lists all docker service hostnames so
-# library-level proxy code skips them) + REQUESTS_CA_BUNDLE / SSL_CERT_FILE
-# / CURL_CA_BUNDLE pointing at the mounted bundle.
+# For local dev (no proxy, host Next.js + langgraph), use docker-compose.yml.
 
 name: sparkflow
 
@@ -29,7 +18,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: sparkflow-postgres
-    env_file: ./apps/web/.env
+    env_file: ./.env
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
@@ -58,6 +47,7 @@ services:
   searxng:
     image: docker.io/searxng/searxng:latest
     container_name: sparkflow-searxng
+    env_file: ./.env
     ports:
       - "${SEARXNG_PORT:-8888}:8080"
     volumes:
@@ -65,7 +55,6 @@ services:
       - ./searxng/data:/var/cache/searxng:rw
     environment:
       SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8888}/
-      SEARXNG_SECRET: ${SEARXNG_SECRET:-sparkflow-default-rotate-in-prod}
     restart: unless-stopped
 
   ingest-worker:
@@ -74,9 +63,7 @@ services:
       dockerfile: Dockerfile.worker
     container_name: sparkflow-ingest-worker
     command: ["npm", "run", "worker:ingest"]
-    env_file:
-      - ./apps/web/.env
-      - ./.env.proxy
+    env_file: ./.env
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
@@ -91,7 +78,7 @@ services:
       context: ./apps/semops
       dockerfile: Dockerfile
     container_name: sparkflow-semops
-    env_file: ./.env.proxy
+    env_file: ./.env
     ports:
       - "${SEMOPS_PORT:-2025}:2025"
     volumes:
@@ -110,10 +97,7 @@ services:
       dockerfile: Dockerfile.worker
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
-    env_file:
-      - ./apps/web/.env
-      - ./apps/langgraph/.env
-      - ./.env.proxy
+    env_file: ./.env
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
@@ -131,10 +115,7 @@ services:
       context: ./apps/langgraph
       dockerfile: Dockerfile.workflows-api
     container_name: sparkflow-workflows-api
-    env_file:
-      - ./apps/web/.env
-      - ./apps/langgraph/.env
-      - ./.env.proxy
+    env_file: ./.env
     ports:
       - "${WORKFLOWS_PORT:-2027}:2027"
     volumes:
@@ -153,12 +134,13 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      # Use builder stage: it has full node_modules (incl. prisma CLI's
+      # transitive deps like `effect`). The slim runner stage only carries
+      # cherry-picked @prisma/* dirs and breaks at CLI load time.
       target: builder
     container_name: sparkflow-migrate
     command: ["npx", "prisma", "migrate", "deploy"]
-    env_file:
-      - ./apps/web/.env
-      - ./.env.proxy
+    env_file: ./.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -171,9 +153,7 @@ services:
       dockerfile: Dockerfile
       target: runner
     container_name: sparkflow-web
-    env_file:
-      - ./apps/web/.env
-      - ./.env.proxy
+    env_file: ./.env
     ports:
       - "${WEB_PORT:-3001}:3001"
     volumes:
