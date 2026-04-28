@@ -219,14 +219,20 @@ git clone https://github.com/yiju-zhao/SparkFlow.git /opt/SparkFlow
 cd /opt/SparkFlow
 git checkout agent-dev   # or main once merged
 
-# 1. Configure env files. Cross-cutting vars (INTERNAL_CALLBACK_TOKEN,
-#    POSTGRES_*, DATABASE_URL, REDIS_URL, SEMOPS_API_URL, SEARXNG_URL)
-#    live ONLY in apps/web/.env; langgraph services pick them up via
-#    docker-compose's env_file lists. No duplication, no sync risk.
+# 1. Configure env files. Four-file model (one role per file, no overlap):
+#      .env                  → compose meta (port mappings, SEARXNG_SECRET)
+#      apps/web/.env         → all cross-cutting + web-only app config
+#      apps/langgraph/.env   → narrow: langgraph-only (CHECKPOINT_DB_URL, LANGSMITH_*)
+#      .env.proxy            → server-only NO_PROXY + corporate CA paths
+#    Cross-cutting vars (INTERNAL_CALLBACK_TOKEN, POSTGRES_*, DATABASE_URL,
+#    REDIS_URL, SEMOPS_API_URL, SEARXNG_URL) live ONLY in apps/web/.env;
+#    langgraph services pick them up via docker-compose's env_file lists.
+cp .env.example                           .env             # root: WEB_PORT etc. for ${...} substitution
 cp apps/web/.env.production.example       apps/web/.env
-cp apps/langgraph/.env.production.example apps/langgraph/.env  # narrow: CHECKPOINT_DB_URL, LANGSMITH_*
-cp .env.proxy.example                     .env.proxy           # NO_PROXY + CA-bundle paths
+cp apps/langgraph/.env.production.example apps/langgraph/.env
+cp .env.proxy.example                     .env.proxy
 # Set NEXTAUTH_URL and NEXT_PUBLIC_* to public URLs the browser can reach.
+# Override WEB_PORT etc. in the root .env if the default ports collide.
 
 # 2. Drop CA bundle (or empty placeholder for open networks)
 cp /path/to/your-ca.crt ./ca-certificates.crt   # or `touch ca-certificates.crt`
@@ -265,21 +271,24 @@ dcprod logs -f workflows-api
 
 ### How env files are loaded
 
-The compose files use **`env_file:` only** — no `${VAR}` substitution for app config. Whatever you put in a `.env` file is exactly what the container sees. Cross-cutting vars live in **one** place; the langgraph services pick them up via env_file lists. No `INTERNAL_CALLBACK_TOKEN` sync risk, no "edit `.env` and silently get the default" footgun.
+The compose files use **`env_file:` for app config + a root `.env` for compose-level meta**. No same-var-resolvable-two-ways footgun: each variable lives in exactly one file with one role.
 
-| File | Purpose | Loaded by |
+| File | Role | Read by |
 |---|---|---|
-| `apps/web/.env` | Everything `apps/web` needs **plus** all cross-cutting vars (`POSTGRES_*`, `DATABASE_URL`, `REDIS_URL`, `INTERNAL_CALLBACK_TOKEN`, `SEMOPS_API_URL`, `SEARXNG_URL`, `SPARKFLOW_API_URL`) | postgres, ingest-worker, migrate, web, **and** workflows-api / digest-worker (via env_file list) |
-| `apps/langgraph/.env` | Narrow: only langgraph-specific (`CHECKPOINT_DB_URL`, `DIGEST_WORKER_CONCURRENCY`, `LANGSMITH_*`) | workflows-api, digest-worker |
+| `.env` (repo root) | Compose **meta**: port mappings (`WEB_PORT`, etc.) + `${...}`-substituted secrets (`SEARXNG_SECRET`) | `docker compose` itself, at parse time |
+| `apps/web/.env` | All cross-cutting vars (`POSTGRES_*`, `DATABASE_URL`, `REDIS_URL`, `INTERNAL_CALLBACK_TOKEN`, `SEMOPS_API_URL`, `SEARXNG_URL`, `SPARKFLOW_API_URL`) **plus** web-only config | postgres, ingest-worker, migrate, web, **and** workflows-api / digest-worker (via env_file list) |
+| `apps/langgraph/.env` | Narrow: langgraph-only (`CHECKPOINT_DB_URL`, `DIGEST_WORKER_CONCURRENCY`, `LANGSMITH_*`) | workflows-api, digest-worker |
 | `.env.proxy` | Server-only: `NO_PROXY` + corporate CA paths (`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`) | every outbound-talking service in `docker-compose.server.yml` |
 | `apps/web/.env.local` | **Host-only override** for `npm run dev` — point `DATABASE_URL` / `REDIS_URL` at `localhost:5433` / `localhost:6379`. Next.js auto-picks; docker ignores. | Host Node process only |
+
+**Why two files at repo level?** docker compose's `${VAR}` substitution looks for a `.env` *next to the compose file* — not in `apps/web/.env`. Putting port mappings in `apps/web/.env` would silently fall back to compose defaults. Splitting compose meta (`.env`) from container env (`apps/web/.env`) makes each layer obvious.
 
 Templates ship as `*.example` files (committed); runtime files (`.env`, `.env.local`, `.env.proxy`) are gitignored.
 
 | Environment | Templates |
 |---|---|
 | Dev (host) | `apps/web/.env.example`, `apps/langgraph/.env.example` |
-| Prod (server) | `apps/web/.env.production.example`, `apps/langgraph/.env.production.example`, `.env.proxy.example` |
+| Prod (server) | `.env.example`, `apps/web/.env.production.example`, `apps/langgraph/.env.production.example`, `.env.proxy.example` |
 
 ### Required keys at a glance
 
