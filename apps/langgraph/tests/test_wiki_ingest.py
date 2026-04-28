@@ -110,6 +110,24 @@ def test_cluster_graph_empty_returns_empty():
     assert _cluster_graph(g) == {}
 
 
+def test_annotate_communities_stamps_community_on_each_node():
+    from workflows.wiki_ingest import _annotate_communities
+
+    g = Graph(
+        nodes=[
+            Node(id="a", label="A", type="c", summary=""),
+            Node(id="b", label="B", type="c", summary=""),
+            Node(id="c", label="C", type="c", summary=""),
+        ],
+        edges=[],
+    )
+    _annotate_communities(g, {0: ["a", "b"], 1: ["c"]})
+    by_id = {n.id: n for n in g.nodes}
+    assert by_id["a"].community == 0
+    assert by_id["b"].community == 0
+    assert by_id["c"].community == 1
+
+
 def test_filter_source_drops_nodes_with_only_that_source():
     g = Graph(
         nodes=[

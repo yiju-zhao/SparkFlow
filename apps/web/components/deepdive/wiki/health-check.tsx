@@ -25,20 +25,28 @@ export function HealthCheckButton({ notebookId }: { notebookId: string }) {
     setIsLoading(true);
     try {
       const res = await fetch(`/api/notebooks/${notebookId}/wiki/health`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setReport(data);
-        setIsOpen(true);
+      if (!res.ok) {
+        throw new Error(`Health check failed: ${res.status} ${res.statusText}`);
       }
+      const data = await res.json();
+      setReport(data);
+      setIsOpen(true);
     } catch (error) {
+      // Surface to the operator instead of silently swallowing — without
+      // this, a 5xx from /wiki/health was indistinguishable from "button
+      // doesn't react", since `if (res.ok)` skipped the popup entirely.
       console.error("Health check failed:", error);
+      window.alert(error instanceof Error ? error.message : "Health check failed");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // The popup uses `absolute top-full` so it must anchor to a positioned
+  // ancestor; without this wrapper it falls back to the document root and
+  // renders far below the viewport — invisible to the user.
   return (
-    <>
+    <div className="relative inline-flex">
       <Button
         variant="ghost"
         size="sm"
@@ -55,7 +63,7 @@ export function HealthCheckButton({ notebookId }: { notebookId: string }) {
       </Button>
 
       {isOpen && report && (
-        <div className="absolute left-0 right-0 top-full z-50 mx-3 mt-1 rounded-lg border border-border bg-background shadow-lg p-4">
+        <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-border bg-background shadow-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold">Health Check</h3>
             <Button
@@ -110,6 +118,6 @@ export function HealthCheckButton({ notebookId }: { notebookId: string }) {
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

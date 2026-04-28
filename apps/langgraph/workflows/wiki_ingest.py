@@ -35,6 +35,13 @@ class Node:
     type: str
     summary: str
     source_refs: list[str] = field(default_factory=list)
+    # Filled in by ``extract_wiki`` after Louvain assigns each node to a
+    # community. The wiki UI groups nodes by this field to render the
+    # "topics" list — without it the panel only shows entities and no
+    # topic count. Stays None when the graph has 0 nodes (no clustering
+    # happens) which the UI handles via its `node.community === undefined`
+    # guard.
+    community: int | None = None
 
 
 @dataclass
@@ -157,6 +164,23 @@ def _build_extraction_report(existing: Graph | None, extracted: Extraction) -> d
         "edges": [e.__dict__ for e in extracted.edges],
         "crossRefs": cross_refs,
     }
+
+
+def _annotate_communities(g: Graph, communities: dict[int, list[str]]) -> None:
+    """Stamp each node's `community` with its Louvain cluster id (in place).
+
+    The wiki UI groups graph nodes by ``node.community`` to render the
+    "topics" list — without this stamp the front-end falls through and
+    only shows the entities count, never the topics. Mirrors what the
+    pre-Python ``graph-service.ts:clusterGraph`` used to bake into
+    ``notebookGraph.graphData`` directly.
+    """
+    by_id = {n.id: n for n in g.nodes}
+    for cid, node_ids in communities.items():
+        for nid in node_ids:
+            node = by_id.get(nid)
+            if node is not None:
+                node.community = cid
 
 
 def _cluster_graph(g: Graph) -> dict[int, list[str]]:
@@ -574,6 +598,7 @@ async def extract_wiki(req: WikiExtractRequest) -> WikiExtractResult:
         normalized_title = req.source_title
 
     communities = _cluster_graph(merged)
+    _annotate_communities(merged, communities)
     page_cache = _build_page_cache(
         existing_graph,
         existing_communities,
