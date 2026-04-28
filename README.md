@@ -4,398 +4,327 @@
 
 AI-powered research platform with generative UI, RAG notebooks, and conference discovery.
 
-SparkFlow combines retrieval-augmented generation with a generative UI paradigm where the AI assistant dynamically creates interactive tables, charts, and visualizations on demand. It serves as both a deep research notebook and a conference discovery hub.
+SparkFlow combines retrieval-augmented generation with a generative UI paradigm — the AI assistant dynamically renders interactive tables, charts, and forms inline in chat. Two main surfaces: **DeepDive** (per-notebook RAG over uploaded sources) and **Research Hub / Explore** (conference / publication / session discovery with generative UI).
 
 ## Architecture
 
 ```
 SparkFlow/
+├── docker-compose.yml          # Stack orchestration (dev + prod)
+├── docker-compose.server.yml   # Corporate-network override (CA + NO_PROXY)
+├── ca-certificates.crt         # Corp CA bundle (per-host, gitignored, empty OK)
 ├── apps/
-│   ├── web/          # Next.js 16 frontend (port 3001) + BullMQ ingest worker
-│   ├── agent/        # LangGraph Python agents (port 2024) + ARQ digest worker
-│   ├── semops/       # FastAPI SemanticOperators / matcher (port 2025)
-│   └── toolbox/      # Prebuilt tool definitions (YAML)
-├── docs/
-├── scripts/
-└── tasks/
+│   ├── web/        # Next.js 16 frontend (port 3001) + BullMQ ingest worker
+│   ├── langgraph/  # Python: 3 LangGraph agents (port 2024) + FastAPI workflows
+│   │               # server (port 2027) + ARQ digest worker
+│   └── semops/     # Python FastAPI LOTUS semantic operators (port 2025)
+└── docs/
+    ├── reference/                  # LangGraph / LangChain reference docs
+    └── superpowers/{specs,plans}/  # Design docs + implementation plans
 ```
 
-### Frontend (`apps/web`)
+### `apps/web` — Next.js frontend
 
 ```
-apps/web/
-├── app/[locale]/        # i18n-scoped routes (en, zh)
-│   ├── (auth)/          # Login / signup
-│   ├── admin/           # Admin panel
-│   ├── deepdive/[id]/   # AI research notebooks
-│   └── explore/         # Research Hub
-│       ├── conferences/
-│       ├── publications/
-│       ├── sessions/
-│       └── toolbox/
-├── components/          # Shared UI components
-│   ├── ui/              # shadcn/ui primitives
-│   ├── landing/         # Landing page
-│   ├── deepdive/        # Notebook components
-│   └── explore/         # Research Hub components
-├── lib/                 # Utilities and clients
-└── prisma/              # Database schema
+app/[locale]/         # i18n-scoped routes (en, zh)
+  (auth)/             # Login / signup
+  admin/              # Admin panel
+  deepdive/[id]/      # Per-notebook research workspace
+  explore/            # Research Hub
+app/api/              # API routes (auth, chat, settings, notebooks, …)
+components/{ui,landing,deepdive,explore}/
+lib/
+  services/wiki-ingest.ts   # Thin client → POST /v1/workflows/wiki/extract
+  providers/list-models.ts  # Thin client → POST /v1/workflows/llm/list-models
+  queue/                    # BullMQ + Redis (per-user fairness, per-notebook lock)
+  types/graph.ts            # Knowledge-graph type defs (shared with Python via JSON)
+  crypto.ts                 # BYOK key encryption
+workers/ingest.ts     # BullMQ wiki-ingest consumer
+prisma/               # Schema + migrations (use `migrate deploy`, never `db push`)
 ```
 
-### Backend (`apps/langgraph`)
+### `apps/langgraph` — Python backend
 
 ```
-apps/langgraph/
-├── graphs/       # Agent graph definitions
-├── tools/        # Tool implementations
-├── prompts/      # System prompts
-├── config/       # Agent configuration
-├── middleware/    # Request middleware
-└── skills/       # Agent skills
+agents/{notebook,hub,deep_research}.py   # 3 surfaces: StateGraph(MessagesState)
+                                         # built from llm_call ↔ tool_node primitives
+prompts/                                 # Markdown system-prompt fragments
+  base_identity.md / tool_use_enforcement.md
+  model_hints/{openai,gemini}.md
+  surfaces/{notebook,hub,deep_research}.md
+prompt_builder.py                        # 64-LOC concatenator (no class, no cache)
+tools/                                   # @tool functions (no registry)
+  web.py / wiki.py / hub_toolbox.py / hub_ui.py / hub_nav.py / hub_wechat.py
+workflows/                               # Functional API + Graph API
+  search.py                # plain async (single chain, no parallelism)
+  daily_digest.py          # @entrypoint + per-query parallel prefilter
+  matcher/job.py           # Graph API + Send orchestrator-worker
+  wiki_ingest.py           # @entrypoint chain (replaces graph-service.ts)
+  digest_worker.py         # ARQ worker + adapter
+server/                                  # FastAPI on :2027
+  app.py
+  routes/{matcher_jobs,wiki_ingest,llm_models}.py
+langgraph.json                           # Registers 3 graphs for LangGraph CLI
+embeddings/bge_m3.py                     # Offline backfill helper
+scripts/backfill_*.py                    # One-shot embedding backfills
+tests/                                   # 61 pytest, no Redis dep for unit tests
 ```
+
+### LangGraph surfaces
+
+Three graphs registered in `apps/langgraph/langgraph.json`, one file per surface:
+
+| Surface | Module | Purpose |
+|---|---|---|
+| `notebook` | `agents/notebook.py:agent` | DeepDive RAG over notebook sources |
+| `hub` | `agents/hub.py:agent` | Conference / session / publication discovery + generative UI |
+| `deep_research` | `agents/deep_research.py:agent` | Open-web research via SearXNG / Tavily |
+
+Each is a `StateGraph(MessagesState)` with `llm_call ↔ tool_node` per the LangGraph reference doc's "Agents → Graph API" pattern. Tools are imported directly per surface (no central registry). The hub's `tool_node` skips dispatch for tools in `HUB_FRONTEND_TOOL_NAMES` (`show_table`, `show_chart`, …) — those `AIMessage` tool_calls reach CopilotKit via the LangGraph SDK and render as React components. `should_continue` routes to `END` when *all* tool_calls in a turn are frontend (otherwise the loop would repeat them).
 
 ## Tech Stack
 
-### Frontend
+### Frontend (`apps/web`)
 
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| Next.js | ^16.1.6 | App Router framework |
-| React | ^19.2.4 | UI library |
-| TypeScript | ^5 | Type safety |
-| Tailwind CSS | v4 | Utility-first styling |
-| Shadcn/UI | — | Component primitives |
-| CopilotKit | ^1.52.1 | Generative UI framework |
-| Prisma | ^7.3.0 | Database ORM |
-| NextAuth.js | v5 beta | Authentication (JWT) |
-| next-intl | ^4.8.3 | Internationalization (en/zh) |
-| ECharts + Recharts | ^5.6 / ^3.7 | Data visualization |
-| Zod | ^4.3.5 | Schema validation |
-| Framer Motion | ^12.23 | Animations |
-| ExcelJS | ^4.4.0 | Excel file processing |
+| | |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack), React 19, TypeScript 5 |
+| Styling | Tailwind 4, shadcn/ui |
+| Auth / DB | NextAuth v5 (JWT), Prisma 7, pgvector/pg17 |
+| Generative UI | CopilotKit 1.52 |
+| i18n | next-intl 4.8 (en, zh) |
+| Charts | ECharts, Recharts |
+| Queue | BullMQ + ioredis |
 
-### Backend
+### Backend (`apps/langgraph`)
 
-| Technology | Purpose |
-|-----------|---------|
-| LangGraph | Agent orchestration and state management |
-| LangChain | LLM tooling and chain composition |
-| FastAPI | Semops service + digest workflow endpoints |
-| LOTUS | Semantic operators (`sem_search`, `sem_topk`, `sem_map`) — rank runs in `ProcessPoolExecutor` subprocesses (spawn context) for tenant isolation |
-| OpenAI + Google Gemini + others | LLM providers (BYOK — configured per user) |
-| PageIndex | Built-in RAG pipeline (chunking, indexing, retrieval) |
-| Playwright | Webpage-to-markdown conversion |
-| psycopg3 | Direct PostgreSQL queries for hub tools |
+| | |
+|---|---|
+| Agent runtime | LangGraph 1.1, LangChain, langchain-openai |
+| HTTP server | FastAPI on :2027 (workflows + llm_models) |
+| Queue | ARQ on Redis (digest worker) |
+| Knowledge graph | networkx (Louvain), psycopg3 |
+| LLM providers | OpenAI / DeepSeek / GLM / Gemini / Kimi / Minimax / custom — BYOK only |
 
-### Queues & Workers
+### Backend (`apps/semops`)
 
-| Technology | Purpose |
-|-----------|---------|
-| BullMQ (Node) + ioredis | Wiki-ingest queue in `apps/web`; drained by `npm run worker:ingest` |
-| ARQ (Python) | Daily-digest queue in `apps/langgraph`; drained by `arq workflows.digest_worker.WorkerSettings` |
-| Redis 7 | Single shared broker for both queues (separate keyspaces) |
-
-## AI Agents
-
-LangGraph surfaces registered in `langgraph.json`:
-
-| Surface | Entry Point | Purpose |
-|---------|-------------|---------|
-| `notebook_graph` | `graphs/surface.py` | Document RAG — wiki-aware deepdive agent (multi-provider via `init_chat_model`) |
-| `hub_graph` | `graphs/surface.py` | Conference/session discovery with generative UI |
-| `deep_research_graph` | `graphs/surface.py` | Open-web deep research with Tavily |
-
-All three are built by the same factory (`hermes` harness) and share the tool registry; they differ by surface-level toolset + prompt. The hub surface uses a tool execution loop with conditional routing: backend tool calls (DB queries) execute server-side and loop back to the LLM, while frontend tool calls (showTable, showChart) pass through to CopilotKit for React component rendering.
-
-## Features
-
-**DeepDive Notebooks** -- AI research notebooks with RAG-powered Q&A. Upload documents (PDF, DOCX, TXT), ingest webpages, take markdown notes, and chat with your sources using retrieval-augmented generation.
-
-**Research Hub (Explore)** -- Conference discovery interface with Overview, Conferences, Publications, and Sessions views. Browse conferences by venue and year, explore publications with author/affiliation data, and search sessions by topic and technology.
-
-**Generative UI** -- The AI research assistant dynamically creates interactive tables and charts on demand via CopilotKit. Ask a question like "how many sessions in GTC 2026" and the assistant queries the database, then renders a formatted table or chart inline.
-
-**Toolbox** -- Query matching tool that accepts Excel file imports, matches queries against conference sessions or publications using AI, and stores results in S3. Includes match job history and progress tracking.
-
-**Internationalization** -- Full English and Chinese language support via next-intl with locale-scoped routing.
-
-**Admin Panel** -- Management interface for conferences, venues, instances, publications, and sessions.
-
-**Authentication** -- NextAuth.js v5 with JWT-based sessions, login/signup flows, and role-based access (User/Admin).
-
-**Dark Mode** -- System-aware theme switching with manual override.
+LOTUS-backed semantic operators (`sem_rank`, `sem_filter`, `sem_map`) consumed by matcher / daily_digest / search workflows. Tenant isolation via `ProcessPoolExecutor` (spawn context). `sentence-transformers` + `faiss-cpu` heavy deps.
 
 ## Infrastructure
 
-### Default profile (always running — `docker compose up -d`)
+Single docker-compose stack at repo root. Two profiles control what starts:
+
+### Default profile — `docker compose up -d`
+
+Brings up infrastructure + workers. **In dev**, you run `web` / LangGraph / workflows-api on the host for fast hot reload while these stay in docker.
 
 | Service | Image / Built from | Host port | Purpose |
-|---------|--------------------|-----------|---------|
-| postgres | `pgvector/pgvector:pg17` | 5433 | Primary database (pgvector) |
-| redis | `redis:7-alpine` | 6379 | BullMQ + ARQ broker (AOF persistence) |
-| searxng | `searxng/searxng:latest` | 8888 | Self-hosted web search (default backend; Tavily is BYOK) |
-| ingest-worker | `apps/web/Dockerfile.worker` | — | BullMQ consumer: wiki-ingest |
-| digest-worker | `apps/langgraph/Dockerfile.worker` | — | ARQ consumer: daily-digest |
+|---|---|---|---|
+| postgres | `pgvector/pgvector:pg17` | 5433 | Primary DB (pgvector) |
+| redis | `redis:7-alpine` | 6379 | BullMQ + ARQ broker |
+| searxng | `searxng/searxng` | 8888 | Self-hosted web search (Tavily is BYOK only) |
+| semops | `apps/semops/Dockerfile` | 2025 | LOTUS semantic operators (`/api/operators/rank`) |
+| ingest-worker | `apps/web/Dockerfile.worker` | — | BullMQ consumer: wiki ingest |
+| digest-worker | `apps/langgraph/Dockerfile.worker` | — | ARQ consumer: daily digest |
 
-### Prod profile (opt-in — `docker compose --profile prod up -d`)
+### Prod profile — `docker compose --profile prod up -d`
 
-Adds containerized web + workflows-api + a one-shot migrate runner. Skip
-in dev so `npm run dev` keeps fast HMR on the host.
+Adds containerized web + workflows-api + a one-shot migrate runner. Skip in dev so `npm run dev` keeps fast HMR on the host.
 
 | Service | Built from | Host port | Purpose |
-|---------|------------|-----------|---------|
+|---|---|---|---|
 | migrate | `apps/web/Dockerfile` (builder stage) | — | Runs `prisma migrate deploy` once and exits |
 | web | `apps/web/Dockerfile` (runner stage) | 3001 | Next.js standalone server |
-| workflows-api | `apps/langgraph/Dockerfile.workflows-api` | 2027 | FastAPI: `/v1/workflows/{matcher,daily_digest,search}` |
+| workflows-api | `apps/langgraph/Dockerfile.workflows-api` | 2027 | FastAPI: `/v1/workflows/{matcher,daily_digest,search,wiki/extract,llm/list-models}` |
 
-### External Services
+### Server overrides — `docker-compose.server.yml`
 
-| Service | Default Port | Purpose |
-|---------|-------------|---------|
-| MinerU | 8000 | PDF-to-image extraction |
-| Semops | 2025 | FastAPI SemanticOperators + matcher |
+Layers on top of the base for corporate-network deploys: `NO_PROXY` env, CA-cert volume mount, `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE`. Combine with the prod profile via `-f docker-compose.yml -f docker-compose.server.yml --profile prod`.
+
+### Single CA bundle
+
+Drop your corporate CA at the repo root only:
+
+```bash
+cp /path/to/your-ca.crt ./ca-certificates.crt   # or `touch` for open networks
+```
+
+All Dockerfiles read this single file via Compose's `additional_contexts: { certs: ./ }` and `COPY --from=certs ca-certificates.crt …`. No need for per-app copies.
+
+### External services (not in compose)
+
+| | |
+|---|---|
+| MinerU | PDF-to-image extraction. Configure via `MINERU_MODE=local|api`, `MINERU_LOCAL_URL`, `MINERU_API_TOKEN`. |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 24 LTS (npm 10 / 11)
-- Python 3.11+
-- Docker and Docker Compose
-- Corporate networks behind a TLS-intercepting proxy: drop your CA bundle
-  at `apps/web/ca-certificates.crt` and `apps/langgraph/ca-certificates.crt`
-  (gitignored). Empty files are fine on open networks.
-
----
+- Node.js 24 LTS, Python 3.11+
+- Docker (Compose v2.17+ for `additional_contexts`)
+- (corp networks only) corporate CA bundle
 
 ### Development (local machine)
 
-Setup runs Next.js + LangGraph + workflows-api on the **host** for fast
-HMR; postgres / redis / searxng / workers run in **docker**.
-
-1. **Clone, install deps, generate secrets**
+Postgres / Redis / SearXNG / semops / 2 workers in docker; Next.js + LangGraph + workflows-api on the host (fast HMR).
 
 ```bash
-# Frontend
-cd apps/web
-npm install
-cp .env.example .env
+# 1. Install deps + env files
+cd apps/web && npm install && cp .env.example .env && cd ..
+cd apps/langgraph && python -m venv .venv && .venv/bin/pip install -e '.[dev]' && cp .env.example .env && cd ..
 
-# Backend
-cd apps/langgraph
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-cp .env.example .env
-
-# Generate one set of secrets and paste into BOTH .env files
+# 2. Generate one set of secrets and paste into BOTH .env files
 echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)"
 echo "API_KEY_ENCRYPTION_SECRET=$(openssl rand -base64 32)"
-echo "INTERNAL_CALLBACK_TOKEN=$(openssl rand -hex 32)"   # MUST match in apps/web + apps/langgraph
-```
+echo "INTERNAL_CALLBACK_TOKEN=$(openssl rand -hex 32)   # MUST match in both .env files"
 
-Set `ADMIN_EMAILS=your@email` in `apps/web/.env` so your account auto-promotes on first login.
+# Set ADMIN_EMAILS=your@email in apps/web/.env so first login auto-promotes you.
 
-2. **Start shared services (postgres, redis, searxng, workers)**
-
-```bash
+# 3. Start docker services + run migrations
+touch ca-certificates.crt   # empty placeholder (or copy your corp CA here)
 docker compose up -d
+cd apps/web && npx prisma generate && npx prisma migrate deploy && cd ..
 ```
 
-3. **Apply database migrations**
+Then **3 terminals on the host**:
 
 ```bash
-cd apps/web
-npx prisma generate
-npx prisma migrate deploy   # never `db push` — repo is baselined
-```
-
-4. **Start the four host processes (each in its own terminal)**
-
-```bash
-# Terminal 1 — Next.js (port 3001)
+# Terminal 1 — Next.js (:3001)
 cd apps/web && npm run dev
 
-# Terminal 2 — LangGraph API (port 2024)
+# Terminal 2 — LangGraph dev server (:2024) — the 3 agents
 cd apps/langgraph && make dev
 
-# Terminal 3 — Workflows FastAPI (port 2027)
+# Terminal 3 — Workflows FastAPI (:2027) — matcher / digest / wiki extract / llm models
 cd apps/langgraph && make serve
-
-# Semops (port 2025) now runs inside docker compose by default —
-# no separate terminal needed. If you'd rather run it on the host
-# during dev (faster iteration on the LOTUS code):
-#   docker compose stop semops
-#   cd apps/semops && python main.py
-# Then `apps/langgraph/.env` should point SEMOPS_API_URL at host:
-#   SEMOPS_API_URL=http://host.docker.internal:2025
 ```
 
-The wiki-ingest worker, daily-digest worker, and semops all run inside
-docker compose by default — no extra host processes needed.
-
-5. **Access the application**
-
-- Frontend: http://localhost:3001
-- LangGraph API: http://localhost:2024
-- Workflows API health: http://localhost:2027/v1/healthz
-- SearXNG: http://localhost:8888
-
----
-
-### Production (server deployment)
-
-Setup runs everything in docker, including web + workflows-api +
-migrate. Single command brings it all up; no host node / langgraph
-process needed.
-
-1. **Pull the repo, install the CA bundle (corporate networks only)**
+`semops` runs in docker by default. To run it on the host instead (faster iteration on LOTUS code):
 
 ```bash
-git pull
-# If you're behind a TLS-intercepting proxy:
-cp /path/to/your-corporate-ca.crt apps/web/ca-certificates.crt
-cp /path/to/your-corporate-ca.crt apps/langgraph/ca-certificates.crt
-# Open networks: just `touch` empty files there.
+docker compose stop semops
+cd apps/semops && python main.py    # then set apps/langgraph/.env: SEMOPS_API_URL=http://host.docker.internal:2025
 ```
 
-2. **Configure prod env files**
+Open http://localhost:3001 to verify.
+
+### Production (server)
+
+Everything in docker. One command brings it all up; no host node / Python process needed.
 
 ```bash
-cp apps/web/.env.production.example   apps/web/.env
-cp apps/langgraph/.env.production.example apps/langgraph/.env
+ssh <server>
+git clone https://github.com/yiju-zhao/SparkFlow.git /opt/SparkFlow
+cd /opt/SparkFlow
+git checkout agent-dev   # or main once merged
+
+# 1. Configure env files. Cross-cutting vars (INTERNAL_CALLBACK_TOKEN,
+#    POSTGRES_*, DATABASE_URL, REDIS_URL, SEMOPS_API_URL, SEARXNG_URL)
+#    live ONLY in apps/web/.env; langgraph services pick them up via
+#    docker-compose's env_file lists. No duplication, no sync risk.
+cp apps/web/.env.production.example       apps/web/.env
+cp apps/langgraph/.env.production.example apps/langgraph/.env  # narrow: CHECKPOINT_DB_URL, LANGSMITH_*
+cp .env.proxy.example                     .env.proxy           # NO_PROXY + CA-bundle paths
+# Set NEXTAUTH_URL and NEXT_PUBLIC_* to public URLs the browser can reach.
+
+# 2. Drop CA bundle (or empty placeholder for open networks)
+cp /path/to/your-ca.crt ./ca-certificates.crt   # or `touch ca-certificates.crt`
+
+# 3. Bring up the full stack
+docker compose -f docker-compose.server.yml --profile prod up -d --build
 ```
 
-Edit both files. **Rotate every secret** (NEXTAUTH_SECRET,
-API_KEY_ENCRYPTION_SECRET, INTERNAL_CALLBACK_TOKEN, POSTGRES_PASSWORD).
-Set the **public** `NEXTAUTH_URL` and all `NEXT_PUBLIC_*` URLs to
-domains the user's browser can reach (not docker service names).
-`INTERNAL_CALLBACK_TOKEN` MUST be identical in both files.
-
-3. **Bring up the full stack**
+Compose handles startup order: postgres + redis + searxng + semops healthy → migrate runs `prisma migrate deploy` → web + workflows-api start.
 
 ```bash
-docker compose --profile prod up -d --build
-```
-
-Startup order (compose handles automatically):
-postgres + redis + searxng healthy → migrate runs `prisma migrate deploy`
-→ web + workflows-api start.
-
-4. **Verify**
-
-```bash
-docker compose ps                                       # all services Up
-curl https://your-domain.com/                           # 307 redirect to /en
+# Verify
+docker compose ps                                       # all 9 services Up (migrate Exited 0)
+curl https://your-domain.com/                           # 307 → /en
 curl https://workflows.your-domain.com/v1/healthz       # {"ok":true}
 ```
 
-5. **Updating to a new version**
+### Updating to a new version
 
 ```bash
+cd /opt/SparkFlow
 git pull
-docker compose --profile prod up -d --build
+docker compose -f docker-compose.server.yml --profile prod up -d --build
 # migrate auto-runs `prisma migrate deploy` before web restarts.
 ```
 
-For schema changes that need a worker rebuild see
-`apps/web/CLAUDE.md`.
+If `pyproject.toml` / `package.json` / `Dockerfile` changed, add `--no-cache` to the `build`. Convenience alias:
+
+```bash
+alias dcprod='docker compose -f docker-compose.server.yml --profile prod'
+dcprod up -d --build
+dcprod logs -f workflows-api
+```
 
 ## Environment Variables
 
-Two pairs of templates ship with the repo. **Use the dev pair on your
-laptop, the prod pair on the server.** Don't mix.
+### How env files are loaded
 
-| Environment | Frontend | Backend |
+The compose files use **`env_file:` only** — no `${VAR}` substitution for app config. Whatever you put in a `.env` file is exactly what the container sees. Cross-cutting vars live in **one** place; the langgraph services pick them up via env_file lists. No `INTERNAL_CALLBACK_TOKEN` sync risk, no "edit `.env` and silently get the default" footgun.
+
+| File | Purpose | Loaded by |
 |---|---|---|
-| Development | `apps/web/.env.example` → `.env` | `apps/langgraph/.env.example` → `.env` |
-| Production  | `apps/web/.env.production.example` → `.env` | `apps/langgraph/.env.production.example` → `.env` |
+| `apps/web/.env` | Everything `apps/web` needs **plus** all cross-cutting vars (`POSTGRES_*`, `DATABASE_URL`, `REDIS_URL`, `INTERNAL_CALLBACK_TOKEN`, `SEMOPS_API_URL`, `SEARXNG_URL`, `SPARKFLOW_API_URL`) | postgres, ingest-worker, migrate, web, **and** workflows-api / digest-worker (via env_file list) |
+| `apps/langgraph/.env` | Narrow: only langgraph-specific (`CHECKPOINT_DB_URL`, `DIGEST_WORKER_CONCURRENCY`, `LANGSMITH_*`) | workflows-api, digest-worker |
+| `.env.proxy` | Server-only: `NO_PROXY` + corporate CA paths (`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`) | every outbound-talking service in `docker-compose.server.yml` |
+| `apps/web/.env.local` | **Host-only override** for `npm run dev` — point `DATABASE_URL` / `REDIS_URL` at `localhost:5433` / `localhost:6379`. Next.js auto-picks; docker ignores. | Host Node process only |
 
-The example files are the source of truth — read them for full
-descriptions of every variable. The tables below summarize what's
-required vs defaulted.
+Templates ship as `*.example` files (committed); runtime files (`.env`, `.env.local`, `.env.proxy`) are gitignored.
 
-### Frontend (`apps/web/.env`)
+| Environment | Templates |
+|---|---|
+| Dev (host) | `apps/web/.env.example`, `apps/langgraph/.env.example` |
+| Prod (server) | `apps/web/.env.production.example`, `apps/langgraph/.env.production.example`, `.env.proxy.example` |
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXTAUTH_SECRET` | JWT secret | Yes (rotate per env) |
-| `NEXTAUTH_URL` | Application URL the browser hits | Yes (prod); default `http://localhost:3001` (dev) |
-| `API_KEY_ENCRYPTION_SECRET` | Encrypts BYOK API keys at rest | Yes |
-| `INTERNAL_CALLBACK_TOKEN` | Shared with `apps/langgraph` (Python→Node digest callback) | Yes |
-| `ADMIN_EMAILS` | Comma-separated; auto-promotes on login | Yes |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres credentials (compose builds DATABASE_URL from these) | Yes |
-| `DATABASE_URL` | Override for non-compose use | No |
-| `REDIS_URL` | BullMQ broker | Default `redis://localhost:6379` (dev); compose injects in prod |
-| `INGEST_WORKER_CONCURRENCY` | Jobs per worker process | Default `4` |
-| `INGEST_PER_USER_CONCURRENCY` | Max ingest jobs a single user holds | Default `2` |
-| `LANGGRAPH_API_URL` / `NEXT_PUBLIC_LANGGRAPH_API_URL` | LangGraph URL | Yes in prod (no default that works publicly) |
-| `WORKFLOWS_API_URL` | Server-side FastAPI URL | Default `http://localhost:2027` (dev) / `http://workflows-api:2027` (prod) |
-| `NEXT_PUBLIC_WORKFLOWS_API_URL` | **Browser-side** workflows URL — must be publicly reachable | Yes in prod |
-| `MINERU_MODE`, `MINERU_LOCAL_URL`, `MINERU_API_TOKEN` | PDF parser config | `MINERU_API_TOKEN` required when `MODE=api` |
+### Required keys at a glance
 
-### Backend (`apps/langgraph/.env`)
+The example files are the source of truth — they document every variable inline. Highlights:
 
-BYOK is mandatory on all user-facing paths — there is no `OPENAI_API_KEY`
-fallback for user requests. Admin-only paths may still read env keys.
+**`apps/web/.env`** — must rotate: `NEXTAUTH_SECRET`, `API_KEY_ENCRYPTION_SECRET`, `POSTGRES_PASSWORD`, `INTERNAL_CALLBACK_TOKEN`. Must set per environment: `NEXTAUTH_URL`, `NEXT_PUBLIC_LANGGRAPH_API_URL`, `NEXT_PUBLIC_WORKFLOWS_API_URL` (these reach the browser, so they must be publicly resolvable URLs). On the server, `DATABASE_URL` and `REDIS_URL` use docker hostnames (`postgres:5432`, `redis:6379`); locally, override in `.env.local` with `localhost:5433` / `localhost:6379`.
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `INTERNAL_CALLBACK_TOKEN` | Must match `apps/web` | Yes |
-| `SPARKFLOW_API_URL` | Node callback base URL | Yes |
-| `SEMOPS_API_URL` | Semops service URL | Yes |
-| `DATABASE_URL` | Main SparkFlow DB (used by backfill scripts + langgraph-api) | Yes |
-| `REDIS_URL` | Shared with web app (ARQ + BullMQ) | Default `redis://localhost:6379` (dev); compose injects in prod |
-| `SEARXNG_URL` | Default web-search backend (Tavily is BYOK only) | Default `http://localhost:8888` (dev) / `http://searxng:8080` (prod) |
-| `TOOLBOX_SERVER_URL` | Toolbox MCP server | Yes for hub agent |
-| `DIGEST_WORKER_CONCURRENCY` | Digest sections per worker process | Default `4` |
-| `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT` | LangSmith tracing | Optional (recommended in prod) |
-| `WECHAT_DATABASE_URL` | External Postgres for WeChat features | Optional |
+**`apps/langgraph/.env`** — narrow file. `CHECKPOINT_DB_URL` (separate DB recommended in prod), `DIGEST_WORKER_CONCURRENCY` (default 4), `LANGSMITH_*` (optional tracing). BYOK is mandatory on all user-facing paths; no `OPENAI_API_KEY` env fallback for user requests.
 
-### Semops (`apps/semops/.env`)
+**`.env.proxy`** — server only. Lists every docker service hostname in `NO_PROXY` so library-level proxy code skips inter-container traffic; points the three CA-bundle env vars at `/etc/ssl/certs/ca-certificates.crt` (the bind-mount target). On non-MITM hosts this file is harmless but still required (compose `env_file` is mandatory).
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `SEMOPS_RANK_POOL_SIZE` | `ProcessPoolExecutor` workers for `/api/operators/rank` | No (default: `min(4, cpu_count)`) |
+**`apps/semops/.env`** — optional, `SEMOPS_RANK_POOL_SIZE` only (default `min(4, cpu_count)`).
 
 ## Data Models
 
 Key Prisma models powering the platform:
 
 | Domain | Models |
-|--------|--------|
+|---|---|
 | Auth | User, Session, UserSettings |
-| Notebooks | Notebook, Source, Chunk, SourceImage |
+| Notebooks | Notebook, Source, Chunk, SourceImage, NotebookGraph, WikiPage, WikiPageLog |
 | Chat | ChatSession, ChatMessage |
 | Notes | Note |
 | Conferences | Venue, Instance, Publication, ConferenceSession |
 | Toolbox | MatchJob |
+| Memory (reserved, not currently read) | UserMemory, NotebookMemory |
 
 ## Development
 
 ```bash
-# Type checking
-cd apps/web && npx tsc --noEmit
-
-# Linting
-cd apps/web && npm run lint
-
-# Prisma schema changes
-cd apps/web && npx prisma migrate dev --name <what_changed>   # NEVER `db push` — repo is baselined
-
-# Build for production
-cd apps/web && npm run build
+cd apps/web        && npx tsc --noEmit         # type check
+cd apps/web        && npm run lint             # ESLint
+cd apps/web        && npx prisma migrate dev --name <what_changed>   # NEVER `db push`
+cd apps/langgraph  && .venv/bin/python -m pytest -v                   # 61 tests, no docker dep
 ```
 
 ## Roadmap
 
 | Phase | Status | Description |
-|-------|--------|-------------|
-| Phase 1: Foundation and Data | Complete | Core data models, admin panel, conference and publication management, database schema |
-| Phase 2: Research Hub | Complete | Explore interface with conference discovery, generative UI components, AI-powered research assistant |
-| Phase 3: Notebook Integration | Planned | Connect Research Hub discoveries to RAG notebooks for deep analysis, source import flow from Hub to Notebook |
-| Phase 4: Polish and Enhancement | Planned | UI/UX refinement, performance optimization, extended internationalization coverage, production hardening |
+|---|---|---|
+| Phase 1: Foundation and Data | ✅ | Core data models, admin panel, conference + publication management |
+| Phase 2: Research Hub | ✅ | Explore interface, generative UI, AI research assistant |
+| Phase 3: Notebook Integration | Planned | Connect Hub discoveries to RAG notebooks; source import flow |
+| Phase 4: Polish | Planned | UI/UX refinement, performance, extended i18n, prod hardening |
 
 ## License
 
-Private - All rights reserved.
+Private — all rights reserved.

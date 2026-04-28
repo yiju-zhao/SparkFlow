@@ -1,5 +1,5 @@
 # SparkFlow SERVER compose — full stack with corporate-proxy (NO_PROXY)
-# and TLS-MITM (corporate CA bundle) wiring enabled.
+# and TLS-MITM (corporate CA bundle) wiring.
 #
 # Usage on the server:
 #   1. Place a full CA bundle (system roots + corporate CA, concatenated) at
@@ -7,54 +7,35 @@
 #      A missing host file makes Docker create an empty dir at the mount
 #      path and break all TLS in the container; an empty file breaks all
 #      TLS via missing roots — hence the bundle MUST exist before `up`.
-#   2. docker compose -f docker-compose.server.yml --profile prod up -d --build
+#      On non-MITM hosts: `touch ca-certificates.crt` is enough.
+#   2. cp .env.proxy.example .env.proxy   (server-only env file)
+#   3. docker compose -f docker-compose.server.yml --profile prod up -d --build
 #
 # For local dev (no proxy / no corporate CA), use docker-compose.yml instead:
 #   docker compose up -d
 #
-# On hosts behind a TLS-intercepting / forwarding proxy (HTTP_PROXY /
-# HTTPS_PROXY auto-injected by ~/.docker/config.json), NO_PROXY must list
-# every docker-network service hostname or library-level NO_PROXY checks
-# route inter-container traffic through the host proxy. The compose file
-# appends those service names to whatever the user already has set in
-# their host shell / .env, so corporate intranet domains in $NO_PROXY are
-# preserved.
+# Configuration model: same as docker-compose.yml — no ${VAR} substitution
+# for app config, all env via env_file lists. The server file adds:
+#   - .env.proxy in the env_file list of every outbound-talking service
+#   - bind-mount of ./ca-certificates.crt onto /etc/ssl/certs/ca-certificates.crt
+#
+# .env.proxy contains NO_PROXY (lists all docker service hostnames so
+# library-level proxy code skips them) + REQUESTS_CA_BUNDLE / SSL_CERT_FILE
+# / CURL_CA_BUNDLE pointing at the mounted bundle.
 
 name: sparkflow
-
-# Reused by every service that does outbound HTTP (workers, web,
-# workflows-api, migrate). Anchors are merged into each service's
-# environment via `<<: [*no_proxy_env, *ca_cert_env]`.
-x-no-proxy-env: &no_proxy_env
-  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},postgres,redis,searxng,semops,web,workflows-api,ingest-worker,digest-worker,migrate
-  no_proxy: ${no_proxy:-localhost,127.0.0.1},postgres,redis,searxng,semops,web,workflows-api,ingest-worker,digest-worker,migrate
-
-# Corporate CA bundle env vars — paired with the bind-mount of
-# ./ca-certificates.crt onto /etc/ssl/certs/ca-certificates.crt below.
-# Three vars cover every TLS code path:
-#   SSL_CERT_FILE       — Python's ssl module / OpenSSL CLI
-#   REQUESTS_CA_BUNDLE  — `requests` and `httpx`
-#   CURL_CA_BUNDLE      — libcurl
-x-ca-cert-env: &ca_cert_env
-  SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
-  REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
-  CURL_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
 
 services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: sparkflow-postgres
     env_file: ./apps/web/.env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-sparkflow}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sparkflow}
-      POSTGRES_DB: ${POSTGRES_DB:-sparkflow}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sparkflow}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-sparkflow}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,9 +55,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Self-hosted SearXNG — default web search backend used by
-  # apps/langgraph/tools/web.py when no Tavily BYOK key is provided.
-  # Internal use only (limiter disabled in config/settings.yml).
   searxng:
     image: docker.io/searxng/searxng:latest
     container_name: sparkflow-searxng
@@ -87,7 +65,6 @@ services:
       - ./searxng/data:/var/cache/searxng:rw
     environment:
       SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8888}/
-      # Splits into settings.yml's `ultrasecretkey` placeholder at startup.
       SEARXNG_SECRET: ${SEARXNG_SECRET:-sparkflow-default-rotate-in-prod}
     restart: unless-stopped
 
@@ -97,11 +74,9 @@ services:
       dockerfile: Dockerfile.worker
     container_name: sparkflow-ingest-worker
     command: ["npm", "run", "worker:ingest"]
-    env_file: ./apps/web/.env
-    environment:
-      <<: [*no_proxy_env, *ca_cert_env]
-      REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+    env_file:
+      - ./apps/web/.env
+      - ./.env.proxy
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
@@ -112,10 +87,22 @@ services:
     restart: unless-stopped
 
   semops:
-    environment:
-      <<: [*no_proxy_env, *ca_cert_env]
+    build:
+      context: ./apps/semops
+      dockerfile: Dockerfile
+    container_name: sparkflow-semops
+    env_file: ./.env.proxy
+    ports:
+      - "${SEMOPS_PORT:-2025}:2025"
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2025/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
 
   digest-worker:
     build:
@@ -123,14 +110,10 @@ services:
       dockerfile: Dockerfile.worker
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
-    env_file: ./apps/langgraph/.env
-    environment:
-      <<: [*no_proxy_env, *ca_cert_env]
-      REDIS_URL: redis://redis:6379
-      SPARKFLOW_API_URL: ${SPARKFLOW_API_URL}
-      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
-      INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
-      DIGEST_WORKER_CONCURRENCY: ${DIGEST_WORKER_CONCURRENCY:-4}
+    env_file:
+      - ./apps/web/.env
+      - ./apps/langgraph/.env
+      - ./.env.proxy
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
@@ -148,15 +131,10 @@ services:
       context: ./apps/langgraph
       dockerfile: Dockerfile.workflows-api
     container_name: sparkflow-workflows-api
-    env_file: ./apps/langgraph/.env
-    environment:
-      <<: [*no_proxy_env, *ca_cert_env]
-      REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
-      SPARKFLOW_API_URL: ${SPARKFLOW_API_URL:-http://web:3001}
-      SEMOPS_API_URL: ${SEMOPS_API_URL:-http://semops:2025}
-      SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
-      INTERNAL_CALLBACK_TOKEN: ${INTERNAL_CALLBACK_TOKEN}
+    env_file:
+      - ./apps/web/.env
+      - ./apps/langgraph/.env
+      - ./.env.proxy
     ports:
       - "${WORKFLOWS_PORT:-2027}:2027"
     volumes:
@@ -175,16 +153,12 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
-      # Use builder stage: it has full node_modules (incl. prisma CLI's
-      # transitive deps like `effect`). The slim runner stage only carries
-      # cherry-picked @prisma/* dirs and breaks at CLI load time.
       target: builder
     container_name: sparkflow-migrate
     command: ["npx", "prisma", "migrate", "deploy"]
-    env_file: ./apps/web/.env
-    environment:
-      <<: *no_proxy_env
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
+    env_file:
+      - ./apps/web/.env
+      - ./.env.proxy
     depends_on:
       postgres:
         condition: service_healthy
@@ -197,21 +171,9 @@ services:
       dockerfile: Dockerfile
       target: runner
     container_name: sparkflow-web
-    env_file: ./apps/web/.env
-    environment:
-      <<: [*no_proxy_env, *ca_cert_env]
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkflow}:${POSTGRES_PASSWORD:-sparkflow}@postgres:5432/${POSTGRES_DB:-sparkflow}
-      REDIS_URL: redis://redis:6379
-      # WORKFLOWS_API_URL is wired to the docker service hostname; LangGraph
-      # is NOT in this compose file (built/run separately via `langgraph
-      # up`), so it falls back to host.docker.internal. Override either
-      # via .env when deploying behind a reverse proxy.
-      LANGGRAPH_API_URL: ${LANGGRAPH_API_URL:-http://host.docker.internal:2024}
-      WORKFLOWS_API_URL: ${WORKFLOWS_API_URL:-http://workflows-api:2027}
-      # Browser-bundled URL — must be reachable from the user's browser,
-      # not from inside the docker network. Set to the public URL of the
-      # workflows server (e.g. https://workflows.example.com).
-      NEXT_PUBLIC_WORKFLOWS_API_URL: ${NEXT_PUBLIC_WORKFLOWS_API_URL:-http://localhost:2027}
+    env_file:
+      - ./apps/web/.env
+      - ./.env.proxy
     ports:
       - "${WEB_PORT:-3001}:3001"
     volumes:
