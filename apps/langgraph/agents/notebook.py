@@ -67,6 +67,7 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
                 ToolMessage(
                     content=json.dumps({"error": f"unknown tool {call['name']}"}),
                     tool_call_id=call["id"],
+                    name=call["name"],
                 )
             )
             continue
@@ -78,7 +79,8 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
         except Exception as exc:  # noqa: BLE001
             raw = {"error": str(exc)}
         content = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
-        results.append(ToolMessage(content=content, tool_call_id=call["id"]))
+        # See hub.py for why `name=` is required (assistant-ui converter).
+        results.append(ToolMessage(content=content, tool_call_id=call["id"], name=call["name"]))
     return {"messages": results}
 
 
