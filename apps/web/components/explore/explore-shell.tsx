@@ -111,7 +111,16 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
       // "invalid thread ID; invalid UUID format" because that release
       // strictly validates thread_id is a UUID (server log showed
       // `invalid UUID length: 17`).
+      //
+      // The narrowing guard mirrors createLangGraphStream.js:9-10 — if
+      // initialize() somehow returned without an externalId, the
+      // `create()` callback below either failed or was never reached, and
+      // there's no point passing undefined down to the SDK (which types
+      // threadId as `string | null` only).
       const { externalId } = await initialize();
+      if (!externalId) {
+        throw new Error("Thread has not been initialized.");
+      }
 
       return langGraphClient.runs.stream(externalId, "hub", {
         input: { messages },
