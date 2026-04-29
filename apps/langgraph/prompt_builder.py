@@ -52,6 +52,8 @@ def build_system_prompt(
     provider: str,
     model: str,
     session_id: str,
+    notebook_id: str | None = None,
+    user_id: str | None = None,
     page_context: str | None = None,
 ) -> str:
     parts: list[str] = [
@@ -62,11 +64,21 @@ def build_system_prompt(
     ]
     if page_context:
         parts.append(f"## Current page context\n\n- {page_context}")
-    parts.append(
-        "## Session Metadata\n\n"
-        f"- session_id: `{session_id}`\n"
-        f"- surface: `{surface}`\n"
-        f"- model: `{provider}/{model}`\n"
-        f"- timestamp: `{datetime.now(timezone.utc).isoformat()}`"
-    )
+    # Emit notebook_id / user_id when present. The notebook surface prompt
+    # instructs the LLM to "always pass notebook_id from session metadata"
+    # when calling source_read / source_list — without these lines, every
+    # tool call goes through with an empty notebook_id and the tool
+    # returns "No notebook context available", which is why chat appears
+    # to not see the wiki / source content at all.
+    metadata_lines = [
+        f"- session_id: `{session_id}`",
+        f"- surface: `{surface}`",
+        f"- model: `{provider}/{model}`",
+    ]
+    if notebook_id:
+        metadata_lines.append(f"- notebook_id: `{notebook_id}`")
+    if user_id:
+        metadata_lines.append(f"- user_id: `{user_id}`")
+    metadata_lines.append(f"- timestamp: `{datetime.now(timezone.utc).isoformat()}`")
+    parts.append("## Session Metadata\n\n" + "\n".join(metadata_lines))
     return "\n\n".join(p for p in parts if p)

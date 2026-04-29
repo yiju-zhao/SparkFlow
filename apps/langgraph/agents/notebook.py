@@ -14,9 +14,9 @@ from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolM
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.runtime import Runtime
 from prompt_builder import build_system_prompt
-from tools.wiki import source_list, source_read
+from tools.wiki import source_list, source_read, wiki_list, wiki_read
 
-TOOLS = [source_read, source_list]
+TOOLS = [source_read, source_list, wiki_read, wiki_list]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 SURFACE = "notebook"
 PROMPT_PATH = "surfaces/notebook.md"
@@ -43,6 +43,8 @@ def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[Base
         provider=ctx.model_provider,
         model=ctx.model_name,
         session_id=ctx.session_id,
+        notebook_id=ctx.notebook_id,
+        user_id=ctx.user_id,
         page_context=ctx.page_context,
     )
     model = init_chat_model(f"{ctx.model_provider}:{ctx.model_name}", api_key=ctx.api_key)
