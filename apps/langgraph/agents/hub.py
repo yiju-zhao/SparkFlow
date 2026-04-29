@@ -80,6 +80,7 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
                 ToolMessage(
                     content=json.dumps({"error": f"unknown tool {call['name']}"}),
                     tool_call_id=call["id"],
+                    name=call["name"],
                 )
             )
             continue
@@ -91,7 +92,13 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
         except Exception as exc:
             raw = {"error": str(exc)}
         content = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
-        results.append(ToolMessage(content=content, tool_call_id=call["id"]))
+        # Set `name=` so the streamed ToolMessage carries the tool name back
+        # to the frontend. assistant-ui's external-message-converter treats
+        # `null !== expected_name` as a hard error and refuses to render the
+        # rest of the conversation (see @assistant-ui/core/.../external-
+        # message-converter.js:28). LangChain ToolMessage's `name` defaults
+        # to None — passing it explicitly keeps the converter happy.
+        results.append(ToolMessage(content=content, tool_call_id=call["id"], name=call["name"]))
     return {"messages": results}
 
 
