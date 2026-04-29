@@ -61,21 +61,20 @@ endif
 #   check with `up-recreate`. `dev` runs in-process (no Docker), `up` runs the
 #   full postgres/redis/agent stack in containers. On corp-network hosts where
 #   Docker's embedded DNS struggles with sibling resolution, prefer `dev`.
-.PHONY: dev serve up up-recreate up-fresh build retag-images stop logs test clean help
+.PHONY: dev serve up up-recreate up-fresh build stop logs test clean help
 
 help:
 	@echo "Targets:"
-	@echo "  dev            - In-process LangGraph dev server on :$(DEV_PORT) (no Docker, hot reload, in-memory state)"
-	@echo "  serve          - FastAPI workflows server on :$(WORKFLOWS_PORT) (matcher / digest / search)"
-	@echo "  up             - Production-like Docker stack on :$(UP_PORT): postgres + redis + agent (auto-uses override if present)"
-	@echo "  up-recreate    - up + --recreate: force fresh container recreation (pre-deploy / fix stale containers)"
-	@echo "  up-fresh       - --no-cache image rebuild then start (after editing deps)"
-	@echo "  build          - Standalone: build $(IMAGE_TAG), don't start"
-	@echo "  retag-images   - Alias locally-cached images to the tags langgraph-cli wants (corp-MITM unblock)"
-	@echo "  stop           - Stop the langgraph compose stack"
-	@echo "  logs           - Tail logs from the langgraph-api container"
-	@echo "  test           - Run pytest"
-	@echo "  clean          - Remove the prebuilt image"
+	@echo "  dev          - In-process LangGraph dev server on :$(DEV_PORT) (no Docker, hot reload, in-memory state)"
+	@echo "  serve        - FastAPI workflows server on :$(WORKFLOWS_PORT) (matcher / digest / search)"
+	@echo "  up           - Production-like Docker stack on :$(UP_PORT): postgres + redis + agent (auto-uses override if present)"
+	@echo "  up-recreate  - up + --recreate: force fresh container recreation (pre-deploy / fix stale containers)"
+	@echo "  up-fresh     - --no-cache image rebuild then start (after editing deps)"
+	@echo "  build        - Standalone: build $(IMAGE_TAG), don't start"
+	@echo "  stop         - Stop the langgraph compose stack"
+	@echo "  logs         - Tail logs from the langgraph-api container"
+	@echo "  test         - Run pytest"
+	@echo "  clean        - Remove the prebuilt image"
 
 dev:
 	langgraph dev --host 0.0.0.0 --port $(DEV_PORT)
@@ -100,34 +99,6 @@ up-fresh:
 
 build:
 	langgraph build -t $(IMAGE_TAG)
-
-# Corp-MITM unblock for `make up` on hosts whose Docker daemon doesn't
-# trust the proxy's CA: every `docker pull` from Docker Hub dies with
-# `tls: failed to verify certificate`. We can't pin images via the `-d`
-# override file (langgraph-cli loads its own compose AFTER the user's, so
-# `image:` is always last-wins for the cli's defaults — see
-# docker-compose.override.yml.example for the citation).
-#
-# Workaround: alias images we already have locally (pulled when the
-# SparkFlow stack came up) to the tags langgraph-cli's compose asks for.
-# Docker checks the local cache by tag before any registry round-trip, so
-# the pull is skipped entirely. `|| true` so a missing source image (e.g.
-# you haven't run the SparkFlow stack yet) just warns rather than aborting
-# the make recipe.
-#
-# Versions don't have to match exactly — redis:7 is wire-compatible with
-# redis:6 for langgraph runtime, and pgvector pg17 is binary-compatible
-# with pg16 for sibling postgres (which we don't actually connect to,
-# since --postgres-uri redirects to apps/web's postgres anyway).
-#
-# Real fix is host-side: install your corp CA into the docker daemon's
-# trust store. Until then, this is the unblock.
-retag-images:
-	@echo "Aliasing local images to the tags langgraph-cli wants..."
-	-docker tag redis:7-alpine redis:6
-	-docker tag pgvector/pgvector:pg17 pgvector/pgvector:pg16
-	@echo "Done. Verify:"
-	@docker images --format '  {{.Repository}}:{{.Tag}}' | grep -E '^  (redis|pgvector/pgvector):' | sort -u
 
 # `langgraph` has no `down` subcommand. Stop containers via docker compose
 # project label.

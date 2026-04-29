@@ -7,33 +7,18 @@
 
 #
 # IMPORTANT — `langgraph up -d <file>` cannot override the cli's defaults.
-# Per langgraph-cli's source (libs/cli/langgraph_cli/cli.py:921-922) the
-# user file is passed as the FIRST `-f`, the cli's generated compose as
-# the SECOND. docker compose merge is last-wins for scalar fields like
-# `image:`, so any image pin we put here is silently overridden by the
-# cli's `redis:6` / `pgvector/pgvector:pg16`. `-d` is for *adding* services
-# / merging additive fields (environment, volumes, extra_hosts), not for
-# changing what langgraph-cli already defines.
+# Per langgraph-cli (libs/cli/langgraph_cli/cli.py:921-922) the user file
+# is passed as the FIRST `-f`, the cli's generated compose as the SECOND;
+# docker compose merge is last-wins for scalar fields like `image:`, so
+# any image pin you put here is silently overridden. `-d` is for *adding*
+# services / merging additive fields (environment, volumes, extra_hosts),
+# not for changing what the cli already defines.
 #
-# That has two consequences for corp-MITM hosts:
-#
-#   1. Image pulls. If your daemon can't reach Docker Hub, pinning the
-#      images here won't save you. The reliable bypass is to *retag* a
-#      locally-cached image to the tag the cli wants — see
-#      `make retag-images` in apps/langgraph/Makefile, or do it directly:
-#         docker tag redis:7-alpine redis:6
-#         docker tag pgvector/pgvector:pg17 pgvector/pgvector:pg16
-#      Long-term fix is host-side: install the corp CA into the docker
-#      daemon's trust store (/etc/docker/certs.d/<registry>/ca.crt or
-#      /usr/local/share/ca-certificates/, then `update-ca-certificates`
-#      and restart docker).
-#
-#   2. The langgraph-postgres sibling. With `--postgres-uri` set (apps/web's
-#      postgres on host.docker.internal:5433), the cli OMITS langgraph-
-#      postgres from its compose entirely (docker.py:208-215). Don't define
-#      it here either — a half-baked service block (image only, no env, no
-#      volume) makes compose try to start a postgres with no
-#      POSTGRES_PASSWORD and the container exits 1 on first init.
+# Don't add a `langgraph-postgres` service here either: when
+# `--postgres-uri` is set, the cli omits its sibling postgres entirely
+# (docker.py:208-215). A half-baked block (image only, no
+# POSTGRES_PASSWORD, no volume) would make compose try to start a postgres
+# that exits 1 on first init.
 #
 services:
   langgraph-api:
