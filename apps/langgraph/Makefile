@@ -101,11 +101,16 @@ build:
 	langgraph build -t $(IMAGE_TAG)
 
 # `langgraph` has no `down` subcommand. Stop containers via docker compose
-# project label.
+# project label. `--remove-orphans` is critical when toggling --postgres-uri:
+# the cli omits the postgres sibling when --postgres-uri is set, so the
+# previously-created `langgraph-postgres` container becomes an orphan and
+# any subsequent `up`/`up-recreate` trips on its stale `langgraph-data`
+# volume reference ("error response from daemon: get langgraph-data:
+# no such volume"). Removing orphans on stop keeps the project clean.
 stop:
 	-docker ps --filter "label=com.docker.compose.project" --format '{{.Label "com.docker.compose.project"}}' \
 		| sort -u | grep -i langgraph \
-		| xargs -r -I{} docker compose -p {} down
+		| xargs -r -I{} docker compose -p {} down --remove-orphans
 
 logs:
 	docker logs -f langgraph-api-1
