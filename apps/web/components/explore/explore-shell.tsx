@@ -141,26 +141,21 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
     return "User is on the Research Hub homepage";
   }, [context]);
 
+  // Hub thread_id is managed in component state instead of through
+  // assistant-ui's `initialize()` callback. The runtime's
+  // initialize/create plumbing was returning assistant-ui's internal
+  // `__LOCALID_*` placeholder as `externalId` (or racing the create
+  // callback) — the URL ended up as
+  // /threads/__LOCALID_xyz/runs/stream, which langgraph 0.8.3 rejects
+  // because it's not a UUID. See server log line:
+  //   detail: "badly formed hexadecimal UUID string"
+  // POST /threads succeeded (200) but the runs/stream call below raced
+  // with it. Managing threadId ourselves makes the create→stream order
+  // explicit.
+  const [hubThreadId, setHubThreadId] = useState<string | null>(null);
+
   const runtime = useLangGraphRuntime({
-    stream: async (messages, { abortSignal, initialize }) => {
-      // initialize() returns `{ externalId }` (see
-      // @assistant-ui/react-langgraph/dist/createLangGraphStream.js:8). The
-      // earlier `{ remoteId }` destructure left the value undefined, the
-      // SDK then fell back to assistant-ui's `__LOCALID_*` placeholder in
-      // the URL, and langgraph 0.8.3 rejected it with HTTP 500
-      // "invalid thread ID; invalid UUID format" because that release
-      // strictly validates thread_id is a UUID (server log showed
-      // `invalid UUID length: 17`).
-      //
-      // The narrowing guard mirrors createLangGraphStream.js:9-10 — if
-      // initialize() somehow returned without an externalId, the
-      // `create()` callback below either failed or was never reached, and
-      // there's no point passing undefined down to the SDK (which types
-      // threadId as `string | null` only).
-      const { externalId } = await initialize();
-      if (!externalId) {
-        throw new Error("Thread has not been initialized.");
-      }
+    stream: async (messages, { abortSignal }) => {
       if (!user?.id) {
         throw new Error("Sign in required to use the research assistant.");
       }
@@ -173,31 +168,35 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
         );
       }
 
-      return langGraphClient.runs.stream(externalId, "hub", {
+      // Lazily create the langgraph thread on the first message and
+      // reuse the UUID for subsequent turns. The closure captures
+      // `hubThreadId` from the most recent render; setHubThreadId only
+      // runs when we actually create a new thread.
+      let threadId = hubThreadId;
+      if (!threadId) {
+        const thread = await langGraphClient.threads.create();
+        threadId = thread.thread_id;
+        setHubThreadId(threadId);
+      }
+
+      return langGraphClient.runs.stream(threadId, "hub", {
         input: { messages },
         // The hub agent's `Ctx` dataclass (apps/langgraph/agents/hub.py)
         // expects these 5 required fields plus optional notebook_id /
         // page_context. langgraph 0.8.3 deserializes the SDK's `context`
-        // field directly into Ctx — using `config.configurable` here
-        // (the previous bug) left Ctx with no values and the run died
-        // with TypeError: missing 5 required positional arguments.
-        // Hub doesn't have a chat_session row, so reuse the langgraph
-        // thread_id as session_id; agents only use it as an opaque key.
+        // field directly into Ctx. Hub doesn't have a chat_session row,
+        // so reuse the langgraph thread_id as session_id.
         context: {
           model_provider: modelSettings.modelProvider,
           model_name: modelSettings.modelName,
           api_key: resolvedKey.apiKey,
           user_id: user.id,
-          session_id: externalId,
+          session_id: threadId,
           page_context: pageContext,
         },
         streamMode: ["messages-tuple", "updates"],
         signal: abortSignal,
       });
-    },
-    create: async () => {
-      const thread = await langGraphClient.threads.create();
-      return { externalId: thread.thread_id };
     },
   });
 
