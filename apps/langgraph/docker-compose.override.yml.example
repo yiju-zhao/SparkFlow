@@ -46,6 +46,13 @@ services:
       # even after the runtime's --postgres-uri starts working.
       DATABASE_URL: postgresql://sparkflow:sparkflow@host.docker.internal:5433/sparkflow
       CHECKPOINT_DB_URL: postgresql://sparkflow:sparkflow@host.docker.internal:5433/sparkflow_checkpoints
+      # Same rewrite for SPARKFLOW_API_URL: agent tools (tools/wiki.py
+      # source_read / source_list / wiki_read / wiki_list) call apps/web's
+      # API to fetch notebook content. .env has localhost:3001 for host-side
+      # `make dev`; inside the container localhost is the container itself,
+      # so without this the tools die with "Connection refused (Errno 111)"
+      # and chat answers as if your sources are unreachable.
+      SPARKFLOW_API_URL: http://host.docker.internal:3001
       # On hosts where ~/.docker/config.json injects HTTP_PROXY/HTTPS_PROXY into
       # every container (corp networks), NO_PROXY must list every sibling
       # service hostname so postgres/redis traffic doesn't get proxied. Both
