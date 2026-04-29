@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Client } from "@langchain/langgraph-sdk";
 import { useLangGraphRuntime } from "@assistant-ui/react-langgraph";
@@ -141,18 +141,23 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
     return "User is on the Research Hub homepage";
   }, [context]);
 
-  // Hub thread_id is managed in component state instead of through
-  // assistant-ui's `initialize()` callback. The runtime's
-  // initialize/create plumbing was returning assistant-ui's internal
-  // `__LOCALID_*` placeholder as `externalId` (or racing the create
-  // callback) — the URL ended up as
-  // /threads/__LOCALID_xyz/runs/stream, which langgraph 0.8.3 rejects
-  // because it's not a UUID. See server log line:
-  //   detail: "badly formed hexadecimal UUID string"
-  // POST /threads succeeded (200) but the runs/stream call below raced
-  // with it. Managing threadId ourselves makes the create→stream order
-  // explicit.
-  const [hubThreadId, setHubThreadId] = useState<string | null>(null);
+  // Hub thread_id is managed in a ref instead of useState because
+  // `useLangGraphRuntime` captures the `stream` closure on its first
+  // call and reuses it across messages — so a useState value would be
+  // pinned at its initial null and we'd `threads.create()` every turn,
+  // making each message land in a fresh thread (verified in langgraph
+  // logs: thread_ids 019dda69..., 019dda6a..., 019dda77... all from the
+  // same chat session). Refs are mutable across renders without
+  // changing identity, so all closures see `.current` updates.
+  //
+  // Why not use the runtime's own initialize/create: that path returned
+  // assistant-ui's internal `__LOCALID_*` placeholder as externalId
+  // (raced with our create callback), the URL ended up as
+  // /threads/__LOCALID_xyz/runs/stream, langgraph 0.8.3 rejected with
+  // "badly formed hexadecimal UUID string". Managing threadId
+  // ourselves makes the create → stream order explicit AND survives
+  // the runtime's closure capture.
+  const hubThreadIdRef = useRef<string | null>(null);
 
   const runtime = useLangGraphRuntime({
     stream: async (messages, { abortSignal }) => {
@@ -169,14 +174,12 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
       }
 
       // Lazily create the langgraph thread on the first message and
-      // reuse the UUID for subsequent turns. The closure captures
-      // `hubThreadId` from the most recent render; setHubThreadId only
-      // runs when we actually create a new thread.
-      let threadId = hubThreadId;
+      // reuse the UUID for subsequent turns via the ref.
+      let threadId = hubThreadIdRef.current;
       if (!threadId) {
         const thread = await langGraphClient.threads.create();
         threadId = thread.thread_id;
-        setHubThreadId(threadId);
+        hubThreadIdRef.current = threadId;
       }
 
       return langGraphClient.runs.stream(threadId, "hub", {
