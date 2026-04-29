@@ -543,6 +543,11 @@ export async function deleteSource(sourceId: string) {
 
   // Remove source contributions from wiki/graph and await completion so the
   // client can invalidate its queries with the updated data in one shot.
+  // The Source row is already gone — if the wiki cleanup throws (e.g.
+  // workflows-api on :2027 isn't running locally), surface that to the UI
+  // instead of swallowing it. Otherwise the user just sees "delete
+  // succeeded" but the wiki/graph still references the missing source,
+  // which looks like a deletion bug rather than an unstarted dependency.
   try {
     const { removeSourceFromWiki } = await import("@/lib/services/wiki-ingest");
     const result = await removeSourceFromWiki(notebookId, sourceId, sourceTitle, session.user.id);
@@ -550,6 +555,13 @@ export async function deleteSource(sourceId: string) {
       `Wiki cleanup: deleted ${result.pagesDeleted} pages, updated ${result.pagesUpdated} pages`,
     );
   } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
     console.error("Wiki source removal failed:", err);
+    throw new Error(
+      `Source deleted, but wiki cleanup failed: ${detail}. ` +
+        `If you're running locally, ensure the workflows API is up ` +
+        `(\`make -C apps/langgraph serve\` on :2027). The source row is ` +
+        `gone; the wiki still references it until cleanup runs.`,
+    );
   }
 }
