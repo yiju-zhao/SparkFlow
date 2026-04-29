@@ -309,36 +309,91 @@ const WECHAT_TOPICS = [
 async function seedWechat() {
   console.log("→ seeding wechat_articles schema + fixtures...");
 
-  // Create schema and tables (matching what hub_wechat.py SELECTs from).
+  // Schema must cover BOTH hub_wechat.py's tool surface AND apps/web's
+  // /explore/social-media/wechat page (lib/wechat/queries.ts), which
+  // reads more columns: sources.slug / sources.description /
+  // articles.cover_url / articles.original_url / articles.content_html /
+  // articles.content_text, plus a separate images table.
   await prisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS wechat_articles`);
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS wechat_articles.sources (
-      id   integer PRIMARY KEY,
-      name text    NOT NULL UNIQUE
+      id          integer PRIMARY KEY,
+      slug        text    NOT NULL UNIQUE,
+      name        text    NOT NULL UNIQUE,
+      description text
     )
   `);
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS wechat_articles.articles (
-      id           integer PRIMARY KEY,
-      source_id    integer NOT NULL REFERENCES wechat_articles.sources(id) ON DELETE CASCADE,
-      title        text    NOT NULL,
-      author       text,
-      url          text,
-      publish_time timestamp
+      id            integer PRIMARY KEY,
+      source_id     integer NOT NULL REFERENCES wechat_articles.sources(id) ON DELETE CASCADE,
+      title         text    NOT NULL,
+      author        text,
+      url           text,
+      original_url  text,
+      cover_url     text,
+      content_html  text,
+      content_text  text,
+      publish_time  timestamp
     )
   `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS wechat_articles.images (
+      id           integer PRIMARY KEY,
+      article_id   integer NOT NULL REFERENCES wechat_articles.articles(id) ON DELETE CASCADE,
+      image_type   text,
+      image_index  integer,
+      original_url text,
+      data         bytea,
+      mime_type    text
+    )
+  `);
+  // Backfill columns on existing tables from earlier runs of the prior
+  // (smaller) seed. ALTER ... ADD COLUMN IF NOT EXISTS is idempotent.
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE wechat_articles.sources ADD COLUMN IF NOT EXISTS slug text`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE wechat_articles.sources ADD COLUMN IF NOT EXISTS description text`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE wechat_articles.articles ADD COLUMN IF NOT EXISTS original_url text`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE wechat_articles.articles ADD COLUMN IF NOT EXISTS cover_url text`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE wechat_articles.articles ADD COLUMN IF NOT EXISTS content_html text`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE wechat_articles.articles ADD COLUMN IF NOT EXISTS content_text text`,
+  );
 
-  // Seed sources (idempotent via ON CONFLICT).
+  // Slug for sources — kebab-case English approximations of the
+  // Chinese names so URL paths stay clean.
+  const SOURCE_SLUGS = ["jiqizhixin", "xinzhiyuan", "paperweekly", "ai-keji-pinglun", "liangziwei"];
+  const SOURCE_DESCRIPTIONS = [
+    "国内领先的人工智能内容平台",
+    "覆盖前沿研究与产业落地",
+    "顶会论文精选与解读",
+    "AI 行业评论与访谈",
+    "AI 与前沿科技报道",
+  ];
+
   for (let i = 0; i < WECHAT_SOURCES.length; i++) {
     await prisma.$executeRawUnsafe(
-      `INSERT INTO wechat_articles.sources (id, name) VALUES ($1, $2)
-       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
+      `INSERT INTO wechat_articles.sources (id, slug, name, description) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO UPDATE SET
+         slug = EXCLUDED.slug,
+         name = EXCLUDED.name,
+         description = EXCLUDED.description`,
       i + 1,
+      SOURCE_SLUGS[i],
       WECHAT_SOURCES[i],
+      SOURCE_DESCRIPTIONS[i],
     );
   }
 
-  // Seed ~50 articles spread across sources, dates in 2025.
   const target = 50;
   for (let i = 0; i < target; i++) {
     const sourceId = (i % WECHAT_SOURCES.length) + 1;
@@ -346,24 +401,60 @@ async function seedWechat() {
     const year = 2024 + (i % 2);
     const tmpl = WECHAT_TITLE_TEMPLATES[i % WECHAT_TITLE_TEMPLATES.length];
     const title = tmpl.replace("{topic}", topic).replace("{year}", String(year));
-    // Spread publish_time over the last 90 days.
     const daysAgo = i % 90;
     const publishTime = new Date(Date.now() - daysAgo * 86400 * 1000);
+    const articleId = i + 1;
+    // Stable placeholder image — picsum.photos with a seed makes the
+    // image deterministic per article, so the cards don't reshuffle on
+    // re-seed.
+    const coverUrl = `https://picsum.photos/seed/wechat-${articleId}/600/360`;
+    const originalUrl = `https://mp.weixin.qq.com/s?__biz=fixture&mid=${articleId}`;
+    const contentText = `这是关于「${topic}」的占位文章正文。本地 fixture，用于演示 ${WECHAT_SOURCES[sourceId - 1]} 的文章列表与详情页渲染。`;
+    const contentHtml = `<article><h1>${title}</h1><p>${contentText}</p><p>关键词：${topic}。</p></article>`;
     await prisma.$executeRawUnsafe(
-      `INSERT INTO wechat_articles.articles (id, source_id, title, author, url, publish_time)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO wechat_articles.articles
+         (id, source_id, title, author, url, original_url, cover_url, content_html, content_text, publish_time)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (id) DO UPDATE SET
          source_id = EXCLUDED.source_id,
          title = EXCLUDED.title,
          author = EXCLUDED.author,
          url = EXCLUDED.url,
+         original_url = EXCLUDED.original_url,
+         cover_url = EXCLUDED.cover_url,
+         content_html = EXCLUDED.content_html,
+         content_text = EXCLUDED.content_text,
          publish_time = EXCLUDED.publish_time`,
-      i + 1,
+      articleId,
       sourceId,
       title,
-      `编辑${i + 1}号`,
-      `https://example.com/wechat/${i + 1}`,
+      `编辑${articleId}号`,
+      `https://example.com/wechat/${articleId}`,
+      originalUrl,
+      coverUrl,
+      contentHtml,
+      contentText,
       publishTime,
+    );
+
+    // One inline image per article so the detail page has something to
+    // render in its image gallery.
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO wechat_articles.images
+         (id, article_id, image_type, image_index, original_url, data, mime_type)
+       VALUES ($1, $2, $3, $4, $5, NULL, $6)
+       ON CONFLICT (id) DO UPDATE SET
+         article_id = EXCLUDED.article_id,
+         image_type = EXCLUDED.image_type,
+         image_index = EXCLUDED.image_index,
+         original_url = EXCLUDED.original_url,
+         mime_type = EXCLUDED.mime_type`,
+      articleId,
+      articleId,
+      "inline",
+      0,
+      `https://picsum.photos/seed/wechat-img-${articleId}/800/450`,
+      "image/jpeg",
     );
   }
 
@@ -373,7 +464,10 @@ async function seedWechat() {
   const articleCount = (await prisma.$queryRawUnsafe<{ count: bigint }[]>(
     `SELECT COUNT(*)::bigint AS count FROM wechat_articles.articles`,
   ))[0].count;
-  console.log(`  wechat sources=${sourceCount} articles=${articleCount}`);
+  const imageCount = (await prisma.$queryRawUnsafe<{ count: bigint }[]>(
+    `SELECT COUNT(*)::bigint AS count FROM wechat_articles.images`,
+  ))[0].count;
+  console.log(`  wechat sources=${sourceCount} articles=${articleCount} images=${imageCount}`);
 }
 
 async function main() {
