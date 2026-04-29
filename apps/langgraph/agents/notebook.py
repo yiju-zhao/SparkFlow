@@ -72,10 +72,8 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
             )
             continue
         try:
-            if asyncio.iscoroutinefunction(getattr(tool, "func", None)):
-                raw = asyncio.run(tool.ainvoke(call["args"]))
-            else:
-                raw = tool.invoke(call["args"])
+            # See hub.py for why ainvoke is unconditional.
+            raw = asyncio.run(tool.ainvoke(call["args"]))
         except Exception as exc:  # noqa: BLE001
             raw = {"error": str(exc)}
         content = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
