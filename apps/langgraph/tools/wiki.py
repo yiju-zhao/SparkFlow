@@ -48,7 +48,12 @@ def source_read(notebook_id: str, source_id: str) -> str:
         if not res.is_success:
             return f"Failed to read source: {res.status_code}"
         data = res.json()
-        content = data.get("content", "")
+        # `dict.get(key, default)` returns the default ONLY if the key is
+        # absent. Prisma serializes a nullable column with the key present
+        # and value `null`, so .get returns None — `len(None)` then crashes
+        # the tool, which the LLM reports back to the user as "backend
+        # parse error". Coerce explicitly with `or ""`.
+        content = data.get("content") or ""
         # Truncate very long content to fit in context
         if len(content) > 30000:
             content = content[:30000] + "\n\n[... content truncated ...]"
@@ -150,8 +155,9 @@ def wiki_read(notebook_id: str, slug: str) -> str:
         if not res.is_success:
             return f"Failed to read wiki page: {res.status_code}"
         data = res.json()
-        title = data.get("title", "")
-        content = data.get("content", "")
+        title = data.get("title") or ""
+        # See note in source_read above — `or ""` to coerce JSON null safely.
+        content = data.get("content") or ""
         # Truncate aggressively — wiki pages can be large after several
         # ingest passes, and the LLM also has the source_read fallback.
         if len(content) > 20000:
