@@ -5,29 +5,22 @@
 #   make up
 # (apps/langgraph/Makefile auto-attaches the file with `-d` when it exists.)
 
+#
+# IMPORTANT — `langgraph up -d <file>` cannot override the cli's defaults.
+# Per langgraph-cli (libs/cli/langgraph_cli/cli.py:921-922) the user file
+# is passed as the FIRST `-f`, the cli's generated compose as the SECOND;
+# docker compose merge is last-wins for scalar fields like `image:`, so
+# any image pin you put here is silently overridden. `-d` is for *adding*
+# services / merging additive fields (environment, volumes, extra_hosts),
+# not for changing what the cli already defines.
+#
+# Don't add a `langgraph-postgres` service here either: when
+# `--postgres-uri` is set, the cli omits its sibling postgres entirely
+# (docker.py:208-215). A half-baked block (image only, no
+# POSTGRES_PASSWORD, no volume) would make compose try to start a postgres
+# that exits 1 on first init.
+#
 services:
-  # Pin the sibling images to tags the SparkFlow stack already pulled
-  # (apps/web's `docker compose up` brings up `pgvector/pgvector:pg17` and
-  # `redis:7-alpine`). Without this, `langgraph up` tries to pull the CLI's
-  # default `redis:6` / `postgres:16` from Docker Hub — and on corp-MITM
-  # hosts where the Docker *daemon* doesn't trust the proxy CA, every
-  # registry pull dies with `x509: certificate signed by unknown authority`
-  # before any container even starts. Reusing already-cached images
-  # sidesteps the daemon trust store entirely.
-  #
-  # Long-term fix is host-side: install your corp CA into Docker's trust
-  # store (e.g. /etc/docker/certs.d/<registry>/ca.crt + restart docker, or
-  # add to /etc/ssl/certs/ca-certificates.crt and `update-ca-certificates`).
-  # Until then, the image pin keeps `make up` working.
-  #
-  # The langgraph-postgres sibling is *unused* once --postgres-uri redirects
-  # to apps/web's postgres — but `langgraph up` always brings it up anyway,
-  # so it still needs an image that can be loaded.
-  langgraph-postgres:
-    image: pgvector/pgvector:pg17
-  langgraph-redis:
-    image: redis:7-alpine
-
   langgraph-api:
     # Make `host.docker.internal` resolvable from inside the container on
     # Linux (it's automatic on Docker Desktop). Required when CHECKPOINT_DB_URL
