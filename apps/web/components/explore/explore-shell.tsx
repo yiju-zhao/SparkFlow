@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Client } from "@langchain/langgraph-sdk";
 import { useLangGraphRuntime } from "@assistant-ui/react-langgraph";
@@ -28,6 +28,7 @@ function buildLangGraphClient(): Client {
 export interface ExploreShellProps {
   children: React.ReactNode;
   user?: {
+    id?: string | null;
     name?: string | null;
     email?: string | null;
     image?: string | null;
@@ -90,6 +91,45 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
   // runtime calls only fire from event handlers / effects.
   const [langGraphClient] = useState<Client>(() => buildLangGraphClient());
 
+  // Mirror the deepdive chat-panel's BYOK pattern: hub agent's Ctx
+  // dataclass requires (model_provider, model_name, api_key, user_id,
+  // session_id) — without these the run dies with
+  // `Ctx.__init__() missing 5 required positional arguments`.
+  const [modelSettings, setModelSettings] = useState<{
+    modelProvider: string;
+    modelName: string;
+  }>({ modelProvider: "openai", modelName: "gpt-4o-mini" });
+  const [resolvedKey, setResolvedKey] = useState<
+    { apiKey: string; baseUrl?: string } | null | "pending"
+  >("pending");
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (!res.ok) return;
+        const data = await res.json();
+        const provider = data.modelProvider || "openai";
+        const name = data.modelName || "gpt-4o-mini";
+        setModelSettings({ modelProvider: provider, modelName: name });
+        try {
+          const keyRes = await fetch(`/api/settings/resolve-key?provider=${provider}`);
+          if (keyRes.ok) {
+            setResolvedKey(await keyRes.json());
+          } else {
+            setResolvedKey(null);
+          }
+        } catch {
+          setResolvedKey(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch model settings:", error);
+        setResolvedKey(null);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   // Build page context string from AI context
   const pageContext = useMemo(() => {
     if (context?.conferenceName) {
@@ -121,13 +161,35 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
       if (!externalId) {
         throw new Error("Thread has not been initialized.");
       }
+      if (!user?.id) {
+        throw new Error("Sign in required to use the research assistant.");
+      }
+      if (resolvedKey === "pending") {
+        throw new Error("Loading model settings — try again in a moment.");
+      }
+      if (!resolvedKey?.apiKey) {
+        throw new Error(
+          `BYOK API key required for provider "${modelSettings.modelProvider}". Configure it in Settings.`,
+        );
+      }
 
       return langGraphClient.runs.stream(externalId, "hub", {
         input: { messages },
-        config: {
-          configurable: {
-            page_context: pageContext,
-          },
+        // The hub agent's `Ctx` dataclass (apps/langgraph/agents/hub.py)
+        // expects these 5 required fields plus optional notebook_id /
+        // page_context. langgraph 0.8.3 deserializes the SDK's `context`
+        // field directly into Ctx — using `config.configurable` here
+        // (the previous bug) left Ctx with no values and the run died
+        // with TypeError: missing 5 required positional arguments.
+        // Hub doesn't have a chat_session row, so reuse the langgraph
+        // thread_id as session_id; agents only use it as an opaque key.
+        context: {
+          model_provider: modelSettings.modelProvider,
+          model_name: modelSettings.modelName,
+          api_key: resolvedKey.apiKey,
+          user_id: user.id,
+          session_id: externalId,
+          page_context: pageContext,
         },
         streamMode: ["messages-tuple", "updates"],
         signal: abortSignal,
