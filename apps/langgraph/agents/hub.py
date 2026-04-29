@@ -85,10 +85,15 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
             )
             continue
         try:
-            if asyncio.iscoroutinefunction(getattr(tool, "func", None)):
-                raw = asyncio.run(tool.ainvoke(call["args"]))
-            else:
-                raw = tool.invoke(call["args"])
+            # Always use ainvoke: LangChain `@tool` on an `async def`
+            # produces a StructuredTool with `coroutine=...` and `func=None`
+            # (or a stub that raises). The previous
+            # `iscoroutinefunction(tool.func)` check returned False for
+            # async tools and the sync `tool.invoke()` fell back, raising
+            # `StructuredTool does not support sync invocation` for every
+            # async hub tool (hub_toolbox.* and hub_wechat.*). ainvoke
+            # transparently runs sync tools too, so this is the safe path.
+            raw = asyncio.run(tool.ainvoke(call["args"]))
         except Exception as exc:
             raw = {"error": str(exc)}
         content = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
