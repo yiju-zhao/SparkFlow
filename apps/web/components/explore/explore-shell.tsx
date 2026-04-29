@@ -103,9 +103,17 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
 
   const runtime = useLangGraphRuntime({
     stream: async (messages, { abortSignal, initialize }) => {
-      const { remoteId } = await initialize();
+      // initialize() returns `{ externalId }` (see
+      // @assistant-ui/react-langgraph/dist/createLangGraphStream.js:8). The
+      // earlier `{ remoteId }` destructure left the value undefined, the
+      // SDK then fell back to assistant-ui's `__LOCALID_*` placeholder in
+      // the URL, and langgraph 0.8.3 rejected it with HTTP 500
+      // "invalid thread ID; invalid UUID format" because that release
+      // strictly validates thread_id is a UUID (server log showed
+      // `invalid UUID length: 17`).
+      const { externalId } = await initialize();
 
-      return langGraphClient.runs.stream(remoteId, "hub", {
+      return langGraphClient.runs.stream(externalId, "hub", {
         input: { messages },
         config: {
           configurable: {
