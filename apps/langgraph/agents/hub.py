@@ -64,7 +64,16 @@ def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[Base
 
 
 def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
-    """Dispatch backend tool calls; skip frontend tool calls (rendered client-side)."""
+    """Dispatch every tool call (frontend + backend) and return ToolMessages.
+
+    Frontend tools (`show_chart` etc.) are pure functions that return their
+    args as a dict — running them server-side is essentially free, but
+    producing the ToolMessage is critical for the UI: assistant-ui's
+    external-message-converter only transitions a tool's status from
+    "running" → "complete" when it sees a matching ToolMessage. Without
+    that, the composer stays locked after the first turn (the symptom
+    being "can't ask a second question").
+    """
     import asyncio
 
     last = state["messages"][-1]
@@ -72,8 +81,6 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
         return {"messages": []}
     results: list[ToolMessage] = []
     for call in last.tool_calls:
-        if call["name"] in HUB_FRONTEND_TOOL_NAMES:
-            continue  # client renders; no ToolMessage produced
         tool = TOOLS_BY_NAME.get(call["name"])
         if tool is None:
             results.append(
@@ -87,40 +94,46 @@ def tool_node(state: MessagesState) -> dict[str, list[BaseMessage]]:
         try:
             # Always use ainvoke: LangChain `@tool` on an `async def`
             # produces a StructuredTool with `coroutine=...` and `func=None`
-            # (or a stub that raises). The previous
-            # `iscoroutinefunction(tool.func)` check returned False for
-            # async tools and the sync `tool.invoke()` fell back, raising
-            # `StructuredTool does not support sync invocation` for every
-            # async hub tool (hub_toolbox.* and hub_wechat.*). ainvoke
-            # transparently runs sync tools too, so this is the safe path.
+            # (or a stub that raises). ainvoke transparently runs sync
+            # tools too (hub_ui.show_* are all sync), so this is the safe
+            # path for both async backend tools and sync frontend tools.
             raw = asyncio.run(tool.ainvoke(call["args"]))
         except Exception as exc:
             raw = {"error": str(exc)}
         content = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
-        # Set `name=` so the streamed ToolMessage carries the tool name back
-        # to the frontend. assistant-ui's external-message-converter treats
-        # `null !== expected_name` as a hard error and refuses to render the
-        # rest of the conversation (see @assistant-ui/core/.../external-
-        # message-converter.js:28). LangChain ToolMessage's `name` defaults
-        # to None — passing it explicitly keeps the converter happy.
+        # `name=` is required so assistant-ui's converter accepts the
+        # ToolMessage (it treats `null !== expected_name` as a hard error;
+        # see @assistant-ui/core/.../external-message-converter.js:28).
         results.append(ToolMessage(content=content, tool_call_id=call["id"], name=call["name"]))
     return {"messages": results}
 
 
 def should_continue(state: MessagesState):
-    """Route to END when no tool_calls OR when every tool_call is frontend.
-
-    Without the all-frontend short-circuit, the loop re-enters llm_call
-    with the same message tail (AIMessage with tool_calls but no answering
-    ToolMessage), and the LLM either repeats the call or hallucinates.
-    """
+    """After llm_call: route to tool_node if there are tool_calls, else END."""
     last = state["messages"][-1]
     tool_calls = getattr(last, "tool_calls", None) or []
-    if not tool_calls:
-        return END
-    if all(tc["name"] in HUB_FRONTEND_TOOL_NAMES for tc in tool_calls):
-        return END
-    return "tool_node"
+    return "tool_node" if tool_calls else END
+
+
+def after_tool_node(state: MessagesState):
+    """After tool_node: if the AIMessage that produced these results was
+    all-frontend, END (no LLM synthesis needed — the chart/table is the
+    answer). Otherwise loop back to llm_call so the LLM can synthesize
+    the backend tool results into a final answer.
+
+    Without this short-circuit the LLM gets re-invoked after every
+    frontend tool call, sees its own chart's ToolMessage as 'tool result',
+    and either re-issues the same chart (loop) or appends a redundant
+    text wrap-up.
+    """
+    # Walk back to the most recent AIMessage with tool_calls — that's
+    # the one whose dispatch we just finished.
+    for msg in reversed(state["messages"]):
+        if isinstance(msg, AIMessage) and msg.tool_calls:
+            if all(tc["name"] in HUB_FRONTEND_TOOL_NAMES for tc in msg.tool_calls):
+                return END
+            return "llm_call"
+    return END
 
 
 builder = StateGraph(MessagesState, context_schema=Ctx)
@@ -128,5 +141,5 @@ builder.add_node("llm_call", llm_call)
 builder.add_node("tool_node", tool_node)
 builder.add_edge(START, "llm_call")
 builder.add_conditional_edges("llm_call", should_continue, ["tool_node", END])
-builder.add_edge("tool_node", "llm_call")
+builder.add_conditional_edges("tool_node", after_tool_node, ["llm_call", END])
 agent = builder.compile()
