@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+import _reasoning_patch  # noqa: F401  — preserves DeepSeek reasoning_content across turns
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
