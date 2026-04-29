@@ -1,7 +1,18 @@
-"""LangChain tools for reading source documents.
+"""LangChain tools for reading the notebook's wiki pages and source documents.
 
-Used by the notebook agent to access original source content when wiki
-summaries lack detail.
+`source_*` tools fetch the original uploaded content (PDFs, web pages,
+markdown) — use them when the wiki summary lacks detail.
+
+`wiki_*` tools fetch the auto-generated wiki: per-community pages built
+from the knowledge graph (entities → topics → markdown summaries with
+[source:id] backlinks). Use them for the big picture and for connecting
+concepts across multiple sources.
+
+Both rely on `notebook_id` being available to the LLM via the session
+metadata block emitted by `prompt_builder.build_system_prompt`. The
+endpoints they hit are intentionally unauthenticated GETs (see
+apps/web/app/api/notebooks/[id]/wiki/route.ts) so the langgraph agent
+can call them without forwarding session cookies.
 """
 
 import os
@@ -79,4 +90,75 @@ def source_list(notebook_id: str) -> str:
         return f"Error listing sources: {e}"
 
 
-wiki_tools = [source_read, source_list]
+@tool
+def wiki_list(notebook_id: str) -> str:
+    """List the auto-generated wiki pages for the notebook.
+
+    Wiki pages are markdown summaries auto-built from the knowledge
+    graph: each page groups related entities into a topic and cites the
+    original sources via [source:id] backlinks. Call this first to
+    discover what topics the notebook covers, then call `wiki_read` to
+    drill into a specific page.
+
+    Args:
+        notebook_id: The notebook (from session metadata).
+    """
+    if not notebook_id:
+        return "No notebook context available."
+
+    try:
+        res = httpx.get(
+            f"{SPARKFLOW_API_URL}/api/notebooks/{notebook_id}/wiki",
+            timeout=30,
+        )
+        if not res.is_success:
+            return f"Failed to list wiki pages: {res.status_code}"
+        pages = res.json().get("pages", [])
+        if not pages:
+            return "No wiki pages in this notebook yet (sources may still be ingesting)."
+        lines = ["# Wiki Pages\n"]
+        for p in pages:
+            page_type = p.get("pageType", "PAGE")
+            lines.append(f"- **{p['title']}** [{p['slug']}] (type: {page_type})")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error listing wiki pages: {e}"
+
+
+@tool
+def wiki_read(notebook_id: str, slug: str) -> str:
+    """Read the full markdown content of a single wiki page.
+
+    Use this after `wiki_list` to read a specific topic page — it gives
+    a synthesized overview across multiple sources, with [source:id]
+    citations you can follow up on with `source_read`.
+
+    Args:
+        notebook_id: The notebook (from session metadata).
+        slug: The wiki page slug (from `wiki_list`, e.g. "community-3").
+    """
+    if not notebook_id:
+        return "No notebook context available."
+
+    try:
+        res = httpx.get(
+            f"{SPARKFLOW_API_URL}/api/notebooks/{notebook_id}/wiki/{slug}",
+            timeout=30,
+        )
+        if res.status_code == 404:
+            return f"Wiki page '{slug}' not found."
+        if not res.is_success:
+            return f"Failed to read wiki page: {res.status_code}"
+        data = res.json()
+        title = data.get("title", "")
+        content = data.get("content", "")
+        # Truncate aggressively — wiki pages can be large after several
+        # ingest passes, and the LLM also has the source_read fallback.
+        if len(content) > 20000:
+            content = content[:20000] + "\n\n[... content truncated, use source_read for specifics ...]"
+        return f"# {title}\n\n{content}" if content else "Wiki page has no content."
+    except Exception as e:
+        return f"Error reading wiki page: {e}"
+
+
+wiki_tools = [source_read, source_list, wiki_list, wiki_read]

@@ -53,6 +53,8 @@ def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[Base
         provider=ctx.model_provider,
         model=ctx.model_name,
         session_id=ctx.session_id,
+        notebook_id=ctx.notebook_id,
+        user_id=ctx.user_id,
         page_context=ctx.page_context,
     )
     model = init_chat_model(f"{ctx.model_provider}:{ctx.model_name}", api_key=ctx.api_key)
