@@ -123,7 +123,12 @@ class LotusMatcher:
         if progress_callback:
             progress_callback(10, "Sending candidates to semops for ranking...")
 
-        candidates = df.to_dict("records")
+        # Replace NaN with None before serialization. pandas keeps empty
+        # cells as float('nan'); the stdlib json encoder used by httpx
+        # rejects NaN (strict JSON), so the request never reaches semops
+        # and dies in build_request with
+        # "Out of range float values are not JSON compliant: nan".
+        candidates = df.where(df.notna(), None).to_dict("records")
 
         ranked_records = _rank_via_semops(
             candidates=candidates,
