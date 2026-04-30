@@ -70,3 +70,4 @@ ca-certificates.crt
 
 # SearXNG runtime data (created by docker compose; per-host)
 searxng/
+.gstack/
