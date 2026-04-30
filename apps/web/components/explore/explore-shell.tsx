@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Client } from "@langchain/langgraph-sdk";
 import { useLangGraphRuntime } from "@assistant-ui/react-langgraph";
@@ -141,26 +141,39 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
     return "User is on the Research Hub homepage";
   }, [context]);
 
+  // Hub thread_id is mirrored into a ref AND into assistant-ui's own
+  // threadListItem.externalId via the `create:` callback below.
+  //
+  // Why both: assistant-ui's composer state (specifically
+  // `s.composer.isEditing` which gates the textarea's onChange handler
+  // — see @assistant-ui/react/dist/primitives/composer/ComposerInput.js)
+  // depends on the runtime believing this thread has been "initialized"
+  // server-side. The signal it uses is whether `create()` was provided
+  // and ran successfully. Skipping `create:` makes the composer go
+  // read-only after the first turn — typing does nothing, no setText
+  // fires, value stays "".
+  //
+  // Why we ALSO keep a ref: `useLangGraphRuntime` captures the stream
+  // closure on first call. A useState value would pin at its initial
+  // null and we'd burn a new thread per message (verified earlier:
+  // 019dda69... / 019dda6a... / 019dda77... — three threads in one
+  // chat). Refs survive that closure capture; subsequent stream calls
+  // read the ref's current value.
+  const hubThreadIdRef = useRef<string | null>(null);
+
   const runtime = useLangGraphRuntime({
-    stream: async (messages, { abortSignal, initialize }) => {
-      // initialize() returns `{ externalId }` (see
-      // @assistant-ui/react-langgraph/dist/createLangGraphStream.js:8). The
-      // earlier `{ remoteId }` destructure left the value undefined, the
-      // SDK then fell back to assistant-ui's `__LOCALID_*` placeholder in
-      // the URL, and langgraph 0.8.3 rejected it with HTTP 500
-      // "invalid thread ID; invalid UUID format" because that release
-      // strictly validates thread_id is a UUID (server log showed
-      // `invalid UUID length: 17`).
-      //
-      // The narrowing guard mirrors createLangGraphStream.js:9-10 — if
-      // initialize() somehow returned without an externalId, the
-      // `create()` callback below either failed or was never reached, and
-      // there's no point passing undefined down to the SDK (which types
-      // threadId as `string | null` only).
-      const { externalId } = await initialize();
-      if (!externalId) {
-        throw new Error("Thread has not been initialized.");
+    create: async () => {
+      // Reuse a thread we already minted in this session if any —
+      // create() is idempotent from our perspective. Fresh thread the
+      // first time, cached afterwards.
+      if (hubThreadIdRef.current) {
+        return { externalId: hubThreadIdRef.current };
       }
+      const thread = await langGraphClient.threads.create();
+      hubThreadIdRef.current = thread.thread_id;
+      return { externalId: thread.thread_id };
+    },
+    stream: async (messages, { abortSignal }) => {
       if (!user?.id) {
         throw new Error("Sign in required to use the research assistant.");
       }
@@ -173,31 +186,35 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
         );
       }
 
-      return langGraphClient.runs.stream(externalId, "hub", {
+      // assistant-ui's flow: it calls create() before stream() on the
+      // first message of a fresh thread, so by the time we get here
+      // hubThreadIdRef.current is always populated. Belt-and-suspenders
+      // fallback in case create() somehow didn't run.
+      let threadId = hubThreadIdRef.current;
+      if (!threadId) {
+        const thread = await langGraphClient.threads.create();
+        threadId = thread.thread_id;
+        hubThreadIdRef.current = threadId;
+      }
+
+      return langGraphClient.runs.stream(threadId, "hub", {
         input: { messages },
         // The hub agent's `Ctx` dataclass (apps/langgraph/agents/hub.py)
         // expects these 5 required fields plus optional notebook_id /
         // page_context. langgraph 0.8.3 deserializes the SDK's `context`
-        // field directly into Ctx — using `config.configurable` here
-        // (the previous bug) left Ctx with no values and the run died
-        // with TypeError: missing 5 required positional arguments.
-        // Hub doesn't have a chat_session row, so reuse the langgraph
-        // thread_id as session_id; agents only use it as an opaque key.
+        // field directly into Ctx. Hub doesn't have a chat_session row,
+        // so reuse the langgraph thread_id as session_id.
         context: {
           model_provider: modelSettings.modelProvider,
           model_name: modelSettings.modelName,
           api_key: resolvedKey.apiKey,
           user_id: user.id,
-          session_id: externalId,
+          session_id: threadId,
           page_context: pageContext,
         },
         streamMode: ["messages-tuple", "updates"],
         signal: abortSignal,
       });
-    },
-    create: async () => {
-      const thread = await langGraphClient.threads.create();
-      return { externalId: thread.thread_id };
     },
   });
 
@@ -213,21 +230,24 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
           variant="explore"
         />
 
-        {/* Scrollable content */}
-        <div
-          className="flex-1 overflow-y-auto bg-sf-bg"
-          onScroll={(e) => {
-            const scrollTop = (e.target as HTMLDivElement).scrollTop;
-            setIsScrolled(scrollTop > 20);
-          }}
-        >
-          <main className="mx-auto max-w-[1280px] px-8 pt-24 pb-24">{children}</main>
+        {/* Body row: main content + side-by-side assistant panel.
+            min-h-0 lets the children own their own scroll containers. */}
+        <div className="flex flex-row flex-1 min-h-0">
+          {/* Scrollable content (shrinks when panel opens) */}
+          <div
+            className="flex-1 overflow-y-auto bg-sf-bg"
+            onScroll={(e) => {
+              const scrollTop = (e.target as HTMLDivElement).scrollTop;
+              setIsScrolled(scrollTop > 20);
+            }}
+          >
+            <main className="mx-auto max-w-[1280px] px-8 pt-24 pb-24">{children}</main>
+          </div>
+
+          <ResearchAssistantPanel open={assistantOpen} onOpenChange={setAssistantOpen} />
         </div>
 
         {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}
-        {assistantOpen && (
-          <ResearchAssistantPanel open={assistantOpen} onOpenChange={setAssistantOpen} />
-        )}
       </div>
     </AssistantRuntimeProvider>
   );
