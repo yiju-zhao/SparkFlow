@@ -14,6 +14,7 @@ The ``configure`` / LM initialisation that was previously here now lives
 entirely in the semops service — this module no longer imports lotus directly.
 """
 
+import json
 import logging
 import os
 from typing import Callable
@@ -128,7 +129,12 @@ class LotusMatcher:
         # rejects NaN (strict JSON), so the request never reaches semops
         # and dies in build_request with
         # "Out of range float values are not JSON compliant: nan".
-        candidates = df.where(df.notna(), None).to_dict("records")
+        #
+        # df.where(df.notna(), None) is unreliable across pandas versions
+        # (in 3.x None gets coerced back to NaN on numeric/object columns).
+        # pd.DataFrame.to_json natively converts NaN -> null, so round-
+        # tripping through to_json + json.loads guarantees a clean payload.
+        candidates = json.loads(df.to_json(orient="records"))
 
         ranked_records = _rank_via_semops(
             candidates=candidates,

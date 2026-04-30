@@ -224,3 +224,66 @@ def test_create_job_rejects_empty_target_data(client, valid_job_request):
 def test_get_job_returns_404_for_unknown_id(client):
     response = client.get("/v1/workflows/matcher/jobs/no-such-job")
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Regression: NaN candidates must not blow up json.dumps
+# ---------------------------------------------------------------------------
+
+
+def test_run_pipeline_replaces_nan_with_none_before_serialization(monkeypatch):
+    """
+    df.to_dict('records') keeps pandas NaN (float). httpx then runs the
+    request through stdlib json.dumps, whose strict encoder rejects NaN
+    and dies in build_request with
+    "Out of range float values are not JSON compliant: nan".
+
+    Empty Excel cells produced exactly that on the prod server. Verify
+    NaN gets replaced with None (JSON null) before _rank_via_semops is
+    called, and that the resulting payload is strict-JSON serializable.
+    """
+    import json
+
+    import numpy as np
+
+    from workflows.matcher.lotus import LotusMatcher
+
+    captured: dict = {}
+
+    def _fake_rank(*, candidates, **kwargs):
+        captured["candidates"] = candidates
+        captured["kwargs"] = kwargs
+        return [{"id": 1, "rank": 1}]
+
+    monkeypatch.setattr("workflows.matcher.lotus._rank_via_semops", _fake_rank)
+
+    df = pd.DataFrame(
+        [
+            {"id": 1, "title": "row 1", "abstract": "non-empty", "match_text": "t1"},
+            {"id": 2, "title": "row 2", "abstract": np.nan, "match_text": "t2"},
+            {"id": 3, "title": np.nan, "abstract": np.nan, "match_text": "t3"},
+        ]
+    )
+
+    LotusMatcher().run_pipeline(
+        df=df,
+        query_text="q",
+        query_name="test",
+        top_k=5,
+        search_k=50,
+        include_reasons=False,
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+        api_key="sk-test",
+    )
+
+    candidates = captured["candidates"]
+    assert len(candidates) == 3
+
+    for row in candidates:
+        for key, val in row.items():
+            assert not (
+                isinstance(val, float) and val != val
+            ), f"NaN leaked in candidate field {key!r}: {row!r}"
+
+    json.dumps(candidates, allow_nan=False)
