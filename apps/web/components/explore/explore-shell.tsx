@@ -141,25 +141,38 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
     return "User is on the Research Hub homepage";
   }, [context]);
 
-  // Hub thread_id is managed in a ref instead of useState because
-  // `useLangGraphRuntime` captures the `stream` closure on its first
-  // call and reuses it across messages — so a useState value would be
-  // pinned at its initial null and we'd `threads.create()` every turn,
-  // making each message land in a fresh thread (verified in langgraph
-  // logs: thread_ids 019dda69..., 019dda6a..., 019dda77... all from the
-  // same chat session). Refs are mutable across renders without
-  // changing identity, so all closures see `.current` updates.
+  // Hub thread_id is mirrored into a ref AND into assistant-ui's own
+  // threadListItem.externalId via the `create:` callback below.
   //
-  // Why not use the runtime's own initialize/create: that path returned
-  // assistant-ui's internal `__LOCALID_*` placeholder as externalId
-  // (raced with our create callback), the URL ended up as
-  // /threads/__LOCALID_xyz/runs/stream, langgraph 0.8.3 rejected with
-  // "badly formed hexadecimal UUID string". Managing threadId
-  // ourselves makes the create → stream order explicit AND survives
-  // the runtime's closure capture.
+  // Why both: assistant-ui's composer state (specifically
+  // `s.composer.isEditing` which gates the textarea's onChange handler
+  // — see @assistant-ui/react/dist/primitives/composer/ComposerInput.js)
+  // depends on the runtime believing this thread has been "initialized"
+  // server-side. The signal it uses is whether `create()` was provided
+  // and ran successfully. Skipping `create:` makes the composer go
+  // read-only after the first turn — typing does nothing, no setText
+  // fires, value stays "".
+  //
+  // Why we ALSO keep a ref: `useLangGraphRuntime` captures the stream
+  // closure on first call. A useState value would pin at its initial
+  // null and we'd burn a new thread per message (verified earlier:
+  // 019dda69... / 019dda6a... / 019dda77... — three threads in one
+  // chat). Refs survive that closure capture; subsequent stream calls
+  // read the ref's current value.
   const hubThreadIdRef = useRef<string | null>(null);
 
   const runtime = useLangGraphRuntime({
+    create: async () => {
+      // Reuse a thread we already minted in this session if any —
+      // create() is idempotent from our perspective. Fresh thread the
+      // first time, cached afterwards.
+      if (hubThreadIdRef.current) {
+        return { externalId: hubThreadIdRef.current };
+      }
+      const thread = await langGraphClient.threads.create();
+      hubThreadIdRef.current = thread.thread_id;
+      return { externalId: thread.thread_id };
+    },
     stream: async (messages, { abortSignal }) => {
       if (!user?.id) {
         throw new Error("Sign in required to use the research assistant.");
@@ -173,8 +186,10 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
         );
       }
 
-      // Lazily create the langgraph thread on the first message and
-      // reuse the UUID for subsequent turns via the ref.
+      // assistant-ui's flow: it calls create() before stream() on the
+      // first message of a fresh thread, so by the time we get here
+      // hubThreadIdRef.current is always populated. Belt-and-suspenders
+      // fallback in case create() somehow didn't run.
       let threadId = hubThreadIdRef.current;
       if (!threadId) {
         const thread = await langGraphClient.threads.create();
