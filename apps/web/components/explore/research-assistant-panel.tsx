@@ -160,8 +160,20 @@ export function ResearchAssistantPanel({ open, onOpenChange }: ResearchAssistant
                   below their content's natural height — so
                   `overflow-y-auto` never triggers and the scrollbar
                   never appears. With `min-h-0` the viewport can shrink
-                  to fit its parent and overflow takes over. */}
-              <ThreadPrimitive.Viewport className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
+                  to fit its parent and overflow takes over.
+
+                  `autoScroll={false}`: the default autoScroll keeps
+                  re-anchoring to the bottom on every layout shift —
+                  charts/tables/skeletons cause height changes after
+                  the initial render, fighting the user's manual
+                  scroll. Disabling it gives the user full control;
+                  `scrollToBottomOnRunStart` still snaps to bottom
+                  when a new message starts streaming, which is the
+                  one place the auto-pin actually helps. */}
+              <ThreadPrimitive.Viewport
+                autoScroll={false}
+                className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4"
+              >
                 <ThreadPrimitive.Empty>
                   <EmptyState />
                 </ThreadPrimitive.Empty>
