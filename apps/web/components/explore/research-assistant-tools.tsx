@@ -25,19 +25,32 @@ import type {
 } from "./hub-ui";
 
 // Hub frontend tools (show_chart / show_table / show_stat_card / etc.) are
-// declared in apps/langgraph/tools/hub_ui.py but apps/langgraph/agents/
-// hub.py's tool_node intentionally SKIPS dispatch for them (the comment
-// reads "client renders; no ToolMessage produced"). Result: these
-// makeAssistantToolUI handlers never receive `result` — only `args` from
-// the LLM's tool_call.
+// dispatched server-side now (apps/langgraph/agents/hub.py's tool_node
+// runs them so a ToolMessage is produced — that's what unlocks
+// assistant-ui's composer between turns). Each tool returns a camelCase
+// dict. LangChain serializes the ToolMessage's content as a JSON STRING,
+// which assistant-ui's converter forwards to render() as `result`.
 //
-// The LLM passes args in Python's snake_case (`chart_type`,
-// `drilldown_prompt_template`, ...) because that's the parameter name in
-// the @tool function. The hub-ui components expect camelCase. Convert at
-// the boundary so both shapes work — `result` (if a future change starts
-// dispatching) wins; otherwise fall back to normalized args.
+// So `result` typically arrives as a string we need to JSON.parse, OR as
+// an already-parsed object if a future converter version handles that
+// for us. If parsing fails or the field is missing entirely, fall back
+// to normalizing the LLM's tool_call args (snake_case → camelCase) so
+// the UI still renders.
 function snakeToCamelKey(key: string): string {
   return key.replace(/_([a-z])/g, (_, c) => (c as string).toUpperCase());
+}
+
+function parseResult<T extends object>(result: unknown): T | undefined {
+  if (result == null) return undefined;
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result) as T;
+    } catch {
+      return undefined;
+    }
+  }
+  if (typeof result === "object") return result as T;
+  return undefined;
 }
 
 function normalizeFrontendArgs<T extends object>(args: Record<string, unknown> | undefined): T {
@@ -62,6 +75,14 @@ function normalizeFrontendArgs<T extends object>(args: Record<string, unknown> |
   return out as T;
 }
 
+// Combined: prefer parsed-tool-result, fall back to normalized args.
+function pickToolData<T extends object>(
+  result: unknown,
+  args: Record<string, unknown> | undefined,
+): T {
+  return parseResult<T>(result) ?? normalizeFrontendArgs<T>(args);
+}
+
 // Helper hook: returns a callback that appends a user follow-up message
 function useFollowUp() {
   const runtime = useThreadRuntime();
@@ -79,7 +100,7 @@ export const ShowStatCardUI = makeAssistantToolUI<Record<string, unknown>, StatC
   toolName: "show_stat_card",
   render: ({ args, result, status }) => {
     if (status.type === "running") return <StatCardSkeleton />;
-    const data = result ?? normalizeFrontendArgs<StatCardData>(args);
+    const data = pickToolData<StatCardData>(result, args);
     if (!data || Object.keys(data).length === 0) return null;
     return <StatCard data={data} />;
   },
@@ -98,7 +119,7 @@ function TableToolRender({
 }) {
   const followUp = useFollowUp();
   if (status.type === "running") return <TableSkeleton />;
-  const data = result ?? normalizeFrontendArgs<TableData>(args);
+  const data = pickToolData<TableData>(result, args);
   if (!data || Object.keys(data).length === 0) return null;
   return <DataTable data={data} onFollowUp={followUp} />;
 }
@@ -123,7 +144,7 @@ function ChartToolRender({
 }) {
   const followUp = useFollowUp();
   if (status.type === "running") return <ChartSkeleton />;
-  const data = result ?? normalizeFrontendArgs<ChartData>(args);
+  const data = pickToolData<ChartData>(result, args);
   if (!data || Object.keys(data).length === 0) return null;
 
   const chartType = data.chartType ?? data.type ?? "bar";
@@ -153,7 +174,7 @@ function SelectToolRender({
 }) {
   const followUp = useFollowUp();
   if (status.type === "running") return <SelectSkeleton />;
-  const data = result ?? normalizeFrontendArgs<SelectValueData>(args);
+  const data = pickToolData<SelectValueData>(result, args);
   if (!data || Object.keys(data).length === 0) return null;
   return <SelectValue data={data} onFollowUp={followUp} />;
 }
@@ -178,7 +199,7 @@ function ConfirmToolRender({
 }) {
   const followUp = useFollowUp();
   if (status.type === "running") return null;
-  const data = result ?? normalizeFrontendArgs<ConfirmActionData>(args);
+  const data = pickToolData<ConfirmActionData>(result, args);
   if (!data || Object.keys(data).length === 0) return null;
   return <ConfirmAction data={data} onFollowUp={followUp} />;
 }
@@ -196,7 +217,7 @@ export const ShowNavigationUI = makeAssistantToolUI<Record<string, unknown>, Nav
   toolName: "show_navigation",
   render: ({ args, result, status }) => {
     if (status.type === "running") return <NavigationSkeleton />;
-    const data = result ?? normalizeFrontendArgs<NavigationData>(args);
+    const data = pickToolData<NavigationData>(result, args);
     if (!data || !data.pages || data.pages.length === 0) return null;
     return <NavigationCards data={data} />;
   },
