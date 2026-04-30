@@ -24,14 +24,29 @@ def init_worker() -> None:
 
     Imports lotus (which pulls torch / sentence-transformers / faiss) eagerly
     so the first real rank request doesn't pay the 2-5s cold-start cost.
+    Also configures the retrieval model (RM) + vector store (VS), which are
+    BYOK-independent (deterministic local embedding model) and therefore
+    safe to share across requests in the same subprocess. Without this
+    sem_index/sem_search raise ``ValueError: The retrieval model must be an
+    instance of RM, and the vector store must be an instance of VS``.
+
     Safe to call repeatedly (idempotent imports).
     """
     import os
 
     try:
-        import lotus  # noqa: F401
-        from lotus.models import LM  # noqa: F401
-        logger.info("lotus worker warmed up (pid=%s)", os.getpid())
+        import lotus  # type: ignore
+        from lotus.models import LM, SentenceTransformersRM  # type: ignore  # noqa: F401
+        from lotus.vector_store import FaissVS  # type: ignore
+
+        rm_model = os.getenv("SEMOPS_RM_MODEL", "intfloat/e5-base-v2")
+        lotus.settings.configure(
+            rm=SentenceTransformersRM(model=rm_model),
+            vs=FaissVS(),
+        )
+        logger.info(
+            "lotus worker warmed up (pid=%s, rm=%s)", os.getpid(), rm_model
+        )
     except Exception as exc:  # noqa: BLE001
         # A failed warm-up must not crash the pool — the first real request
         # will hit the same ImportError and can surface it cleanly.
