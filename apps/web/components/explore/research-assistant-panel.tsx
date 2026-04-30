@@ -155,7 +155,13 @@ export function ResearchAssistantPanel({ open, onOpenChange }: ResearchAssistant
 
             {/* Thread */}
             <ThreadPrimitive.Root className="flex flex-col flex-1 min-h-0">
-              <ThreadPrimitive.Viewport className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {/* `min-h-0` is required: flex items default to
+                  `min-height: auto`, which prevents them from shrinking
+                  below their content's natural height — so
+                  `overflow-y-auto` never triggers and the scrollbar
+                  never appears. With `min-h-0` the viewport can shrink
+                  to fit its parent and overflow takes over. */}
+              <ThreadPrimitive.Viewport className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
                 <ThreadPrimitive.Empty>
                   <EmptyState />
                 </ThreadPrimitive.Empty>
