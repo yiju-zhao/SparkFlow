@@ -120,26 +120,26 @@ export function ResearchAssistantPanel({ open, onOpenChange }: ResearchAssistant
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            className="fixed inset-0 z-200 bg-black/20 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleClose}
-          />
-
-          {/* Panel */}
-          <motion.div
-            className="fixed top-0 right-0 bottom-0 z-200 w-full max-w-md flex flex-col bg-background border-l border-border shadow-2xl"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          >
+        <motion.aside
+          // Side-by-side layout: panel is a flex sibling of the main
+          // content. We animate `width` so the main column reflows as
+          // the panel opens/closes; `overflow-hidden` clips the
+          // fixed-width inner container during the transition so its
+          // contents don't squish.
+          //
+          // `mt-16` offsets the panel below the fixed `LandingHeader`
+          // (`h-16`, position fixed top-0). Without it the panel's own
+          // header sits at y=0 and gets covered by the page header.
+          // Flex stretch then sizes the panel to viewport-height − 64px.
+          className="mt-16 shrink-0 overflow-hidden border-l border-border bg-background"
+          initial={{ width: 0 }}
+          animate={{ width: "28rem" }}
+          exit={{ width: 0 }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        >
+          <div className="flex flex-col h-full w-112">
             {/* Header */}
             <div className="shrink-0 flex items-center justify-between px-5 h-14 border-b border-border">
               <div className="flex items-center gap-2.5">
@@ -186,8 +186,8 @@ export function ResearchAssistantPanel({ open, onOpenChange }: ResearchAssistant
               </ThreadPrimitive.Viewport>
               <HubComposer />
             </ThreadPrimitive.Root>
-          </motion.div>
-        </>
+          </div>
+        </motion.aside>
       )}
     </AnimatePresence>
   );

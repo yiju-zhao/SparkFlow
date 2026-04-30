@@ -230,21 +230,24 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
           variant="explore"
         />
 
-        {/* Scrollable content */}
-        <div
-          className="flex-1 overflow-y-auto bg-sf-bg"
-          onScroll={(e) => {
-            const scrollTop = (e.target as HTMLDivElement).scrollTop;
-            setIsScrolled(scrollTop > 20);
-          }}
-        >
-          <main className="mx-auto max-w-[1280px] px-8 pt-24 pb-24">{children}</main>
+        {/* Body row: main content + side-by-side assistant panel.
+            min-h-0 lets the children own their own scroll containers. */}
+        <div className="flex flex-row flex-1 min-h-0">
+          {/* Scrollable content (shrinks when panel opens) */}
+          <div
+            className="flex-1 overflow-y-auto bg-sf-bg"
+            onScroll={(e) => {
+              const scrollTop = (e.target as HTMLDivElement).scrollTop;
+              setIsScrolled(scrollTop > 20);
+            }}
+          >
+            <main className="mx-auto max-w-[1280px] px-8 pt-24 pb-24">{children}</main>
+          </div>
+
+          <ResearchAssistantPanel open={assistantOpen} onOpenChange={setAssistantOpen} />
         </div>
 
         {!assistantOpen && <ResearchAssistantTrigger onClick={() => setAssistantOpen(true)} />}
-        {assistantOpen && (
-          <ResearchAssistantPanel open={assistantOpen} onOpenChange={setAssistantOpen} />
-        )}
       </div>
     </AssistantRuntimeProvider>
   );
