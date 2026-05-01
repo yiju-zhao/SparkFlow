@@ -17,6 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 from server.matcher_types import MatchJobResponse
 from workflows.matcher.job import (
+    _build_master,
     assign_workers,
     orchestrator,
     rank_bu,
@@ -176,6 +177,63 @@ def test_synthesize_writes_excel_bytes_and_total_matches(monkeypatch):
     out = synthesize(state)
     assert out["excel_bytes"] == b"BYTES"
     assert out["total_matches"] == 3
+
+
+# ---------------------------------------------------------------------------
+# _build_master — schema-clamp + Int64 rank casting (issue #153)
+# ---------------------------------------------------------------------------
+
+
+def test_build_master_casts_unmatched_rank_to_nullable_int():
+    """master[bu] should be Int64 (not float) so Excel doesn't show 1.0."""
+    target_df = pd.DataFrame(
+        [
+            {"id": 1, "title": "row 1"},
+            {"id": 2, "title": "row 2"},
+            {"id": 3, "title": "row 3"},
+        ]
+    )
+    # BU returns only 2 of the 3 target rows — row id=3 will be unmatched.
+    results_by_bu = {
+        "BU_A": pd.DataFrame(
+            [
+                {"id": 1, "rank": 1, "title": "row 1"},
+                {"id": 2, "rank": 2, "title": "row 2"},
+            ]
+        )
+    }
+
+    master = _build_master(target_df, results_by_bu, include_reasons=False)
+
+    assert master["BU_A"].dtype == pd.Int64Dtype(), (
+        f"expected Int64, got {master['BU_A'].dtype!r}"
+    )
+    # Matched rows keep int values (no float upcast).
+    assert master.loc[master["title"] == "row 1", "BU_A"].iloc[0] == 1
+    assert master.loc[master["title"] == "row 2", "BU_A"].iloc[0] == 2
+    # Unmatched row is pd.NA (nullable-int missing), not float NaN.
+    unmatched = master.loc[master["title"] == "row 3", "BU_A"].iloc[0]
+    assert unmatched is pd.NA
+    assert not (isinstance(unmatched, float) and unmatched != unmatched)
+
+
+def test_build_master_rejects_mixed_id_columns():
+    """If two BUs disagree on id column, raise loudly with both BU names."""
+    target_df = pd.DataFrame([{"id": 1, "title": "row 1"}])
+    results_by_bu = {
+        "BU_A": pd.DataFrame([{"id": 1, "rank": 1, "title": "row 1"}]),
+        # BU_B intentionally lacks 'id' — its identity column is 'title'.
+        "BU_B": pd.DataFrame([{"title": "row 1", "rank": 1}]),
+    }
+
+    with pytest.raises(ValueError) as excinfo:
+        _build_master(target_df, results_by_bu, include_reasons=False)
+
+    msg = str(excinfo.value)
+    assert "BU_A" in msg
+    assert "BU_B" in msg
+    assert "id" in msg
+    assert "title" in msg
 
 
 # ---------------------------------------------------------------------------
