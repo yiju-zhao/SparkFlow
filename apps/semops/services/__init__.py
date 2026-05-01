@@ -1,5 +1,5 @@
 # Services package
 
-from .semantic_operators import SemanticOperators
+from .semantic_operators import rank
 
-__all__ = ["SemanticOperators"]
+__all__ = ["rank"]

@@ -1,14 +1,14 @@
 """
 Semantic operator routes.
 
-Exposes ``SemanticOperators`` primitives directly. Workflow callers
+Exposes the LOTUS rank pipeline directly. Workflow callers
 (apps/langgraph/workflows/{search,matcher,daily_digest}) invoke these over
 HTTP, passing per-request BYOK credentials in ``lm_config``.
 """
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
 from api.types import RankRequest, RankResponse, RankResultItem
 from services.errors import (
@@ -17,35 +17,16 @@ from services.errors import (
     SemopsProviderError,
     SemopsRateLimitError,
 )
-from services.semantic_operators import SemanticOperators
+from services.semantic_operators import rank as run_rank
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def get_operators(request: Request) -> SemanticOperators:
-    """Return a per-process ``SemanticOperators`` instance.
-
-    Reusing one instance keeps any real-LOTUS state (default search/topk/map
-    closures, lazy imports) warm across requests. LOTUS's LM is (re)configured
-    inside ``SemanticOperators.rank`` per request using the caller's
-    ``lm_config``.
-    """
-    ops = getattr(request.app.state, "operators", None)
-    if ops is None:
-        ops = SemanticOperators()
-        request.app.state.operators = ops
-    return ops
-
-
 @router.post("/rank", response_model=RankResponse)
-async def rank(
-    req: RankRequest,
-    request: Request,
-    ops: SemanticOperators = Depends(get_operators),
-):
-    """Run ``SemanticOperators.rank`` and return up to ``top_k`` results."""
+async def rank(req: RankRequest):
+    """Run the LOTUS rank pipeline and return up to ``top_k`` results."""
     logger.info(
         "rank request: provider=%s model=%s query_len=%d candidates=%d top_k=%d search_k=%d include_reasons=%s",
         req.lm_config.provider,
@@ -60,7 +41,7 @@ async def rank(
     candidates_dicts = [c.model_dump() for c in req.candidates]
 
     try:
-        ranked = ops.rank(
+        ranked = run_rank(
             candidates=candidates_dicts,
             query_text=req.query_text,
             top_k=req.top_k,
@@ -87,7 +68,7 @@ async def rank(
         raise HTTPException(status_code=502, detail=str(e)) from e
     except ValueError as e:
         # Backstop for ValueErrors that didn't get normalized — most likely
-        # SemanticOperators.rank's own "candidates must be non-empty list"
+        # the module-level rank()'s own "candidates must be non-empty list"
         # which fires before the pool path. Kept LAST so normalized errors
         # above take precedence.
         logger.exception("rank rejected: %s", e)
