@@ -38,8 +38,10 @@ from workflows.matcher import job_store
 @pytest.fixture(autouse=True)
 def _reset_job_store():
     job_store._jobs.clear()
+    job_store._subscribers.clear()
     yield
     job_store._jobs.clear()
+    job_store._subscribers.clear()
 
 
 @pytest.fixture
@@ -1044,3 +1046,116 @@ def test_query_optimizer_imports_translation_module(monkeypatch):
     from workflows.matcher.translation import translate_to_english
 
     assert query_optimizer.translate_to_english is translate_to_english
+
+
+# ---------------------------------------------------------------------------
+# SSE polling → asyncio.Event
+# ---------------------------------------------------------------------------
+
+
+def test_subscribe_returns_asyncio_event_and_is_idempotent_per_job():
+    """Two subscribe() calls in the same job/loop share one Event so the
+    SSE generator's wait()/clear() cycle stays atomic.
+    """
+
+    async def _run():
+        ev1 = job_store.subscribe("job-1")
+        ev2 = job_store.subscribe("job-1")
+        assert ev1 is ev2
+        assert isinstance(ev1, asyncio.Event)
+        # Different job_id → different Event.
+        ev_other = job_store.subscribe("job-2")
+        assert ev_other is not ev1
+        job_store.unsubscribe("job-1")
+        job_store.unsubscribe("job-2")
+
+    asyncio.run(_run())
+
+
+def test_unsubscribe_drops_registration():
+    async def _run():
+        ev1 = job_store.subscribe("job-1")
+        job_store.unsubscribe("job-1")
+        # After unsubscribe, subscribe() returns a fresh Event.
+        ev2 = job_store.subscribe("job-1")
+        assert ev1 is not ev2
+        job_store.unsubscribe("job-1")
+
+    asyncio.run(_run())
+
+
+def test_update_job_sets_subscriber_event():
+    """A mutation of the job dict wakes any waiter. This is the core
+    invariant the SSE generator relies on for live updates.
+    """
+
+    async def _run():
+        job_id = job_store.create_job(
+            user_id="u",
+            instance_id="i",
+            target_type="publication",
+            top_k=5,
+            search_k=50,
+            include_reasons=True,
+            query_data=[],
+            query_count=0,
+            target_data=[],
+            model_provider="openai",
+            model_name="gpt-4o-mini",
+        )
+        event = job_store.subscribe(job_id)
+        assert not event.is_set()
+
+        # update_job from the same loop — _signal_subscriber should set it.
+        job_store.update_job(job_id, progress=42)
+        # The set is scheduled via call_soon_threadsafe, so wait briefly.
+        await asyncio.wait_for(event.wait(), timeout=1.0)
+        assert event.is_set()
+        job_store.unsubscribe(job_id)
+
+    asyncio.run(_run())
+
+
+def test_update_job_signals_subscriber_from_another_thread():
+    """update_job runs from worker threads (asyncio.to_thread) — verify
+    cross-thread signaling via call_soon_threadsafe works.
+    """
+    import threading
+
+    async def _run():
+        job_id = job_store.create_job(
+            user_id="u",
+            instance_id="i",
+            target_type="publication",
+            top_k=5,
+            search_k=50,
+            include_reasons=True,
+            query_data=[],
+            query_count=0,
+            target_data=[],
+            model_provider="openai",
+            model_name="gpt-4o-mini",
+        )
+        event = job_store.subscribe(job_id)
+
+        def worker():
+            job_store.update_job(job_id, progress=99)
+
+        t = threading.Thread(target=worker)
+        t.start()
+        try:
+            await asyncio.wait_for(event.wait(), timeout=2.0)
+        finally:
+            t.join()
+            job_store.unsubscribe(job_id)
+        assert event.is_set()
+        assert job_store.get_job(job_id)["progress"] == 99
+
+    asyncio.run(_run())
+
+
+def test_signal_subscriber_no_op_without_subscriber():
+    """Calling signal when nobody subscribed must not raise — the matcher
+    runs without an SSE consumer all the time.
+    """
+    job_store._signal_subscriber("never-subscribed-job")  # should not raise
