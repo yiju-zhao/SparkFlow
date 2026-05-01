@@ -146,6 +146,14 @@ async def stream_job_progress(
 
     async def event_generator():
         last_progress = None
+        # Emit an SSE comment heartbeat every HEARTBEAT_SECS even when
+        # nothing changes. Without this, long rank stages (10+ min on CPU)
+        # produce no bytes for minutes and any proxy in the path
+        # (undici/Next.js, nginx, cloudflare) will kill the stream on its
+        # body-timeout. SSE comments start with ":" and are silently
+        # ignored by browser EventSource clients.
+        HEARTBEAT_SECS = 15
+        ticks_since_heartbeat = 0
         while True:
             job = job_store.get_job(job_id)
             if not job:
@@ -162,6 +170,12 @@ async def stream_job_progress(
             if progress_data != last_progress:
                 yield f"data: {json.dumps(progress_data)}\n\n"
                 last_progress = progress_data
+                ticks_since_heartbeat = 0
+            else:
+                ticks_since_heartbeat += 1
+                if ticks_since_heartbeat >= HEARTBEAT_SECS:
+                    yield ": heartbeat\n\n"
+                    ticks_since_heartbeat = 0
             if job["status"] in ["COMPLETED", "FAILED", "CANCELLED"]:
                 break
             await asyncio.sleep(1)
