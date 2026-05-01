@@ -71,6 +71,11 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+# Writable storage for matcher result Excel cache (path.join(process.cwd(), "data")
+# in app/api/matcher/jobs/[jobId]/route.ts). /app is owned by root, so without
+# this the `nextjs` user gets EACCES when persisting the result file.
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+
 USER nextjs
 
 EXPOSE 3001

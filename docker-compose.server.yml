@@ -201,6 +201,10 @@ services:
       - "${WEB_PORT:-3001}:3001"
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      # Persist matcher result Excel cache across container rebuilds.
+      # Path matches DATA_DIR = path.join(process.cwd(), "data") in
+      # apps/web/app/api/matcher/jobs/[jobId]/route.ts.
+      - web_data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -215,3 +219,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  web_data:
