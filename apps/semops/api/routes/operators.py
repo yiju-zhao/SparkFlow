@@ -25,8 +25,18 @@ router = APIRouter()
 
 
 @router.post("/rank", response_model=RankResponse)
-async def rank(req: RankRequest):
-    """Run the LOTUS rank pipeline and return up to ``top_k`` results."""
+def rank(req: RankRequest):
+    """Run the LOTUS rank pipeline and return up to ``top_k`` results.
+
+    Defined as a sync ``def`` (not ``async def``) on purpose: the body
+    blocks on ``future.result()`` from the ProcessPoolExecutor pool, which
+    is a synchronous wait. With ``async def`` that block would happen on
+    the uvicorn event loop and serialize every concurrent rank request
+    through one thread. FastAPI runs sync handlers in starlette's
+    threadpool, so each incoming request gets its own thread and blocks
+    on its own future independently — concurrent ranks fan out across
+    pool workers as intended. See issue #155 (semops slice).
+    """
     logger.info(
         "rank request: provider=%s model=%s query_len=%d candidates=%d top_k=%d search_k=%d include_reasons=%s",
         req.lm_config.provider,
