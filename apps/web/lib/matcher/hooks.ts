@@ -85,6 +85,12 @@ export function useJobProgress(
           setIsLoading(false);
           eventSource.close();
           sseConnections.delete(jobId);
+
+          // Defence-in-depth: pull the latest persisted row so the UI sees the
+          // FAILED status + error_message even if the workflows-api → Next.js
+          // callback ever fails. Mirrors the COMPLETED branch above.
+          matcherClient.getJob(jobId).catch(console.error);
+
           if (onErrorRef.current) {
             onErrorRef.current(new Error(data.errorMessage || "Job failed"));
           }
