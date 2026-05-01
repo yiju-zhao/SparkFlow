@@ -12,11 +12,9 @@ breaks CUDA context on Linux).
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
-
-PipelineFn = Callable[..., list[dict]]
 
 
 def init_worker() -> None:
@@ -89,7 +87,6 @@ def run_rank(
     top_k: int,
     search_k: int,
     include_reasons: bool,
-    pipeline_fn: Optional[PipelineFn] = None,
 ) -> list[dict]:
     """Execute one rank request inside this subprocess.
 
@@ -107,8 +104,8 @@ def run_rank(
     ``services.errors``, which subclass ``Exception`` with a
     ``__init__(self, message)`` and are therefore guaranteed pickle-safe.
 
-    `pipeline_fn` is a test seam — production callers leave it None and the
-    real `_default_pipeline` is invoked.
+    Tests that need to exercise the worker without the real LOTUS pipeline
+    monkeypatch ``services._lotus_worker._default_pipeline`` directly.
     """
     import lotus  # type: ignore
     from lotus.models import LM  # type: ignore
@@ -133,9 +130,8 @@ def run_rank(
 
     lotus.settings.configure(lm=LM(**lm_kwargs))
     try:
-        fn = pipeline_fn or _default_pipeline
         try:
-            return fn(
+            return _default_pipeline(
                 candidates=candidates,
                 query_text=query_text,
                 top_k=top_k,
@@ -198,9 +194,10 @@ def _default_pipeline(
 ) -> list[dict]:
     """Production rank pipeline. Runs inside the worker subprocess.
 
-    Mirrors ``SemanticOperators._run_pipeline`` but uses the subprocess's
-    own `lotus.settings` rather than the parent's. Kept here (not imported
-    from services.semantic_operators) so the subprocess stays thin.
+    Uses the subprocess's own ``lotus.settings`` (configured per-request in
+    ``run_rank``) so concurrent tenants never share LM state. Kept in this
+    module — not imported from ``services.semantic_operators`` — so the
+    subprocess stays thin.
     """
     import os
     import pandas as pd  # type: ignore
