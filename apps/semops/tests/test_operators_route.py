@@ -125,6 +125,62 @@ def test_rank_validation_error_missing_field(client, rank_body):
     assert response.status_code == 422, response.text
 
 
+def test_rank_maps_auth_error_to_401(client, monkeypatch, rank_body):
+    """SemopsAuthError from rank → HTTP 401 with the provider's message."""
+    from services.errors import SemopsAuthError
+
+    def _boom_auth(self, **kwargs):
+        raise SemopsAuthError("invalid api key for provider X")
+
+    monkeypatch.setattr(SemanticOperators, "rank", _boom_auth)
+
+    response = client.post("/api/operators/rank", json=rank_body)
+    assert response.status_code == 401, response.text
+    assert "invalid api key" in response.json().get("detail", "").lower()
+
+
+def test_rank_maps_rate_limit_to_429(client, monkeypatch, rank_body):
+    """SemopsRateLimitError from rank → HTTP 429."""
+    from services.errors import SemopsRateLimitError
+
+    def _boom_rate(self, **kwargs):
+        raise SemopsRateLimitError("provider says slow down")
+
+    monkeypatch.setattr(SemanticOperators, "rank", _boom_rate)
+
+    response = client.post("/api/operators/rank", json=rank_body)
+    assert response.status_code == 429, response.text
+    assert "slow down" in response.json().get("detail", "").lower()
+
+
+def test_rank_maps_bad_request_to_400(client, monkeypatch, rank_body):
+    """SemopsBadRequest from rank → HTTP 400."""
+    from services.errors import SemopsBadRequest
+
+    def _boom_bad(self, **kwargs):
+        raise SemopsBadRequest("malformed candidate row")
+
+    monkeypatch.setattr(SemanticOperators, "rank", _boom_bad)
+
+    response = client.post("/api/operators/rank", json=rank_body)
+    assert response.status_code == 400, response.text
+    assert "malformed candidate" in response.json().get("detail", "").lower()
+
+
+def test_rank_maps_provider_error_to_502(client, monkeypatch, rank_body):
+    """SemopsProviderError from rank → HTTP 502 (we are a gateway to broken upstream)."""
+    from services.errors import SemopsProviderError
+
+    def _boom_prov(self, **kwargs):
+        raise SemopsProviderError("upstream returned 503")
+
+    monkeypatch.setattr(SemanticOperators, "rank", _boom_prov)
+
+    response = client.post("/api/operators/rank", json=rank_body)
+    assert response.status_code == 502, response.text
+    assert "503" in response.json().get("detail", "")
+
+
 def test_rank_passes_kwargs_through(client, monkeypatch, rank_body):
     """The route must forward kwargs from the request body into rank()."""
     captured: dict = {}

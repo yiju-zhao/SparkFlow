@@ -39,6 +39,19 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     pip install --no-cache-dir uv && \
     uv pip install --system -r requirements.txt
 
+# Pre-download the HuggingFace embedding model so corp-network deploys
+# (no public internet at runtime) warm up cleanly. Without this, the first
+# rank request silently 404s when sentence-transformers tries to fetch from
+# the Hub. Cache lives at HF_HOME so subsequent loads are offline.
+#
+# IMPORTANT: anything other than `intfloat/e5-base-v2` (e.g. via the
+# SEMOPS_RM_MODEL env override at runtime) will FAIL in offline mode because
+# only this model is baked into the image. Bake additional models here if
+# you want to support overrides without internet.
+ENV HF_HOME=/app/.hf_cache
+RUN mkdir -p /app/.hf_cache && \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/e5-base-v2')"
+
 # Copy source
 COPY api ./api
 COPY services ./services
@@ -46,6 +59,12 @@ COPY main.py ./
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
+
+# Force sentence-transformers / huggingface_hub into offline mode at runtime.
+# The model was baked above; any code path that tries to reach the Hub now
+# fails loud rather than hanging on corp-network DNS timeouts.
+ENV TRANSFORMERS_OFFLINE=1 \
+    HF_HUB_OFFLINE=1
 
 EXPOSE 2025
 

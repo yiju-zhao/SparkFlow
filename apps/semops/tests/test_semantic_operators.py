@@ -277,7 +277,13 @@ def test_run_rank_configures_lotus_and_resets(monkeypatch):
 
 
 def test_run_rank_resets_lotus_on_pipeline_exception(monkeypatch):
-    """Even when the pipeline raises, the finally block must reset lotus.settings.lm=None."""
+    """Even when the pipeline raises, the finally block must reset lotus.settings.lm=None.
+
+    Note: as of Issue #151, ``run_rank`` normalizes raw provider exceptions
+    into ``SemopsXxx`` types before returning. A bare ``RuntimeError`` now
+    surfaces as ``SemopsProviderError``. This test's PRIMARY assertion is
+    the finally-block reset, which must fire regardless of normalization.
+    """
     import sys
     from unittest.mock import MagicMock
 
@@ -293,12 +299,13 @@ def test_run_rank_resets_lotus_on_pipeline_exception(monkeypatch):
     monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
 
     from services._lotus_worker import run_rank
+    from services.errors import SemopsProviderError
 
     def boom(**_kw):
         raise RuntimeError("pipeline explosion")
 
     import pytest
-    with pytest.raises(RuntimeError, match="pipeline explosion"):
+    with pytest.raises(SemopsProviderError, match="pipeline explosion"):
         run_rank(
             lm_config={
                 "provider": "openai",
@@ -370,7 +377,15 @@ def test_run_rank_swallows_exception_during_reset(monkeypatch, caplog):
 
 
 def test_pool_rebuilds_after_worker_exception(monkeypatch):
-    """A task that raises must not poison the pool — subsequent tasks see a fresh executor."""
+    """A task that raises must not poison the pool — subsequent tasks see a working executor.
+
+    Note: with the narrowed pool-rebuild trigger (Issue #151), the pool is
+    NOT actually rebuilt on plain ``RuntimeError`` — it stays alive. The
+    follow-up assertion that the next submission succeeds therefore proves
+    the live pool still serves requests, not that a rebuild happened.
+    See ``test_run_in_pool_does_not_rebuild_on_value_error`` for the
+    explicit "no rebuild" contract.
+    """
     from services import _pool
 
     # Force a fresh pool state so the assertion holds regardless of test ordering.
@@ -378,13 +393,11 @@ def test_pool_rebuilds_after_worker_exception(monkeypatch):
 
     monkeypatch.setenv("SEMOPS_RANK_POOL_SIZE", "2")
 
-    # `run_in_pool` submits the fn to the pool; on raise it must tear down
-    # and rebuild so subsequent callers aren't stuck in a poisoned subprocess.
     import pytest
     with pytest.raises(RuntimeError, match="worker exploded"):
         _pool.run_in_pool(_raise_for_pool_test)
 
-    # After a raise, the next submission succeeds — proves rebuild happened.
+    # After a raise, the next submission succeeds — pool still works.
     assert _pool.run_in_pool(_peace_for_pool_test) == "ok"
 
     _pool.shutdown_pool()
@@ -396,3 +409,280 @@ def _raise_for_pool_test():
 
 def _peace_for_pool_test():
     return "ok"
+
+
+# ---------------------------------------------------------------------------
+# Issue #151 — semops industrial hardening
+# ---------------------------------------------------------------------------
+
+
+def test_run_rank_normalizes_litellm_authentication_error(monkeypatch):
+    """run_rank must re-raise litellm-shaped AuthenticationError as SemopsAuthError.
+
+    The DI seam (``pipeline_fn``) lets us simulate a provider error without
+    touching litellm. We use a fake exception class whose name ends with
+    ``AuthenticationError`` — the worker's normalization key — to prove the
+    heuristic. The point of this test is the type translation: the parent
+    process must receive ``SemopsAuthError``, NOT ``BrokenProcessPool`` and
+    NOT the raw provider class (which may unpickle-crash).
+    """
+    import sys
+    from unittest.mock import MagicMock
+
+    fake_settings = MagicMock()
+    fake_lotus = MagicMock()
+    fake_lotus.settings = fake_settings
+    fake_models = MagicMock()
+    fake_models.LM = MagicMock(return_value="FAKE_LM")
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    class FakeAuthenticationError(Exception):
+        """Simulates litellm.AuthenticationError by name suffix."""
+
+    from services._lotus_worker import run_rank
+    from services.errors import SemopsAuthError
+
+    def boom_auth(**_kw):
+        raise FakeAuthenticationError("provider rejected the api key")
+
+    import pytest
+    with pytest.raises(SemopsAuthError, match="provider rejected"):
+        run_rank(
+            lm_config={
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "api_key": "sk-bogus",
+                "api_base": None,
+            },
+            candidates=[{"id": "a", "match_text": "x"}],
+            query_text="q",
+            top_k=5,
+            search_k=20,
+            include_reasons=False,
+            pipeline_fn=boom_auth,
+        )
+
+
+def test_run_rank_normalizes_rate_limit_error(monkeypatch):
+    """RateLimitError-shaped exceptions become SemopsRateLimitError."""
+    import sys
+    from unittest.mock import MagicMock
+
+    fake_lotus = MagicMock()
+    fake_lotus.settings = MagicMock()
+    fake_models = MagicMock()
+    fake_models.LM = MagicMock(return_value="FAKE_LM")
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    class FakeRateLimitError(Exception):
+        pass
+
+    from services._lotus_worker import run_rank
+    from services.errors import SemopsRateLimitError
+
+    def boom_rate(**_kw):
+        raise FakeRateLimitError("429 too many requests")
+
+    import pytest
+    with pytest.raises(SemopsRateLimitError, match="429"):
+        run_rank(
+            lm_config={
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "api_key": "sk-test",
+                "api_base": None,
+            },
+            candidates=[{"id": "a", "match_text": "x"}],
+            query_text="q",
+            top_k=5,
+            search_k=20,
+            include_reasons=False,
+            pipeline_fn=boom_rate,
+        )
+
+
+def test_run_rank_normalizes_value_error_to_bad_request(monkeypatch):
+    """ValueError from the pipeline becomes SemopsBadRequest.
+
+    Lotus raises ValueError for malformed candidates / unconfigured RM/VS.
+    Translating to ``SemopsBadRequest`` lets the route return 400 cleanly
+    while staying out of the ValueError backstop path.
+    """
+    import sys
+    from unittest.mock import MagicMock
+
+    fake_lotus = MagicMock()
+    fake_lotus.settings = MagicMock()
+    fake_models = MagicMock()
+    fake_models.LM = MagicMock(return_value="FAKE_LM")
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    from services._lotus_worker import run_rank
+    from services.errors import SemopsBadRequest
+
+    def boom_value(**_kw):
+        raise ValueError("malformed candidate row 3")
+
+    import pytest
+    with pytest.raises(SemopsBadRequest, match="malformed candidate"):
+        run_rank(
+            lm_config={
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "api_key": "sk-test",
+                "api_base": None,
+            },
+            candidates=[{"id": "a", "match_text": "x"}],
+            query_text="q",
+            top_k=5,
+            search_k=20,
+            include_reasons=False,
+            pipeline_fn=boom_value,
+        )
+
+
+def test_run_rank_normalizes_unknown_to_provider_error(monkeypatch):
+    """Unknown exception types become SemopsProviderError (502-equivalent)."""
+    import sys
+    from unittest.mock import MagicMock
+
+    fake_lotus = MagicMock()
+    fake_lotus.settings = MagicMock()
+    fake_models = MagicMock()
+    fake_models.LM = MagicMock(return_value="FAKE_LM")
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    from services._lotus_worker import run_rank
+    from services.errors import SemopsProviderError
+
+    def boom_unknown(**_kw):
+        raise RuntimeError("upstream went sideways")
+
+    import pytest
+    with pytest.raises(SemopsProviderError, match="upstream went sideways"):
+        run_rank(
+            lm_config={
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "api_key": "sk-test",
+                "api_base": None,
+            },
+            candidates=[{"id": "a", "match_text": "x"}],
+            query_text="q",
+            top_k=5,
+            search_k=20,
+            include_reasons=False,
+            pipeline_fn=boom_unknown,
+        )
+
+
+def test_run_rank_passes_through_already_normalized_errors(monkeypatch):
+    """If the pipeline already raises a SemopsXxx, it must propagate as-is.
+
+    This guards the future case where deeper code in the pipeline already
+    knows how to classify an error — we should not re-classify it.
+    """
+    import sys
+    from unittest.mock import MagicMock
+
+    fake_lotus = MagicMock()
+    fake_lotus.settings = MagicMock()
+    fake_models = MagicMock()
+    fake_models.LM = MagicMock(return_value="FAKE_LM")
+    monkeypatch.setitem(sys.modules, "lotus", fake_lotus)
+    monkeypatch.setitem(sys.modules, "lotus.models", fake_models)
+
+    from services._lotus_worker import run_rank
+    from services.errors import SemopsRateLimitError
+
+    def boom_already(**_kw):
+        raise SemopsRateLimitError("provider says 429")
+
+    import pytest
+    with pytest.raises(SemopsRateLimitError, match="provider says 429"):
+        run_rank(
+            lm_config={
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "api_key": "sk-test",
+                "api_base": None,
+            },
+            candidates=[{"id": "a", "match_text": "x"}],
+            query_text="q",
+            top_k=5,
+            search_k=20,
+            include_reasons=False,
+            pipeline_fn=boom_already,
+        )
+
+
+def test_semops_errors_are_pickle_safe():
+    """SemopsXxx instances must round-trip through pickle without losing data.
+
+    This is the whole point of the new exception types: they cross the
+    pool boundary without crashing on unpickle. ``__init__(self, message)``
+    + a single ``.message`` attribute is the contract.
+    """
+    import pickle
+
+    from services.errors import (
+        SemopsAuthError,
+        SemopsBadRequest,
+        SemopsError,
+        SemopsProviderError,
+        SemopsRateLimitError,
+    )
+
+    for cls in (
+        SemopsError,
+        SemopsAuthError,
+        SemopsRateLimitError,
+        SemopsProviderError,
+        SemopsBadRequest,
+    ):
+        original = cls("hello world")
+        round_tripped = pickle.loads(pickle.dumps(original))
+        assert isinstance(round_tripped, cls)
+        assert str(round_tripped) == "hello world"
+        assert round_tripped.message == "hello world"
+
+
+def test_run_in_pool_does_not_rebuild_on_value_error(monkeypatch):
+    """run_in_pool must NOT shut down the pool on ordinary task exceptions.
+
+    Cross-tenant blast radius matters: one tenant's bad input cannot
+    cancel every other in-flight request. The pool is rebuilt ONLY when
+    the executor itself is broken.
+    """
+    from services import _pool
+
+    monkeypatch.setenv("SEMOPS_RANK_POOL_SIZE", "2")
+    _pool.shutdown_pool()
+
+    # Get the live pool object and remember its identity.
+    pool_before = _pool.get_pool()
+    assert pool_before is not None
+
+    import pytest
+    with pytest.raises(ValueError, match="bad input"):
+        _pool.run_in_pool(_raise_value_error_for_pool_test)
+
+    # Pool must be the same instance — no rebuild happened.
+    pool_after = _pool.get_pool()
+    assert pool_after is pool_before, (
+        "Pool was rebuilt on ValueError, which would cancel other tenants' "
+        "in-flight requests"
+    )
+
+    # And it still serves requests.
+    assert _pool.run_in_pool(_peace_for_pool_test) == "ok"
+
+    _pool.shutdown_pool()
+
+
+def _raise_value_error_for_pool_test():
+    raise ValueError("bad input")
