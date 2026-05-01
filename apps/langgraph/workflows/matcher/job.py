@@ -27,14 +27,13 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+from workflows.matcher import job_store
 from workflows.matcher._utils import redact_lm_config
 from workflows.matcher.excel_processor import ExcelProcessor
-from workflows.matcher.job_store import JobStore
 from workflows.matcher.lotus import build_text_column, rank_via_semops
 from workflows.matcher.query_optimizer import optimize_queries
 
 logger = logging.getLogger(__name__)
-job_store = JobStore()
 
 
 def _merge_dict(left: dict, right: dict) -> dict:

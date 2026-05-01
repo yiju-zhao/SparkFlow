@@ -12,10 +12,10 @@ import logging
 from datetime import datetime, timezone
 
 import pandas as pd
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
+from workflows.matcher import job_store
 from workflows.matcher.job import match_job_graph
-from workflows.matcher.job_store import JobStore
 
 from server.matcher_types import (
     CreateMatchJobRequest,
@@ -28,10 +28,6 @@ from server.matcher_types import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def get_job_store() -> JobStore:
-    return JobStore()
 
 
 async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data: list[dict]):
@@ -52,8 +48,6 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
     error_message="cancelled" and re-raises (must propagate to honour the
     cancellation contract).
     """
-    store = JobStore()
-
     try:
 
         class _Req:
@@ -84,7 +78,7 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
             {"job_id": job_id, "target_df": target_df, "req": graph_req, "results_by_bu": {}},
             run_config,
         )
-        store.update_job(
+        job_store.update_job(
             job_id,
             status="COMPLETED",
             progress=100,
@@ -98,7 +92,7 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
         # to flush a terminal status to the row first. CancelledError doesn't
         # derive from Exception in 3.8+, so the broader except below misses it.
         logger.warning(f"Job {job_id} cancelled mid-run")
-        store.update_job(
+        job_store.update_job(
             job_id,
             status="FAILED",
             error_message="cancelled",
@@ -107,7 +101,7 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
         raise
     except Exception as exc:  # noqa: BLE001
         logger.exception(f"Job {job_id} failed: {exc}")
-        store.update_job(
+        job_store.update_job(
             job_id,
             status="FAILED",
             error_message=str(exc),
@@ -117,13 +111,13 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
         # Belt-and-braces: if some path above failed to write a terminal
         # status (e.g. exception inside an exception handler, sync bug),
         # force one here so the row never lingers at PROCESSING.
-        job = store.get_job(job_id)
+        job = job_store.get_job(job_id)
         if job and job.get("status") not in {"COMPLETED", "FAILED", "CANCELLED"}:
             logger.warning(
                 f"Job {job_id} exited with non-terminal status "
                 f"{job.get('status')!r} — forcing FAILED"
             )
-            store.update_job(
+            job_store.update_job(
                 job_id,
                 status="FAILED",
                 error_message=job.get("error_message") or "unknown error",
@@ -136,7 +130,6 @@ async def create_job(
     req: CreateMatchJobRequest,
     background_tasks: BackgroundTasks,
     request: Request,
-    job_store: JobStore = Depends(get_job_store),
 ):
     if not req.queries:
         raise HTTPException(status_code=400, detail="No queries provided")
@@ -165,10 +158,7 @@ async def create_job(
 
 
 @router.get("/jobs/{job_id}", response_model=MatchJobResponse)
-async def get_job(
-    job_id: str,
-    job_store: JobStore = Depends(get_job_store),
-):
+async def get_job(job_id: str):
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -176,10 +166,7 @@ async def get_job(
 
 
 @router.get("/jobs/{job_id}/progress", response_model=JobProgressResponse)
-async def get_job_progress(
-    job_id: str,
-    job_store: JobStore = Depends(get_job_store),
-):
+async def get_job_progress(job_id: str):
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -194,10 +181,7 @@ async def get_job_progress(
 
 
 @router.get("/jobs/{job_id}/stream")
-async def stream_job_progress(
-    job_id: str,
-    job_store: JobStore = Depends(get_job_store),
-):
+async def stream_job_progress(job_id: str):
     """Stream job progress updates via SSE."""
 
     async def event_generator():
@@ -248,10 +232,7 @@ async def stream_job_progress(
 
 
 @router.delete("/jobs/{job_id}")
-async def cancel_job(
-    job_id: str,
-    job_store: JobStore = Depends(get_job_store),
-):
+async def cancel_job(job_id: str):
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -262,10 +243,7 @@ async def cancel_job(
 
 
 @router.get("/jobs/{job_id}/download")
-async def download_results(
-    job_id: str,
-    job_store: JobStore = Depends(get_job_store),
-):
+async def download_results(job_id: str):
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
