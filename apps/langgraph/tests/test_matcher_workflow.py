@@ -943,7 +943,10 @@ def test_optimizer_passes_timeout_via_http_options(monkeypatch):
             self.models = _FakeModels()
 
     monkeypatch.setattr(qo.genai, "Client", _FakeClient)
-    monkeypatch.setattr(qo.ExcelProcessor, "_translate_to_english", lambda self, t: t)
+    monkeypatch.setattr(
+        "workflows.matcher.query_optimizer.translate_to_english",
+        lambda text, **_: text,
+    )
     monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "5")
 
     qo.optimize_queries(
@@ -977,3 +980,54 @@ def test_optimizer_invalid_timeout_falls_back_to_default(monkeypatch):
     assert qo._gemini_timeout() == 60.0
     monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "-5")
     assert qo._gemini_timeout() == 60.0
+
+
+# ---------------------------------------------------------------------------
+# Translation extraction: lives in workflows.matcher.translation, not
+# pulled across class boundaries from ExcelProcessor.
+# ---------------------------------------------------------------------------
+
+
+def test_translate_to_english_returns_unchanged_without_credentials():
+    from workflows.matcher.translation import translate_to_english
+
+    # Empty / whitespace-only input is passed through.
+    assert translate_to_english("", model_name=None, api_key=None) == ""
+    assert translate_to_english("   ", model_name="m", api_key="k") == "   "
+
+    # Missing creds → returns the original text unchanged.
+    assert (
+        translate_to_english("some text", model_name=None, api_key="k")
+        == "some text"
+    )
+    assert (
+        translate_to_english("some text", model_name="m", api_key=None)
+        == "some text"
+    )
+
+
+def test_excel_processor_no_longer_has_translation_or_lm_params():
+    """Translation moved to workflows.matcher.translation; ExcelProcessor's
+    constructor doesn't take LM credentials anymore.
+    """
+    from workflows.matcher.excel_processor import ExcelProcessor
+
+    # No-arg constructor still works.
+    ep = ExcelProcessor()
+    assert not hasattr(ep, "_translate_to_english")
+    # The old kwargs are gone.
+    import inspect
+
+    params = inspect.signature(ExcelProcessor.__init__).parameters
+    for forbidden in ("model_provider", "model_name", "api_key", "api_base"):
+        assert forbidden not in params, (
+            f"ExcelProcessor.__init__ should not accept {forbidden!r} anymore"
+        )
+
+
+def test_query_optimizer_imports_translation_module(monkeypatch):
+    """Both consumers import the new translate_to_english function."""
+    from workflows.matcher import query_optimizer
+    from workflows.matcher.translation import translate_to_english
+
+    assert query_optimizer.translate_to_english is translate_to_english

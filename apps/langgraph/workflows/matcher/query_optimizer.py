@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 from google import genai
 
-from workflows.matcher.excel_processor import ExcelProcessor
+from workflows.matcher.translation import translate_to_english
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,6 @@ def optimize_queries(
     model_name: str = "gemini-2.5-flash",
     api_key: str | None = None,
     api_base: str | None = None,
-    excel_processor: ExcelProcessor | None = None,
 ) -> QueryOptimizationResult:
     """Optimize all queries for one BU into a single clearer query.
 
@@ -93,7 +92,6 @@ def optimize_queries(
     provider is unsupported (only Google Gemini is currently wired up for
     LLM-based optimization).
     """
-    excel_processor = excel_processor or ExcelProcessor()
     normalized_queries = _dedupe_queries(queries)
     fallback_native = _build_fallback_query(normalized_queries)
 
@@ -125,7 +123,7 @@ def optimize_queries(
             "Query optimizer has no GOOGLE_API_KEY configured. "
             "Falling back to deterministic query merge."
         )
-        return _fallback_result(excel_processor, normalized_queries, fallback_native)
+        return _fallback_result(normalized_queries, fallback_native)
 
     try:
         # google-genai HttpOptions.timeout is in milliseconds. Bound the
@@ -150,9 +148,15 @@ def optimize_queries(
                 "Query optimization returned no text for BU '%s'. Falling back to deterministic merge.",
                 bu,
             )
-            return _fallback_result(excel_processor, normalized_queries, fallback_native)
+            return _fallback_result(normalized_queries, fallback_native)
 
-        optimized_en = excel_processor._translate_to_english(optimized_native)
+        # Translation is BYOK-OpenAI-shaped; the Gemini key + model_name
+        # used above don't satisfy the OpenAI contract, so translation
+        # currently no-ops (returns the input). Wire-through is preserved
+        # so a future caller can pass an OpenAI-compatible BYOK key here.
+        optimized_en = translate_to_english(
+            optimized_native, model_name=None, api_key=None
+        )
 
         return QueryOptimizationResult(
             optimized_query_native=optimized_native,
@@ -170,15 +174,14 @@ def optimize_queries(
             bu,
             exc,
         )
-        return _fallback_result(excel_processor, normalized_queries, fallback_native)
+        return _fallback_result(normalized_queries, fallback_native)
 
 
 def _fallback_result(
-    excel_processor: ExcelProcessor,
     queries: list[str],
     fallback_native: str,
 ) -> QueryOptimizationResult:
-    optimized_en = excel_processor._translate_to_english(fallback_native)
+    optimized_en = translate_to_english(fallback_native, model_name=None, api_key=None)
     return QueryOptimizationResult(
         optimized_query_native=fallback_native,
         optimized_query_en=optimized_en,
