@@ -217,17 +217,20 @@ def test_assign_workers_does_not_leak_secrets_in_send_args():
 
 
 def test_rank_bu_invokes_lotus_and_returns_results_by_bu(monkeypatch):
-    fake_matcher = MagicMock()
-    fake_matcher.build_text_column = MagicMock(return_value=pd.DataFrame([{"id": 1}]))
-    fake_matcher.run_pipeline = MagicMock(return_value=pd.DataFrame([{"id": 1, "title": "match"}]))
-    monkeypatch.setattr("workflows.matcher.job.LotusMatcher", MagicMock(return_value=fake_matcher))
+    monkeypatch.setattr(
+        "workflows.matcher.job.build_text_column",
+        lambda df, target_type: pd.DataFrame([{"id": 1}]),
+    )
+    monkeypatch.setattr(
+        "workflows.matcher.job.rank_via_semops",
+        lambda **kwargs: pd.DataFrame([{"id": 1, "title": "match"}]),
+    )
 
     ws = {
         "bu": "BU_X",
         "optimized": _fake_optimized("BU_X"),
         "target_df": pd.DataFrame([{"id": 1}]),
         "req": _make_req([{"bu": "BU_X", "query": "q"}]),
-        "index_dir": "/tmp/x",
     }
     out = rank_bu(ws, _make_config())
     assert "results_by_bu" in out
@@ -238,24 +241,25 @@ def test_rank_bu_invokes_lotus_and_returns_results_by_bu(monkeypatch):
 
 
 def test_rank_bu_threads_lm_config_into_run_pipeline(monkeypatch):
-    """rank_bu reads BYOK creds from RunnableConfig and forwards to LotusMatcher."""
+    """rank_bu reads BYOK creds from RunnableConfig and forwards to rank_via_semops."""
     captured: dict = {}
-    fake_matcher = MagicMock()
-    fake_matcher.build_text_column = MagicMock(return_value=pd.DataFrame([{"id": 1}]))
 
-    def fake_run_pipeline(**kwargs):
+    monkeypatch.setattr(
+        "workflows.matcher.job.build_text_column",
+        lambda df, target_type: pd.DataFrame([{"id": 1}]),
+    )
+
+    def fake_rank_via_semops(**kwargs):
         captured.update(kwargs)
         return pd.DataFrame([{"id": 1, "title": "match"}])
 
-    fake_matcher.run_pipeline = fake_run_pipeline
-    monkeypatch.setattr("workflows.matcher.job.LotusMatcher", MagicMock(return_value=fake_matcher))
+    monkeypatch.setattr("workflows.matcher.job.rank_via_semops", fake_rank_via_semops)
 
     ws = {
         "bu": "BU_X",
         "optimized": _fake_optimized("BU_X"),
         "target_df": pd.DataFrame([{"id": 1}]),
         "req": _make_req([{"bu": "BU_X", "query": "q"}]),
-        "index_dir": "/tmp/x",
     }
     config = _make_config(
         provider="deepseek",
@@ -277,7 +281,6 @@ def test_rank_bu_raises_when_lm_config_missing():
         "optimized": _fake_optimized("BU_X"),
         "target_df": pd.DataFrame([{"id": 1}]),
         "req": _make_req([{"bu": "BU_X", "query": "q"}]),
-        "index_dir": "/tmp/x",
     }
     with pytest.raises(RuntimeError, match="BYOK lm_config"):
         rank_bu(ws, {"configurable": {}})
@@ -567,7 +570,7 @@ def test_run_pipeline_replaces_nan_with_none_before_serialization(monkeypatch):
 
     import numpy as np
 
-    from workflows.matcher.lotus import LotusMatcher
+    from workflows.matcher.lotus import rank_via_semops
 
     captured: dict = {}
 
@@ -586,7 +589,7 @@ def test_run_pipeline_replaces_nan_with_none_before_serialization(monkeypatch):
         ]
     )
 
-    LotusMatcher().run_pipeline(
+    rank_via_semops(
         df=df,
         query_text="q",
         query_name="test",

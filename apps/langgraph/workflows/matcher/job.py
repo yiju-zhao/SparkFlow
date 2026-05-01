@@ -30,7 +30,7 @@ from langgraph.types import Send
 from workflows.matcher._utils import redact_lm_config
 from workflows.matcher.excel_processor import ExcelProcessor
 from workflows.matcher.job_store import JobStore
-from workflows.matcher.lotus import LotusMatcher
+from workflows.matcher.lotus import build_text_column, rank_via_semops
 from workflows.matcher.query_optimizer import QueryOptimizer
 
 logger = logging.getLogger(__name__)
@@ -147,16 +147,14 @@ def assign_workers(state: JobState) -> list[Send]:
 def rank_bu(ws: dict, config: RunnableConfig) -> dict:
     """Worker — runs LOTUS pipeline for one BU. Writes one entry into results_by_bu."""
     lm_config = _lm_config_from(config)
-    matcher = LotusMatcher()
-    target_df = matcher.build_text_column(ws["target_df"], ws["req"].target_type)
-    matches_df = matcher.run_pipeline(
+    target_df = build_text_column(ws["target_df"], ws["req"].target_type)
+    matches_df = rank_via_semops(
         df=target_df,
         query_text=ws["optimized"].optimized_query_en,
         query_name=ws["bu"],
         top_k=ws["req"].top_k,
         search_k=ws["req"].search_k,
         include_reasons=ws["req"].include_reasons,
-        index_dir=ws["index_dir"],
         progress_callback=lambda *_: None,
         model_provider=lm_config.get("provider"),
         model_name=lm_config.get("model"),
