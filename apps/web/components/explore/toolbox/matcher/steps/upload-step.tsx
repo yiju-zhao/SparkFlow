@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { v4 as uuidv4 } from "uuid";
 import { FileDropzone } from "../file-dropzone";
@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { QueryPreviewTable, type QueryPreviewTableHandle } from "../query-preview-table";
+import { QueryPreviewTable } from "../query-preview-table";
 import type { ParsedQuery } from "@/lib/matcher/types";
 
 interface UploadStepProps {
@@ -54,7 +54,6 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
   const [queries, setQueries] = useState<ParsedQuery[]>(initialQueries ?? []);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const previewRef = useRef<QueryPreviewTableHandle>(null);
 
   const showPreview = queries.length > 0;
 
@@ -81,8 +80,9 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
   };
 
   const handleContinue = () => {
-    const nextQueries = previewRef.current?.commitPendingEdit() ?? queries;
-    onNext(nextQueries);
+    // Edits commit on input onBlur inside QueryPreviewTable, so the parent
+    // `queries` state is always current by the time the user clicks Continue.
+    onNext(queries);
   };
 
   return (
@@ -153,7 +153,7 @@ export function UploadStep({ onNext, onCancel, initialQueries }: UploadStepProps
             </Button>
           </div>
           <div className="border rounded-lg overflow-hidden max-h-125 overflow-y-auto">
-            <QueryPreviewTable ref={previewRef} queries={queries} onQueriesChange={setQueries} />
+            <QueryPreviewTable queries={queries} onQueriesChange={setQueries} />
           </div>
         </div>
       ) : (

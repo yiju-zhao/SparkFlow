@@ -20,34 +20,51 @@ type WizardConfig = {
   includeReasons: boolean;
 };
 
+// Wizard state is a discriminated union on `kind`. Stages with different
+// fields don't share invalid intermediate shapes (e.g. `running` always has a
+// jobId; `results` always has a completedJob). Adding a new stage means adding
+// one variant + handler — no magic-number comparisons to grep for.
+type WizardKind = "upload" | "config" | "running" | "results";
+
+type CompletedJob = {
+  id: string;
+  status: string;
+  queryCount: number;
+  matchCount: number;
+  topK: number;
+  resultFileKey: string | null;
+  errorMessage: string | null;
+};
+
 type WizardState = {
-  step: number;
+  kind: WizardKind;
   config: WizardConfig | null;
   queries: ParsedQuery[] | null;
   jobId: string | null;
-  completedJob: {
-    id: string;
-    status: string;
-    queryCount: number;
-    matchCount: number;
-    topK: number;
-    resultFileKey: string | null;
-    errorMessage: string | null;
-  } | null;
+  completedJob: CompletedJob | null;
 };
+
+// Order matters: must match the visual progression in the breadcrumb.
+const KIND_ORDER: WizardKind[] = ["upload", "config", "running", "results"];
+
+function kindIndex(kind: WizardKind): number {
+  return KIND_ORDER.indexOf(kind);
+}
 
 export function MatcherWizard() {
   const router = useRouter();
   const tSteps = useTranslations("explore.toolbox.wizard.steps");
 
-  const DISPLAY_STEPS = [
-    { id: "upload", label: tSteps("upload"), internalStep: 0 },
-    { id: "config", label: tSteps("configure"), internalStep: 1 },
-    { id: "results", label: tSteps("results"), internalStep: 3 },
+  // Display order in breadcrumb omits "running" — that stage is rendered as
+  // "results active" so the user sees forward motion without a third tick.
+  const DISPLAY_STEPS: { id: WizardKind; label: string }[] = [
+    { id: "upload", label: tSteps("upload") },
+    { id: "config", label: tSteps("configure") },
+    { id: "results", label: tSteps("results") },
   ];
 
   const [state, setState] = useState<WizardState>({
-    step: 0,
+    kind: "upload",
     config: null,
     queries: null,
     jobId: null,
@@ -61,7 +78,7 @@ export function MatcherWizard() {
       console.log("[Wizard] Job completed:", job);
       setState((prev) => ({
         ...prev,
-        step: 3,
+        kind: "results",
         completedJob: {
           id: job.id,
           status: job.status,
@@ -78,12 +95,12 @@ export function MatcherWizard() {
     },
   });
 
-  // Step 0: Upload — preserve queries on re-entry
+  // Upload → Config — preserve queries on re-entry
   const handleUploadComplete = useCallback((queries: ParsedQuery[]) => {
-    setState((prev) => ({ ...prev, step: 1, queries }));
+    setState((prev) => ({ ...prev, kind: "config", queries }));
   }, []);
 
-  // Step 1: Config + Preview — start matching directly
+  // Config → Running — start matching directly
   const handleStartMatching = useCallback(
     async (config: WizardConfig, queries: ParsedQuery[]) => {
       try {
@@ -104,7 +121,7 @@ export function MatcherWizard() {
 
         setState((prev) => ({
           ...prev,
-          step: 2,
+          kind: "running",
           config,
           jobId: job.id,
         }));
@@ -115,13 +132,13 @@ export function MatcherWizard() {
     [createJob],
   );
 
-  // Step 2: Running - Cancel
+  // Running — Cancel
   const handleCancelJob = useCallback(async () => {
     if (!state.jobId) return;
     router.push("/explore/toolbox");
   }, [state.jobId, router]);
 
-  // Step 3: Results - Download
+  // Results — Download
   const handleDownload = useCallback(() => {
     if (!state.jobId) return;
     const downloadUrl = `/api/matcher/jobs/${state.jobId}/download`;
@@ -130,7 +147,7 @@ export function MatcherWizard() {
 
   const handleReset = useCallback(() => {
     setState({
-      step: 0,
+      kind: "upload",
       config: null,
       queries: null,
       jobId: null,
@@ -139,25 +156,29 @@ export function MatcherWizard() {
   }, []);
 
   const handleBack = useCallback(() => {
-    setState((prev) => ({ ...prev, step: Math.max(0, prev.step - 1) }));
+    setState((prev) => {
+      const idx = kindIndex(prev.kind);
+      if (idx <= 0) return prev;
+      return { ...prev, kind: KIND_ORDER[idx - 1] };
+    });
   }, []);
 
   const handleCancel = useCallback(() => {
     router.push("/explore");
   }, [router]);
 
-  // Navigate to a completed step — allowed from any step except running (2)
-  const handleStepClick = useCallback((targetInternalStep: number) => {
+  // Navigate to a completed step — allowed from any step except running
+  const handleStepClick = useCallback((targetKind: WizardKind) => {
     setState((prev) => {
-      if (prev.step === 2) return prev; // Can't navigate during running
-      if (targetInternalStep >= prev.step) return prev; // Can't jump forward
-      return { ...prev, step: targetInternalStep };
+      if (prev.kind === "running") return prev; // Can't navigate during running
+      if (kindIndex(targetKind) >= kindIndex(prev.kind)) return prev; // Can't jump forward
+      return { ...prev, kind: targetKind };
     });
   }, []);
 
   const renderStep = () => {
-    switch (state.step) {
-      case 0:
+    switch (state.kind) {
+      case "upload":
         return (
           <UploadStep
             onNext={handleUploadComplete}
@@ -165,7 +186,7 @@ export function MatcherWizard() {
             initialQueries={state.queries ?? undefined}
           />
         );
-      case 1:
+      case "config":
         return (
           <ConfigStep
             queries={state.queries ?? []}
@@ -175,9 +196,9 @@ export function MatcherWizard() {
             onCancel={handleCancel}
           />
         );
-      case 2:
+      case "running":
         return <RunningStep jobId={state.jobId!} progress={progress} onCancel={handleCancelJob} />;
-      case 3:
+      case "results":
         return (
           <ResultsStep job={state.completedJob} onDownload={handleDownload} onReset={handleReset} />
         );
@@ -189,18 +210,22 @@ export function MatcherWizard() {
   return (
     <Card className="overflow-hidden max-w-3xl mx-auto">
       <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
-        {DISPLAY_STEPS.map((step, index) => {
+        {DISPLAY_STEPS.map((displayStep, index) => {
+          // The "running" stage shows the "results" tick as active (we're
+          // headed there). Everything else is a direct kind comparison.
           const isActive =
-            step.internalStep === state.step || (state.step === 2 && step.internalStep === 3); // show results as active during running
+            displayStep.id === state.kind ||
+            (state.kind === "running" && displayStep.id === "results");
           const isPast =
-            step.internalStep < state.step && !(state.step === 2 && step.internalStep === 3);
-          const isClickable = isPast && state.step !== 2;
+            kindIndex(displayStep.id) < kindIndex(state.kind) &&
+            !(state.kind === "running" && displayStep.id === "results");
+          const isClickable = isPast && state.kind !== "running";
           return (
-            <div key={step.id} className="flex items-center gap-1">
+            <div key={displayStep.id} className="flex items-center gap-1">
               {index > 0 && <span className="text-muted-foreground/40 mx-2">/</span>}
               <button
                 type="button"
-                onClick={() => isClickable && handleStepClick(step.internalStep)}
+                onClick={() => isClickable && handleStepClick(displayStep.id)}
                 disabled={!isClickable}
                 className={cn(
                   "flex items-center gap-1 rounded px-1 -mx-1 transition-colors",
@@ -228,7 +253,7 @@ export function MatcherWizard() {
                         : "text-muted-foreground",
                   )}
                 >
-                  {step.label}
+                  {displayStep.label}
                 </span>
               </button>
             </div>
