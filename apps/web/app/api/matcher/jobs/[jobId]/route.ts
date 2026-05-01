@@ -188,21 +188,21 @@ export async function DELETE(
     // Verify ownership and get file keys
     const job = await prisma.matchJob.findFirst({
       where: { id: jobId, userId: session.user.id },
-      select: { queryFileKey: true, resultFileKey: true },
+      select: { resultFileKey: true },
     });
 
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // Delete local files
-    const keysToDelete = [job.queryFileKey, job.resultFileKey].filter(Boolean);
-    for (const key of keysToDelete) {
+    // Delete the result file (if any). Query files no longer exist on disk —
+    // the wizard parses Excel client-side and we never persisted uploads.
+    if (job.resultFileKey) {
       try {
-        await unlink(path.join(DATA_DIR, key!));
+        await unlink(path.join(DATA_DIR, job.resultFileKey));
       } catch (fsErr) {
-        console.error(`[Matcher] Failed to delete file ${key}:`, fsErr);
-        // Continue deleting other files and DB record
+        console.error(`[Matcher] Failed to delete file ${job.resultFileKey}:`, fsErr);
+        // Continue with DB record deletion regardless.
       }
     }
 

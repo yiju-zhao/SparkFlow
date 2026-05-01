@@ -17,7 +17,6 @@ traces, checkpoint stores, and any state.repr / pickle.
 from __future__ import annotations
 
 import logging
-import tempfile
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Annotated, Any, TypedDict
@@ -27,14 +26,13 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+from workflows.matcher import job_store
 from workflows.matcher._utils import redact_lm_config
 from workflows.matcher.excel_processor import ExcelProcessor
-from workflows.matcher.job_store import JobStore
-from workflows.matcher.lotus import LotusMatcher
-from workflows.matcher.query_optimizer import QueryOptimizer
+from workflows.matcher.lotus import build_text_column, rank_via_semops
+from workflows.matcher.query_optimizer import optimize_queries
 
 logger = logging.getLogger(__name__)
-job_store = JobStore()
 
 
 def _merge_dict(left: dict, right: dict) -> dict:
@@ -56,7 +54,6 @@ class JobState(TypedDict, total=False):
     results_by_bu: Annotated[dict[str, pd.DataFrame], _merge_dict]
     excel_bytes: bytes
     total_matches: int
-    index_dir: str
 
 
 def _lm_config_from(config: RunnableConfig) -> dict[str, Any]:
@@ -94,13 +91,7 @@ def orchestrator(state: JobState, config: RunnableConfig) -> dict:
         if text:
             queries_by_bu[bu].append(text)
     queries_by_bu = dict(queries_by_bu)
-    optimizer = QueryOptimizer(
-        excel_processor=ExcelProcessor(),
-        model_provider=lm_config.get("provider"),
-        model_name=lm_config.get("model"),
-        api_key=lm_config.get("api_key"),
-        api_base=lm_config.get("api_base"),
-    )
+    excel_processor = ExcelProcessor()
     optimized: dict[str, Any] = {}
     total_bus = max(len(queries_by_bu), 1)
     for i, (bu, qs) in enumerate(queries_by_bu.items()):
@@ -108,16 +99,20 @@ def orchestrator(state: JobState, config: RunnableConfig) -> dict:
         job_store.update_job(
             state["job_id"], progress=progress, error_message=f"Optimizing queries: {bu}"
         )
-        optimized[bu] = optimizer.optimize_queries(
+        optimized[bu] = optimize_queries(
             bu=bu,
             queries=qs,
             target_type=req.target_type,
+            model_provider=lm_config.get("provider"),
+            model_name=lm_config.get("model"),
+            api_key=lm_config.get("api_key"),
+            api_base=lm_config.get("api_base"),
+            excel_processor=excel_processor,
         )
     job_store.update_job(state["job_id"], progress=30, query_data=_enriched(req.queries, optimized))
     return {
         "queries_by_bu": queries_by_bu,
         "optimized": optimized,
-        "index_dir": tempfile.mkdtemp(prefix=f"lotus_{state['job_id']}_"),
     }
 
 
@@ -137,7 +132,6 @@ def assign_workers(state: JobState) -> list[Send]:
                 "optimized": opt,
                 "target_df": state["target_df"],
                 "req": state["req"],
-                "index_dir": state["index_dir"],
             },
         )
         for bu, opt in state["optimized"].items()
@@ -147,16 +141,14 @@ def assign_workers(state: JobState) -> list[Send]:
 def rank_bu(ws: dict, config: RunnableConfig) -> dict:
     """Worker — runs LOTUS pipeline for one BU. Writes one entry into results_by_bu."""
     lm_config = _lm_config_from(config)
-    matcher = LotusMatcher()
-    target_df = matcher.build_text_column(ws["target_df"], ws["req"].target_type)
-    matches_df = matcher.run_pipeline(
+    target_df = build_text_column(ws["target_df"], ws["req"].target_type)
+    matches_df = rank_via_semops(
         df=target_df,
         query_text=ws["optimized"].optimized_query_en,
         query_name=ws["bu"],
         top_k=ws["req"].top_k,
         search_k=ws["req"].search_k,
         include_reasons=ws["req"].include_reasons,
-        index_dir=ws["index_dir"],
         progress_callback=lambda *_: None,
         model_provider=lm_config.get("provider"),
         model_name=lm_config.get("model"),

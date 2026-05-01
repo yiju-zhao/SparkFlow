@@ -27,14 +27,14 @@ from workflows.matcher.job import (
     rank_bu,
     synthesize,
 )
-from workflows.matcher.job_store import JobStore
+from workflows.matcher import job_store
 
 
 @pytest.fixture(autouse=True)
 def _reset_job_store():
-    JobStore()._jobs.clear()
+    job_store._jobs.clear()
     yield
-    JobStore()._jobs.clear()
+    job_store._jobs.clear()
 
 
 @pytest.fixture
@@ -88,11 +88,10 @@ def _make_config(api_key: str = "sk-test-key", **overrides):
 
 
 def test_orchestrator_groups_queries_by_bu(monkeypatch):
-    fake_qo = MagicMock()
-    fake_qo.return_value.optimize_queries = MagicMock(
-        side_effect=lambda **kw: _fake_optimized(kw["bu"])
+    monkeypatch.setattr(
+        "workflows.matcher.job.optimize_queries",
+        lambda **kw: _fake_optimized(kw["bu"]),
     )
-    monkeypatch.setattr("workflows.matcher.job.QueryOptimizer", fake_qo)
 
     req = _make_req(
         [
@@ -101,7 +100,7 @@ def test_orchestrator_groups_queries_by_bu(monkeypatch):
             {"bu": "BU_B", "query": "q2"},
         ]
     )
-    job_id = JobStore().create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="publication",
@@ -121,26 +120,23 @@ def test_orchestrator_groups_queries_by_bu(monkeypatch):
     assert set(out["queries_by_bu"].keys()) == {"BU_A", "BU_B"}
     assert out["queries_by_bu"]["BU_A"] == ["q1", "q1b"]
     assert set(out["optimized"].keys()) == {"BU_A", "BU_B"}
-    assert "index_dir" in out
-    job = JobStore().get_job(job_id)
+    job = job_store.get_job(job_id)
     assert job["status"] == "PROCESSING"
     assert job["progress"] == 30
 
 
 def test_orchestrator_passes_lm_config_to_optimizer(monkeypatch):
-    """QueryOptimizer must be instantiated with creds from RunnableConfig, not state."""
+    """optimize_queries must receive creds from RunnableConfig, not state."""
     captured: dict = {}
 
-    def fake_qo_ctor(**kwargs):
+    def fake_optimize(**kwargs):
         captured.update(kwargs)
-        instance = MagicMock()
-        instance.optimize_queries = MagicMock(side_effect=lambda **kw: _fake_optimized(kw["bu"]))
-        return instance
+        return _fake_optimized(kwargs["bu"])
 
-    monkeypatch.setattr("workflows.matcher.job.QueryOptimizer", fake_qo_ctor)
+    monkeypatch.setattr("workflows.matcher.job.optimize_queries", fake_optimize)
 
     req = _make_req([{"bu": "BU_A", "query": "q1"}])
-    job_id = JobStore().create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="publication",
@@ -167,7 +163,7 @@ def test_orchestrator_passes_lm_config_to_optimizer(monkeypatch):
 def test_orchestrator_raises_when_lm_config_missing():
     """Without a BYOK lm_config the matcher cannot run; surface immediately."""
     req = _make_req([{"bu": "BU_A", "query": "q1"}])
-    job_id = JobStore().create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="publication",
@@ -190,7 +186,6 @@ def test_assign_workers_emits_one_send_per_bu():
         "target_df": pd.DataFrame(),
         "req": _make_req([{"bu": "BU_A", "query": "q1"}]),
         "optimized": {"BU_A": _fake_optimized("BU_A"), "BU_B": _fake_optimized("BU_B")},
-        "index_dir": "/tmp/x",
     }
     sends = assign_workers(state)
     assert len(sends) == 2
@@ -208,7 +203,6 @@ def test_assign_workers_does_not_leak_secrets_in_send_args():
         "target_df": pd.DataFrame(),
         "req": _make_req([{"bu": "BU_A", "query": "q1"}]),
         "optimized": {"BU_A": _fake_optimized("BU_A")},
-        "index_dir": "/tmp/x",
     }
     sends = assign_workers(state)
     payload = repr(sends)
@@ -217,17 +211,20 @@ def test_assign_workers_does_not_leak_secrets_in_send_args():
 
 
 def test_rank_bu_invokes_lotus_and_returns_results_by_bu(monkeypatch):
-    fake_matcher = MagicMock()
-    fake_matcher.build_text_column = MagicMock(return_value=pd.DataFrame([{"id": 1}]))
-    fake_matcher.run_pipeline = MagicMock(return_value=pd.DataFrame([{"id": 1, "title": "match"}]))
-    monkeypatch.setattr("workflows.matcher.job.LotusMatcher", MagicMock(return_value=fake_matcher))
+    monkeypatch.setattr(
+        "workflows.matcher.job.build_text_column",
+        lambda df, target_type: pd.DataFrame([{"id": 1}]),
+    )
+    monkeypatch.setattr(
+        "workflows.matcher.job.rank_via_semops",
+        lambda **kwargs: pd.DataFrame([{"id": 1, "title": "match"}]),
+    )
 
     ws = {
         "bu": "BU_X",
         "optimized": _fake_optimized("BU_X"),
         "target_df": pd.DataFrame([{"id": 1}]),
         "req": _make_req([{"bu": "BU_X", "query": "q"}]),
-        "index_dir": "/tmp/x",
     }
     out = rank_bu(ws, _make_config())
     assert "results_by_bu" in out
@@ -238,24 +235,25 @@ def test_rank_bu_invokes_lotus_and_returns_results_by_bu(monkeypatch):
 
 
 def test_rank_bu_threads_lm_config_into_run_pipeline(monkeypatch):
-    """rank_bu reads BYOK creds from RunnableConfig and forwards to LotusMatcher."""
+    """rank_bu reads BYOK creds from RunnableConfig and forwards to rank_via_semops."""
     captured: dict = {}
-    fake_matcher = MagicMock()
-    fake_matcher.build_text_column = MagicMock(return_value=pd.DataFrame([{"id": 1}]))
 
-    def fake_run_pipeline(**kwargs):
+    monkeypatch.setattr(
+        "workflows.matcher.job.build_text_column",
+        lambda df, target_type: pd.DataFrame([{"id": 1}]),
+    )
+
+    def fake_rank_via_semops(**kwargs):
         captured.update(kwargs)
         return pd.DataFrame([{"id": 1, "title": "match"}])
 
-    fake_matcher.run_pipeline = fake_run_pipeline
-    monkeypatch.setattr("workflows.matcher.job.LotusMatcher", MagicMock(return_value=fake_matcher))
+    monkeypatch.setattr("workflows.matcher.job.rank_via_semops", fake_rank_via_semops)
 
     ws = {
         "bu": "BU_X",
         "optimized": _fake_optimized("BU_X"),
         "target_df": pd.DataFrame([{"id": 1}]),
         "req": _make_req([{"bu": "BU_X", "query": "q"}]),
-        "index_dir": "/tmp/x",
     }
     config = _make_config(
         provider="deepseek",
@@ -277,7 +275,6 @@ def test_rank_bu_raises_when_lm_config_missing():
         "optimized": _fake_optimized("BU_X"),
         "target_df": pd.DataFrame([{"id": 1}]),
         "req": _make_req([{"bu": "BU_X", "query": "q"}]),
-        "index_dir": "/tmp/x",
     }
     with pytest.raises(RuntimeError, match="BYOK lm_config"):
         rank_bu(ws, {"configurable": {}})
@@ -289,7 +286,7 @@ def test_synthesize_writes_excel_bytes_and_total_matches(monkeypatch):
     monkeypatch.setattr("workflows.matcher.job.ExcelProcessor", fake_xls)
     monkeypatch.setattr("workflows.matcher.job._build_master", lambda df, rbu, ir: df)
 
-    job_id = JobStore().create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="publication",
@@ -339,7 +336,6 @@ def test_api_key_does_not_appear_in_job_state_repr():
         "queries_by_bu": {"BU_A": ["q"]},
         "optimized": {},
         "results_by_bu": {},
-        "index_dir": "/tmp/x",
     }
     # Even with the secret available in the config, repr(state) cannot mention it.
     config = _make_config(api_key=secret)
@@ -515,7 +511,7 @@ def test_run_and_persist_passes_lm_config_via_runnable_config(monkeypatch):
         api_key=secret_key,
         api_base="https://api.deepseek.com/v1",
     )
-    job_id = JobStore().create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="SESSION",
@@ -567,7 +563,7 @@ def test_run_pipeline_replaces_nan_with_none_before_serialization(monkeypatch):
 
     import numpy as np
 
-    from workflows.matcher.lotus import LotusMatcher
+    from workflows.matcher.lotus import rank_via_semops
 
     captured: dict = {}
 
@@ -586,7 +582,7 @@ def test_run_pipeline_replaces_nan_with_none_before_serialization(monkeypatch):
         ]
     )
 
-    LotusMatcher().run_pipeline(
+    rank_via_semops(
         df=df,
         query_text="q",
         query_name="test",
@@ -619,7 +615,7 @@ def _seed_job(req_overrides: dict | None = None) -> tuple[str, MagicMock]:
     """Seed a JobStore row + mock CreateMatchJobRequest sufficient for
     _run_and_persist to consume.
     """
-    job_id = JobStore().create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="publication",
@@ -667,7 +663,7 @@ def test_run_and_persist_marks_failed_on_cancellation(monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(routes._run_and_persist(job_id, req, []))
 
-    job = JobStore().get_job(job_id)
+    job = job_store.get_job(job_id)
     assert job is not None
     assert job["status"] == "FAILED"
     assert job["error_message"] == "cancelled"
@@ -691,7 +687,7 @@ def test_run_and_persist_marks_failed_on_exception(monkeypatch):
     # Should NOT raise — generic exceptions are swallowed by design.
     asyncio.run(routes._run_and_persist(job_id, req, []))
 
-    job = JobStore().get_job(job_id)
+    job = job_store.get_job(job_id)
     assert job is not None
     assert job["status"] == "FAILED"
     assert job["error_message"] == "boom"
@@ -711,7 +707,7 @@ def test_run_and_persist_marks_completed_on_success(monkeypatch):
 
     asyncio.run(routes._run_and_persist(job_id, req, []))
 
-    job = JobStore().get_job(job_id)
+    job = job_store.get_job(job_id)
     assert job is not None
     assert job["status"] == "COMPLETED"
     assert job["progress"] == 100
@@ -726,18 +722,15 @@ def test_run_and_persist_marks_completed_on_success(monkeypatch):
 
 def test_update_job_fires_callback_on_status_transition(monkeypatch):
     """Genuine status flip (PENDING → PROCESSING) triggers a callback POST."""
-    from workflows.matcher import job_store as js_module
-
     captured: dict = {}
 
     def _fake_post(job_id: str, payload: dict) -> None:
         captured["job_id"] = job_id
         captured["payload"] = payload
 
-    monkeypatch.setattr(js_module, "_post_status_callback", _fake_post)
+    monkeypatch.setattr(job_store, "_post_status_callback", _fake_post)
 
-    store = JobStore()
-    job_id = store.create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="publication",
@@ -751,7 +744,7 @@ def test_update_job_fires_callback_on_status_transition(monkeypatch):
         model_name="gpt-4o-mini",
     )
 
-    store.update_job(job_id, status="PROCESSING", progress=10)
+    job_store.update_job(job_id, status="PROCESSING", progress=10)
 
     assert captured["job_id"] == job_id
     assert captured["payload"]["status"] == "PROCESSING"
@@ -762,17 +755,14 @@ def test_update_job_does_not_fire_callback_on_progress_only(monkeypatch):
     """Progress-only ticks don't trigger the callback — too noisy and the SSE
     stream already covers them.
     """
-    from workflows.matcher import job_store as js_module
-
     calls: list = []
 
     def _fake_post(job_id: str, payload: dict) -> None:
         calls.append((job_id, payload))
 
-    monkeypatch.setattr(js_module, "_post_status_callback", _fake_post)
+    monkeypatch.setattr(job_store, "_post_status_callback", _fake_post)
 
-    store = JobStore()
-    job_id = store.create_job(
+    job_id = job_store.create_job(
         user_id="u",
         instance_id="i",
         target_type="publication",
@@ -787,20 +777,20 @@ def test_update_job_does_not_fire_callback_on_progress_only(monkeypatch):
     )
 
     # Move to PROCESSING (one callback expected).
-    store.update_job(job_id, status="PROCESSING")
+    job_store.update_job(job_id, status="PROCESSING")
     assert len(calls) == 1
 
     # Several progress-only ticks — no extra callbacks.
-    store.update_job(job_id, progress=20)
-    store.update_job(job_id, progress=50)
-    store.update_job(job_id, progress=80)
+    job_store.update_job(job_id, progress=20)
+    job_store.update_job(job_id, progress=50)
+    job_store.update_job(job_id, progress=80)
     assert len(calls) == 1
 
     # Setting status to its current value is a no-op (no transition).
-    store.update_job(job_id, status="PROCESSING", progress=85)
+    job_store.update_job(job_id, status="PROCESSING", progress=85)
     assert len(calls) == 1
 
     # Terminal flip fires another callback.
-    store.update_job(job_id, status="COMPLETED", progress=100)
+    job_store.update_job(job_id, status="COMPLETED", progress=100)
     assert len(calls) == 2
     assert calls[1][1]["status"] == "COMPLETED"

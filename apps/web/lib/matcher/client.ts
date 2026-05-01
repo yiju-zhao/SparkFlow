@@ -1,122 +1,97 @@
 /**
  * Matcher Service API Client
  *
- * Client for communicating with the matcher service.
+ * Module-level fetch wrappers around the Next.js matcher API routes.
+ * All calls go through `/api/matcher/*` so the session-attached userId
+ * is injected server-side; we never hit the workflows-API directly here.
  */
 
 import type { CreateMatchJobInput, JobProgress, MatchJob } from "./types";
 
-const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
+/**
+ * Create a new match job. Routes through Next.js API to get userId from session.
+ */
+export async function createJob(input: CreateMatchJobInput): Promise<MatchJob> {
+  const response = await fetch("/api/matcher/jobs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 
-class MatcherClient {
-  private baseUrl: string;
-
-  constructor(baseUrl: string = WORKFLOWS_API_URL) {
-    this.baseUrl = baseUrl;
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(error.detail || error.error || "Failed to create job");
   }
 
-  /**
-   * Create a new match job
-   * Routes through Next.js API to get userId from session
-   */
-  async createJob(input: CreateMatchJobInput): Promise<MatchJob> {
-    const response = await fetch("/api/matcher/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
+  return response.json();
+}
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || error.error || "Failed to create job");
-    }
+/**
+ * Get full job details.
+ */
+export async function getJob(jobId: string): Promise<MatchJob> {
+  const response = await fetch(`/api/matcher/jobs/${jobId}`);
 
-    return response.json();
+  if (!response.ok) {
+    throw new Error("Failed to get job");
   }
 
-  /**
-   * Get full job details
-   */
-  async getJob(jobId: string): Promise<MatchJob> {
-    const response = await fetch(`/api/matcher/jobs/${jobId}`);
+  return response.json();
+}
 
-    if (!response.ok) {
-      throw new Error("Failed to get job");
-    }
+/**
+ * Subscribe to job progress updates via SSE.
+ * Routes through the Next.js proxy to avoid CORS issues.
+ */
+export function subscribeToJobProgress(
+  jobId: string,
+  onProgress: (progress: JobProgress) => void,
+  onError?: (error: Error) => void,
+): EventSource {
+  const url = `/api/matcher/jobs/${jobId}/stream`;
+  const eventSource = new EventSource(url);
 
-    return response.json();
-  }
+  eventSource.onopen = () => {
+    console.log("[matcher] SSE connection opened");
+  };
 
-  /**
-   * Subscribe to job progress updates via SSE
-   * Routes through Next.js API to avoid CORS issues
-   */
-  subscribeToJobProgress(
-    jobId: string,
-    onProgress: (progress: JobProgress) => void,
-    onError?: (error: Error) => void,
-  ): EventSource {
-    // Use Next.js proxy route
-    const url = `/api/matcher/jobs/${jobId}/stream`;
-    const eventSource = new EventSource(url);
-
-    eventSource.onopen = () => {
-      console.log("[MatcherClient] SSE connection opened");
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        onProgress(data);
-      } catch (e) {
-        console.error("[MatcherClient] Failed to parse SSE data:", e);
-      }
-    };
-
-    eventSource.onerror = () => {
-      // Note: onerror fires when connection closes, which is normal after job completion
-      // The onError callback will be ignored by hooks.ts if job already completed
-      console.log("[MatcherClient] SSE connection closed");
-      if (onError) {
-        onError(new Error("SSE connection error"));
-      }
-    };
-
-    return eventSource;
-  }
-
-  /**
-   * Cancel a running job
-   */
-  async cancelJob(jobId: string): Promise<void> {
-    const response = await fetch(`/api/matcher/jobs/${jobId}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to cancel job");
-    }
-  }
-
-  /**
-   * Get download URL for result file
-   */
-  getDownloadUrl(jobId: string): string {
-    return `/api/matcher/jobs/${jobId}/download`;
-  }
-
-  /**
-   * Health check
-   */
-  async healthCheck(): Promise<boolean> {
+  eventSource.onmessage = (event) => {
     try {
-      const response = await fetch(`${this.baseUrl}/v1/workflows/matcher/jobs`);
-      return response.ok;
-    } catch {
-      return false;
+      const data = JSON.parse(event.data);
+      onProgress(data);
+    } catch (e) {
+      console.error("[matcher] Failed to parse SSE data:", e);
     }
+  };
+
+  eventSource.onerror = () => {
+    // Note: onerror fires when connection closes, which is normal after job completion.
+    // The onError callback will be ignored by hooks.ts if the job already completed.
+    console.log("[matcher] SSE connection closed");
+    if (onError) {
+      onError(new Error("SSE connection error"));
+    }
+  };
+
+  return eventSource;
+}
+
+/**
+ * Cancel a running job.
+ */
+export async function cancelJob(jobId: string): Promise<void> {
+  const response = await fetch(`/api/matcher/jobs/${jobId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to cancel job");
   }
 }
 
-export const matcherClient = new MatcherClient();
-export { MatcherClient };
+/**
+ * Get download URL for the result file.
+ */
+export function getDownloadUrl(jobId: string): string {
+  return `/api/matcher/jobs/${jobId}/download`;
+}
