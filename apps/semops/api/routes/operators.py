@@ -63,12 +63,13 @@ async def rank(
             lm_config=req.lm_config.model_dump(),
         )
     except ValueError as e:
-        # SemanticOperators raises ValueError for empty candidates. Translate
-        # to HTTP 400 with a stable detail string.
-        logger.info("rank rejected: %s", e)
-        raise HTTPException(
-            status_code=400, detail="candidates must not be empty"
-        ) from e
+        # SemanticOperators raises ValueError for empty candidates AND lotus
+        # raises ValueError for unconfigured RM/VS, malformed candidates,
+        # etc. Surface the actual message so callers don't see a misleading
+        # "candidates must not be empty" for unrelated config errors. Logged
+        # with traceback for server-side debuggability.
+        logger.exception("rank rejected: %s", e)
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     results = [RankResultItem(**item) for item in ranked]
     response = RankResponse(results=results, count=len(results))
