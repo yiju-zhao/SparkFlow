@@ -883,3 +883,97 @@ def test_update_job_does_not_fire_callback_on_progress_only(monkeypatch):
     job_store.update_job(job_id, status="COMPLETED", progress=100)
     assert len(calls) == 2
     assert calls[1][1]["status"] == "COMPLETED"
+
+
+# ---------------------------------------------------------------------------
+# Optimizer Gemini timeout: deterministic fallback on raise
+# ---------------------------------------------------------------------------
+
+
+def test_optimizer_falls_back_to_deterministic_merge_on_gemini_timeout(monkeypatch):
+    """A stuck (or any-error) Gemini call must NOT fail the optimizer — it
+    falls back to the deterministic merge so the BU's worker still
+    produces a usable optimized query.
+    """
+    import workflows.matcher.query_optimizer as qo
+
+    class _FakeModels:
+        def generate_content(self, **_kwargs):
+            # Simulate the symptom of a connect/read timeout from
+            # google-genai HttpOptions.timeout. Could equivalently be
+            # httpx.ReadTimeout / google.api_core.exceptions.DeadlineExceeded.
+            raise TimeoutError("simulated Gemini timeout")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.models = _FakeModels()
+
+    monkeypatch.setattr(qo.genai, "Client", _FakeClient)
+
+    result = qo.optimize_queries(
+        bu="BU_A",
+        queries=["one", "two"],
+        target_type="publication",
+        model_provider="google",
+        model_name="gemini-2.5-flash",
+        api_key="byok-test",
+    )
+
+    assert result.used_llm is False
+    # Deterministic merge: numbered concatenation when there are 2+ inputs.
+    assert "one" in result.optimized_query_native
+    assert "two" in result.optimized_query_native
+
+
+def test_optimizer_passes_timeout_via_http_options(monkeypatch):
+    """The genai client must be constructed with HttpOptions.timeout in ms,
+    derived from the OPTIMIZER_GEMINI_TIMEOUT env var (or 60s default).
+    """
+    import workflows.matcher.query_optimizer as qo
+
+    captured: dict = {}
+
+    class _FakeModels:
+        def generate_content(self, **kwargs):
+            return MagicMock(text="optimized")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            captured["kwargs"] = kwargs
+            self.models = _FakeModels()
+
+    monkeypatch.setattr(qo.genai, "Client", _FakeClient)
+    monkeypatch.setattr(qo.ExcelProcessor, "_translate_to_english", lambda self, t: t)
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "5")
+
+    qo.optimize_queries(
+        bu="BU_A",
+        queries=["q"],
+        target_type="publication",
+        model_provider="google",
+        model_name="gemini-2.5-flash",
+        api_key="byok-test",
+    )
+
+    http_opts = captured["kwargs"].get("http_options")
+    assert http_opts is not None
+    # google-genai HttpOptions.timeout is in milliseconds.
+    assert http_opts.timeout == 5000
+
+
+def test_optimizer_default_timeout_is_60s(monkeypatch):
+    import workflows.matcher.query_optimizer as qo
+
+    monkeypatch.delenv("OPTIMIZER_GEMINI_TIMEOUT", raising=False)
+    assert qo._gemini_timeout() == 60.0
+
+
+def test_optimizer_invalid_timeout_falls_back_to_default(monkeypatch):
+    import workflows.matcher.query_optimizer as qo
+
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "not-a-number")
+    assert qo._gemini_timeout() == 60.0
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "0")
+    assert qo._gemini_timeout() == 60.0
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "-5")
+    assert qo._gemini_timeout() == 60.0

@@ -8,6 +8,7 @@ rewrite vague requests into clearer, more matchable search text.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 
 from google import genai
@@ -15,6 +16,35 @@ from google import genai
 from workflows.matcher.excel_processor import ExcelProcessor
 
 logger = logging.getLogger(__name__)
+
+# Default per-call timeout (seconds) for the Gemini optimizer. A stuck
+# Gemini round-trip used to block its BU's optimize_bu worker indefinitely;
+# now a worker that exceeds OPTIMIZER_GEMINI_TIMEOUT bails to the
+# deterministic merge fallback instead of hanging the whole job.
+_OPTIMIZER_GEMINI_TIMEOUT_DEFAULT = 60.0
+
+
+def _gemini_timeout() -> float:
+    """Read the per-call Gemini timeout from env, with a 60s default.
+
+    Read at call time (not import time) so tests can monkeypatch the env
+    var per-test without re-importing the module.
+    """
+    raw = os.getenv("OPTIMIZER_GEMINI_TIMEOUT")
+    if not raw:
+        return _OPTIMIZER_GEMINI_TIMEOUT_DEFAULT
+    try:
+        value = float(raw)
+        if value <= 0:
+            raise ValueError
+        return value
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid OPTIMIZER_GEMINI_TIMEOUT=%r — falling back to %ss default.",
+            raw,
+            _OPTIMIZER_GEMINI_TIMEOUT_DEFAULT,
+        )
+        return _OPTIMIZER_GEMINI_TIMEOUT_DEFAULT
 
 OPTIMIZER_SYSTEM_PROMPT = """
 You optimize search queries for semantic matching.
@@ -98,7 +128,12 @@ def optimize_queries(
         return _fallback_result(excel_processor, normalized_queries, fallback_native)
 
     try:
-        client = genai.Client(api_key=effective_api_key)
+        # google-genai HttpOptions.timeout is in milliseconds. Bound the
+        # per-call wait so a stuck Gemini doesn't hang the BU's worker.
+        # Setting it on the client (not the request) covers connect + read.
+        timeout_seconds = _gemini_timeout()
+        http_options = genai.types.HttpOptions(timeout=int(timeout_seconds * 1000))
+        client = genai.Client(api_key=effective_api_key, http_options=http_options)
         prompt = OPTIMIZER_USER_PROMPT_TEMPLATE.format(
             target_type=target_type,
             queries="\n".join(
@@ -126,6 +161,10 @@ def optimize_queries(
             used_llm=True,
         )
     except Exception as exc:
+        # Catch every Exception (incl. httpx ReadTimeout / google.api_core
+        # timeouts / connection errors) so a single stuck Gemini call falls
+        # back to the deterministic merge for that BU instead of failing
+        # the whole job. The other BUs continue in their own Send workers.
         logger.warning(
             "Query optimization failed for BU '%s': %s. Falling back to deterministic merge.",
             bu,
