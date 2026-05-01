@@ -42,7 +42,10 @@ export default async function MatchHistoryPage({ params }: PageProps) {
   });
 
   const serializedJobs = jobs.map((job) => {
-    const queryData = job.queryData ? (JSON.parse(String(job.queryData)) as ParsedQuery[]) : null;
+    // Prisma returns Json columns as already-parsed JS values, so just
+    // cast — wrapping in JSON.parse(String(...)) gives "[object Object]"
+    // and crashes the page.
+    const queryData = (job.queryData as ParsedQuery[] | null) ?? null;
     return {
       id: job.id,
       targetType: job.targetType,
