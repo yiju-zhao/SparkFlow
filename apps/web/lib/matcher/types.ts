@@ -25,7 +25,6 @@ export interface MatchJob {
   topK: number;
   searchK: number;
   includeReasons: boolean;
-  queryFileKey: string | null;
   queryData: ParsedQuery[] | null;
   resultFileKey: string | null;
   status: MatchJobStatus;
@@ -53,15 +52,8 @@ export interface CreateMatchJobInput {
   userId?: string; // Optional - injected by Next.js API route from session
   instanceId: string;
   targetType: MatchTargetType;
-  queries?: ParsedQuery[]; // Pre-parsed queries from frontend (preferred)
-  queryFileKey?: string; // Optional - only needed if queries not provided
+  queries?: ParsedQuery[]; // Pre-parsed queries from frontend
   topK?: number;
   searchK?: number;
   includeReasons?: boolean;
-}
-
-export interface UploadResult {
-  fileKey: string;
-  queries: ParsedQuery[];
-  queryCount: number;
 }

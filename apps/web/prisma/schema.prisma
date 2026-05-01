@@ -469,7 +469,6 @@ model MatchJob {
   topK           Int             @default(50)
   searchK        Int             @default(350)
   includeReasons Boolean         @default(true)
-  queryFileKey   String // S3 key for uploaded Excel
   queryData      Json? // Parsed queries (cached)
   resultFileKey  String? // S3 key for result Excel
   status         MatchJobStatus  @default(PENDING)
