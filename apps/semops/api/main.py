@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import operators
+from api.routes import rank as rank_route
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(operators.router, prefix="/api/operators", tags=["operators"])
+app.include_router(rank_route.router, prefix="/api/operators", tags=["operators"])
 
 
 @app.get("/health")

@@ -1,9 +1,13 @@
 """
-Semantic operator routes.
+Rank route.
 
-Exposes the LOTUS rank pipeline directly. Workflow callers
-(apps/langgraph/workflows/{search,matcher,daily_digest}) invoke these over
-HTTP, passing per-request BYOK credentials in ``lm_config``.
+Exposes the LOTUS rank pipeline directly at ``POST /api/operators/rank``.
+Workflow callers (apps/langgraph/workflows/{search,matcher,daily_digest})
+invoke this over HTTP, passing per-request BYOK credentials in ``lm_config``.
+
+Module renamed from ``operators.py`` to ``rank.py`` (issue #155): semops
+exposes only this one endpoint, so naming the file after it is clearer.
+The HTTP path ``/api/operators/rank`` is kept for callers' compatibility.
 """
 
 import logging
