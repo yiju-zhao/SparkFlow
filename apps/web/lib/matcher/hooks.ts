@@ -7,8 +7,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { matcherClient } from "./client";
-import type { JobProgress, MatchJob, MatchJobStatus } from "./types";
+import {
+  cancelJob as cancelJobApi,
+  createJob as createJobApi,
+  getJob,
+  subscribeToJobProgress,
+} from "./client";
+import type { CreateMatchJobInput, JobProgress, MatchJob, MatchJobStatus } from "./types";
 
 // Global registry to track SSE connections by jobId
 const sseConnections = new Map<string, EventSource>();
@@ -63,7 +68,7 @@ export function useJobProgress(
     // Track if job completed successfully - used to ignore onerror after completion
     let jobCompleted = false;
 
-    const eventSource = matcherClient.subscribeToJobProgress(
+    const eventSource = subscribeToJobProgress(
       jobId,
       (data: JobProgress) => {
         console.log("[Matcher] SSE progress:", data.status, data.progress + "%");
@@ -78,7 +83,7 @@ export function useJobProgress(
           sseConnections.delete(jobId);
 
           if (onCompleteRef.current) {
-            matcherClient.getJob(jobId).then(onCompleteRef.current).catch(console.error);
+            getJob(jobId).then(onCompleteRef.current).catch(console.error);
           }
         } else if (data.status === "FAILED") {
           jobCompleted = true; // Mark as completed to prevent onerror from also firing
@@ -89,7 +94,7 @@ export function useJobProgress(
           // Defence-in-depth: pull the latest persisted row so the UI sees the
           // FAILED status + error_message even if the workflows-api → Next.js
           // callback ever fails. Mirrors the COMPLETED branch above.
-          matcherClient.getJob(jobId).catch(console.error);
+          getJob(jobId).catch(console.error);
 
           if (onErrorRef.current) {
             onErrorRef.current(new Error(data.errorMessage || "Job failed"));
@@ -140,12 +145,12 @@ export function useMatchJob() {
   // Not wrapped in useCallback — React Compiler auto-memoizes, and the
   // async bodies can't be preserved by manual useCallback anyway (the
   // preserve-manual-memoization rule flagged them).
-  async function createJob(input: Parameters<typeof matcherClient.createJob>[0]) {
+  async function createJob(input: CreateMatchJobInput) {
     setIsCreating(true);
     setError(null);
 
     try {
-      const newJob = await matcherClient.createJob(input);
+      const newJob = await createJobApi(input);
       setJob(newJob);
       return newJob;
     } catch (err) {
@@ -159,7 +164,7 @@ export function useMatchJob() {
 
   async function cancelJob(jobId: string) {
     try {
-      await matcherClient.cancelJob(jobId);
+      await cancelJobApi(jobId);
       setJob((prev) => (prev ? { ...prev, status: "CANCELLED" as MatchJobStatus } : null));
     } catch (err) {
       console.error("Failed to cancel job:", err);
@@ -181,34 +186,4 @@ export function useMatchJob() {
     cancelJob,
     reset,
   };
-}
-
-/**
- * Hook to check matcher service health
- */
-export function useMatcherHealth() {
-  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
-  const [hasChecked, setHasChecked] = useState(false);
-
-  async function checkHealth() {
-    setIsChecking(true);
-    try {
-      const healthy = await matcherClient.healthCheck();
-      setIsHealthy(healthy);
-    } catch {
-      setIsHealthy(false);
-    } finally {
-      setIsChecking(false);
-    }
-  }
-
-  // Run once on mount via the setState-during-render sentinel — avoids the
-  // set-state-in-effect rule.
-  if (!hasChecked) {
-    setHasChecked(true);
-    void checkHealth();
-  }
-
-  return { isHealthy, isChecking, checkHealth };
 }
