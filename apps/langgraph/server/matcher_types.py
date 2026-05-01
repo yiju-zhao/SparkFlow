@@ -86,3 +86,25 @@ class JobProgressResponse(BaseModel):
     error_message: Optional[str] = None
     query_count: int
     match_count: int
+
+
+class MatcherRunInput(BaseModel):
+    """Plain-data, non-secret payload threaded through the LangGraph
+    JobState as ``state["req"]``.
+
+    Replaces the anonymous `_Req` class shim ``_run_and_persist`` used to
+    build per-request. Holds only fields safe to log / checkpoint /
+    trace. BYOK credentials (``api_key`` / ``api_base``) live exclusively
+    in ``RunnableConfig.configurable.lm_config`` — keeping them out of
+    state means they never reach LangSmith, the checkpoint store, or any
+    state.repr / pickle.
+
+    `model_config['arbitrary_types_allowed']` is unnecessary because all
+    fields are JSON-serializable primitives.
+    """
+
+    queries: list[dict[str, Any]]
+    target_type: str
+    top_k: int
+    search_k: int
+    include_reasons: bool

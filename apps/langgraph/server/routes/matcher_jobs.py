@@ -20,6 +20,7 @@ from workflows.matcher.job import match_job_graph
 from server.matcher_types import (
     CreateMatchJobRequest,
     JobProgressResponse,
+    MatcherRunInput,
     MatchJobResponse,
     MatchJobStatus,
     MatchTargetType,
@@ -49,21 +50,16 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
     cancellation contract).
     """
     try:
-
-        class _Req:
-            """Non-secret, plain-data shim for graph state.
-
-            Holds only fields safe to log / checkpoint / trace. The LM
-            credentials live exclusively in the RunnableConfig below.
-            """
-
-            queries = [q.model_dump() for q in req.queries]
-            target_type = req.target_type.value
-            top_k = req.top_k
-            search_k = req.search_k
-            include_reasons = req.include_reasons
-
-        graph_req = _Req()
+        # Real Pydantic model (was an anonymous `_Req` shim). Holds only
+        # fields safe to log / checkpoint / trace; BYOK creds live in the
+        # RunnableConfig below.
+        graph_req = MatcherRunInput(
+            queries=[q.model_dump() for q in req.queries],
+            target_type=req.target_type.value,
+            top_k=req.top_k,
+            search_k=req.search_k,
+            include_reasons=req.include_reasons,
+        )
         target_df = pd.DataFrame(target_data)
         lm_config: dict = {
             "provider": req.model_provider,

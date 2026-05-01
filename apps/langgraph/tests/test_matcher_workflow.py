@@ -1159,3 +1159,86 @@ def test_signal_subscriber_no_op_without_subscriber():
     runs without an SSE consumer all the time.
     """
     job_store._signal_subscriber("never-subscribed-job")  # should not raise
+
+
+# ---------------------------------------------------------------------------
+# MatcherRunInput Pydantic model (replaces anonymous _Req shim)
+# ---------------------------------------------------------------------------
+
+
+def test_matcher_run_input_carries_only_non_secret_fields():
+    """The model used as state["req"] must NEVER expose api_key/api_base —
+    those flow through RunnableConfig, not graph state.
+    """
+    from server.matcher_types import MatcherRunInput
+
+    fields = MatcherRunInput.model_fields
+    assert "api_key" not in fields
+    assert "api_base" not in fields
+    assert "api_key" not in MatcherRunInput.__annotations__
+    # The fields that ARE expected:
+    expected = {"queries", "target_type", "top_k", "search_k", "include_reasons"}
+    assert expected.issubset(fields.keys())
+
+
+def test_run_and_persist_uses_matcher_run_input(monkeypatch):
+    """_run_and_persist constructs a MatcherRunInput (not an anonymous
+    class shim) and threads it into state['req'].
+    """
+    from server.matcher_types import (
+        CreateMatchJobRequest,
+        MatcherRunInput,
+        MatchTargetType,
+        ParsedQueryInput,
+    )
+    from server.routes import matcher_jobs
+
+    captured: dict = {}
+
+    def fake_invoke(state, config):
+        captured["state"] = state
+        captured["config"] = config
+        return {"excel_bytes": b"X", "total_matches": 0}
+
+    monkeypatch.setattr(
+        "server.routes.matcher_jobs.match_job_graph", MagicMock(invoke=fake_invoke)
+    )
+
+    req = CreateMatchJobRequest(
+        user_id="u",
+        instance_id="i",
+        target_type=MatchTargetType.SESSION,
+        queries=[ParsedQueryInput(id="q1", bu="A", query="q", row_index=0)],
+        target_data=[{"id": "s1"}],
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+        api_key="sk-secret",
+    )
+    job_id = job_store.create_job(
+        user_id="u",
+        instance_id="i",
+        target_type="SESSION",
+        top_k=50,
+        search_k=350,
+        include_reasons=True,
+        query_data=[q.model_dump() for q in req.queries],
+        query_count=1,
+        target_data=req.target_data,
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+    )
+
+    asyncio.run(matcher_jobs._run_and_persist(job_id, req, req.target_data))
+
+    graph_req = captured["state"]["req"]
+    assert isinstance(graph_req, MatcherRunInput)
+    # Non-secret fields preserved.
+    assert graph_req.target_type == "SESSION"
+    assert graph_req.top_k == 50
+    assert graph_req.search_k == 350
+    assert graph_req.include_reasons is True
+    assert graph_req.queries == [q.model_dump() for q in req.queries]
+    # Secret fields absent.
+    assert not hasattr(graph_req, "api_key")
+    assert not hasattr(graph_req, "api_base")
+    assert "sk-secret" not in repr(graph_req)
