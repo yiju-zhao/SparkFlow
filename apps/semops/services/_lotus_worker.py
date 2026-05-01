@@ -198,40 +198,57 @@ def _default_pipeline(
     ``run_rank``) so concurrent tenants never share LM state. Kept in this
     module — not imported from ``services.semantic_operators`` — so the
     subprocess stays thin.
+
+    Index directory hygiene
+    -----------------------
+    Each request gets its own scratch dir under
+    ``$LOTUS_INDEX_DIR/<pid>/<uuid>``. Previously every subprocess +
+    every request shared one fixed path (``/tmp/lotus_index``) — concurrent
+    FAISS writers contended on the same directory and serialized rank
+    work that was supposed to fan out across pool workers (see #155).
+    The dir is rmtree'd in a ``finally`` so disk doesn't accumulate
+    abandoned indexes, even if the pipeline raises.
     """
     import os
+    import shutil
+    import uuid
+
     import pandas as pd  # type: ignore
 
-    index_dir = os.getenv("LOTUS_INDEX_DIR", "/tmp/lotus_index")
+    base = os.getenv("LOTUS_INDEX_DIR", "/tmp/lotus_index")
+    index_dir = os.path.join(base, str(os.getpid()), uuid.uuid4().hex)
     os.makedirs(index_dir, exist_ok=True)
 
-    df = pd.DataFrame(candidates)
-    df = df.sem_index("match_text", index_dir)
-    shortlist_df = df.sem_search("match_text", query_text, K=search_k)
-    shortlist = shortlist_df.to_dict("records")[:search_k]
+    try:
+        df = pd.DataFrame(candidates)
+        df = df.sem_index("match_text", index_dir)
+        shortlist_df = df.sem_search("match_text", query_text, K=search_k)
+        shortlist = shortlist_df.to_dict("records")[:search_k]
 
-    topk_instruction = (
-        f"Given the following query:\n{query_text}\n\n"
-        f"Rank the items by relevance to this query. "
-        f"An item is more relevant if its {{match_text}} directly addresses, "
-        f"provides insights into, or offers solutions for the query's needs."
-    )
-    ranked_df = pd.DataFrame(shortlist).sem_topk(topk_instruction, K=top_k)
-    ranked = ranked_df.to_dict("records")[:top_k]
-
-    if include_reasons:
-        map_instruction = (
-            f"Given the query:\n{query_text}\n\n"
-            f"For the item described by: {{match_text}}\n\n"
-            f"请用中文写出2-3句简洁的推荐理由，说明为什么该条目与查询相关。要具体说明。"
+        topk_instruction = (
+            f"Given the following query:\n{query_text}\n\n"
+            f"Rank the items by relevance to this query. "
+            f"An item is more relevant if its {{match_text}} directly addresses, "
+            f"provides insights into, or offers solutions for the query's needs."
         )
-        mapped_df = pd.DataFrame(ranked).sem_map(map_instruction, suffix="recommendation_reason")
-        ranked = mapped_df.to_dict("records")
-        for item in ranked:
-            if not isinstance(item.get("recommendation_reason"), str) or not item["recommendation_reason"].strip():
-                item["recommendation_reason"] = "相关匹配。"
-    else:
-        for item in ranked:
-            item.pop("recommendation_reason", None)
+        ranked_df = pd.DataFrame(shortlist).sem_topk(topk_instruction, K=top_k)
+        ranked = ranked_df.to_dict("records")[:top_k]
 
-    return ranked
+        if include_reasons:
+            map_instruction = (
+                f"Given the query:\n{query_text}\n\n"
+                f"For the item described by: {{match_text}}\n\n"
+                f"请用中文写出2-3句简洁的推荐理由，说明为什么该条目与查询相关。要具体说明。"
+            )
+            mapped_df = pd.DataFrame(ranked).sem_map(map_instruction, suffix="recommendation_reason")
+            ranked = mapped_df.to_dict("records")
+            for item in ranked:
+                if not isinstance(item.get("recommendation_reason"), str) or not item["recommendation_reason"].strip():
+                    item["recommendation_reason"] = "相关匹配。"
+        else:
+            for item in ranked:
+                item.pop("recommendation_reason", None)
+
+        return ranked
+    finally:
+        shutil.rmtree(index_dir, ignore_errors=True)
