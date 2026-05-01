@@ -6,6 +6,12 @@ synthesize assembles the master DataFrame and Excel bytes.
 
 JobStore writes are plain function calls inside nodes — NOT @task — to keep
 SSE polling deterministic.
+
+BYOK threading: the user's api_key / api_base never enter ``JobState``. The
+caller (server.routes.matcher_jobs._run_and_persist) puts them on a
+``RunnableConfig`` under ``configurable.lm_config``; nodes read it via the
+injected ``config`` parameter. This keeps the secret out of LangSmith
+traces, checkpoint stores, and any state.repr / pickle.
 """
 
 from __future__ import annotations
@@ -17,9 +23,11 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, TypedDict
 
 import pandas as pd
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+from workflows.matcher._utils import redact_lm_config
 from workflows.matcher.excel_processor import ExcelProcessor
 from workflows.matcher.job_store import JobStore
 from workflows.matcher.lotus import LotusMatcher
@@ -34,6 +42,12 @@ def _merge_dict(left: dict, right: dict) -> dict:
 
 
 class JobState(TypedDict, total=False):
+    """LangGraph state for a matcher job.
+
+    Intentionally does NOT contain ``api_key`` / ``api_base``. BYOK
+    credentials flow via RunnableConfig.configurable["lm_config"].
+    """
+
     job_id: str
     target_df: pd.DataFrame
     req: Any
@@ -45,11 +59,34 @@ class JobState(TypedDict, total=False):
     index_dir: str
 
 
-def orchestrator(state: JobState) -> dict:
+def _lm_config_from(config: RunnableConfig) -> dict[str, Any]:
+    """Extract the BYOK ``lm_config`` dict from a RunnableConfig.
+
+    Raises if missing — the matcher cannot reach a third-party LM without
+    a BYOK key, so the caller is required to supply it.
+    """
+    configurable = (config or {}).get("configurable") or {}
+    lm_config = configurable.get("lm_config")
+    if not lm_config:
+        raise RuntimeError(
+            "Matcher workflow invoked without a BYOK lm_config on "
+            "RunnableConfig.configurable. The caller must pass "
+            "config={'configurable': {'lm_config': {...}}}."
+        )
+    return lm_config
+
+
+def orchestrator(state: JobState, config: RunnableConfig) -> dict:
     job_store.update_job(
         state["job_id"], status="PROCESSING", started_at=datetime.now(timezone.utc)
     )
     req = state["req"]
+    lm_config = _lm_config_from(config)
+    logger.info(
+        "Matcher orchestrator starting job %s with lm=%s",
+        state["job_id"],
+        redact_lm_config(lm_config),
+    )
     queries_by_bu: dict[str, list[str]] = defaultdict(list)
     for q in req.queries:
         bu = q.get("bu", "Unknown")
@@ -59,10 +96,10 @@ def orchestrator(state: JobState) -> dict:
     queries_by_bu = dict(queries_by_bu)
     optimizer = QueryOptimizer(
         excel_processor=ExcelProcessor(),
-        model_provider=req.lm.provider,
-        model_name=req.lm.model,
-        api_key=req.lm.api_key,
-        api_base=req.lm.api_base,
+        model_provider=lm_config.get("provider"),
+        model_name=lm_config.get("model"),
+        api_key=lm_config.get("api_key"),
+        api_base=lm_config.get("api_base"),
     )
     optimized: dict[str, Any] = {}
     total_bus = max(len(queries_by_bu), 1)
@@ -85,7 +122,13 @@ def orchestrator(state: JobState) -> dict:
 
 
 def assign_workers(state: JobState) -> list[Send]:
-    """Send one rank_bu invocation per BU. Per ref doc §Creating workers in LangGraph."""
+    """Send one rank_bu invocation per BU. Per ref doc §Creating workers in LangGraph.
+
+    Note: RunnableConfig (and ``configurable.lm_config``) propagates through
+    Send dispatch automatically — each rank_bu invocation gets the same
+    config that orchestrator received. No need to thread the LM creds via
+    the Send arg.
+    """
     return [
         Send(
             "rank_bu",
@@ -101,8 +144,9 @@ def assign_workers(state: JobState) -> list[Send]:
     ]
 
 
-def rank_bu(ws: dict) -> dict:
+def rank_bu(ws: dict, config: RunnableConfig) -> dict:
     """Worker — runs LOTUS pipeline for one BU. Writes one entry into results_by_bu."""
+    lm_config = _lm_config_from(config)
     matcher = LotusMatcher()
     target_df = matcher.build_text_column(ws["target_df"], ws["req"].target_type)
     matches_df = matcher.run_pipeline(
@@ -114,10 +158,10 @@ def rank_bu(ws: dict) -> dict:
         include_reasons=ws["req"].include_reasons,
         index_dir=ws["index_dir"],
         progress_callback=lambda *_: None,
-        model_provider=ws["req"].lm.provider,
-        model_name=ws["req"].lm.model,
-        api_key=ws["req"].lm.api_key,
-        api_base=ws["req"].lm.api_base,
+        model_provider=lm_config.get("provider"),
+        model_name=lm_config.get("model"),
+        api_key=lm_config.get("api_key"),
+        api_base=lm_config.get("api_base"),
     )
     matches_df.insert(0, "bu", ws["bu"])
     matches_df.insert(0, "rank", range(1, len(matches_df) + 1))
@@ -127,7 +171,11 @@ def rank_bu(ws: dict) -> dict:
     return {"results_by_bu": {ws["bu"]: matches_df}}
 
 
-def synthesize(state: JobState) -> dict:
+def synthesize(state: JobState, config: RunnableConfig) -> dict:
+    # config is currently unused in synthesize, but accepted so future
+    # nodes in this position can reach the BYOK side-channel without a
+    # signature break.
+    _ = config
     job_store.update_job(state["job_id"], progress=85, error_message="Creating result file...")
     master = _build_master(state["target_df"], state["results_by_bu"], state["req"].include_reasons)
     excel_bytes = ExcelProcessor().create_result_excel(

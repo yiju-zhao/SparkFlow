@@ -35,29 +35,43 @@ def get_job_store() -> JobStore:
 
 
 async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data: list[dict]):
-    """Run match_job_graph in a worker thread (LOTUS / pandas blocks the loop)."""
+    """Run match_job_graph in a worker thread (LOTUS / pandas blocks the loop).
+
+    BYOK credentials (``api_key`` / ``api_base``) flow as a side-channel via
+    ``RunnableConfig.configurable.lm_config``. They MUST NOT enter the
+    JobState — putting them on the graph state leaks them into LangSmith
+    traces and any checkpoint store. See issue #152.
+    """
     store = JobStore()
     try:
 
-        class _Lm:
-            provider = req.model_provider
-            model = req.model_name
-            api_key = req.api_key
-            api_base = req.api_base
-
         class _Req:
+            """Non-secret, plain-data shim for graph state.
+
+            Holds only fields safe to log / checkpoint / trace. The LM
+            credentials live exclusively in the RunnableConfig below.
+            """
+
             queries = [q.model_dump() for q in req.queries]
             target_type = req.target_type.value
             top_k = req.top_k
             search_k = req.search_k
             include_reasons = req.include_reasons
-            lm = _Lm()
 
         graph_req = _Req()
         target_df = pd.DataFrame(target_data)
+        lm_config: dict = {
+            "provider": req.model_provider,
+            "model": req.model_name,
+            "api_key": req.api_key,
+        }
+        if req.api_base:
+            lm_config["api_base"] = req.api_base
+        run_config = {"configurable": {"lm_config": lm_config}}
         final = await asyncio.to_thread(
             match_job_graph.invoke,
             {"job_id": job_id, "target_df": target_df, "req": graph_req, "results_by_bu": {}},
+            run_config,
         )
         store.update_job(
             job_id,
