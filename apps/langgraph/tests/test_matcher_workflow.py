@@ -88,11 +88,10 @@ def _make_config(api_key: str = "sk-test-key", **overrides):
 
 
 def test_orchestrator_groups_queries_by_bu(monkeypatch):
-    fake_qo = MagicMock()
-    fake_qo.return_value.optimize_queries = MagicMock(
-        side_effect=lambda **kw: _fake_optimized(kw["bu"])
+    monkeypatch.setattr(
+        "workflows.matcher.job.optimize_queries",
+        lambda **kw: _fake_optimized(kw["bu"]),
     )
-    monkeypatch.setattr("workflows.matcher.job.QueryOptimizer", fake_qo)
 
     req = _make_req(
         [
@@ -128,16 +127,14 @@ def test_orchestrator_groups_queries_by_bu(monkeypatch):
 
 
 def test_orchestrator_passes_lm_config_to_optimizer(monkeypatch):
-    """QueryOptimizer must be instantiated with creds from RunnableConfig, not state."""
+    """optimize_queries must receive creds from RunnableConfig, not state."""
     captured: dict = {}
 
-    def fake_qo_ctor(**kwargs):
+    def fake_optimize(**kwargs):
         captured.update(kwargs)
-        instance = MagicMock()
-        instance.optimize_queries = MagicMock(side_effect=lambda **kw: _fake_optimized(kw["bu"]))
-        return instance
+        return _fake_optimized(kwargs["bu"])
 
-    monkeypatch.setattr("workflows.matcher.job.QueryOptimizer", fake_qo_ctor)
+    monkeypatch.setattr("workflows.matcher.job.optimize_queries", fake_optimize)
 
     req = _make_req([{"bu": "BU_A", "query": "q1"}])
     job_id = JobStore().create_job(

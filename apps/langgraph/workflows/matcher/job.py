@@ -31,7 +31,7 @@ from workflows.matcher._utils import redact_lm_config
 from workflows.matcher.excel_processor import ExcelProcessor
 from workflows.matcher.job_store import JobStore
 from workflows.matcher.lotus import build_text_column, rank_via_semops
-from workflows.matcher.query_optimizer import QueryOptimizer
+from workflows.matcher.query_optimizer import optimize_queries
 
 logger = logging.getLogger(__name__)
 job_store = JobStore()
@@ -94,13 +94,7 @@ def orchestrator(state: JobState, config: RunnableConfig) -> dict:
         if text:
             queries_by_bu[bu].append(text)
     queries_by_bu = dict(queries_by_bu)
-    optimizer = QueryOptimizer(
-        excel_processor=ExcelProcessor(),
-        model_provider=lm_config.get("provider"),
-        model_name=lm_config.get("model"),
-        api_key=lm_config.get("api_key"),
-        api_base=lm_config.get("api_base"),
-    )
+    excel_processor = ExcelProcessor()
     optimized: dict[str, Any] = {}
     total_bus = max(len(queries_by_bu), 1)
     for i, (bu, qs) in enumerate(queries_by_bu.items()):
@@ -108,10 +102,15 @@ def orchestrator(state: JobState, config: RunnableConfig) -> dict:
         job_store.update_job(
             state["job_id"], progress=progress, error_message=f"Optimizing queries: {bu}"
         )
-        optimized[bu] = optimizer.optimize_queries(
+        optimized[bu] = optimize_queries(
             bu=bu,
             queries=qs,
             target_type=req.target_type,
+            model_provider=lm_config.get("provider"),
+            model_name=lm_config.get("model"),
+            api_key=lm_config.get("api_key"),
+            api_base=lm_config.get("api_base"),
+            excel_processor=excel_processor,
         )
     job_store.update_job(state["job_id"], progress=30, query_data=_enriched(req.queries, optimized))
     return {
