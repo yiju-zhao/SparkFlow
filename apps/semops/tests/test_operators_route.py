@@ -2,17 +2,17 @@
 
 Strategy
 --------
-We patch ``SemanticOperators.rank`` at the class level (via ``mocker.patch.object``
-or ``monkeypatch``) so no real LOTUS call is ever made. The rank() implementation
-also skips LOTUS LM configuration when ``PYTEST_CURRENT_TEST`` is set (pytest
-does this automatically), so the lock-and-configure ceremony is inert here.
+The route imports the module-level ``rank`` from
+``services.semantic_operators`` (aliased as ``run_rank`` to avoid colliding
+with the route handler's own ``rank`` name). We monkeypatch that bound
+reference on ``api.routes.operators`` so no real LOTUS call is ever made.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from services.semantic_operators import SemanticOperators
+from api.routes import operators as operators_route
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ def rank_body():
 
 
 def _fake_rank_return(include_reasons: bool) -> list[dict]:
-    """A deterministic fake return value from SemanticOperators.rank."""
+    """A deterministic fake return value from rank()."""
     base = [
         {"id": "a1", "match_text": "LLM agent in enterprise legal: four case studies", "title": "LLM agent"},
         {"id": "a2", "match_text": "Diffusion for video generation: DiT architecture", "title": "Diffusion"},
@@ -74,10 +74,10 @@ def test_rank_happy_path(client, monkeypatch, rank_body):
     """Valid body + patched rank returns 200 with the expected schema."""
     fake_results = _fake_rank_return(include_reasons=True)
 
-    def _fake_rank(self, **kwargs):
+    def _fake_rank(**kwargs):
         return fake_results
 
-    monkeypatch.setattr(SemanticOperators, "rank", _fake_rank)
+    monkeypatch.setattr(operators_route, "run_rank", _fake_rank)
 
     response = client.post("/api/operators/rank", json=rank_body)
     assert response.status_code == 200, response.text
@@ -97,23 +97,20 @@ def test_rank_happy_path(client, monkeypatch, rank_body):
         assert item.get("title")
 
 
-def test_rank_rejects_empty_candidates(client, monkeypatch, rank_body):
+def test_rank_rejects_empty_candidates(client, rank_body):
     """Empty candidates list must return 400 with detail mentioning 'empty'.
 
-    Enforcement point: the route catches ``SemanticOperators.rank``'s
-    ``ValueError`` and translates it to HTTP 400. We do NOT patch rank here —
-    we want the real ValueError translation path to fire. But we patch the
-    default operator class to avoid any side effects by letting the real
-    (pure-python) rank() raise.
+    The module-level ``rank()`` raises ValueError("non-empty list") before
+    any pool dispatch; the route's ValueError handler translates it to 400.
+    No monkeypatch — we want the real ValueError translation path to fire.
     """
     body = dict(rank_body)
     body["candidates"] = []
 
-    # No monkeypatch — SemanticOperators.rank's own ValueError fires.
     response = client.post("/api/operators/rank", json=body)
     assert response.status_code == 400, response.text
     detail = response.json().get("detail", "")
-    assert "empty" in detail.lower()
+    assert "non-empty" in detail.lower() or "empty" in detail.lower()
 
 
 def test_rank_validation_error_missing_field(client, rank_body):
@@ -129,10 +126,10 @@ def test_rank_maps_auth_error_to_401(client, monkeypatch, rank_body):
     """SemopsAuthError from rank → HTTP 401 with the provider's message."""
     from services.errors import SemopsAuthError
 
-    def _boom_auth(self, **kwargs):
+    def _boom_auth(**kwargs):
         raise SemopsAuthError("invalid api key for provider X")
 
-    monkeypatch.setattr(SemanticOperators, "rank", _boom_auth)
+    monkeypatch.setattr(operators_route, "run_rank", _boom_auth)
 
     response = client.post("/api/operators/rank", json=rank_body)
     assert response.status_code == 401, response.text
@@ -143,10 +140,10 @@ def test_rank_maps_rate_limit_to_429(client, monkeypatch, rank_body):
     """SemopsRateLimitError from rank → HTTP 429."""
     from services.errors import SemopsRateLimitError
 
-    def _boom_rate(self, **kwargs):
+    def _boom_rate(**kwargs):
         raise SemopsRateLimitError("provider says slow down")
 
-    monkeypatch.setattr(SemanticOperators, "rank", _boom_rate)
+    monkeypatch.setattr(operators_route, "run_rank", _boom_rate)
 
     response = client.post("/api/operators/rank", json=rank_body)
     assert response.status_code == 429, response.text
@@ -157,10 +154,10 @@ def test_rank_maps_bad_request_to_400(client, monkeypatch, rank_body):
     """SemopsBadRequest from rank → HTTP 400."""
     from services.errors import SemopsBadRequest
 
-    def _boom_bad(self, **kwargs):
+    def _boom_bad(**kwargs):
         raise SemopsBadRequest("malformed candidate row")
 
-    monkeypatch.setattr(SemanticOperators, "rank", _boom_bad)
+    monkeypatch.setattr(operators_route, "run_rank", _boom_bad)
 
     response = client.post("/api/operators/rank", json=rank_body)
     assert response.status_code == 400, response.text
@@ -171,10 +168,10 @@ def test_rank_maps_provider_error_to_502(client, monkeypatch, rank_body):
     """SemopsProviderError from rank → HTTP 502 (we are a gateway to broken upstream)."""
     from services.errors import SemopsProviderError
 
-    def _boom_prov(self, **kwargs):
+    def _boom_prov(**kwargs):
         raise SemopsProviderError("upstream returned 503")
 
-    monkeypatch.setattr(SemanticOperators, "rank", _boom_prov)
+    monkeypatch.setattr(operators_route, "run_rank", _boom_prov)
 
     response = client.post("/api/operators/rank", json=rank_body)
     assert response.status_code == 502, response.text
@@ -185,11 +182,11 @@ def test_rank_passes_kwargs_through(client, monkeypatch, rank_body):
     """The route must forward kwargs from the request body into rank()."""
     captured: dict = {}
 
-    def _spy_rank(self, **kwargs):
+    def _spy_rank(**kwargs):
         captured.update(kwargs)
         return _fake_rank_return(include_reasons=kwargs.get("include_reasons", True))
 
-    monkeypatch.setattr(SemanticOperators, "rank", _spy_rank)
+    monkeypatch.setattr(operators_route, "run_rank", _spy_rank)
 
     response = client.post("/api/operators/rank", json=rank_body)
     assert response.status_code == 200, response.text
