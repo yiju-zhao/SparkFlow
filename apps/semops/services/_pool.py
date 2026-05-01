@@ -2,10 +2,22 @@
 
 Singleton — one pool per FastAPI process, shared across all rank requests.
 Uses ``mp_context=spawn`` to avoid fork-inheriting torch/CUDA state from the
-parent. On any worker exception we shut down and rebuild the pool
-(poisoned-worker recovery), because ProcessPoolExecutor does not evict a
-worker that raised — the NEXT task would run in the same subprocess with
-potentially corrupted ``lotus.settings.lm``.
+parent.
+
+Pool-rebuild policy
+-------------------
+The pool is rebuilt ONLY when the executor itself is broken
+(``BrokenProcessPool`` / ``BrokenExecutor``). Ordinary task exceptions —
+including provider auth errors, rate limits, and ``ValueError`` for bad
+candidates — are propagated to the caller without nuking the pool.
+
+Why this matters: the pool is shared across tenants. Rebuilding on every
+auth error means one tenant's bad BYOK key cancels every other in-flight
+rank, which is a cross-tenant blast radius we cannot afford.
+
+The per-request lotus reset in ``_lotus_worker.run_rank``'s ``finally``
+block already ensures no cross-tenant LM leakage — there is nothing left
+to "poison" for ordinary exceptions.
 """
 
 from __future__ import annotations
@@ -16,7 +28,13 @@ import multiprocessing
 import os
 import threading
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from typing import Any, Callable, TypeVar
+
+try:  # py3.8+: BrokenExecutor is the public base class
+    from concurrent.futures import BrokenExecutor
+except ImportError:  # pragma: no cover — defensive for older runtimes
+    BrokenExecutor = BrokenProcessPool  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -85,16 +103,37 @@ def shutdown_pool() -> None:
 def run_in_pool(fn: Callable[..., _T], /, *args: Any, **kwargs: Any) -> _T:
     """Submit ``fn(*args, **kwargs)`` to the pool and block on the result.
 
-    On exception the pool is rebuilt before re-raising, so the next caller
-    gets a fresh pool with no residual ``lotus.settings.lm`` state.
+    Pool-rebuild trigger
+    --------------------
+    The pool is rebuilt ONLY when the executor itself is broken
+    (``BrokenProcessPool`` / ``BrokenExecutor``). Every other exception is
+    re-raised without touching the pool, because:
+
+    1. Cross-tenant blast radius: rebuilding on a tenant's auth error would
+       cancel every other tenant's in-flight rank. We pay that cost only
+       when the executor genuinely cannot serve another request.
+    2. State hygiene: ``_lotus_worker.run_rank``'s ``finally`` already
+       resets ``lotus.settings.lm=None``, so ordinary exceptions leave the
+       worker in a clean state — there is nothing to "poison".
+
+    We catch ``Exception`` (NOT ``BaseException``): ``KeyboardInterrupt``
+    and ``SystemExit`` should propagate untouched so process shutdown
+    works.
     """
     pool = get_pool()
     future = pool.submit(fn, *args, **kwargs)
     try:
         return future.result()
-    except BaseException:
-        logger.warning("semops rank task raised; rebuilding pool")
+    except (BrokenProcessPool, BrokenExecutor):
+        # The executor itself is dead — subsequent submit() calls would
+        # raise immediately. Rebuild before re-raising so the next caller
+        # gets a working pool.
+        logger.warning("semops rank pool is broken; rebuilding")
         shutdown_pool()
+        raise
+    except Exception:
+        # Ordinary task failure (auth error, rate limit, ValueError, etc).
+        # Pool stays intact so other tenants' requests are unaffected.
         raise
 
 
