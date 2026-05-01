@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 
 SEMOPS_API_URL = os.getenv("SEMOPS_API_URL", "http://localhost:2025")
 
+# Each rank call inside semops runs sem_search + sem_topk (LM Quicksort) +
+# sem_map (LM Mapping). On CPU with the Quicksort comparisons happening in
+# multiple LM batches, a single rank takes ~30-60 s. Multiple BUs serialize
+# through the ProcessPool, so a 3-BU job easily exceeds the previous 120 s
+# httpx timeout. Default to 20 minutes; ops can extend via env var for
+# very large candidate sets.
+SEMOPS_RANK_TIMEOUT = float(os.getenv("SEMOPS_RANK_TIMEOUT", "1200"))
+
 
 class LotusMatcher:
     """Wrapper for LOTUS semantic matching operations (HTTP-backed)."""
@@ -184,7 +192,7 @@ def _rank_via_semops(
     if api_base:
         lm_config["api_base"] = api_base
 
-    with httpx.Client(timeout=120) as client:
+    with httpx.Client(timeout=SEMOPS_RANK_TIMEOUT) as client:
         resp = client.post(
             f"{SEMOPS_API_URL}/api/operators/rank",
             json={
