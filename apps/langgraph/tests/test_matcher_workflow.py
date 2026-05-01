@@ -270,6 +270,19 @@ def test_merge_dict_and_merge_optimized_combine_disjoint_dicts():
     assert _merge_dict(a, b) == {"BU_A": "ra", "BU_B": "rb"}
 
 
+def test_merge_dict_raises_on_duplicate_key():
+    """Per the disjoint-key contract: two Sends emitting the same BU is a
+    bug — surface it loudly instead of silently overwriting.
+    """
+    with pytest.raises(ValueError, match="duplicate keys"):
+        _merge_dict({"BU_A": "first"}, {"BU_A": "second"})
+
+
+def test_merge_optimized_raises_on_duplicate_key():
+    with pytest.raises(ValueError, match="duplicate keys"):
+        _merge_optimized({"BU_A": "first"}, {"BU_A": "second"})
+
+
 def test_assign_workers_emits_one_send_per_bu():
     state = {
         "target_df": pd.DataFrame(),

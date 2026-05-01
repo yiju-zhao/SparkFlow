@@ -36,14 +36,35 @@ logger = logging.getLogger(__name__)
 
 
 def _merge_dict(left: dict, right: dict) -> dict:
+    """Disjoint-key dict merge — used by the LangGraph state reducer for
+    `results_by_bu` (and `_merge_optimized` below for `optimized`).
+
+    Contract: every Send goes through one unique BU, so left and right
+    must have disjoint key sets. A collision means the orchestrator
+    accidentally dispatched two Sends for the same BU (a bug we want to
+    surface immediately, not paper over with last-writer-wins). Raise
+    instead of silently dropping a result.
+    """
+    overlap = left.keys() & right.keys()
+    if overlap:
+        raise ValueError(
+            f"_merge_dict: state reducer received duplicate keys {sorted(overlap)!r} — "
+            "each Send must produce a unique key (one entry per BU)."
+        )
     return {**left, **right}
 
 
 def _merge_optimized(left: dict, right: dict) -> dict:
-    """Reducer for the ``optimized`` channel — same merge semantics as
-    ``_merge_dict``. Kept as a separate symbol so the fan-out (one Send per
-    BU) and the gather node share an explicit contract.
+    """Reducer for the ``optimized`` channel — same disjoint-key contract
+    as ``_merge_dict``. Kept as a separate symbol so the fan-out (one
+    Send per BU) and the gather node share an explicit contract.
     """
+    overlap = left.keys() & right.keys()
+    if overlap:
+        raise ValueError(
+            f"_merge_optimized: state reducer received duplicate keys {sorted(overlap)!r} — "
+            "each Send must produce a unique key (one entry per BU)."
+        )
     return {**left, **right}
 
 
