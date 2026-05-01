@@ -13,19 +13,32 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import operators
+from api.routes import rank as rank_route
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    """Warm up the LOTUS rank pool at startup; shut it down cleanly at exit."""
+    """Warm up the LOTUS rank pool at startup; shut it down cleanly at exit.
+
+    Misconfigured ``SEMOPS_RANK_POOL_SIZE`` raises ``ValueError`` here and
+    is re-raised so the container fails to start with an obvious message
+    in logs (issue #155 fail-loud contract). Other warm-up failures
+    (e.g. transient HF model download hiccup) are still logged + swallowed
+    so the service can come up and serve traffic from a worker that
+    succeeds on the first real request.
+    """
     from services._pool import get_pool, shutdown_pool
 
     try:
         get_pool()  # Triggers init_worker() in each subprocess.
         logger.info("semops lifespan: rank pool warmed up")
+    except ValueError:
+        # Misconfigured env (e.g. SEMOPS_RANK_POOL_SIZE typo). Refuse to
+        # start so ops sees the error immediately in container logs.
+        logger.exception("semops lifespan: invalid configuration; refusing to start")
+        raise
     except Exception as exc:  # noqa: BLE001
         logger.warning("semops lifespan: pool warm-up failed: %s", exc)
     try:
@@ -52,7 +65,7 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(operators.router, prefix="/api/operators", tags=["operators"])
+app.include_router(rank_route.router, prefix="/api/operators", tags=["operators"])
 
 
 @app.get("/health")

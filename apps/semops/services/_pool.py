@@ -45,15 +45,31 @@ _pool: ProcessPoolExecutor | None = None
 
 
 def _pool_size() -> int:
+    """Resolve pool size from ``SEMOPS_RANK_POOL_SIZE`` env, or fall back.
+
+    Fail-loud contract: if the env var IS set but cannot be parsed as a
+    positive integer, raise ``ValueError`` so the semops process refuses
+    to start. Previously a typo (e.g. ``"8 "`` with a trailing space, or
+    ``"four"``) silently fell back to ``min(4, cpu_count())`` and ops
+    learned about it only when prod throughput stayed at the default.
+    See issue #155 (semops slice).
+
+    A truly unset (or empty-string) env still falls back to the default.
+    """
     env = os.getenv("SEMOPS_RANK_POOL_SIZE")
-    if env:
-        try:
-            n = int(env)
-            if n > 0:
-                return n
-        except ValueError:
-            logger.warning("invalid SEMOPS_RANK_POOL_SIZE=%r; falling back to default", env)
-    return min(4, os.cpu_count() or 1)
+    if env is None or env == "":
+        return min(4, os.cpu_count() or 1)
+    try:
+        n = int(env)
+    except ValueError as e:
+        raise ValueError(
+            f"SEMOPS_RANK_POOL_SIZE must be a positive integer, got: {env!r}"
+        ) from e
+    if n <= 0:
+        raise ValueError(
+            f"SEMOPS_RANK_POOL_SIZE must be a positive integer, got: {env!r}"
+        )
+    return n
 
 
 def _build_pool() -> ProcessPoolExecutor:
