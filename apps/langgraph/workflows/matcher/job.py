@@ -162,14 +162,31 @@ def _enriched(queries: list[dict], optimized: dict[str, Any]) -> list[dict]:
 def _build_master(
     target_df: pd.DataFrame, results_by_bu: dict[str, pd.DataFrame], include_reasons: bool
 ) -> pd.DataFrame:
+    # Validate identity-column consistency across BU result frames.
+    # If two BUs disagree (one returns 'id', another only 'title'), joins
+    # would silently key on different columns and emit wrong rows.
+    id_columns = {
+        bu: ("id" if "id" in df.columns else "title") for bu, df in results_by_bu.items()
+    }
+    distinct = set(id_columns.values())
+    if len(distinct) > 1:
+        raise ValueError(
+            f"BU result DataFrames have inconsistent identity columns: {id_columns}. "
+            f"All BUs must agree on either 'id' or 'title' as the join key."
+        )
+    # Capture id_col once and use everywhere — avoids order coupling between
+    # `master.drop(columns=["id"])` and reason aggregation.
+    id_col = next(iter(distinct), "id")
+
     master = target_df.drop(columns=["match_text"], errors="ignore").copy()
     bu_names = list(results_by_bu.keys())
     for bu in bu_names:
         bu_df = results_by_bu[bu]
-        id_col = "id" if "id" in bu_df.columns else ("title" if "title" in bu_df.columns else None)
-        if id_col and id_col in master.columns:
+        if id_col in bu_df.columns and id_col in master.columns:
             rank_map = dict(zip(bu_df[id_col], bu_df["rank"]))
-            master[bu] = master[id_col].map(rank_map)
+            # Cast to nullable Int64 so unmatched rows render as blank in
+            # Excel instead of `1.0, 2.0, NaN` (float upcast on .map miss).
+            master[bu] = master[id_col].map(rank_map).astype("Int64")
         else:
             master[bu] = ""
     if include_reasons and any(
@@ -180,15 +197,13 @@ def _build_master(
             df = results_by_bu[bu]
             if "recommendation_reason" not in df.columns:
                 continue
-            key = "id" if "id" in df.columns else "title"
-            if key in df.columns:
-                reason_maps[bu] = dict(zip(df[key], df["recommendation_reason"]))
-        if reason_maps:
-            id_key = "id" if "id" in master.columns else "title"
+            if id_col in df.columns:
+                reason_maps[bu] = dict(zip(df[id_col], df["recommendation_reason"]))
+        if reason_maps and id_col in master.columns:
 
             def agg(row):
                 parts = []
-                k = row[id_key]
+                k = row[id_col]
                 for bu, m in reason_maps.items():
                     r = m.get(k)
                     if r and str(r).strip():
