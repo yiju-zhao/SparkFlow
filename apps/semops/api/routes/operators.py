@@ -11,6 +11,12 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.types import RankRequest, RankResponse, RankResultItem
+from services.errors import (
+    SemopsAuthError,
+    SemopsBadRequest,
+    SemopsProviderError,
+    SemopsRateLimitError,
+)
 from services.semantic_operators import SemanticOperators
 
 logger = logging.getLogger(__name__)
@@ -62,12 +68,28 @@ async def rank(
             include_reasons=req.include_reasons,
             lm_config=req.lm_config.model_dump(),
         )
+    except SemopsAuthError as e:
+        # BYOK key rejected by the provider. Surface as 401 so callers
+        # (matcher / digest workflows) can prompt the user to fix Settings.
+        logger.warning("rank auth error: %s", e)
+        raise HTTPException(status_code=401, detail=str(e)) from e
+    except SemopsRateLimitError as e:
+        logger.warning("rank rate limited: %s", e)
+        raise HTTPException(status_code=429, detail=str(e)) from e
+    except SemopsBadRequest as e:
+        # Malformed candidates / etc. — caller error, distinct from auth/rate.
+        logger.warning("rank bad request: %s", e)
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except SemopsProviderError as e:
+        # Provider 5xx / unknown upstream failure. 502 == "we are a gateway
+        # to a broken upstream" which matches semantically.
+        logger.exception("rank provider error: %s", e)
+        raise HTTPException(status_code=502, detail=str(e)) from e
     except ValueError as e:
-        # SemanticOperators raises ValueError for empty candidates AND lotus
-        # raises ValueError for unconfigured RM/VS, malformed candidates,
-        # etc. Surface the actual message so callers don't see a misleading
-        # "candidates must not be empty" for unrelated config errors. Logged
-        # with traceback for server-side debuggability.
+        # Backstop for ValueErrors that didn't get normalized — most likely
+        # SemanticOperators.rank's own "candidates must be non-empty list"
+        # which fires before the pool path. Kept LAST so normalized errors
+        # above take precedence.
         logger.exception("rank rejected: %s", e)
         raise HTTPException(status_code=400, detail=str(e)) from e
 

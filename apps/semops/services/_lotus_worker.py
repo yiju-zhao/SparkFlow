@@ -31,8 +31,34 @@ def init_worker() -> None:
     instance of RM, and the vector store must be an instance of VS``.
 
     Safe to call repeatedly (idempotent imports).
+
+    Failure mode
+    ------------
+    A failed warm-up MUST raise. We previously swallowed exceptions here so
+    the pool came up "healthy" — but every subsequent request would 401 or
+    silently fail at sem_index/sem_search. Failing loud makes corp-network
+    HF download timeouts and missing-model misconfigurations diagnosable
+    from a single pool-build error in logs, instead of every tenant seeing
+    confused errors hours later.
+
+    Override
+    --------
+    ``SEMOPS_RM_MODEL`` env can override the default ``intfloat/e5-base-v2``.
+    The Docker image only bakes the default; any override will fail in
+    offline mode (TRANSFORMERS_OFFLINE=1, HF_HUB_OFFLINE=1) unless that
+    model is also pre-downloaded into HF_HOME at image build time.
+
+    Test escape hatch
+    -----------------
+    pytest sets ``PYTEST_CURRENT_TEST`` automatically. When present we skip
+    the lotus import + warm-up so pool-mechanics tests can run without
+    the heavy LOTUS deps installed. Production never sets this var.
     """
     import os
+
+    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("SEMOPS_SKIP_WORKER_INIT"):
+        logger.info("lotus worker warm-up skipped (pid=%s, test mode)", os.getpid())
+        return
 
     try:
         import lotus  # type: ignore
@@ -47,10 +73,12 @@ def init_worker() -> None:
         logger.info(
             "lotus worker warmed up (pid=%s, rm=%s)", os.getpid(), rm_model
         )
-    except Exception as exc:  # noqa: BLE001
-        # A failed warm-up must not crash the pool — the first real request
-        # will hit the same ImportError and can surface it cleanly.
-        logger.warning("lotus worker warm-up failed (pid=%s): %s", os.getpid(), exc)
+    except Exception:
+        # Log + re-raise. A subprocess that can't load the embedding model
+        # cannot serve rank requests; better to fail pool build now than
+        # produce a "healthy" pool that 401s every tenant.
+        logger.exception("lotus worker warm-up failed (pid=%s)", os.getpid())
+        raise
 
 
 def run_rank(
@@ -69,11 +97,29 @@ def run_rank(
     it to None in `finally` so the subprocess leaves in a clean state even
     if the pipeline raises.
 
+    Exception normalization
+    -----------------------
+    Provider exceptions (notably ``litellm.AuthenticationError``) often have
+    ``__init__`` signatures that require positional args that pickle DOES
+    NOT carry — when they cross the pool boundary, the parent process
+    crashes with ``BrokenProcessPool`` instead of the real error. We catch
+    everything and re-raise as one of the small ``SemopsXxx`` types from
+    ``services.errors``, which subclass ``Exception`` with a
+    ``__init__(self, message)`` and are therefore guaranteed pickle-safe.
+
     `pipeline_fn` is a test seam — production callers leave it None and the
     real `_default_pipeline` is invoked.
     """
     import lotus  # type: ignore
     from lotus.models import LM  # type: ignore
+
+    from services.errors import (
+        SemopsAuthError,
+        SemopsBadRequest,
+        SemopsError,
+        SemopsProviderError,
+        SemopsRateLimitError,
+    )
 
     lm_kwargs: dict[str, Any] = {
         "model": f"{lm_config['provider']}/{lm_config['model']}",
@@ -88,13 +134,45 @@ def run_rank(
     lotus.settings.configure(lm=LM(**lm_kwargs))
     try:
         fn = pipeline_fn or _default_pipeline
-        return fn(
-            candidates=candidates,
-            query_text=query_text,
-            top_k=top_k,
-            search_k=search_k,
-            include_reasons=include_reasons,
-        )
+        try:
+            return fn(
+                candidates=candidates,
+                query_text=query_text,
+                top_k=top_k,
+                search_k=search_k,
+                include_reasons=include_reasons,
+            )
+        except SemopsError:
+            # Already normalized — let it propagate as-is.
+            raise
+        except Exception as exc:  # noqa: BLE001
+            # Inspect the exception by class name + message and re-raise as a
+            # pickle-safe typed instance. We avoid `isinstance` against
+            # provider SDK classes (litellm, openai) so this module does not
+            # import them — the worker stays thin.
+            cls_name = type(exc).__name__
+            msg = str(exc) or cls_name
+            lower = f"{cls_name}:{msg}".lower()
+
+            if cls_name.endswith("AuthenticationError") or "authenticationerror" in lower:
+                raise SemopsAuthError(msg) from None
+            if cls_name.endswith("RateLimitError") or "ratelimit" in lower:
+                raise SemopsRateLimitError(msg) from None
+            if (
+                cls_name.endswith("APIConnectionError")
+                or cls_name.endswith("APIError")
+                or cls_name.endswith("ServiceUnavailableError")
+                or cls_name.endswith("InternalServerError")
+                or cls_name.endswith("Timeout")
+                or cls_name.endswith("TimeoutError")
+            ):
+                raise SemopsProviderError(f"{cls_name}: {msg}") from None
+            if isinstance(exc, ValueError):
+                raise SemopsBadRequest(msg) from None
+
+            # Unknown — surface as provider error so the route returns 502
+            # rather than masking via the stale ValueError handler.
+            raise SemopsProviderError(f"{cls_name}: {msg}") from None
     finally:
         # The reset itself can theoretically raise if lotus state is corrupt.
         # Swallow + log so the worker leaves in as clean a state as possible

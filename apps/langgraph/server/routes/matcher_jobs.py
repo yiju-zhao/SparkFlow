@@ -41,8 +41,19 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
     ``RunnableConfig.configurable.lm_config``. They MUST NOT enter the
     JobState — putting them on the graph state leaks them into LangSmith
     traces and any checkpoint store. See issue #152.
+
+    Terminal-status invariant: this function GUARANTEES that the job ends in
+    one of {COMPLETED, FAILED, CANCELLED} before returning. Without this, a
+    SIGTERM mid-rank or an unexpected exception would leave the row stuck at
+    PROCESSING forever in Postgres. See issue #150.
+
+    asyncio.CancelledError does NOT inherit from Exception in Python 3.8+,
+    so it has its own handler that marks the job FAILED with
+    error_message="cancelled" and re-raises (must propagate to honour the
+    cancellation contract).
     """
     store = JobStore()
+
     try:
 
         class _Req:
@@ -82,11 +93,42 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
             completed_at=datetime.now(timezone.utc),
             error_message=None,
         )
+    except asyncio.CancelledError:
+        # Cancellation MUST propagate (asyncio contract), but we still need
+        # to flush a terminal status to the row first. CancelledError doesn't
+        # derive from Exception in 3.8+, so the broader except below misses it.
+        logger.warning(f"Job {job_id} cancelled mid-run")
+        store.update_job(
+            job_id,
+            status="FAILED",
+            error_message="cancelled",
+            completed_at=datetime.now(timezone.utc),
+        )
+        raise
     except Exception as exc:  # noqa: BLE001
         logger.exception(f"Job {job_id} failed: {exc}")
         store.update_job(
-            job_id, status="FAILED", error_message=str(exc), completed_at=datetime.now(timezone.utc)
+            job_id,
+            status="FAILED",
+            error_message=str(exc),
+            completed_at=datetime.now(timezone.utc),
         )
+    finally:
+        # Belt-and-braces: if some path above failed to write a terminal
+        # status (e.g. exception inside an exception handler, sync bug),
+        # force one here so the row never lingers at PROCESSING.
+        job = store.get_job(job_id)
+        if job and job.get("status") not in {"COMPLETED", "FAILED", "CANCELLED"}:
+            logger.warning(
+                f"Job {job_id} exited with non-terminal status "
+                f"{job.get('status')!r} — forcing FAILED"
+            )
+            store.update_job(
+                job_id,
+                status="FAILED",
+                error_message=job.get("error_message") or "unknown error",
+                completed_at=datetime.now(timezone.utc),
+            )
 
 
 @router.post("/jobs", response_model=MatchJobResponse)
