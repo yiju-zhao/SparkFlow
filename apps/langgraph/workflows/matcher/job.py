@@ -17,7 +17,6 @@ traces, checkpoint stores, and any state.repr / pickle.
 from __future__ import annotations
 
 import logging
-import tempfile
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Annotated, Any, TypedDict
@@ -55,7 +54,6 @@ class JobState(TypedDict, total=False):
     results_by_bu: Annotated[dict[str, pd.DataFrame], _merge_dict]
     excel_bytes: bytes
     total_matches: int
-    index_dir: str
 
 
 def _lm_config_from(config: RunnableConfig) -> dict[str, Any]:
@@ -115,7 +113,6 @@ def orchestrator(state: JobState, config: RunnableConfig) -> dict:
     return {
         "queries_by_bu": queries_by_bu,
         "optimized": optimized,
-        "index_dir": tempfile.mkdtemp(prefix=f"lotus_{state['job_id']}_"),
     }
 
 
@@ -135,7 +132,6 @@ def assign_workers(state: JobState) -> list[Send]:
                 "optimized": opt,
                 "target_df": state["target_df"],
                 "req": state["req"],
-                "index_dir": state["index_dir"],
             },
         )
         for bu, opt in state["optimized"].items()

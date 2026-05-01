@@ -120,7 +120,6 @@ def test_orchestrator_groups_queries_by_bu(monkeypatch):
     assert set(out["queries_by_bu"].keys()) == {"BU_A", "BU_B"}
     assert out["queries_by_bu"]["BU_A"] == ["q1", "q1b"]
     assert set(out["optimized"].keys()) == {"BU_A", "BU_B"}
-    assert "index_dir" in out
     job = job_store.get_job(job_id)
     assert job["status"] == "PROCESSING"
     assert job["progress"] == 30
@@ -187,7 +186,6 @@ def test_assign_workers_emits_one_send_per_bu():
         "target_df": pd.DataFrame(),
         "req": _make_req([{"bu": "BU_A", "query": "q1"}]),
         "optimized": {"BU_A": _fake_optimized("BU_A"), "BU_B": _fake_optimized("BU_B")},
-        "index_dir": "/tmp/x",
     }
     sends = assign_workers(state)
     assert len(sends) == 2
@@ -205,7 +203,6 @@ def test_assign_workers_does_not_leak_secrets_in_send_args():
         "target_df": pd.DataFrame(),
         "req": _make_req([{"bu": "BU_A", "query": "q1"}]),
         "optimized": {"BU_A": _fake_optimized("BU_A")},
-        "index_dir": "/tmp/x",
     }
     sends = assign_workers(state)
     payload = repr(sends)
@@ -339,7 +336,6 @@ def test_api_key_does_not_appear_in_job_state_repr():
         "queries_by_bu": {"BU_A": ["q"]},
         "optimized": {},
         "results_by_bu": {},
-        "index_dir": "/tmp/x",
     }
     # Even with the secret available in the config, repr(state) cannot mention it.
     config = _make_config(api_key=secret)
