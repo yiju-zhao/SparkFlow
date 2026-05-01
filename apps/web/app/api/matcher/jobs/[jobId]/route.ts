@@ -154,14 +154,31 @@ export async function DELETE(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // Delete the result file (if any). Query files no longer exist on disk —
-    // the wizard parses Excel client-side and we never persisted uploads.
+    // Fail closed: delete the result file FIRST and only delete the DB row if
+    // the unlink succeeded. Previously this used to swallow FS errors and
+    // delete the row anyway — that orphans the file on disk with no audit
+    // trail (the row was the only handle back to it). We have no retry queue
+    // for FS cleanup, so the simpler safe behaviour is to surface the failure.
+    //
+    // Query files no longer exist on disk — the wizard parses Excel
+    // client-side and we never persisted uploads. Only resultFileKey matters.
     if (job.resultFileKey) {
       try {
         await unlink(path.join(DATA_DIR, job.resultFileKey));
       } catch (fsErr) {
-        console.error(`[Matcher] Failed to delete file ${job.resultFileKey}:`, fsErr);
-        // Continue with DB record deletion regardless.
+        const code =
+          fsErr && typeof fsErr === "object" && "code" in fsErr
+            ? (fsErr as { code: unknown }).code
+            : null;
+        // ENOENT means the file is already gone — safe to proceed with DB
+        // delete; nothing to orphan.
+        if (code !== "ENOENT") {
+          console.error(`[Matcher] Failed to delete file ${job.resultFileKey}:`, fsErr);
+          return NextResponse.json(
+            { error: "Failed to delete result file; job not deleted" },
+            { status: 500 },
+          );
+        }
       }
     }
 
