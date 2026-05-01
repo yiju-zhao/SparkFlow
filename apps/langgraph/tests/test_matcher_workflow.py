@@ -22,7 +22,12 @@ from workflows.matcher._utils import redact_lm_config
 from workflows.matcher.job import (
     JobState,
     _build_master,
+    _merge_dict,
+    _merge_optimized,
+    assign_optimize_workers,
     assign_workers,
+    gather_optimized,
+    optimize_bu,
     orchestrator,
     rank_bu,
     synthesize,
@@ -88,11 +93,9 @@ def _make_config(api_key: str = "sk-test-key", **overrides):
 
 
 def test_orchestrator_groups_queries_by_bu(monkeypatch):
-    monkeypatch.setattr(
-        "workflows.matcher.job.optimize_queries",
-        lambda **kw: _fake_optimized(kw["bu"]),
-    )
-
+    """orchestrator now only groups queries; optimization happens in
+    optimize_bu workers via Send fan-out.
+    """
     req = _make_req(
         [
             {"bu": "BU_A", "query": "q1"},
@@ -119,45 +122,10 @@ def test_orchestrator_groups_queries_by_bu(monkeypatch):
 
     assert set(out["queries_by_bu"].keys()) == {"BU_A", "BU_B"}
     assert out["queries_by_bu"]["BU_A"] == ["q1", "q1b"]
-    assert set(out["optimized"].keys()) == {"BU_A", "BU_B"}
+    # orchestrator no longer runs the optimizer — it just groups.
+    assert "optimized" not in out
     job = job_store.get_job(job_id)
     assert job["status"] == "PROCESSING"
-    assert job["progress"] == 30
-
-
-def test_orchestrator_passes_lm_config_to_optimizer(monkeypatch):
-    """optimize_queries must receive creds from RunnableConfig, not state."""
-    captured: dict = {}
-
-    def fake_optimize(**kwargs):
-        captured.update(kwargs)
-        return _fake_optimized(kwargs["bu"])
-
-    monkeypatch.setattr("workflows.matcher.job.optimize_queries", fake_optimize)
-
-    req = _make_req([{"bu": "BU_A", "query": "q1"}])
-    job_id = job_store.create_job(
-        user_id="u",
-        instance_id="i",
-        target_type="publication",
-        top_k=5,
-        search_k=50,
-        include_reasons=True,
-        query_data=req.queries,
-        query_count=1,
-        target_data=[],
-        model_provider="google",
-        model_name="gemini-2.5-flash",
-    )
-    state = {"job_id": job_id, "target_df": pd.DataFrame(), "req": req, "results_by_bu": {}}
-    config = _make_config(
-        provider="google", model="gemini-2.5-flash", api_key="byok-secret-123"
-    )
-    orchestrator(state, config)
-
-    assert captured.get("model_provider") == "google"
-    assert captured.get("model_name") == "gemini-2.5-flash"
-    assert captured.get("api_key") == "byok-secret-123"
 
 
 def test_orchestrator_raises_when_lm_config_missing():
@@ -179,6 +147,127 @@ def test_orchestrator_raises_when_lm_config_missing():
     state = {"job_id": job_id, "target_df": pd.DataFrame(), "req": req, "results_by_bu": {}}
     with pytest.raises(RuntimeError, match="BYOK lm_config"):
         orchestrator(state, {"configurable": {}})
+
+
+# ---------------------------------------------------------------------------
+# Optimizer fan-out: assign_optimize_workers + optimize_bu + gather_optimized
+# ---------------------------------------------------------------------------
+
+
+def test_assign_optimize_workers_emits_one_send_per_bu():
+    state = {
+        "queries_by_bu": {"BU_A": ["q1"], "BU_B": ["q2", "q3"]},
+        "req": _make_req([]),
+    }
+    sends = assign_optimize_workers(state)
+    assert len(sends) == 2
+    assert {s.node for s in sends} == {"optimize_bu"}
+    assert {s.arg["bu"] for s in sends} == {"BU_A", "BU_B"}
+    # Sends MUST NOT carry the BYOK key — it flows via RunnableConfig.
+    for s in sends:
+        assert "api_key" not in s.arg
+        assert "lm_config" not in s.arg
+
+
+def test_optimize_bu_threads_lm_config_into_optimizer(monkeypatch):
+    """optimize_bu reads BYOK creds from RunnableConfig and forwards to
+    optimize_queries. State carries no key.
+    """
+    captured: dict = {}
+
+    def fake_optimize(**kwargs):
+        captured.update(kwargs)
+        return _fake_optimized(kwargs["bu"])
+
+    monkeypatch.setattr("workflows.matcher.job.optimize_queries", fake_optimize)
+
+    ws = {"bu": "BU_A", "queries": ["q1"], "req": _make_req([])}
+    config = _make_config(
+        provider="google", model="gemini-2.5-flash", api_key="byok-secret-123"
+    )
+    out = optimize_bu(ws, config)
+
+    assert "optimized" in out
+    assert "BU_A" in out["optimized"]
+    assert captured.get("model_provider") == "google"
+    assert captured.get("model_name") == "gemini-2.5-flash"
+    assert captured.get("api_key") == "byok-secret-123"
+
+
+def test_optimize_bu_raises_when_lm_config_missing():
+    ws = {"bu": "BU_A", "queries": ["q1"], "req": _make_req([])}
+    with pytest.raises(RuntimeError, match="BYOK lm_config"):
+        optimize_bu(ws, {"configurable": {}})
+
+
+def test_optimize_bu_returns_dict_keyed_by_bu_for_reducer():
+    """optimize_bu returns ``{"optimized": {<bu>: result}}`` — the merge
+    reducer fan-in collects all BU results into a single dict.
+    """
+    captured: list = []
+
+    def fake_optimize(**kwargs):
+        captured.append(kwargs["bu"])
+        return _fake_optimized(kwargs["bu"])
+
+    import workflows.matcher.job as job_module
+
+    original = job_module.optimize_queries
+    job_module.optimize_queries = fake_optimize
+    try:
+        out_a = optimize_bu(
+            {"bu": "BU_A", "queries": ["q1"], "req": _make_req([])}, _make_config()
+        )
+        out_b = optimize_bu(
+            {"bu": "BU_B", "queries": ["q2"], "req": _make_req([])}, _make_config()
+        )
+    finally:
+        job_module.optimize_queries = original
+
+    # Each Send returns one entry; the reducer merges them.
+    merged = _merge_optimized(out_a["optimized"], out_b["optimized"])
+    assert set(merged.keys()) == {"BU_A", "BU_B"}
+
+
+def test_gather_optimized_persists_enriched_query_data():
+    req = _make_req([{"bu": "BU_A", "query": "q1"}, {"bu": "BU_B", "query": "q2"}])
+    job_id = job_store.create_job(
+        user_id="u",
+        instance_id="i",
+        target_type="publication",
+        top_k=5,
+        search_k=50,
+        include_reasons=True,
+        query_data=req.queries,
+        query_count=2,
+        target_data=[],
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+    )
+    state = {
+        "job_id": job_id,
+        "target_df": pd.DataFrame(),
+        "req": req,
+        "queries_by_bu": {"BU_A": ["q1"], "BU_B": ["q2"]},
+        "optimized": {"BU_A": _fake_optimized("BU_A"), "BU_B": _fake_optimized("BU_B")},
+        "results_by_bu": {},
+    }
+    gather_optimized(state, _make_config())
+    job = job_store.get_job(job_id)
+    assert job["progress"] == 30
+    # query_data should be enriched with optimized fields for both BUs.
+    enriched = job["query_data"]
+    bus = {row["bu"]: row for row in enriched}
+    assert bus["BU_A"].get("optimized_query_en") == "english query for BU_A"
+    assert bus["BU_B"].get("optimized_query_en") == "english query for BU_B"
+
+
+def test_merge_dict_and_merge_optimized_combine_disjoint_dicts():
+    """The ``optimized`` reducer composes Send results from each BU."""
+    a = {"BU_A": "ra"}
+    b = {"BU_B": "rb"}
+    assert _merge_optimized(a, b) == {"BU_A": "ra", "BU_B": "rb"}
+    assert _merge_dict(a, b) == {"BU_A": "ra", "BU_B": "rb"}
 
 
 def test_assign_workers_emits_one_send_per_bu():
