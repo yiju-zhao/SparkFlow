@@ -209,7 +209,6 @@ export async function POST(request: NextRequest) {
         topK,
         searchK,
         includeReasons,
-        queryFileKey: "",
         queryData: queries ?? undefined,
         status: "PENDING",
         queryCount: queries?.length || 0,
