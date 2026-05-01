@@ -8,13 +8,43 @@ rewrite vague requests into clearer, more matchable search text.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 
 from google import genai
 
-from workflows.matcher.excel_processor import ExcelProcessor
+from workflows.matcher.translation import translate_to_english
 
 logger = logging.getLogger(__name__)
+
+# Default per-call timeout (seconds) for the Gemini optimizer. A stuck
+# Gemini round-trip used to block its BU's optimize_bu worker indefinitely;
+# now a worker that exceeds OPTIMIZER_GEMINI_TIMEOUT bails to the
+# deterministic merge fallback instead of hanging the whole job.
+_OPTIMIZER_GEMINI_TIMEOUT_DEFAULT = 60.0
+
+
+def _gemini_timeout() -> float:
+    """Read the per-call Gemini timeout from env, with a 60s default.
+
+    Read at call time (not import time) so tests can monkeypatch the env
+    var per-test without re-importing the module.
+    """
+    raw = os.getenv("OPTIMIZER_GEMINI_TIMEOUT")
+    if not raw:
+        return _OPTIMIZER_GEMINI_TIMEOUT_DEFAULT
+    try:
+        value = float(raw)
+        if value <= 0:
+            raise ValueError
+        return value
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid OPTIMIZER_GEMINI_TIMEOUT=%r — falling back to %ss default.",
+            raw,
+            _OPTIMIZER_GEMINI_TIMEOUT_DEFAULT,
+        )
+        return _OPTIMIZER_GEMINI_TIMEOUT_DEFAULT
 
 OPTIMIZER_SYSTEM_PROMPT = """
 You optimize search queries for semantic matching.
@@ -55,7 +85,6 @@ def optimize_queries(
     model_name: str = "gemini-2.5-flash",
     api_key: str | None = None,
     api_base: str | None = None,
-    excel_processor: ExcelProcessor | None = None,
 ) -> QueryOptimizationResult:
     """Optimize all queries for one BU into a single clearer query.
 
@@ -63,7 +92,6 @@ def optimize_queries(
     provider is unsupported (only Google Gemini is currently wired up for
     LLM-based optimization).
     """
-    excel_processor = excel_processor or ExcelProcessor()
     normalized_queries = _dedupe_queries(queries)
     fallback_native = _build_fallback_query(normalized_queries)
 
@@ -95,10 +123,15 @@ def optimize_queries(
             "Query optimizer has no GOOGLE_API_KEY configured. "
             "Falling back to deterministic query merge."
         )
-        return _fallback_result(excel_processor, normalized_queries, fallback_native)
+        return _fallback_result(normalized_queries, fallback_native)
 
     try:
-        client = genai.Client(api_key=effective_api_key)
+        # google-genai HttpOptions.timeout is in milliseconds. Bound the
+        # per-call wait so a stuck Gemini doesn't hang the BU's worker.
+        # Setting it on the client (not the request) covers connect + read.
+        timeout_seconds = _gemini_timeout()
+        http_options = genai.types.HttpOptions(timeout=int(timeout_seconds * 1000))
+        client = genai.Client(api_key=effective_api_key, http_options=http_options)
         prompt = OPTIMIZER_USER_PROMPT_TEMPLATE.format(
             target_type=target_type,
             queries="\n".join(
@@ -115,9 +148,15 @@ def optimize_queries(
                 "Query optimization returned no text for BU '%s'. Falling back to deterministic merge.",
                 bu,
             )
-            return _fallback_result(excel_processor, normalized_queries, fallback_native)
+            return _fallback_result(normalized_queries, fallback_native)
 
-        optimized_en = excel_processor._translate_to_english(optimized_native)
+        # Translation is BYOK-OpenAI-shaped; the Gemini key + model_name
+        # used above don't satisfy the OpenAI contract, so translation
+        # currently no-ops (returns the input). Wire-through is preserved
+        # so a future caller can pass an OpenAI-compatible BYOK key here.
+        optimized_en = translate_to_english(
+            optimized_native, model_name=None, api_key=None
+        )
 
         return QueryOptimizationResult(
             optimized_query_native=optimized_native,
@@ -126,20 +165,23 @@ def optimize_queries(
             used_llm=True,
         )
     except Exception as exc:
+        # Catch every Exception (incl. httpx ReadTimeout / google.api_core
+        # timeouts / connection errors) so a single stuck Gemini call falls
+        # back to the deterministic merge for that BU instead of failing
+        # the whole job. The other BUs continue in their own Send workers.
         logger.warning(
             "Query optimization failed for BU '%s': %s. Falling back to deterministic merge.",
             bu,
             exc,
         )
-        return _fallback_result(excel_processor, normalized_queries, fallback_native)
+        return _fallback_result(normalized_queries, fallback_native)
 
 
 def _fallback_result(
-    excel_processor: ExcelProcessor,
     queries: list[str],
     fallback_native: str,
 ) -> QueryOptimizationResult:
-    optimized_en = excel_processor._translate_to_english(fallback_native)
+    optimized_en = translate_to_english(fallback_native, model_name=None, api_key=None)
     return QueryOptimizationResult(
         optimized_query_native=fallback_native,
         optimized_query_en=optimized_en,

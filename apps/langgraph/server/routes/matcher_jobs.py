@@ -20,6 +20,7 @@ from workflows.matcher.job import match_job_graph
 from server.matcher_types import (
     CreateMatchJobRequest,
     JobProgressResponse,
+    MatcherRunInput,
     MatchJobResponse,
     MatchJobStatus,
     MatchTargetType,
@@ -49,21 +50,16 @@ async def _run_and_persist(job_id: str, req: CreateMatchJobRequest, target_data:
     cancellation contract).
     """
     try:
-
-        class _Req:
-            """Non-secret, plain-data shim for graph state.
-
-            Holds only fields safe to log / checkpoint / trace. The LM
-            credentials live exclusively in the RunnableConfig below.
-            """
-
-            queries = [q.model_dump() for q in req.queries]
-            target_type = req.target_type.value
-            top_k = req.top_k
-            search_k = req.search_k
-            include_reasons = req.include_reasons
-
-        graph_req = _Req()
+        # Real Pydantic model (was an anonymous `_Req` shim). Holds only
+        # fields safe to log / checkpoint / trace; BYOK creds live in the
+        # RunnableConfig below.
+        graph_req = MatcherRunInput(
+            queries=[q.model_dump() for q in req.queries],
+            target_type=req.target_type.value,
+            top_k=req.top_k,
+            search_k=req.search_k,
+            include_reasons=req.include_reasons,
+        )
         target_df = pd.DataFrame(target_data)
         lm_config: dict = {
             "provider": req.model_provider,
@@ -182,43 +178,55 @@ async def get_job_progress(job_id: str):
 
 @router.get("/jobs/{job_id}/stream")
 async def stream_job_progress(job_id: str):
-    """Stream job progress updates via SSE."""
+    """Stream job progress updates via SSE.
+
+    Event-driven: subscribes to a per-job ``asyncio.Event`` that
+    ``job_store.update_job`` signals on every mutation. Sub-millisecond
+    latency from a node writing progress to the browser seeing it, with
+    no 1Hz polling under a Lock. The HEARTBEAT_SECS comment still fires
+    on silence so proxies (undici/Next.js, nginx) don't kill long
+    streams.
+    """
+    # HEARTBEAT_SECS: SSE comment ":" line emitted on prolonged silence.
+    # Long rank stages (10+ min on CPU) produce no bytes for minutes and
+    # any proxy in the path will kill the stream on its body-timeout.
+    HEARTBEAT_SECS = 15
 
     async def event_generator():
         last_progress = None
-        # Emit an SSE comment heartbeat every HEARTBEAT_SECS even when
-        # nothing changes. Without this, long rank stages (10+ min on CPU)
-        # produce no bytes for minutes and any proxy in the path
-        # (undici/Next.js, nginx, cloudflare) will kill the stream on its
-        # body-timeout. SSE comments start with ":" and are silently
-        # ignored by browser EventSource clients.
-        HEARTBEAT_SECS = 15
-        ticks_since_heartbeat = 0
-        while True:
-            job = job_store.get_job(job_id)
-            if not job:
-                yield f"event: error\ndata: {json.dumps({'error': 'Job not found'})}\n\n"
-                break
-            progress_data = {
-                "id": job["id"],
-                "status": job["status"],
-                "progress": job["progress"],
-                "error_message": job.get("error_message"),
-                "query_count": job["query_count"],
-                "match_count": job["match_count"],
-            }
-            if progress_data != last_progress:
-                yield f"data: {json.dumps(progress_data)}\n\n"
-                last_progress = progress_data
-                ticks_since_heartbeat = 0
-            else:
-                ticks_since_heartbeat += 1
-                if ticks_since_heartbeat >= HEARTBEAT_SECS:
+        event = job_store.subscribe(job_id)
+        try:
+            while True:
+                # Clear BEFORE reading state. If `update_job` fires between
+                # the read and the wait, the event is set and `event.wait()`
+                # returns immediately on the next iteration — no lost wakeup.
+                event.clear()
+                job = job_store.get_job(job_id)
+                if not job:
+                    yield f"event: error\ndata: {json.dumps({'error': 'Job not found'})}\n\n"
+                    break
+                progress_data = {
+                    "id": job["id"],
+                    "status": job["status"],
+                    "progress": job["progress"],
+                    "error_message": job.get("error_message"),
+                    "query_count": job["query_count"],
+                    "match_count": job["match_count"],
+                }
+                if progress_data != last_progress:
+                    yield f"data: {json.dumps(progress_data)}\n\n"
+                    last_progress = progress_data
+                if job["status"] in ["COMPLETED", "FAILED", "CANCELLED"]:
+                    break
+                # Wait for the next mutation (event.set) OR HEARTBEAT_SECS
+                # of silence. Heartbeat keeps proxies from body-timing-out
+                # the stream during long rank stages.
+                try:
+                    await asyncio.wait_for(event.wait(), timeout=HEARTBEAT_SECS)
+                except asyncio.TimeoutError:
                     yield ": heartbeat\n\n"
-                    ticks_since_heartbeat = 0
-            if job["status"] in ["COMPLETED", "FAILED", "CANCELLED"]:
-                break
-            await asyncio.sleep(1)
+        finally:
+            job_store.unsubscribe(job_id)
 
     return StreamingResponse(
         event_generator(),

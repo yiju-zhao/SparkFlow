@@ -36,6 +36,35 @@ logger = logging.getLogger(__name__)
 
 
 def _merge_dict(left: dict, right: dict) -> dict:
+    """Disjoint-key dict merge — used by the LangGraph state reducer for
+    `results_by_bu` (and `_merge_optimized` below for `optimized`).
+
+    Contract: every Send goes through one unique BU, so left and right
+    must have disjoint key sets. A collision means the orchestrator
+    accidentally dispatched two Sends for the same BU (a bug we want to
+    surface immediately, not paper over with last-writer-wins). Raise
+    instead of silently dropping a result.
+    """
+    overlap = left.keys() & right.keys()
+    if overlap:
+        raise ValueError(
+            f"_merge_dict: state reducer received duplicate keys {sorted(overlap)!r} — "
+            "each Send must produce a unique key (one entry per BU)."
+        )
+    return {**left, **right}
+
+
+def _merge_optimized(left: dict, right: dict) -> dict:
+    """Reducer for the ``optimized`` channel — same disjoint-key contract
+    as ``_merge_dict``. Kept as a separate symbol so the fan-out (one
+    Send per BU) and the gather node share an explicit contract.
+    """
+    overlap = left.keys() & right.keys()
+    if overlap:
+        raise ValueError(
+            f"_merge_optimized: state reducer received duplicate keys {sorted(overlap)!r} — "
+            "each Send must produce a unique key (one entry per BU)."
+        )
     return {**left, **right}
 
 
@@ -50,7 +79,7 @@ class JobState(TypedDict, total=False):
     target_df: pd.DataFrame
     req: Any
     queries_by_bu: dict[str, list[str]]
-    optimized: dict[str, Any]
+    optimized: Annotated[dict[str, Any], _merge_optimized]
     results_by_bu: Annotated[dict[str, pd.DataFrame], _merge_dict]
     excel_bytes: bytes
     total_matches: int
@@ -74,6 +103,16 @@ def _lm_config_from(config: RunnableConfig) -> dict[str, Any]:
 
 
 def orchestrator(state: JobState, config: RunnableConfig) -> dict:
+    """Group queries by BU and prepare for optimizer fan-out.
+
+    Per ref doc §Creating workers in LangGraph: this node is now strictly a
+    coordinator — actual optimization happens in parallel via the
+    ``optimize_bu`` worker, dispatched by ``assign_optimize_workers``.
+    Previously this method ran the Gemini optimizer in a sequential
+    ``for bu in queries_by_bu`` loop; with N BUs and Gemini round-trips
+    of a few seconds each, total wall time scaled linearly with N. The
+    Send fan-out lets all BUs optimize concurrently in worker threads.
+    """
     job_store.update_job(
         state["job_id"], status="PROCESSING", started_at=datetime.now(timezone.utc)
     )
@@ -91,29 +130,67 @@ def orchestrator(state: JobState, config: RunnableConfig) -> dict:
         if text:
             queries_by_bu[bu].append(text)
     queries_by_bu = dict(queries_by_bu)
-    excel_processor = ExcelProcessor()
-    optimized: dict[str, Any] = {}
-    total_bus = max(len(queries_by_bu), 1)
-    for i, (bu, qs) in enumerate(queries_by_bu.items()):
-        progress = 5 + int((i / total_bus) * 20)
-        job_store.update_job(
-            state["job_id"], progress=progress, error_message=f"Optimizing queries: {bu}"
-        )
-        optimized[bu] = optimize_queries(
-            bu=bu,
-            queries=qs,
-            target_type=req.target_type,
-            model_provider=lm_config.get("provider"),
-            model_name=lm_config.get("model"),
-            api_key=lm_config.get("api_key"),
-            api_base=lm_config.get("api_base"),
-            excel_processor=excel_processor,
-        )
-    job_store.update_job(state["job_id"], progress=30, query_data=_enriched(req.queries, optimized))
+    job_store.update_job(
+        state["job_id"], progress=5, error_message="Optimizing queries..."
+    )
     return {
         "queries_by_bu": queries_by_bu,
-        "optimized": optimized,
     }
+
+
+def assign_optimize_workers(state: JobState) -> list[Send]:
+    """Send one optimize_bu invocation per BU. Per ref doc §Creating workers
+    in LangGraph.
+
+    RunnableConfig (and ``configurable.lm_config``) propagates through Send
+    dispatch automatically — each optimize_bu invocation gets the same
+    config that orchestrator received.
+    """
+    return [
+        Send(
+            "optimize_bu",
+            {
+                "bu": bu,
+                "queries": qs,
+                "req": state["req"],
+            },
+        )
+        for bu, qs in state["queries_by_bu"].items()
+    ]
+
+
+def optimize_bu(ws: dict, config: RunnableConfig) -> dict:
+    """Worker — runs the query optimizer for one BU. Writes one entry into
+    the ``optimized`` channel via the merge_optimized reducer.
+    """
+    lm_config = _lm_config_from(config)
+    bu = ws["bu"]
+    optimized = optimize_queries(
+        bu=bu,
+        queries=ws["queries"],
+        target_type=ws["req"].target_type,
+        model_provider=lm_config.get("provider"),
+        model_name=lm_config.get("model"),
+        api_key=lm_config.get("api_key"),
+        api_base=lm_config.get("api_base"),
+    )
+    return {"optimized": {bu: optimized}}
+
+
+def gather_optimized(state: JobState, config: RunnableConfig) -> dict:
+    """Join node — runs once after all optimize_bu Sends complete.
+
+    Persists the enriched query data (so the SSE stream / history view
+    shows the optimized text) and bumps progress before rank fan-out.
+    """
+    _ = config
+    job_store.update_job(
+        state["job_id"],
+        progress=30,
+        query_data=_enriched(state["req"].queries, state["optimized"]),
+        error_message="Ranking matches...",
+    )
+    return {}
 
 
 def assign_workers(state: JobState) -> list[Send]:
@@ -263,10 +340,16 @@ def _build_master(
 
 builder = StateGraph(JobState)
 builder.add_node("orchestrator", orchestrator)
+builder.add_node("optimize_bu", optimize_bu)
+builder.add_node("gather_optimized", gather_optimized)
 builder.add_node("rank_bu", rank_bu)
 builder.add_node("synthesize", synthesize)
 builder.add_edge(START, "orchestrator")
-builder.add_conditional_edges("orchestrator", assign_workers, ["rank_bu"])
+builder.add_conditional_edges(
+    "orchestrator", assign_optimize_workers, ["optimize_bu"]
+)
+builder.add_edge("optimize_bu", "gather_optimized")
+builder.add_conditional_edges("gather_optimized", assign_workers, ["rank_bu"])
 builder.add_edge("rank_bu", "synthesize")
 builder.add_edge("synthesize", END)
 match_job_graph = builder.compile()
