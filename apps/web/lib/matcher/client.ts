@@ -81,14 +81,41 @@ export function subscribeToJobProgress(
     }
   };
 
-  eventSource.onerror = () => {
-    // Note: onerror fires when connection closes, which is normal after job completion.
-    // The onError callback will be ignored by hooks.ts if the job already completed.
-    console.log("[matcher] SSE connection closed");
-    if (onError) {
-      onError(new Error("SSE connection error"));
+  // The "error" listener catches BOTH connection-level errors (no .data)
+  // AND server-sent named "error" events (with JSON .data). workflows-api
+  // emits the latter when its in-memory job_store has lost the job, e.g.
+  // after a workflows-api restart while Postgres still has the row. We
+  // must close() in that case — otherwise EventSource auto-reconnects
+  // forever and burns the upstream.
+  eventSource.addEventListener("error", (event) => {
+    const data = (event as MessageEvent).data;
+    if (typeof data === "string" && data.length > 0) {
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        /* fall through to generic close */
+      }
+      const message =
+        parsed && typeof parsed === "object" && parsed !== null && "error" in parsed
+          ? String((parsed as { error: unknown }).error)
+          : "Job stream ended";
+      console.warn("[matcher] SSE upstream error:", message);
+      eventSource.close();
+      if (onError) onError(new Error(message));
+      return;
     }
-  };
+    // Connection-level error. EventSource auto-reconnects unless
+    // readyState === CLOSED — only surface as a real failure once it's
+    // permanently dead, otherwise we'd tear down the consumer on every
+    // reconnection blip and pop the Next 16 dev overlay.
+    if (eventSource.readyState !== EventSource.CLOSED) {
+      console.warn("[matcher] SSE transient error, awaiting auto-reconnect");
+      return;
+    }
+    console.warn("[matcher] SSE connection closed");
+    if (onError) onError(new Error("SSE connection closed"));
+  });
 
   return eventSource;
 }

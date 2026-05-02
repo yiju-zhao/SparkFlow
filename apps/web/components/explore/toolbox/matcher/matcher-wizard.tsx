@@ -149,7 +149,10 @@ export function MatcherWizard() {
       }));
     },
     onError: (error) => {
-      console.error("[Wizard] Job error:", error);
+      // Demoted to warn so an SSE drop / workflows-api restart in dev
+      // doesn't pop the Next 16 error overlay. The job itself is tracked
+      // in Postgres; refresh re-hydrates the latest persisted status.
+      console.warn("[Wizard] Job stream error:", error);
     },
   });
 
