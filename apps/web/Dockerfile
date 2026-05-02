@@ -19,6 +19,14 @@ FROM base AS builder
 # Real DATABASE_URL is supplied at runtime; this placeholder is build-only.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 
+# Corp networks frequently kill long npm fetches with ECONNRESET. Bump
+# retry count + timeouts so transient drops auto-recover instead of
+# failing the whole `docker compose build`.
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=180000
+ENV NPM_CONFIG_FETCH_TIMEOUT=600000
+
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
