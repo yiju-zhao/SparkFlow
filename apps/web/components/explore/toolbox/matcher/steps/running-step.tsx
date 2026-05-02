@@ -58,8 +58,9 @@ export function RunningStep({ progress, onCancel, onRunInBackground }: RunningSt
 
       {!isTerminal && (
         <p className="text-xs text-muted-foreground">
-          The job runs on the server. Close or refresh this page anytime — progress is saved and
-          you can resume from History.
+          The job runs on the server — closing or refreshing the page is safe; progress is saved.
+          Only one matcher job can run at a time, so to start a new one you&apos;ll need to cancel
+          this one first.
         </p>
       )}
 
