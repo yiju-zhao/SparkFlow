@@ -13,8 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Trash2, ChevronDown, ChevronRight, PlayCircle } from "lucide-react";
-import { downloadJobResult } from "@/lib/matcher/client";
+import { Download, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { cancelJob, downloadJobResult } from "@/lib/matcher/client";
 
 interface HistoryJob {
   id: string;
@@ -69,11 +69,26 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleDelete = async (jobId: string) => {
-    if (!confirm("Delete this job and its result files?")) return;
+  const handleDelete = async (jobId: string, status: string) => {
+    const isRunning = status === "PENDING" || status === "PROCESSING";
+    const prompt = isRunning
+      ? "Cancel and delete this running job?"
+      : "Delete this job and its result files?";
+    if (!confirm(prompt)) return;
 
     setDeletingId(jobId);
     try {
+      // For a running row, stop the work first so workflows-api doesn't
+      // keep posting status callbacks to a row that's about to vanish.
+      // Best-effort: a failed cancel (e.g. workflows-api 404 on an
+      // orphan) shouldn't block the delete — proceed regardless.
+      if (isRunning) {
+        try {
+          await cancelJob(jobId);
+        } catch (err) {
+          console.warn("[History] Cancel before delete failed:", err);
+        }
+      }
       const res = await fetch(`/api/matcher/jobs/${jobId}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -207,26 +222,14 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                         </Button>
                       )}
                       {(job.status === "PENDING" || job.status === "PROCESSING") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            router.push(`/explore/toolbox/matcher?jobId=${job.id}`)
-                          }
-                        >
-                          <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                          Resume
-                          {job.status === "PROCESSING" && (
-                            <span className="ml-2 text-xs text-muted-foreground tabular-nums">
-                              {job.progress}%
-                            </span>
-                          )}
-                        </Button>
+                        <span className="text-sm text-muted-foreground tabular-nums">
+                          {job.progress}%
+                        </span>
                       )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(job.id)}
+                        onClick={() => handleDelete(job.id, job.status)}
                         disabled={deletingId === job.id}
                         className="text-muted-foreground hover:text-destructive"
                       >
