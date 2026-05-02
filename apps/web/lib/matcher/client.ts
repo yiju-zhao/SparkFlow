@@ -122,15 +122,21 @@ export function subscribeToJobProgress(
 
 /**
  * Cancel a running job.
+ *
+ * Distinct from a history delete — this stops the work (best-effort) and
+ * leaves the row in the DB with status=CANCELLED. The history page's
+ * trash button is what wipes the row entirely.
  */
-export async function cancelJob(jobId: string): Promise<void> {
-  const response = await fetch(`/api/matcher/jobs/${jobId}`, {
-    method: "DELETE",
+export async function cancelJob(jobId: string): Promise<MatchJob> {
+  const response = await fetch(`/api/matcher/jobs/${jobId}/cancel`, {
+    method: "POST",
   });
 
   if (!response.ok) {
-    throw new Error("Failed to cancel job");
+    const err = await response.json().catch(() => ({ error: "Cancel failed" }));
+    throw new Error(err.error || `Cancel failed (${response.status})`);
   }
+  return response.json();
 }
 
 /**
