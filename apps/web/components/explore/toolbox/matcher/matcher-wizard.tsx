@@ -76,6 +76,7 @@ export function MatcherWizard() {
     completedJob: null,
   });
   const [inflightError, setInflightError] = useState<string | null>(null);
+  const [inflightJobId, setInflightJobId] = useState<string | null>(null);
   const hydratedJobIdRef = useRef<string | null>(null);
 
   // Hydrate from `?jobId=…` so refreshing or reopening the page snaps the
@@ -128,6 +129,36 @@ export function MatcherWizard() {
       cancelled = true;
     };
   }, [urlJobId, router]);
+
+  // When the user lands at the wizard with NO ?jobId= but they actually
+  // have a server-side job still running (e.g. they hit "Run in Background"
+  // earlier and then re-opened the matcher), surface a banner with a
+  // resume link. Without this they'd have no way to find the job again
+  // short of digging into History.
+  //
+  // The banner is gated on `urlJobId` directly in the JSX, so we only
+  // need to do the discovery fetch when there's no jobId — and we don't
+  // need to clear inflightJobId on entry, since it's only read when
+  // urlJobId is falsy.
+  useEffect(() => {
+    if (urlJobId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/matcher/jobs?status=inflight");
+        if (!res.ok) return;
+        const jobs = (await res.json()) as Array<{ id: string; status: string }>;
+        if (cancelled) return;
+        const inflight = jobs.find((j) => j.status === "PENDING" || j.status === "PROCESSING");
+        if (inflight) setInflightJobId(inflight.id);
+      } catch {
+        /* best-effort discovery — silent if it fails */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [urlJobId]);
 
   const { createJob } = useMatchJob();
 
@@ -354,7 +385,27 @@ export function MatcherWizard() {
   };
 
   return (
-    <Card className="overflow-hidden max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-4">
+      {/* Inflight banner: when the user lands here with no ?jobId= but
+          has a server-side job still running, give them a one-click way
+          back. Only shown on the upload step — once they're already
+          inside the wizard for some other purpose we don't pile on. */}
+      {!urlJobId && inflightJobId && state.kind === "upload" && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm dark:border-blue-900 dark:bg-blue-950">
+          <span className="text-blue-900 dark:text-blue-200">
+            You have a matcher job running. Resume to view progress or cancel it.
+          </span>
+          <button
+            type="button"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+            onClick={() => router.push(`/explore/toolbox/matcher?jobId=${inflightJobId}`)}
+          >
+            Resume
+          </button>
+        </div>
+      )}
+
+      <Card className="overflow-hidden">
       <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
         {DISPLAY_STEPS.map((displayStep, index) => {
           // The "running" stage shows the "results" tick as active (we're
@@ -408,6 +459,7 @@ export function MatcherWizard() {
       </div>
 
       <CardContent className="p-6">{renderStep()}</CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
