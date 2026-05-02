@@ -153,6 +153,36 @@ export function MatcherWizard() {
       // doesn't pop the Next 16 error overlay. The job itself is tracked
       // in Postgres; refresh re-hydrates the latest persisted status.
       console.warn("[Wizard] Job stream error:", error);
+      // Re-fetch from the server so we don't leave the user spinning at
+      // the running step. The GET endpoint flips orphaned rows
+      // (workflows-api restarted; in-memory store wiped) to FAILED, so
+      // this transition lands the wizard at the results step with the
+      // upstream error message and unlocks the single-flight guard.
+      setState((prev) => {
+        if (prev.kind !== "running" || !prev.jobId) return prev;
+        const jobId = prev.jobId;
+        getJob(jobId)
+          .then((job) => {
+            if (!TERMINAL_STATUSES.has(job.status)) return;
+            setState((p) => ({
+              ...p,
+              kind: "results",
+              completedJob: {
+                id: job.id,
+                status: job.status,
+                queryCount: job.queryCount,
+                matchCount: job.matchCount,
+                topK: job.topK,
+                resultFileKey: job.resultFileKey,
+                errorMessage: job.errorMessage,
+              },
+            }));
+          })
+          .catch((err) => {
+            console.warn("[Wizard] Failed to refetch after stream error:", err);
+          });
+        return prev;
+      });
     },
   });
 

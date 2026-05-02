@@ -52,6 +52,26 @@ export async function GET(
     if (job.status === "PENDING" || job.status === "PROCESSING") {
       try {
         const response = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs/${jobId}`);
+        if (response.status === 404) {
+          // Orphan: workflows-api restarted (or the in-memory store was
+          // wiped) while Postgres still showed PENDING/PROCESSING. Flip
+          // the row to FAILED so the single-flight guard releases and the
+          // wizard renders a terminal state instead of spinning forever.
+          const failedJob = await prisma.matchJob.update({
+            where: { id: jobId },
+            data: {
+              status: "FAILED",
+              errorMessage: "Matcher service restarted; please retry this job.",
+              completedAt: new Date(),
+            },
+            include: {
+              instance: {
+                select: { name: true, venue: { select: { name: true } } },
+              },
+            },
+          });
+          return NextResponse.json(failedJob);
+        }
         if (response.ok) {
           const matcherJob = await response.json();
           const decoded = fromWire(matcherJob as Record<string, unknown>);
