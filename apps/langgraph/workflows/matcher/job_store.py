@@ -9,8 +9,21 @@ terminal flip — not progress ticks), `update_job` fires a best-effort
 callback to the Next.js side so Postgres mirrors the workflows-api state
 without depending on the user holding open a stream. Callback failure is
 logged but never raised; the matcher continues on its own.
+
+Live-update contract for SSE consumers:
+
+- `subscribe(job_id) -> (event, loop)` returns an `asyncio.Event` that
+  `update_job` will signal whenever the job dict mutates. Callers must be
+  on a running asyncio loop (the matcher's SSE generator).
+- `update_job` calls `loop.call_soon_threadsafe(event.set)` because it
+  runs from worker threads (asyncio.to_thread) where touching an
+  asyncio.Event directly would cross the thread boundary.
+- The SSE generator does `await event.wait()` instead of polling — gives
+  sub-millisecond latency between a node writing progress and the
+  browser seeing it, with no 1Hz busy loop.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -32,6 +45,58 @@ _CALLBACK_TIMEOUT_S = 5.0
 # Lock — fewer lines, same semantics.
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
+
+# Per-job (event, loop) tuples. Set when an SSE handler calls
+# `subscribe(job_id)`; cleared when it calls `unsubscribe(job_id)`.
+# `update_job` does loop.call_soon_threadsafe(event.set) on any mutation
+# so the SSE generator can `await event.wait()` instead of polling.
+#
+# Multiple concurrent subscribers on the same job share one Event — the
+# Event itself fans out via wait()→set()→clear() per loop iteration in
+# the generator. weakref.WeakValueDictionary so a forgotten unsubscribe
+# can't keep loops alive forever (best-effort).
+_subscribers: dict[str, tuple[asyncio.Event, asyncio.AbstractEventLoop]] = {}
+_subscribers_lock = threading.Lock()
+
+
+def subscribe(job_id: str) -> asyncio.Event:
+    """Return (creating if needed) the asyncio.Event for this job.
+
+    Must be called from a running asyncio loop — captures
+    `asyncio.get_running_loop()` so worker threads can signal across the
+    thread boundary via `loop.call_soon_threadsafe`.
+    """
+    loop = asyncio.get_running_loop()
+    with _subscribers_lock:
+        existing = _subscribers.get(job_id)
+        if existing is not None:
+            event, _ = existing
+            return event
+        event = asyncio.Event()
+        _subscribers[job_id] = (event, loop)
+        return event
+
+
+def unsubscribe(job_id: str) -> None:
+    """Drop the per-job Event/loop registration. Idempotent."""
+    with _subscribers_lock:
+        _subscribers.pop(job_id, None)
+
+
+def _signal_subscriber(job_id: str) -> None:
+    """Wake any SSE generator waiting on this job. Safe from any thread."""
+    with _subscribers_lock:
+        entry = _subscribers.get(job_id)
+    if entry is None:
+        return
+    event, loop = entry
+    if loop.is_closed():
+        return
+    try:
+        loop.call_soon_threadsafe(event.set)
+    except RuntimeError:
+        # Loop has shut down between the check and the call. Best-effort.
+        pass
 
 
 def _post_status_callback(job_id: str, payload: dict[str, Any]) -> None:
@@ -186,6 +251,12 @@ def update_job(job_id: str, **kwargs) -> None:
 
     if status_changed:
         _post_status_callback(job_id, callback_payload)
+
+    # Wake any SSE subscriber so it emits the new state immediately
+    # instead of waiting for a polling tick. Done after the lock + the
+    # cross-app callback so the in-process SSE consumer never races
+    # ahead of the Postgres mirror.
+    _signal_subscriber(job_id)
 
 
 def get_result_data(job_id: str) -> Optional[bytes]:

@@ -15,7 +15,7 @@ pickle-safe types below before it leaves the worker. Each type:
   ``cls(message)`` is always valid (this is what pickle does on unpickle).
 * Has a stable, importable name so the parent process can ``except`` it.
 
-Mapped to HTTP statuses by ``api/routes/operators.py``:
+Mapped to HTTP statuses by ``api/routes/rank.py``:
 
     SemopsAuthError      -> 401  (BYOK key rejected)
     SemopsRateLimitError -> 429  (provider rate limit)

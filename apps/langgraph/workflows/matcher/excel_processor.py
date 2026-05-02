@@ -1,7 +1,13 @@
 """
 Excel Processing Service
 
-Handles reading query Excel files and writing result Excel files.
+Handles writing matcher result Excel files. Translation lives in
+``workflows.matcher.translation`` — ExcelProcessor used to expose a
+private ``_translate_to_english`` method that ``query_optimizer.py``
+reached across the class boundary, which was a structural smell:
+ExcelProcessor doesn't actually own LLM credentials in most code paths.
+The constructor's old ``model_provider`` / ``model_name`` / ``api_key`` /
+``api_base`` params are gone for the same reason.
 """
 
 import io
@@ -9,7 +15,6 @@ import logging
 import re
 
 import pandas as pd
-from openai import OpenAI
 
 # Characters illegal in Excel/openpyxl cells (control chars except tab, newline, carriage return)
 _ILLEGAL_EXCEL_CHARS_RE = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
@@ -18,62 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 class ExcelProcessor:
-    """Process Excel files for queries and results.
-
-    Chinese-to-English translation uses the user's BYOK model (passed at
-    construction time). Previously this went through a local Xinference
-    server; Xinference was retired in favor of the model picked in
-    Settings → Research Hub → SemOps.
+    """Build a multi-tab xlsx file from a master DataFrame + per-BU result
+    DataFrames. Pure pandas/openpyxl — no LM dependency.
     """
-
-    def __init__(
-        self,
-        *,
-        model_provider: str | None = None,
-        model_name: str | None = None,
-        api_key: str | None = None,
-        api_base: str | None = None,
-    ):
-        self._model_provider = model_provider
-        self._model_name = model_name
-        self._api_key = api_key
-        self._api_base = api_base
-
-    def _translate_to_english(self, text: str) -> str:
-        """
-        Translate text to English using the caller's BYOK LLM.
-
-        Returns the original text if empty, if credentials are missing,
-        or if the API call fails.
-        """
-        if not text or not text.strip():
-            return text
-        if not self._api_key or not self._model_name:
-            logger.warning(
-                "ExcelProcessor._translate_to_english called without BYOK credentials; "
-                "returning text unchanged."
-            )
-            return text
-        try:
-            client = OpenAI(
-                api_key=self._api_key,
-                base_url=self._api_base,
-            )
-            response = client.chat.completions.create(
-                model=self._model_name,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "Translate the following text to English. Return only the translated text, nothing else. If the text is already in English, return it unchanged.",
-                    },
-                    {"role": "user", "content": text},
-                ],
-                max_tokens=512,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning(f"Translation failed for text '{text[:50]}...': {e}. Using original.")
-            return text
 
     def create_result_excel(
         self,

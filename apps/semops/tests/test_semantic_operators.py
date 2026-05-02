@@ -13,6 +13,7 @@ in ``test_operators_route.py`` against the FastAPI ``TestClient``.
 
 from __future__ import annotations
 
+import os
 import sys
 from unittest.mock import MagicMock
 
@@ -497,3 +498,54 @@ def test_run_in_pool_does_not_rebuild_on_value_error(monkeypatch):
 
 def _raise_value_error_for_pool_test():
     raise ValueError("bad input")
+
+
+# ---------------------------------------------------------------------------
+# Issue #155 — SEMOPS_RANK_POOL_SIZE fail-loud parsing
+# ---------------------------------------------------------------------------
+
+
+def test_pool_size_fails_loud_on_unparseable_env(monkeypatch):
+    """A typo'd SEMOPS_RANK_POOL_SIZE must raise, not silently fall back.
+
+    Python's ``int()`` is lenient about leading/trailing whitespace, so we
+    pick a clearly-bad value (alpha) to exercise the fail-loud branch.
+    """
+    from services import _pool
+
+    monkeypatch.setenv("SEMOPS_RANK_POOL_SIZE", "four")
+    with pytest.raises(ValueError, match="positive integer"):
+        _pool._pool_size()
+
+
+def test_pool_size_fails_loud_on_non_positive(monkeypatch):
+    """Zero / negative values must raise, not silently fall back."""
+    from services import _pool
+
+    monkeypatch.setenv("SEMOPS_RANK_POOL_SIZE", "0")
+    with pytest.raises(ValueError, match="positive integer"):
+        _pool._pool_size()
+
+
+def test_pool_size_unset_uses_default(monkeypatch):
+    """An unset env still resolves to the default (no exception)."""
+    from services import _pool
+
+    monkeypatch.delenv("SEMOPS_RANK_POOL_SIZE", raising=False)
+    assert _pool._pool_size() == min(4, os.cpu_count() or 1)
+
+
+def test_pool_size_empty_string_uses_default(monkeypatch):
+    """Empty string env (e.g. unset shell var that still expanded) → default."""
+    from services import _pool
+
+    monkeypatch.setenv("SEMOPS_RANK_POOL_SIZE", "")
+    assert _pool._pool_size() == min(4, os.cpu_count() or 1)
+
+
+def test_pool_size_valid_positive_int(monkeypatch):
+    """Well-formed positive int still works."""
+    from services import _pool
+
+    monkeypatch.setenv("SEMOPS_RANK_POOL_SIZE", "8")
+    assert _pool._pool_size() == 8

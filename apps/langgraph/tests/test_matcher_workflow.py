@@ -22,7 +22,12 @@ from workflows.matcher._utils import redact_lm_config
 from workflows.matcher.job import (
     JobState,
     _build_master,
+    _merge_dict,
+    _merge_optimized,
+    assign_optimize_workers,
     assign_workers,
+    gather_optimized,
+    optimize_bu,
     orchestrator,
     rank_bu,
     synthesize,
@@ -33,8 +38,10 @@ from workflows.matcher import job_store
 @pytest.fixture(autouse=True)
 def _reset_job_store():
     job_store._jobs.clear()
+    job_store._subscribers.clear()
     yield
     job_store._jobs.clear()
+    job_store._subscribers.clear()
 
 
 @pytest.fixture
@@ -88,11 +95,9 @@ def _make_config(api_key: str = "sk-test-key", **overrides):
 
 
 def test_orchestrator_groups_queries_by_bu(monkeypatch):
-    monkeypatch.setattr(
-        "workflows.matcher.job.optimize_queries",
-        lambda **kw: _fake_optimized(kw["bu"]),
-    )
-
+    """orchestrator now only groups queries; optimization happens in
+    optimize_bu workers via Send fan-out.
+    """
     req = _make_req(
         [
             {"bu": "BU_A", "query": "q1"},
@@ -119,45 +124,10 @@ def test_orchestrator_groups_queries_by_bu(monkeypatch):
 
     assert set(out["queries_by_bu"].keys()) == {"BU_A", "BU_B"}
     assert out["queries_by_bu"]["BU_A"] == ["q1", "q1b"]
-    assert set(out["optimized"].keys()) == {"BU_A", "BU_B"}
+    # orchestrator no longer runs the optimizer — it just groups.
+    assert "optimized" not in out
     job = job_store.get_job(job_id)
     assert job["status"] == "PROCESSING"
-    assert job["progress"] == 30
-
-
-def test_orchestrator_passes_lm_config_to_optimizer(monkeypatch):
-    """optimize_queries must receive creds from RunnableConfig, not state."""
-    captured: dict = {}
-
-    def fake_optimize(**kwargs):
-        captured.update(kwargs)
-        return _fake_optimized(kwargs["bu"])
-
-    monkeypatch.setattr("workflows.matcher.job.optimize_queries", fake_optimize)
-
-    req = _make_req([{"bu": "BU_A", "query": "q1"}])
-    job_id = job_store.create_job(
-        user_id="u",
-        instance_id="i",
-        target_type="publication",
-        top_k=5,
-        search_k=50,
-        include_reasons=True,
-        query_data=req.queries,
-        query_count=1,
-        target_data=[],
-        model_provider="google",
-        model_name="gemini-2.5-flash",
-    )
-    state = {"job_id": job_id, "target_df": pd.DataFrame(), "req": req, "results_by_bu": {}}
-    config = _make_config(
-        provider="google", model="gemini-2.5-flash", api_key="byok-secret-123"
-    )
-    orchestrator(state, config)
-
-    assert captured.get("model_provider") == "google"
-    assert captured.get("model_name") == "gemini-2.5-flash"
-    assert captured.get("api_key") == "byok-secret-123"
 
 
 def test_orchestrator_raises_when_lm_config_missing():
@@ -179,6 +149,140 @@ def test_orchestrator_raises_when_lm_config_missing():
     state = {"job_id": job_id, "target_df": pd.DataFrame(), "req": req, "results_by_bu": {}}
     with pytest.raises(RuntimeError, match="BYOK lm_config"):
         orchestrator(state, {"configurable": {}})
+
+
+# ---------------------------------------------------------------------------
+# Optimizer fan-out: assign_optimize_workers + optimize_bu + gather_optimized
+# ---------------------------------------------------------------------------
+
+
+def test_assign_optimize_workers_emits_one_send_per_bu():
+    state = {
+        "queries_by_bu": {"BU_A": ["q1"], "BU_B": ["q2", "q3"]},
+        "req": _make_req([]),
+    }
+    sends = assign_optimize_workers(state)
+    assert len(sends) == 2
+    assert {s.node for s in sends} == {"optimize_bu"}
+    assert {s.arg["bu"] for s in sends} == {"BU_A", "BU_B"}
+    # Sends MUST NOT carry the BYOK key — it flows via RunnableConfig.
+    for s in sends:
+        assert "api_key" not in s.arg
+        assert "lm_config" not in s.arg
+
+
+def test_optimize_bu_threads_lm_config_into_optimizer(monkeypatch):
+    """optimize_bu reads BYOK creds from RunnableConfig and forwards to
+    optimize_queries. State carries no key.
+    """
+    captured: dict = {}
+
+    def fake_optimize(**kwargs):
+        captured.update(kwargs)
+        return _fake_optimized(kwargs["bu"])
+
+    monkeypatch.setattr("workflows.matcher.job.optimize_queries", fake_optimize)
+
+    ws = {"bu": "BU_A", "queries": ["q1"], "req": _make_req([])}
+    config = _make_config(
+        provider="google", model="gemini-2.5-flash", api_key="byok-secret-123"
+    )
+    out = optimize_bu(ws, config)
+
+    assert "optimized" in out
+    assert "BU_A" in out["optimized"]
+    assert captured.get("model_provider") == "google"
+    assert captured.get("model_name") == "gemini-2.5-flash"
+    assert captured.get("api_key") == "byok-secret-123"
+
+
+def test_optimize_bu_raises_when_lm_config_missing():
+    ws = {"bu": "BU_A", "queries": ["q1"], "req": _make_req([])}
+    with pytest.raises(RuntimeError, match="BYOK lm_config"):
+        optimize_bu(ws, {"configurable": {}})
+
+
+def test_optimize_bu_returns_dict_keyed_by_bu_for_reducer():
+    """optimize_bu returns ``{"optimized": {<bu>: result}}`` — the merge
+    reducer fan-in collects all BU results into a single dict.
+    """
+    captured: list = []
+
+    def fake_optimize(**kwargs):
+        captured.append(kwargs["bu"])
+        return _fake_optimized(kwargs["bu"])
+
+    import workflows.matcher.job as job_module
+
+    original = job_module.optimize_queries
+    job_module.optimize_queries = fake_optimize
+    try:
+        out_a = optimize_bu(
+            {"bu": "BU_A", "queries": ["q1"], "req": _make_req([])}, _make_config()
+        )
+        out_b = optimize_bu(
+            {"bu": "BU_B", "queries": ["q2"], "req": _make_req([])}, _make_config()
+        )
+    finally:
+        job_module.optimize_queries = original
+
+    # Each Send returns one entry; the reducer merges them.
+    merged = _merge_optimized(out_a["optimized"], out_b["optimized"])
+    assert set(merged.keys()) == {"BU_A", "BU_B"}
+
+
+def test_gather_optimized_persists_enriched_query_data():
+    req = _make_req([{"bu": "BU_A", "query": "q1"}, {"bu": "BU_B", "query": "q2"}])
+    job_id = job_store.create_job(
+        user_id="u",
+        instance_id="i",
+        target_type="publication",
+        top_k=5,
+        search_k=50,
+        include_reasons=True,
+        query_data=req.queries,
+        query_count=2,
+        target_data=[],
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+    )
+    state = {
+        "job_id": job_id,
+        "target_df": pd.DataFrame(),
+        "req": req,
+        "queries_by_bu": {"BU_A": ["q1"], "BU_B": ["q2"]},
+        "optimized": {"BU_A": _fake_optimized("BU_A"), "BU_B": _fake_optimized("BU_B")},
+        "results_by_bu": {},
+    }
+    gather_optimized(state, _make_config())
+    job = job_store.get_job(job_id)
+    assert job["progress"] == 30
+    # query_data should be enriched with optimized fields for both BUs.
+    enriched = job["query_data"]
+    bus = {row["bu"]: row for row in enriched}
+    assert bus["BU_A"].get("optimized_query_en") == "english query for BU_A"
+    assert bus["BU_B"].get("optimized_query_en") == "english query for BU_B"
+
+
+def test_merge_dict_and_merge_optimized_combine_disjoint_dicts():
+    """The ``optimized`` reducer composes Send results from each BU."""
+    a = {"BU_A": "ra"}
+    b = {"BU_B": "rb"}
+    assert _merge_optimized(a, b) == {"BU_A": "ra", "BU_B": "rb"}
+    assert _merge_dict(a, b) == {"BU_A": "ra", "BU_B": "rb"}
+
+
+def test_merge_dict_raises_on_duplicate_key():
+    """Per the disjoint-key contract: two Sends emitting the same BU is a
+    bug — surface it loudly instead of silently overwriting.
+    """
+    with pytest.raises(ValueError, match="duplicate keys"):
+        _merge_dict({"BU_A": "first"}, {"BU_A": "second"})
+
+
+def test_merge_optimized_raises_on_duplicate_key():
+    with pytest.raises(ValueError, match="duplicate keys"):
+        _merge_optimized({"BU_A": "first"}, {"BU_A": "second"})
 
 
 def test_assign_workers_emits_one_send_per_bu():
@@ -794,3 +898,347 @@ def test_update_job_does_not_fire_callback_on_progress_only(monkeypatch):
     job_store.update_job(job_id, status="COMPLETED", progress=100)
     assert len(calls) == 2
     assert calls[1][1]["status"] == "COMPLETED"
+
+
+# ---------------------------------------------------------------------------
+# Optimizer Gemini timeout: deterministic fallback on raise
+# ---------------------------------------------------------------------------
+
+
+def test_optimizer_falls_back_to_deterministic_merge_on_gemini_timeout(monkeypatch):
+    """A stuck (or any-error) Gemini call must NOT fail the optimizer — it
+    falls back to the deterministic merge so the BU's worker still
+    produces a usable optimized query.
+    """
+    import workflows.matcher.query_optimizer as qo
+
+    class _FakeModels:
+        def generate_content(self, **_kwargs):
+            # Simulate the symptom of a connect/read timeout from
+            # google-genai HttpOptions.timeout. Could equivalently be
+            # httpx.ReadTimeout / google.api_core.exceptions.DeadlineExceeded.
+            raise TimeoutError("simulated Gemini timeout")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.models = _FakeModels()
+
+    monkeypatch.setattr(qo.genai, "Client", _FakeClient)
+
+    result = qo.optimize_queries(
+        bu="BU_A",
+        queries=["one", "two"],
+        target_type="publication",
+        model_provider="google",
+        model_name="gemini-2.5-flash",
+        api_key="byok-test",
+    )
+
+    assert result.used_llm is False
+    # Deterministic merge: numbered concatenation when there are 2+ inputs.
+    assert "one" in result.optimized_query_native
+    assert "two" in result.optimized_query_native
+
+
+def test_optimizer_passes_timeout_via_http_options(monkeypatch):
+    """The genai client must be constructed with HttpOptions.timeout in ms,
+    derived from the OPTIMIZER_GEMINI_TIMEOUT env var (or 60s default).
+    """
+    import workflows.matcher.query_optimizer as qo
+
+    captured: dict = {}
+
+    class _FakeModels:
+        def generate_content(self, **kwargs):
+            return MagicMock(text="optimized")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            captured["kwargs"] = kwargs
+            self.models = _FakeModels()
+
+    monkeypatch.setattr(qo.genai, "Client", _FakeClient)
+    monkeypatch.setattr(
+        "workflows.matcher.query_optimizer.translate_to_english",
+        lambda text, **_: text,
+    )
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "5")
+
+    qo.optimize_queries(
+        bu="BU_A",
+        queries=["q"],
+        target_type="publication",
+        model_provider="google",
+        model_name="gemini-2.5-flash",
+        api_key="byok-test",
+    )
+
+    http_opts = captured["kwargs"].get("http_options")
+    assert http_opts is not None
+    # google-genai HttpOptions.timeout is in milliseconds.
+    assert http_opts.timeout == 5000
+
+
+def test_optimizer_default_timeout_is_60s(monkeypatch):
+    import workflows.matcher.query_optimizer as qo
+
+    monkeypatch.delenv("OPTIMIZER_GEMINI_TIMEOUT", raising=False)
+    assert qo._gemini_timeout() == 60.0
+
+
+def test_optimizer_invalid_timeout_falls_back_to_default(monkeypatch):
+    import workflows.matcher.query_optimizer as qo
+
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "not-a-number")
+    assert qo._gemini_timeout() == 60.0
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "0")
+    assert qo._gemini_timeout() == 60.0
+    monkeypatch.setenv("OPTIMIZER_GEMINI_TIMEOUT", "-5")
+    assert qo._gemini_timeout() == 60.0
+
+
+# ---------------------------------------------------------------------------
+# Translation extraction: lives in workflows.matcher.translation, not
+# pulled across class boundaries from ExcelProcessor.
+# ---------------------------------------------------------------------------
+
+
+def test_translate_to_english_returns_unchanged_without_credentials():
+    from workflows.matcher.translation import translate_to_english
+
+    # Empty / whitespace-only input is passed through.
+    assert translate_to_english("", model_name=None, api_key=None) == ""
+    assert translate_to_english("   ", model_name="m", api_key="k") == "   "
+
+    # Missing creds → returns the original text unchanged.
+    assert (
+        translate_to_english("some text", model_name=None, api_key="k")
+        == "some text"
+    )
+    assert (
+        translate_to_english("some text", model_name="m", api_key=None)
+        == "some text"
+    )
+
+
+def test_excel_processor_no_longer_has_translation_or_lm_params():
+    """Translation moved to workflows.matcher.translation; ExcelProcessor's
+    constructor doesn't take LM credentials anymore.
+    """
+    from workflows.matcher.excel_processor import ExcelProcessor
+
+    # No-arg constructor still works.
+    ep = ExcelProcessor()
+    assert not hasattr(ep, "_translate_to_english")
+    # The old kwargs are gone.
+    import inspect
+
+    params = inspect.signature(ExcelProcessor.__init__).parameters
+    for forbidden in ("model_provider", "model_name", "api_key", "api_base"):
+        assert forbidden not in params, (
+            f"ExcelProcessor.__init__ should not accept {forbidden!r} anymore"
+        )
+
+
+def test_query_optimizer_imports_translation_module(monkeypatch):
+    """Both consumers import the new translate_to_english function."""
+    from workflows.matcher import query_optimizer
+    from workflows.matcher.translation import translate_to_english
+
+    assert query_optimizer.translate_to_english is translate_to_english
+
+
+# ---------------------------------------------------------------------------
+# SSE polling → asyncio.Event
+# ---------------------------------------------------------------------------
+
+
+def test_subscribe_returns_asyncio_event_and_is_idempotent_per_job():
+    """Two subscribe() calls in the same job/loop share one Event so the
+    SSE generator's wait()/clear() cycle stays atomic.
+    """
+
+    async def _run():
+        ev1 = job_store.subscribe("job-1")
+        ev2 = job_store.subscribe("job-1")
+        assert ev1 is ev2
+        assert isinstance(ev1, asyncio.Event)
+        # Different job_id → different Event.
+        ev_other = job_store.subscribe("job-2")
+        assert ev_other is not ev1
+        job_store.unsubscribe("job-1")
+        job_store.unsubscribe("job-2")
+
+    asyncio.run(_run())
+
+
+def test_unsubscribe_drops_registration():
+    async def _run():
+        ev1 = job_store.subscribe("job-1")
+        job_store.unsubscribe("job-1")
+        # After unsubscribe, subscribe() returns a fresh Event.
+        ev2 = job_store.subscribe("job-1")
+        assert ev1 is not ev2
+        job_store.unsubscribe("job-1")
+
+    asyncio.run(_run())
+
+
+def test_update_job_sets_subscriber_event():
+    """A mutation of the job dict wakes any waiter. This is the core
+    invariant the SSE generator relies on for live updates.
+    """
+
+    async def _run():
+        job_id = job_store.create_job(
+            user_id="u",
+            instance_id="i",
+            target_type="publication",
+            top_k=5,
+            search_k=50,
+            include_reasons=True,
+            query_data=[],
+            query_count=0,
+            target_data=[],
+            model_provider="openai",
+            model_name="gpt-4o-mini",
+        )
+        event = job_store.subscribe(job_id)
+        assert not event.is_set()
+
+        # update_job from the same loop — _signal_subscriber should set it.
+        job_store.update_job(job_id, progress=42)
+        # The set is scheduled via call_soon_threadsafe, so wait briefly.
+        await asyncio.wait_for(event.wait(), timeout=1.0)
+        assert event.is_set()
+        job_store.unsubscribe(job_id)
+
+    asyncio.run(_run())
+
+
+def test_update_job_signals_subscriber_from_another_thread():
+    """update_job runs from worker threads (asyncio.to_thread) — verify
+    cross-thread signaling via call_soon_threadsafe works.
+    """
+    import threading
+
+    async def _run():
+        job_id = job_store.create_job(
+            user_id="u",
+            instance_id="i",
+            target_type="publication",
+            top_k=5,
+            search_k=50,
+            include_reasons=True,
+            query_data=[],
+            query_count=0,
+            target_data=[],
+            model_provider="openai",
+            model_name="gpt-4o-mini",
+        )
+        event = job_store.subscribe(job_id)
+
+        def worker():
+            job_store.update_job(job_id, progress=99)
+
+        t = threading.Thread(target=worker)
+        t.start()
+        try:
+            await asyncio.wait_for(event.wait(), timeout=2.0)
+        finally:
+            t.join()
+            job_store.unsubscribe(job_id)
+        assert event.is_set()
+        assert job_store.get_job(job_id)["progress"] == 99
+
+    asyncio.run(_run())
+
+
+def test_signal_subscriber_no_op_without_subscriber():
+    """Calling signal when nobody subscribed must not raise — the matcher
+    runs without an SSE consumer all the time.
+    """
+    job_store._signal_subscriber("never-subscribed-job")  # should not raise
+
+
+# ---------------------------------------------------------------------------
+# MatcherRunInput Pydantic model (replaces anonymous _Req shim)
+# ---------------------------------------------------------------------------
+
+
+def test_matcher_run_input_carries_only_non_secret_fields():
+    """The model used as state["req"] must NEVER expose api_key/api_base —
+    those flow through RunnableConfig, not graph state.
+    """
+    from server.matcher_types import MatcherRunInput
+
+    fields = MatcherRunInput.model_fields
+    assert "api_key" not in fields
+    assert "api_base" not in fields
+    assert "api_key" not in MatcherRunInput.__annotations__
+    # The fields that ARE expected:
+    expected = {"queries", "target_type", "top_k", "search_k", "include_reasons"}
+    assert expected.issubset(fields.keys())
+
+
+def test_run_and_persist_uses_matcher_run_input(monkeypatch):
+    """_run_and_persist constructs a MatcherRunInput (not an anonymous
+    class shim) and threads it into state['req'].
+    """
+    from server.matcher_types import (
+        CreateMatchJobRequest,
+        MatcherRunInput,
+        MatchTargetType,
+        ParsedQueryInput,
+    )
+    from server.routes import matcher_jobs
+
+    captured: dict = {}
+
+    def fake_invoke(state, config):
+        captured["state"] = state
+        captured["config"] = config
+        return {"excel_bytes": b"X", "total_matches": 0}
+
+    monkeypatch.setattr(
+        "server.routes.matcher_jobs.match_job_graph", MagicMock(invoke=fake_invoke)
+    )
+
+    req = CreateMatchJobRequest(
+        user_id="u",
+        instance_id="i",
+        target_type=MatchTargetType.SESSION,
+        queries=[ParsedQueryInput(id="q1", bu="A", query="q", row_index=0)],
+        target_data=[{"id": "s1"}],
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+        api_key="sk-secret",
+    )
+    job_id = job_store.create_job(
+        user_id="u",
+        instance_id="i",
+        target_type="SESSION",
+        top_k=50,
+        search_k=350,
+        include_reasons=True,
+        query_data=[q.model_dump() for q in req.queries],
+        query_count=1,
+        target_data=req.target_data,
+        model_provider="openai",
+        model_name="gpt-4o-mini",
+    )
+
+    asyncio.run(matcher_jobs._run_and_persist(job_id, req, req.target_data))
+
+    graph_req = captured["state"]["req"]
+    assert isinstance(graph_req, MatcherRunInput)
+    # Non-secret fields preserved.
+    assert graph_req.target_type == "SESSION"
+    assert graph_req.top_k == 50
+    assert graph_req.search_k == 350
+    assert graph_req.include_reasons is True
+    assert graph_req.queries == [q.model_dump() for q in req.queries]
+    # Secret fields absent.
+    assert not hasattr(graph_req, "api_key")
+    assert not hasattr(graph_req, "api_base")
+    assert "sk-secret" not in repr(graph_req)

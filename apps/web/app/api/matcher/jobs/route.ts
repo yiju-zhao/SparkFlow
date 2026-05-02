@@ -9,34 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveApiKey } from "@/lib/services/api-key-resolver";
+import { toWire } from "@/lib/matcher/wire";
 
 const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
-
-// Convert camelCase to snake_case for matcher service
-function toSnakeCase(str: string): string {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-}
-
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v) && v.constructor === Object;
-}
-
-function transformToSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const snakeKey = toSnakeCase(key);
-    if (Array.isArray(value)) {
-      result[snakeKey] = value.map((item) =>
-        isPlainObject(item) ? transformToSnakeCase(item) : item,
-      );
-    } else if (isPlainObject(value)) {
-      result[snakeKey] = transformToSnakeCase(value);
-    } else {
-      result[snakeKey] = value;
-    }
-  }
-  return result;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -184,23 +159,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build payload with all data
-    const payload: Record<string, unknown> = {
-      ...transformToSnakeCase({
-        instanceId,
-        targetType,
-        queries,
-        topK,
-        searchK,
-        includeReasons,
-        targetData,
-        modelProvider,
-        modelName,
-      }),
-      user_id: session.user.id,
-      api_key: apiKey,
-      api_base: apiBase ?? null,
-    };
+    // Build payload with all data — translate Prisma-shaped → wire-shaped via lib/matcher/wire.
+    const payload = toWire({
+      instanceId,
+      targetType,
+      queries: queries ?? [],
+      topK,
+      searchK,
+      includeReasons,
+      targetData,
+      modelProvider,
+      modelName,
+      userId: session.user.id,
+      apiKey,
+      apiBase: apiBase ?? null,
+    });
 
     console.log("[Matcher Jobs] Sending to matcher - model:", modelProvider, modelName);
 

@@ -15,11 +15,20 @@ import {
 } from "./client";
 import type { CreateMatchJobInput, JobProgress, MatchJob, MatchJobStatus } from "./types";
 
-// Global registry to track SSE connections by jobId
-const sseConnections = new Map<string, EventSource>();
-
 /**
  * Hook for streaming job progress via SSE
+ *
+ * Lifecycle: the EventSource is owned by the effect — opened on mount, closed
+ * by the cleanup function. The previous module-level `sseConnections` Map only
+ * deleted on COMPLETED/FAILED/error and leaked on tab background, navigation
+ * away, dev hot-reload, or React unmount. Returning the cleanup from useEffect
+ * makes React responsible for the close, which is what we want.
+ *
+ * StrictMode double-mount note: with React.StrictMode the dev environment
+ * mounts → unmounts → remounts the effect synchronously. The first cycle's
+ * cleanup closes the EventSource before the second cycle opens its own —
+ * the workflows-API just gets two GETs and one stays open. We accept that
+ * over the leak.
  */
 export function useJobProgress(
   jobId: string | null,
@@ -34,7 +43,8 @@ export function useJobProgress(
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Store callbacks in refs
+  // Store callbacks in refs so the effect doesn't re-run when their identity
+  // changes — the wizard passes inline arrow functions on every render.
   const onCompleteRef = useRef(onComplete);
   const onErrorRef = useRef(onError);
   useEffect(() => {
@@ -52,20 +62,12 @@ export function useJobProgress(
       return;
     }
 
-    // Check if connection already exists
-    if (sseConnections.has(jobId)) {
-      console.log("[Matcher] SSE connection already exists for job:", jobId);
-      queueMicrotask(() => {
-        setIsConnected(true);
-        setIsLoading(true);
-      });
-      return;
-    }
-
     console.log("[Matcher] Creating SSE connection for job:", jobId);
     queueMicrotask(() => setIsLoading(true));
 
-    // Track if job completed successfully - used to ignore onerror after completion
+    // jobCompleted is checked in onerror to suppress the "connection closed"
+    // toast that EventSource fires after a clean server-side close on
+    // COMPLETED/FAILED. Closure-local; reset by remount.
     let jobCompleted = false;
 
     const eventSource = subscribeToJobProgress(
@@ -80,7 +82,6 @@ export function useJobProgress(
           jobCompleted = true;
           setIsLoading(false);
           eventSource.close();
-          sseConnections.delete(jobId);
 
           if (onCompleteRef.current) {
             getJob(jobId).then(onCompleteRef.current).catch(console.error);
@@ -89,7 +90,6 @@ export function useJobProgress(
           jobCompleted = true; // Mark as completed to prevent onerror from also firing
           setIsLoading(false);
           eventSource.close();
-          sseConnections.delete(jobId);
 
           // Defence-in-depth: pull the latest persisted row so the UI sees the
           // FAILED status + error_message even if the workflows-api → Next.js
@@ -111,7 +111,6 @@ export function useJobProgress(
         setIsConnected(false);
         setIsLoading(false);
         eventSource.close();
-        sseConnections.delete(jobId);
 
         if (onErrorRef.current) {
           onErrorRef.current(error);
@@ -119,12 +118,13 @@ export function useJobProgress(
       },
     );
 
-    // Store connection globally
-    sseConnections.set(jobId, eventSource);
-
-    // Don't close on cleanup - let the connection complete naturally
-    // This prevents React StrictMode double-effect issues
-    // The connection will close when job completes or errors
+    return () => {
+      // React owns the lifecycle: cleanup closes the EventSource on unmount,
+      // jobId change, or hot-reload. Idempotent — close() is a no-op once the
+      // success/error branch above has already closed.
+      console.log("[Matcher] SSE effect cleanup for job:", jobId);
+      eventSource.close();
+    };
   }, [jobId]);
 
   return {

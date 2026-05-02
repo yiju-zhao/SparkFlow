@@ -5,14 +5,14 @@ Strategy
 The route imports the module-level ``rank`` from
 ``services.semantic_operators`` (aliased as ``run_rank`` to avoid colliding
 with the route handler's own ``rank`` name). We monkeypatch that bound
-reference on ``api.routes.operators`` so no real LOTUS call is ever made.
+reference on ``api.routes.rank`` so no real LOTUS call is ever made.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from api.routes import operators as operators_route
+from api.routes import rank as operators_route
 
 
 # ---------------------------------------------------------------------------

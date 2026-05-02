@@ -46,9 +46,24 @@ export async function GET(
       return NextResponse.json({ error: "Result file not available yet" }, { status: 404 });
     }
 
+    // Defence in depth: resultFileKey is set by our own code today, but the
+    // Prisma column is a free-form string. Resolve and verify the path stays
+    // inside DATA_DIR so a poisoned key (`..\..\etc\passwd`) can't read
+    // arbitrary files off the host.
+    const resolvedDataDir = path.resolve(DATA_DIR);
+    const resolved = path.resolve(resolvedDataDir, job.resultFileKey);
+    if (
+      resolved !== resolvedDataDir &&
+      !resolved.startsWith(resolvedDataDir + path.sep)
+    ) {
+      console.error(
+        `[Matcher] Rejected out-of-DATA_DIR resultFileKey for job ${jobId}: ${job.resultFileKey}`,
+      );
+      return new Response("invalid path", { status: 400 });
+    }
+
     // Get stream from local file
-    const filePath = path.join(DATA_DIR, job.resultFileKey);
-    const stream = createReadStream(filePath);
+    const stream = createReadStream(resolved);
 
     // Convert Node.js Readable to web ReadableStream
     const webStream = new ReadableStream({
