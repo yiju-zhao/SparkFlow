@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,10 @@ import { ConfigStep } from "./steps/config-step";
 import { RunningStep } from "./steps/running-step";
 import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
+import { downloadJobResult, getJob, InflightJobError } from "@/lib/matcher/client";
 import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
+
+const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 
 type WizardConfig = {
   instanceId: string;
@@ -38,6 +41,8 @@ type WizardState = {
 
 export function MatcherWizard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlJobId = searchParams.get("jobId");
   const tSteps = useTranslations("explore.toolbox.wizard.steps");
 
   const DISPLAY_STEPS = [
@@ -53,10 +58,63 @@ export function MatcherWizard() {
     jobId: null,
     completedJob: null,
   });
+  const [inflightError, setInflightError] = useState<string | null>(null);
+  const hydratedJobIdRef = useRef<string | null>(null);
+
+  // Hydrate from `?jobId=…` so refreshing or reopening the page snaps the
+  // wizard back onto its in-flight (or just-finished) job. The matcher
+  // worker keeps running on the workflows-api regardless of what the
+  // browser does — this just lets the UI find it again.
+  useEffect(() => {
+    if (!urlJobId) return;
+    if (hydratedJobIdRef.current === urlJobId) return;
+    hydratedJobIdRef.current = urlJobId;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const job = await getJob(urlJobId);
+        if (cancelled) return;
+        if (TERMINAL_STATUSES.has(job.status)) {
+          setState({
+            step: 3,
+            config: null,
+            queries: null,
+            jobId: job.id,
+            completedJob: {
+              id: job.id,
+              status: job.status,
+              queryCount: job.queryCount,
+              matchCount: job.matchCount,
+              topK: job.topK,
+              resultFileKey: job.resultFileKey,
+              errorMessage: job.errorMessage,
+            },
+          });
+        } else {
+          setState({
+            step: 2,
+            config: null,
+            queries: null,
+            jobId: job.id,
+            completedJob: null,
+          });
+        }
+      } catch (err) {
+        // Stale/invalid jobId in URL — clear it and start fresh.
+        console.error("[Wizard] Failed to hydrate job from URL:", err);
+        hydratedJobIdRef.current = null;
+        router.replace("/explore/toolbox/matcher");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [urlJobId, router]);
 
   const { createJob } = useMatchJob();
 
-  const { progress } = useJobProgress(state.jobId, {
+  const { progress } = useJobProgress(state.step === 2 ? state.jobId : null, {
     onComplete: (job) => {
       console.log("[Wizard] Job completed:", job);
       setState((prev) => ({
@@ -87,6 +145,7 @@ export function MatcherWizard() {
   const handleStartMatching = useCallback(
     async (config: WizardConfig, queries: ParsedQuery[]) => {
       try {
+        setInflightError(null);
         // Save config in state for back navigation
         setState((prev) => ({ ...prev, config, queries }));
 
@@ -102,6 +161,12 @@ export function MatcherWizard() {
 
         console.log("[Wizard] Job created:", job.id);
 
+        // Persist jobId in URL so a refresh re-attaches to the running job
+        // instead of dropping the user back at step 0. `replace` (not push)
+        // because the upload/config steps already happened; we don't want
+        // the back button to recreate them as separate history entries.
+        hydratedJobIdRef.current = job.id;
+        router.replace(`/explore/toolbox/matcher?jobId=${job.id}`);
         setState((prev) => ({
           ...prev,
           step: 2,
@@ -109,10 +174,19 @@ export function MatcherWizard() {
           jobId: job.id,
         }));
       } catch (error) {
+        if (error instanceof InflightJobError) {
+          // User already has a job running. Snap straight to it instead
+          // of double-charging their BYOK quota on a duplicate.
+          console.log("[Wizard] Inflight job detected:", error.inflightJobId);
+          hydratedJobIdRef.current = null; // force re-hydration via URL effect
+          router.replace(`/explore/toolbox/matcher?jobId=${error.inflightJobId}`);
+          return;
+        }
         console.error("[Wizard] Failed to start job:", error);
+        setInflightError(error instanceof Error ? error.message : "Failed to start job");
       }
     },
-    [createJob],
+    [createJob, router],
   );
 
   // Step 2: Running - Cancel
@@ -122,13 +196,19 @@ export function MatcherWizard() {
   }, [state.jobId, router]);
 
   // Step 3: Results - Download
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!state.jobId) return;
-    const downloadUrl = `/api/matcher/jobs/${state.jobId}/download`;
-    window.open(downloadUrl, "_blank");
+    try {
+      await downloadJobResult(state.jobId);
+    } catch (err) {
+      console.error("[Wizard] Download failed:", err);
+    }
   }, [state.jobId]);
 
   const handleReset = useCallback(() => {
+    hydratedJobIdRef.current = null;
+    setInflightError(null);
+    router.replace("/explore/toolbox/matcher");
     setState({
       step: 0,
       config: null,
@@ -136,7 +216,7 @@ export function MatcherWizard() {
       jobId: null,
       completedJob: null,
     });
-  }, []);
+  }, [router]);
 
   const handleBack = useCallback(() => {
     setState((prev) => ({ ...prev, step: Math.max(0, prev.step - 1) }));
@@ -173,6 +253,7 @@ export function MatcherWizard() {
             onStart={handleStartMatching}
             onBack={handleBack}
             onCancel={handleCancel}
+            submitError={inflightError}
           />
         );
       case 2:

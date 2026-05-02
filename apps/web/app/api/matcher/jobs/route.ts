@@ -161,6 +161,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Single-flight: at most one matcher job per user may be PENDING or
+    // PROCESSING. The job is server-side and survives page refresh, so a
+    // second submission would burn the user's BYOK quota on a duplicate
+    // run while the first is still going. Surface inflightJobId so the
+    // client can deep-link the user to the running job.
+    const inflight = await prisma.matchJob.findFirst({
+      where: {
+        userId: session.user.id,
+        status: { in: ["PENDING", "PROCESSING"] },
+      },
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (inflight) {
+      return NextResponse.json(
+        {
+          error: "You already have a matcher job running. Resume it before starting a new one.",
+          inflightJobId: inflight.id,
+        },
+        { status: 409 },
+      );
+    }
+
     // Build payload with all data
     const payload: Record<string, unknown> = {
       ...transformToSnakeCase({

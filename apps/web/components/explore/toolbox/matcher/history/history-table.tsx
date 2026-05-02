@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Download, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { downloadJobResult } from "@/lib/matcher/client";
 
 interface HistoryJob {
   id: string;
@@ -190,12 +191,20 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       {job.status === "COMPLETED" && (
-                        <a href={`/api/matcher/jobs/${job.id}/download`} download>
-                          <Button variant="outline" size="sm">
-                            <Download className="h-3.5 w-3.5 mr-1" />
-                            Download
-                          </Button>
-                        </a>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await downloadJobResult(job.id);
+                            } catch (err) {
+                              console.error("[History] Download failed:", err);
+                            }
+                          }}
+                        >
+                          <Download className="h-3.5 w-3.5 mr-1" />
+                          Download
+                        </Button>
                       )}
                       {job.status === "PROCESSING" && (
                         <span className="text-sm text-muted-foreground">{job.progress}%</span>

@@ -39,9 +39,16 @@ interface ConfigStepProps {
   onStart: (config: ConfigValues, queries: ParsedQuery[]) => void;
   onBack: () => void;
   onCancel: () => void;
+  submitError?: string | null;
 }
 
-export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigStepProps) {
+export function ConfigStep({
+  queries,
+  initialConfig,
+  onStart,
+  onBack,
+  submitError,
+}: ConfigStepProps) {
   const t = useTranslations("explore.toolbox.wizard.configure");
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,7 +141,9 @@ export function ConfigStep({ queries, initialConfig, onStart, onBack }: ConfigSt
         </div>
       ) : (
         <div className="space-y-4">
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {(error || submitError) && (
+            <p className="text-sm text-destructive">{error ?? submitError}</p>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="instance">{t("conference")}</Label>
