@@ -107,7 +107,11 @@ export function useJobProgress(
           console.log("[Matcher] SSE connection closed after completion (expected)");
           return;
         }
-        console.error("[Matcher] SSE error:", error);
+        // console.warn (not error) so the Next.js dev overlay doesn't pop on
+        // ordinary SSE drops — workflows-api restart, brief network hiccup,
+        // dev hot-reload of the proxy route. The job itself is still tracked
+        // in Postgres; the wizard can recover by re-fetching.
+        console.warn("[Matcher] SSE error:", error);
         setIsConnected(false);
         setIsLoading(false);
         eventSource.close();
