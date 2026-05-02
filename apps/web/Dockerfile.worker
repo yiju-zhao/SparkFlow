@@ -19,6 +19,15 @@ RUN if [ -s /tmp/corporate-ca.crt ]; then \
 ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
 FROM base AS deps
+
+# Corp networks frequently kill long npm fetches with ECONNRESET. Bump
+# retry count + timeouts so transient drops auto-recover instead of
+# failing the whole build.
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=180000
+ENV NPM_CONFIG_FETCH_TIMEOUT=600000
+
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 # NODE_TLS_REJECT_UNAUTHORIZED=0 scoped to prisma generate only — Prisma

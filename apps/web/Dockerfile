@@ -19,6 +19,14 @@ FROM base AS builder
 # Real DATABASE_URL is supplied at runtime; this placeholder is build-only.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 
+# Corp networks frequently kill long npm fetches with ECONNRESET. Bump
+# retry count + timeouts so transient drops auto-recover instead of
+# failing the whole `docker compose build`.
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=180000
+ENV NPM_CONFIG_FETCH_TIMEOUT=600000
+
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
@@ -28,7 +36,17 @@ COPY prisma.config.ts ./
 # intercepting corporate networks fails the cert chain even with
 # NODE_EXTRA_CA_CERTS set. Disable verification just for this one fetch;
 # all subsequent stages run with normal cert validation.
-RUN npm ci && NODE_TLS_REJECT_UNAUTHORIZED=0 npx prisma generate
+#
+# `npm install --no-save @next/swc-linux-x64-gnu` is a workaround for
+# corp-network builds: if the lockfile was generated on macOS the linux
+# SWC binary isn't pinned, and `next build` falls back to fetching it
+# directly from Cloudflare (104.16.x.x), which most corp firewalls block.
+# Pulling it explicitly via the configured npm registry (the same one
+# `npm ci` just used) guarantees the binary is in node_modules before
+# `next build` looks for it. `--no-save` keeps package.json clean.
+RUN npm ci && \
+    npm install --no-save --no-audit @next/swc-linux-x64-gnu && \
+    NODE_TLS_REJECT_UNAUTHORIZED=0 npx prisma generate
 
 COPY . .
 
