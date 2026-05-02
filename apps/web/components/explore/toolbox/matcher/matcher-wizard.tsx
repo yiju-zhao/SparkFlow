@@ -10,7 +10,7 @@ import { ConfigStep } from "./steps/config-step";
 import { RunningStep } from "./steps/running-step";
 import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
-import { downloadJobResult, getJob, InflightJobError } from "@/lib/matcher/client";
+import { cancelJob, downloadJobResult, getJob, InflightJobError } from "@/lib/matcher/client";
 import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
 
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
@@ -239,11 +239,36 @@ export function MatcherWizard() {
     [createJob, router],
   );
 
-  // Running — Cancel
+  // Running — actively stop the job. Forwards to workflows-api so the
+  // in-memory status flips to CANCELLED, then surfaces the cancelled row
+  // at the results step. Distinct from "Run in Background" which just
+  // navigates away while the job continues server-side.
   const handleCancelJob = useCallback(async () => {
     if (!state.jobId) return;
+    try {
+      const job = await cancelJob(state.jobId);
+      setState((prev) => ({
+        ...prev,
+        kind: "results",
+        completedJob: {
+          id: job.id,
+          status: job.status,
+          queryCount: job.queryCount,
+          matchCount: job.matchCount,
+          topK: job.topK,
+          resultFileKey: job.resultFileKey,
+          errorMessage: job.errorMessage,
+        },
+      }));
+    } catch (err) {
+      console.warn("[Wizard] Failed to cancel job:", err);
+    }
+  }, [state.jobId]);
+
+  // Running — leave the job running server-side, just navigate away.
+  const handleRunInBackground = useCallback(() => {
     router.push("/explore/toolbox");
-  }, [state.jobId, router]);
+  }, [router]);
 
   // Results — Download
   const handleDownload = useCallback(async () => {
@@ -311,7 +336,14 @@ export function MatcherWizard() {
           />
         );
       case "running":
-        return <RunningStep jobId={state.jobId!} progress={progress} onCancel={handleCancelJob} />;
+        return (
+          <RunningStep
+            jobId={state.jobId!}
+            progress={progress}
+            onCancel={handleCancelJob}
+            onRunInBackground={handleRunInBackground}
+          />
+        );
       case "results":
         return (
           <ResultsStep job={state.completedJob} onDownload={handleDownload} onReset={handleReset} />

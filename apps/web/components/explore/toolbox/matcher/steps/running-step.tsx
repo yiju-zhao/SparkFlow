@@ -9,6 +9,7 @@ interface RunningStepProps {
   jobId: string;
   progress: JobProgress | null;
   onCancel: () => void;
+  onRunInBackground: () => void;
 }
 
 const statusConfig: Record<MatchJobStatus, { label: string; color: string }> = {
@@ -19,7 +20,7 @@ const statusConfig: Record<MatchJobStatus, { label: string; color: string }> = {
   CANCELLED: { label: "Cancelled", color: "text-muted-foreground" },
 };
 
-export function RunningStep({ progress, onCancel }: RunningStepProps) {
+export function RunningStep({ progress, onCancel, onRunInBackground }: RunningStepProps) {
   const status = progress?.status || "PENDING";
   const progressValue = progress?.progress || 0;
   const isTerminal = ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
@@ -62,17 +63,26 @@ export function RunningStep({ progress, onCancel }: RunningStepProps) {
         </p>
       )}
 
-      {/* Close / Run-in-background button — onCancel just navigates away;
-          the job keeps running on the workflows-api regardless. */}
-      <div className="flex justify-end pt-2">
-        <Button
-          variant={isTerminal ? "default" : "outline"}
-          onClick={onCancel}
-          disabled={status === "CANCELLED"}
-          size="sm"
-        >
-          {isTerminal ? "Close" : "Run in Background"}
-        </Button>
+      {/* Two distinct actions during running:
+          - "Cancel Job" actively stops the work (forwards to workflows-api,
+            flips Postgres to CANCELLED, lands user at the results step).
+          - "Run in Background" just navigates away; the server-side job
+            keeps running and the user can return via the URL or History. */}
+      <div className="flex justify-end gap-2 pt-2">
+        {isTerminal ? (
+          <Button variant="default" onClick={onRunInBackground} size="sm">
+            Close
+          </Button>
+        ) : (
+          <>
+            <Button variant="outline" onClick={onCancel} size="sm">
+              Cancel Job
+            </Button>
+            <Button variant="default" onClick={onRunInBackground} size="sm">
+              Run in Background
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
