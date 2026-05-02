@@ -232,12 +232,17 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const instanceId = searchParams.get("instanceId");
+    // `?status=inflight` returns only PENDING/PROCESSING. Used by the
+    // matcher landing wizard to discover a server-side running job and
+    // offer a resume banner when no `?jobId=` is in the URL.
+    const statusFilter = searchParams.get("status");
 
     // Query jobs from database
     const jobs = await prisma.matchJob.findMany({
       where: {
         userId: session.user.id,
         ...(instanceId ? { instanceId } : {}),
+        ...(statusFilter === "inflight" ? { status: { in: ["PENDING", "PROCESSING"] } } : {}),
       },
       include: {
         instance: {

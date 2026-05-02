@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Download, Trash2, ChevronDown, ChevronRight, PlayCircle } from "lucide-react";
 import { downloadJobResult } from "@/lib/matcher/client";
 
 interface HistoryJob {
@@ -206,8 +206,22 @@ export function HistoryTable({ jobs }: { jobs: HistoryJob[] }) {
                           Download
                         </Button>
                       )}
-                      {job.status === "PROCESSING" && (
-                        <span className="text-sm text-muted-foreground">{job.progress}%</span>
+                      {(job.status === "PENDING" || job.status === "PROCESSING") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            router.push(`/explore/toolbox/matcher?jobId=${job.id}`)
+                          }
+                        >
+                          <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                          Resume
+                          {job.status === "PROCESSING" && (
+                            <span className="ml-2 text-xs text-muted-foreground tabular-nums">
+                              {job.progress}%
+                            </span>
+                          )}
+                        </Button>
                       )}
                       <Button
                         variant="ghost"
