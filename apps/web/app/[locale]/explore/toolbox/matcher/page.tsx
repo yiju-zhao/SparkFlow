@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { MatcherWizard } from "@/components/explore/toolbox/matcher/matcher-wizard";
 import { Button } from "@/components/ui/button";
 import { Clock, FileSearch } from "lucide-react";
@@ -47,7 +48,9 @@ export default async function MatcherPage({ params }: PageProps) {
         </div>
       </section>
 
-      <MatcherWizard />
+      <Suspense fallback={null}>
+        <MatcherWizard />
+      </Suspense>
     </div>
   );
 }

@@ -55,7 +55,15 @@ export function RunningStep({ progress, onCancel }: RunningStepProps) {
         <Progress value={progressValue} className={progressClass} />
       </div>
 
-      {/* Cancel / Close button — separated at the bottom */}
+      {!isTerminal && (
+        <p className="text-xs text-muted-foreground">
+          The job runs on the server. Close or refresh this page anytime — progress is saved and
+          you can resume from History.
+        </p>
+      )}
+
+      {/* Close / Run-in-background button — onCancel just navigates away;
+          the job keeps running on the workflows-api regardless. */}
       <div className="flex justify-end pt-2">
         <Button
           variant={isTerminal ? "default" : "outline"}
@@ -63,7 +71,7 @@ export function RunningStep({ progress, onCancel }: RunningStepProps) {
           disabled={status === "CANCELLED"}
           size="sm"
         >
-          {isTerminal ? "Close" : "Cancel Job"}
+          {isTerminal ? "Close" : "Run in Background"}
         </Button>
       </div>
     </div>
