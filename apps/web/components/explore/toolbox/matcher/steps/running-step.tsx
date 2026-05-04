@@ -10,6 +10,7 @@ interface RunningStepProps {
   progress: JobProgress | null;
   onCancel: () => void;
   onRunInBackground: () => void;
+  isCancelling?: boolean;
 }
 
 const statusConfig: Record<MatchJobStatus, { label: string; color: string }> = {
@@ -20,7 +21,12 @@ const statusConfig: Record<MatchJobStatus, { label: string; color: string }> = {
   CANCELLED: { label: "Cancelled", color: "text-muted-foreground" },
 };
 
-export function RunningStep({ progress, onCancel, onRunInBackground }: RunningStepProps) {
+export function RunningStep({
+  progress,
+  onCancel,
+  onRunInBackground,
+  isCancelling = false,
+}: RunningStepProps) {
   const status = progress?.status || "PENDING";
   const progressValue = progress?.progress || 0;
   const isTerminal = ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
@@ -58,8 +64,9 @@ export function RunningStep({ progress, onCancel, onRunInBackground }: RunningSt
 
       {!isTerminal && (
         <p className="text-xs text-muted-foreground">
-          The job runs on the server. Close or refresh this page anytime — progress is saved and
-          you can resume from History.
+          The job runs on the server — closing or refreshing the page is safe; progress is saved.
+          Only one matcher job can run at a time, so to start a new one you&apos;ll need to cancel
+          this one first.
         </p>
       )}
 
@@ -75,10 +82,20 @@ export function RunningStep({ progress, onCancel, onRunInBackground }: RunningSt
           </Button>
         ) : (
           <>
-            <Button variant="outline" onClick={onCancel} size="sm">
-              Cancel Job
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              size="sm"
+              disabled={isCancelling}
+            >
+              {isCancelling ? "Cancelling…" : "Cancel Job"}
             </Button>
-            <Button variant="default" onClick={onRunInBackground} size="sm">
+            <Button
+              variant="default"
+              onClick={onRunInBackground}
+              size="sm"
+              disabled={isCancelling}
+            >
               Run in Background
             </Button>
           </>

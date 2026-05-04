@@ -67,8 +67,14 @@ export interface WireMatchJob {
 /**
  * Outbound POST payload to `/v1/workflows/matcher/jobs`. Includes auth/key
  * bits that aren't part of any persisted shape.
+ *
+ * `job_id` is now client-supplied — Next.js owns the row identity (so the
+ * partial unique index for single-flight can fire BEFORE dispatch). The
+ * workflows-API uses this id verbatim for its in-memory store; if absent
+ * (legacy callers) it falls back to generating one server-side.
  */
 export interface WireCreateMatchJob {
+  job_id?: string;
   instance_id: string;
   target_type: MatchTargetType;
   queries: WireParsedQuery[];
@@ -164,6 +170,7 @@ export function parsedQueriesFromWire(value: unknown): ParsedQuery[] | undefined
 // ────────────────────────────────────────────────────────────────────────────
 
 interface ToWireInput {
+  jobId?: string;
   instanceId: string;
   targetType: MatchTargetType;
   queries: ParsedQuery[];
@@ -183,7 +190,7 @@ interface ToWireInput {
  * Prisma-shaped wizard inputs.
  */
 export function toWire(input: ToWireInput): WireCreateMatchJob {
-  return {
+  const wire: WireCreateMatchJob = {
     instance_id: input.instanceId,
     target_type: input.targetType,
     queries: input.queries.map(parsedQueryToWire),
@@ -197,6 +204,8 @@ export function toWire(input: ToWireInput): WireCreateMatchJob {
     api_key: input.apiKey,
     api_base: input.apiBase,
   };
+  if (input.jobId) wire.job_id = input.jobId;
+  return wire;
 }
 
 /**

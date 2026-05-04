@@ -147,6 +147,10 @@ async def create_job(
         target_data=req.target_data,
         model_provider=req.model_provider,
         model_name=req.model_name,
+        # Honour client-supplied job_id when present so Next.js can
+        # insert its Postgres row first (single-flight gate) and refer
+        # to the same id throughout the lifecycle.
+        job_id=req.job_id,
     )
     background_tasks.add_task(_run_and_persist, job_id, req, req.target_data)
     job = job_store.get_job(job_id)
@@ -251,7 +255,15 @@ async def cancel_job(job_id: str):
 
 
 @router.get("/jobs/{job_id}/download")
-async def download_results(job_id: str):
+async def download_results(job_id: str, consume: bool = False):
+    """Download the result Excel for a job.
+
+    When `consume=true` (Next.js sync handler), free the in-memory
+    bytes after the response is constructed — Next.js has them on
+    disk now, no need to keep a second copy in workflows-api's heap.
+    The bytes are still recoverable from disk; this route is the only
+    in-process consumer.
+    """
     job = job_store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -263,11 +275,14 @@ async def download_results(job_id: str):
             status_code=404, detail="Result data not available (may have been cleared)"
         )
     filename = f"match-results-{job_id}.xlsx"
-    return Response(
+    response = Response(
         content=result_data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+    if consume:
+        job_store.clear_result_data(job_id)
+    return response
 
 
 def _job_to_response(job: dict) -> MatchJobResponse:

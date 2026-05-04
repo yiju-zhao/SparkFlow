@@ -11,7 +11,7 @@ import { RunningStep } from "./steps/running-step";
 import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
 import { cancelJob, downloadJobResult, getJob, InflightJobError } from "@/lib/matcher/client";
-import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
+import type { JobProgress, ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
 
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 
@@ -76,7 +76,10 @@ export function MatcherWizard() {
     completedJob: null,
   });
   const [inflightError, setInflightError] = useState<string | null>(null);
-  const [inflightJobId, setInflightJobId] = useState<string | null>(null);
+  // Seed progress from the initial getJob snapshot so the running step
+  // doesn't flash "Waiting / 0%" for 1-3s while the first SSE message
+  // is in flight.
+  const [initialProgress, setInitialProgress] = useState<JobProgress | null>(null);
   const hydratedJobIdRef = useRef<string | null>(null);
 
   // Hydrate from `?jobId=…` so refreshing or reopening the page snaps the
@@ -110,6 +113,15 @@ export function MatcherWizard() {
             },
           });
         } else {
+          setInitialProgress({
+            id: job.id,
+            status: job.status,
+            progress: job.progress,
+            errorMessage: job.errorMessage,
+            queryCount: job.queryCount,
+            matchCount: job.matchCount,
+            topK: job.topK,
+          });
           setState({
             kind: "running",
             config: null,
@@ -119,8 +131,14 @@ export function MatcherWizard() {
           });
         }
       } catch (err) {
-        // Stale/invalid jobId in URL — clear it and start fresh.
-        console.error("[Wizard] Failed to hydrate job from URL:", err);
+        // Stale/invalid jobId in URL or job belongs to another user.
+        // Surface a one-shot banner before clearing — without this the
+        // user clicking a shared link sees only the fresh upload modal
+        // with zero explanation.
+        console.warn("[Wizard] Failed to hydrate job from URL:", err);
+        setInflightError(
+          "That match link doesn't exist or isn't accessible to your account.",
+        );
         hydratedJobIdRef.current = null;
         router.replace("/explore/toolbox/matcher");
       }
@@ -130,16 +148,12 @@ export function MatcherWizard() {
     };
   }, [urlJobId, router]);
 
-  // When the user lands at the wizard with NO ?jobId= but they actually
-  // have a server-side job still running (e.g. they hit "Run in Background"
-  // earlier and then re-opened the matcher), surface a banner with a
-  // resume link. Without this they'd have no way to find the job again
-  // short of digging into History.
-  //
-  // The banner is gated on `urlJobId` directly in the JSX, so we only
-  // need to do the discovery fetch when there's no jobId — and we don't
-  // need to clear inflightJobId on entry, since it's only read when
-  // urlJobId is falsy.
+  // When the user lands at the wizard with NO ?jobId= but actually has
+  // a server-side job still running, force the URL to ?jobId=… so the
+  // hydration effect above snaps the wizard to the running step. We do
+  // NOT want the upload step reachable while a job is in flight — the
+  // single-flight guard would 409 any new submit anyway, and the user
+  // would just waste time configuring a job that can't be sent.
   useEffect(() => {
     if (urlJobId) return;
     let cancelled = false;
@@ -150,7 +164,9 @@ export function MatcherWizard() {
         const jobs = (await res.json()) as Array<{ id: string; status: string }>;
         if (cancelled) return;
         const inflight = jobs.find((j) => j.status === "PENDING" || j.status === "PROCESSING");
-        if (inflight) setInflightJobId(inflight.id);
+        if (inflight) {
+          router.replace(`/explore/toolbox/matcher?jobId=${inflight.id}`);
+        }
       } catch {
         /* best-effort discovery — silent if it fails */
       }
@@ -158,11 +174,49 @@ export function MatcherWizard() {
     return () => {
       cancelled = true;
     };
-  }, [urlJobId]);
+  }, [urlJobId, router]);
+
+  // Watchdog: while showing the running step, poll getJob every 90s as
+  // a fallback for SSE going silent without errors. EventSource will
+  // auto-reconnect indefinitely if workflows-api is unreachable, with
+  // no signal to the user — the GET endpoint's stale-row recovery
+  // flips workflows-api-unreachable rows to FAILED after 30 min, so
+  // this lets the wizard discover that and transition out of the
+  // frozen-progress state without requiring the user to refresh.
+  useEffect(() => {
+    if (state.kind !== "running" || !state.jobId) return;
+    const jobId = state.jobId;
+    const interval = setInterval(async () => {
+      try {
+        const job = await getJob(jobId);
+        if (!TERMINAL_STATUSES.has(job.status)) return;
+        setState((prev) => {
+          if (prev.kind !== "running" || prev.jobId !== jobId) return prev;
+          return {
+            ...prev,
+            kind: "results",
+            completedJob: {
+              id: job.id,
+              status: job.status,
+              queryCount: job.queryCount,
+              matchCount: job.matchCount,
+              topK: job.topK,
+              resultFileKey: job.resultFileKey,
+              errorMessage: job.errorMessage,
+            },
+          };
+        });
+      } catch (err) {
+        console.warn("[Wizard] Watchdog poll failed:", err);
+      }
+    }, 90_000);
+    return () => clearInterval(interval);
+  }, [state.kind, state.jobId]);
 
   const { createJob } = useMatchJob();
 
   const { progress } = useJobProgress(state.kind === "running" ? state.jobId : null, {
+    initialProgress,
     onComplete: (job) => {
       console.log("[Wizard] Job completed:", job);
       setState((prev) => ({
@@ -274,8 +328,10 @@ export function MatcherWizard() {
   // in-memory status flips to CANCELLED, then surfaces the cancelled row
   // at the results step. Distinct from "Run in Background" which just
   // navigates away while the job continues server-side.
+  const [isCancelling, setIsCancelling] = useState(false);
   const handleCancelJob = useCallback(async () => {
-    if (!state.jobId) return;
+    if (!state.jobId || isCancelling) return;
+    setIsCancelling(true);
     try {
       const job = await cancelJob(state.jobId);
       setState((prev) => ({
@@ -293,12 +349,22 @@ export function MatcherWizard() {
       }));
     } catch (err) {
       console.warn("[Wizard] Failed to cancel job:", err);
+      // Surface the failure so the user knows clicking again won't
+      // double-fire. inflightError is the generic error channel for
+      // the wizard's transient failures.
+      setInflightError(
+        err instanceof Error ? err.message : "Failed to cancel job. Try again or refresh.",
+      );
+    } finally {
+      setIsCancelling(false);
     }
-  }, [state.jobId]);
+  }, [state.jobId, isCancelling]);
 
   // Running — leave the job running server-side, just navigate away.
+  // Lands on the History page where the live row is visible (with %),
+  // not the Toolbox grid where the job is invisible.
   const handleRunInBackground = useCallback(() => {
-    router.push("/explore/toolbox");
+    router.push("/explore/toolbox/matcher/history");
   }, [router]);
 
   // Results — Download
@@ -373,6 +439,7 @@ export function MatcherWizard() {
             progress={progress}
             onCancel={handleCancelJob}
             onRunInBackground={handleRunInBackground}
+            isCancelling={isCancelling}
           />
         );
       case "results":
@@ -385,27 +452,7 @@ export function MatcherWizard() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      {/* Inflight banner: when the user lands here with no ?jobId= but
-          has a server-side job still running, give them a one-click way
-          back. Only shown on the upload step — once they're already
-          inside the wizard for some other purpose we don't pile on. */}
-      {!urlJobId && inflightJobId && state.kind === "upload" && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm dark:border-blue-900 dark:bg-blue-950">
-          <span className="text-blue-900 dark:text-blue-200">
-            You have a matcher job running. Resume to view progress or cancel it.
-          </span>
-          <button
-            type="button"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-            onClick={() => router.push(`/explore/toolbox/matcher?jobId=${inflightJobId}`)}
-          >
-            Resume
-          </button>
-        </div>
-      )}
-
-      <Card className="overflow-hidden">
+    <Card className="overflow-hidden max-w-3xl mx-auto">
       <div className="flex items-center gap-1 px-6 py-3 bg-muted/30 border-b font-mono text-sm">
         {DISPLAY_STEPS.map((displayStep, index) => {
           // The "running" stage shows the "results" tick as active (we're
@@ -459,7 +506,6 @@ export function MatcherWizard() {
       </div>
 
       <CardContent className="p-6">{renderStep()}</CardContent>
-      </Card>
-    </div>
+    </Card>
   );
 }

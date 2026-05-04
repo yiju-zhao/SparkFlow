@@ -35,11 +35,17 @@ export function useJobProgress(
   options: {
     onComplete?: (job: MatchJob) => void;
     onError?: (error: Error) => void;
+    /**
+     * Optional initial progress snapshot — used when hydrating from
+     * `?jobId=…` so the running step doesn't flash "Waiting / 0%" for
+     * 1-3s while the first SSE message is in flight.
+     */
+    initialProgress?: JobProgress | null;
   } = {},
 ) {
-  const { onComplete, onError } = options;
+  const { onComplete, onError, initialProgress } = options;
 
-  const [progress, setProgress] = useState<JobProgress | null>(null);
+  const [progress, setProgress] = useState<JobProgress | null>(initialProgress ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 

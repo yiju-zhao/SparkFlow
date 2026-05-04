@@ -1,7 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, RotateCcw, CheckCircle, AlertCircle, FileSpreadsheet } from "lucide-react";
+import {
+  Download,
+  RotateCcw,
+  CheckCircle,
+  AlertCircle,
+  FileSpreadsheet,
+  Info,
+} from "lucide-react";
 
 interface CompletedJob {
   id: string;
@@ -22,6 +29,7 @@ interface ResultsStepProps {
 export function ResultsStep({ job, onDownload, onReset }: ResultsStepProps) {
   const isCompleted = job?.status === "COMPLETED";
   const isFailed = job?.status === "FAILED";
+  const isCancelled = job?.status === "CANCELLED";
   const hasResults = job?.resultFileKey;
 
   return (
@@ -43,6 +51,11 @@ export function ResultsStep({ job, onDownload, onReset }: ResultsStepProps) {
               <p className="text-sm text-destructive mt-1">{job.errorMessage}</p>
             )}
           </>
+        ) : isCancelled ? (
+          <>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium">Matching Cancelled</h3>
+          </>
         ) : (
           <>
             <h3 className="text-lg font-medium">Job Status: {job?.status ?? "Unknown"}</h3>
@@ -50,7 +63,24 @@ export function ResultsStep({ job, onDownload, onReset }: ResultsStepProps) {
         )}
       </div>
 
-      {job && (
+      {isCancelled && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/30">
+          <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <div className="text-amber-900 dark:text-amber-200">
+            <p className="font-medium">Cancellation is best-effort.</p>
+            <p className="text-amber-800 dark:text-amber-300 mt-1">
+              The ranking thread can&apos;t be interrupted mid-flight, so any work already
+              in progress will continue running on the server (including any associated
+              LLM token usage). The job will not be saved, and the single-flight guard
+              has been released so you can start a new match right away.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Hide the stats grid for non-success terminal states — a green
+          "0 Matches" reads like success-with-no-results, not failure. */}
+      {job && isCompleted && (
         <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
           <div className="text-center">
             <p className="text-2xl font-bold">{job.queryCount}</p>
