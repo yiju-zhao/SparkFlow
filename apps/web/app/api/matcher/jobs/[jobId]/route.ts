@@ -37,6 +37,52 @@ async function reloadJobWithInstance(jobId: string) {
   });
 }
 
+/**
+ * Pull the Excel bytes from workflows-api, persist to disk, and write
+ * `resultFileKey` on the row. Idempotent: if the row already has a key
+ * (or workflows-api 404s the bytes), returns without doing anything.
+ *
+ * Necessary because the Python → Next.js status callback flips the row
+ * to COMPLETED *before* anyone has fetched the bytes. The wizard's GET
+ * sync used to gate Excel-fetching on `status IN PENDING/PROCESSING`,
+ * so a row that arrived at COMPLETED via the callback path stayed
+ * forever with `resultFileKey: null` and the user got a 404 when they
+ * clicked Download. This helper runs unconditionally on read whenever
+ * (status=COMPLETED && !resultFileKey).
+ */
+async function ensureResultFile(
+  jobId: string,
+  current: { status: string; resultFileKey: string | null },
+): Promise<void> {
+  if (current.status !== "COMPLETED" || current.resultFileKey) return;
+  try {
+    const dlRes = await fetch(
+      `${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs/${jobId}/download?consume=true`,
+    );
+    if (!dlRes.ok) {
+      // workflows-api may have lost the bytes (restart wiped its
+      // in-memory store). Nothing recoverable; row stays without a
+      // resultFileKey and the download endpoint surfaces the 404.
+      return;
+    }
+    const buffer = Buffer.from(await dlRes.arrayBuffer());
+    const fileKey = `match-results/${jobId}.xlsx`;
+    const filePath = path.join(DATA_DIR, fileKey);
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, buffer);
+    // Don't filter on status here — the row IS terminal-COMPLETED,
+    // and we only get past the guard at the top of this function if
+    // resultFileKey is null. Idempotent against concurrent runs:
+    // both write the same fileKey.
+    await prisma.matchJob.update({
+      where: { id: jobId },
+      data: { resultFileKey: fileKey },
+    });
+  } catch (err) {
+    console.error("[Matcher Jobs] ensureResultFile failed:", err);
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
@@ -67,6 +113,16 @@ export async function GET(
 
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    // Cover the "callback wrote COMPLETED before any sync ran" case:
+    // if the row is already terminal-COMPLETED on entry but the Excel
+    // hasn't been persisted, fetch it now. After this the rest of the
+    // sync logic only runs for non-terminal rows.
+    if (job.status === "COMPLETED" && !job.resultFileKey) {
+      await ensureResultFile(jobId, { status: job.status, resultFileKey: job.resultFileKey });
+      const fresh = await reloadJobWithInstance(jobId);
+      return NextResponse.json(fresh ?? job);
     }
 
     // If job is not in a terminal state, sync progress from matcher service.

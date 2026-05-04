@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { MatcherWizard } from "@/components/explore/toolbox/matcher/matcher-wizard";
 import { Button } from "@/components/ui/button";
 import { Clock, FileSearch } from "lucide-react";
@@ -12,10 +15,36 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ jobId?: string }>;
 }
 
-export default async function MatcherPage({ params }: PageProps) {
+export default async function MatcherPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
+  const sp = await searchParams;
+
+  // Server-side single-flight gate: if the user already has a
+  // PENDING/PROCESSING job and isn't already viewing it via ?jobId=,
+  // 302 to the running view. This makes "you can't start a new task
+  // while one is running" a hard server-enforced rule (matches the
+  // partial unique index + API-level 409 check). Eliminates the
+  // upload-step flash from the client-side redirect, and prevents the
+  // user from ever filling out a config that the backend will reject.
+  if (!sp?.jobId) {
+    const session = await auth();
+    if (session?.user?.id) {
+      const inflight = await prisma.matchJob.findFirst({
+        where: {
+          userId: session.user.id,
+          status: { in: ["PENDING", "PROCESSING"] },
+        },
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+      });
+      if (inflight) {
+        redirect(`/${locale}/explore/toolbox/matcher?jobId=${inflight.id}`);
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col">
