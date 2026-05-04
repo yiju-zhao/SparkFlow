@@ -127,6 +127,13 @@ services:
     restart: unless-stopped
 
   digest-worker:
+    # Pinned to the `prod` profile because this worker forwards every
+    # arq job to workflows-api over HTTP, and workflows-api is itself
+    # prod-only. Without this, default-profile compose commands fail
+    # with `service "digest-worker" depends on undefined service
+    # "workflows-api"` — compose can't resolve the dep when only one
+    # of the pair is in scope.
+    profiles: ["prod"]
     build:
       context: ./apps/langgraph
       dockerfile: Dockerfile.worker
