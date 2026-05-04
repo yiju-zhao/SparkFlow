@@ -22,11 +22,14 @@ FROM base AS deps
 
 # Corp networks frequently kill long npm fetches with ECONNRESET. Bump
 # retry count + timeouts so transient drops auto-recover instead of
-# failing the whole build.
+# failing the whole build. Also cap concurrent connections — corp
+# proxies sometimes reset-bomb when too many parallel package fetches
+# hit them at once.
 ENV NPM_CONFIG_FETCH_RETRIES=5
 ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
 ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=180000
 ENV NPM_CONFIG_FETCH_TIMEOUT=600000
+ENV NPM_CONFIG_MAXSOCKETS=3
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
@@ -34,7 +37,16 @@ COPY prisma ./prisma
 # downloads its engine binaries from binaries.prisma.sh, which on TLS-
 # intercepting corporate networks fails the cert chain even with
 # NODE_EXTRA_CA_CERTS set. Disable verification just for this one fetch.
-RUN npm ci && NODE_TLS_REJECT_UNAUTHORIZED=0 npx prisma generate
+#
+# `--mount=type=cache,target=/root/.npm` persists npm's package cache
+# across builds (mirrors what semops/workflows-api do for uv). On a
+# flaky corp network the first build still has to pull packages, but
+# any subsequent build/retry reuses what's cached locally — turns a
+# 200-package fetch into a near-noop. Shared with apps/web/Dockerfile
+# since both build npm packages from the same lockfile.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci && \
+    NODE_TLS_REJECT_UNAUTHORIZED=0 npx prisma generate
 
 FROM base AS runtime
 COPY --from=deps /app/node_modules ./node_modules
