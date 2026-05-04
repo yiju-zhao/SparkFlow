@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,8 +14,26 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Loader2, Settings as SettingsIcon } from "lucide-react";
 import type { ParsedQuery } from "@/lib/matcher/types";
+
+/**
+ * Heuristically detect a BYOK / model-config error coming back from
+ * /api/matcher/jobs. The server message starts with "Matcher model is
+ * not configured" or comes through resolveApiKey ("API key for X is
+ * missing"). Either way, the recovery is the same: open Settings.
+ */
+function isByokConfigError(message: string | null | undefined): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return (
+    m.includes("matcher model") ||
+    m.includes("api key") ||
+    m.includes("byok") ||
+    m.includes("not configured") ||
+    m.includes("settings")
+  );
+}
 
 interface Instance {
   id: string;
@@ -141,9 +160,28 @@ export function ConfigStep({
         </div>
       ) : (
         <div className="space-y-4">
-          {(error || submitError) && (
-            <p className="text-sm text-destructive">{error ?? submitError}</p>
-          )}
+          {(() => {
+            const message = error ?? submitError ?? null;
+            if (!message) return null;
+            // BYOK / model-config errors get a structured card with a
+            // direct link to Settings — without this the user reads a
+            // single sentence with the literal arrow text and has to
+            // navigate by hand.
+            if (isByokConfigError(message)) {
+              return (
+                <div className="flex items-start justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                  <div className="flex-1 text-sm text-destructive">{message}</div>
+                  <Link href="/settings">
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <SettingsIcon className="h-3.5 w-3.5" />
+                      Open Settings
+                    </Button>
+                  </Link>
+                </div>
+              );
+            }
+            return <p className="text-sm text-destructive">{message}</p>;
+          })()}
 
           <div className="space-y-2">
             <Label htmlFor="instance">{t("conference")}</Label>

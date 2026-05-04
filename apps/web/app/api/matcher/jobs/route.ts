@@ -6,12 +6,21 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveApiKey } from "@/lib/services/api-key-resolver";
 import { toWire } from "@/lib/matcher/wire";
 
-const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
+// Server-side only: prefer WORKFLOWS_API_URL. Fall back to the
+// `NEXT_PUBLIC_*` form for backwards-compat with older .env files, but
+// the public form is only relevant for client bundles. New deployments
+// should set WORKFLOWS_API_URL alone.
+const WORKFLOWS_API_URL =
+  process.env.WORKFLOWS_API_URL ||
+  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
+  "http://localhost:2027";
 
 export async function POST(request: NextRequest) {
   try {
@@ -137,30 +146,73 @@ export async function POST(request: NextRequest) {
     }
 
     // Single-flight: at most one matcher job per user may be PENDING or
-    // PROCESSING. The job is server-side and survives page refresh, so a
-    // second submission would burn the user's BYOK quota on a duplicate
-    // run while the first is still going. Surface inflightJobId so the
-    // client can deep-link the user to the running job.
-    const inflight = await prisma.matchJob.findFirst({
-      where: {
-        userId: session.user.id,
-        status: { in: ["PENDING", "PROCESSING"] },
-      },
-      select: { id: true },
-      orderBy: { createdAt: "desc" },
-    });
-    if (inflight) {
-      return NextResponse.json(
-        {
-          error: "You already have a matcher job running. Resume it before starting a new one.",
-          inflightJobId: inflight.id,
+    // PROCESSING. Enforced by the partial unique index
+    // `match_jobs_user_inflight_unique` (migration
+    // 20260504000000_matchjob_one_inflight_per_user). The application-
+    // level findFirst-then-create pattern was insufficient — two tabs
+    // could both pass the check, both spawn LOTUS jobs, both burn BYOK
+    // quota. The DB-level constraint closes that race.
+    //
+    // Order of operations:
+    //   1. Generate the job id locally (we own it now, not workflows-api).
+    //   2. Insert PENDING row — the unique index here is the gate.
+    //   3. Dispatch to workflows-api with that id.
+    //   4. If dispatch fails, delete the row to release the gate.
+    //
+    // Old order ("dispatch then create") meant a successful dispatch
+    // followed by a failed Postgres insert orphaned a workflows-api
+    // job with no DB row to track it.
+    const jobId = randomUUID();
+
+    let matchJob: Awaited<ReturnType<typeof prisma.matchJob.create>>;
+    try {
+      matchJob = await prisma.matchJob.create({
+        data: {
+          id: jobId,
+          userId: session.user.id,
+          instanceId,
+          targetType,
+          topK,
+          searchK,
+          includeReasons,
+          queryData: queries ?? undefined,
+          status: "PENDING",
+          queryCount: queries?.length || 0,
         },
-        { status: 409 },
-      );
+        include: {
+          instance: {
+            select: { name: true, venue: { select: { name: true } } },
+          },
+        },
+      });
+    } catch (err) {
+      // P2002 = unique constraint violation. Maps to either the partial
+      // index (a job is already inflight for this user) or the row's
+      // primary id (collision is astronomically unlikely with UUIDv4).
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        const inflight = await prisma.matchJob.findFirst({
+          where: {
+            userId: session.user.id,
+            status: { in: ["PENDING", "PROCESSING"] },
+          },
+          select: { id: true },
+          orderBy: { createdAt: "desc" },
+        });
+        return NextResponse.json(
+          {
+            error:
+              "You already have a matcher job running. Resume it before starting a new one.",
+            inflightJobId: inflight?.id ?? null,
+          },
+          { status: 409 },
+        );
+      }
+      throw err;
     }
 
     // Build payload with all data — translate Prisma-shaped → wire-shaped via lib/matcher/wire.
     const payload = toWire({
+      jobId,
       instanceId,
       targetType,
       queries: queries ?? [],
@@ -175,46 +227,34 @@ export async function POST(request: NextRequest) {
       apiBase: apiBase ?? null,
     });
 
-    console.log("[Matcher Jobs] Sending to matcher - model:", modelProvider, modelName);
+    console.log("[Matcher Jobs] Dispatching", jobId, "model:", modelProvider, modelName);
 
-    const response = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      console.error("[Matcher Jobs] Error response:", error);
-      return NextResponse.json(
-        { error: error.detail || error.error || "Failed to create job" },
-        { status: response.status },
-      );
+    let dispatchOk = false;
+    try {
+      const response = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      dispatchOk = response.ok;
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+        console.error("[Matcher Jobs] Dispatch error:", error);
+      }
+    } catch (err) {
+      console.error("[Matcher Jobs] Dispatch threw:", err);
     }
 
-    const job = await response.json();
-    console.log("[Matcher Jobs] Job created:", job.id, "topK:", job.top_k);
-
-    // Persist job to database
-    const matchJob = await prisma.matchJob.create({
-      data: {
-        id: job.id, // Use the ID from matcher service
-        userId: session.user.id,
-        instanceId,
-        targetType,
-        topK,
-        searchK,
-        includeReasons,
-        queryData: queries ?? undefined,
-        status: "PENDING",
-        queryCount: queries?.length || 0,
-      },
-      include: {
-        instance: {
-          select: { name: true, venue: { select: { name: true } } },
-        },
-      },
-    });
+    if (!dispatchOk) {
+      // Release the single-flight gate so the user can retry.
+      await prisma.matchJob.delete({ where: { id: jobId } }).catch((e) => {
+        console.error("[Matcher Jobs] Failed to roll back PENDING row after dispatch failure:", e);
+      });
+      return NextResponse.json(
+        { error: "Failed to dispatch job to matcher service" },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json(matchJob);
   } catch (error) {

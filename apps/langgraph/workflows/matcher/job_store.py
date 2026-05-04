@@ -175,9 +175,16 @@ def create_job(
     target_data: list[dict] = None,
     model_provider: str = None,  # For query optimizer only
     model_name: str = None,  # For query optimizer only
+    job_id: Optional[str] = None,
 ) -> str:
-    """Create a new job and return its ID."""
-    job_id = str(uuid.uuid4())
+    """Create a new job and return its ID.
+
+    `job_id` may be supplied by the caller (Next.js owns row identity so
+    its single-flight unique index can fire before dispatch). If absent
+    we generate a UUID for legacy/direct callers.
+    """
+    if not job_id:
+        job_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
 
     with _lock:
@@ -215,6 +222,9 @@ def get_job(job_id: str) -> Optional[dict]:
         return _jobs.get(job_id)
 
 
+_TERMINAL_STATUSES = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
+
+
 def update_job(job_id: str, **kwargs) -> None:
     """Update job fields.
 
@@ -223,6 +233,15 @@ def update_job(job_id: str, **kwargs) -> None:
     fire a best-effort callback to Next.js so Postgres mirrors the new
     terminal/intermediate state. Progress-only ticks don't trigger the
     callback — too noisy and the SSE stream already covers them.
+
+    Terminal-status guard: once a job lands in COMPLETED / FAILED /
+    CANCELLED, this function refuses to overwrite the status field. The
+    LOTUS rank thread can finish minutes after the user clicks Cancel;
+    without this guard, the late `update_job(status="COMPLETED")` from
+    `_run_and_persist`'s try-body would un-cancel a cancelled job and
+    diverge from the Postgres mirror (which has the same guard on the
+    callback receiver). Other fields (progress, match_count, error
+    messages) are still updateable for diagnostic purposes.
     """
     status_changed = False
     callback_payload: dict[str, Any] = {}
@@ -232,8 +251,27 @@ def update_job(job_id: str, **kwargs) -> None:
         if not job:
             return
 
+        current_status = job.get("status")
         new_status = kwargs.get("status")
-        if new_status is not None and new_status != job.get("status"):
+
+        # Refuse status writes that would un-terminate. Drop the status
+        # key from kwargs so the rest of the update still applies — a
+        # stuck row should still be able to log its final progress %.
+        if (
+            current_status in _TERMINAL_STATUSES
+            and new_status is not None
+            and new_status != current_status
+        ):
+            logger.info(
+                "[job_store] dropping late status=%s for job %s already at %s",
+                new_status,
+                job_id,
+                current_status,
+            )
+            kwargs = {k: v for k, v in kwargs.items() if k != "status"}
+            new_status = None
+
+        if new_status is not None and new_status != current_status:
             status_changed = True
 
         job.update(kwargs)
@@ -264,6 +302,22 @@ def get_result_data(job_id: str) -> Optional[bytes]:
     with _lock:
         job = _jobs.get(job_id)
         return job.get("result_data") if job else None
+
+
+def clear_result_data(job_id: str) -> None:
+    """Free the in-memory Excel bytes for a job once they've been
+    persisted to disk by the Next.js sync handler.
+
+    Without this the `_jobs[id]["result_data"]` blob lives forever and
+    a workflows-api process serving N matcher jobs grows linearly in
+    heap with N. The bytes are still on disk under
+    `apps/web/data/match-results/{id}.xlsx` — the user-facing download
+    route reads from there, not from this in-memory copy.
+    """
+    with _lock:
+        job = _jobs.get(job_id)
+        if job is not None:
+            job.pop("result_data", None)
 
 
 def get_target_data(job_id: str) -> Optional[list[dict]]:

@@ -37,8 +37,15 @@ class CreateMatchJobRequest(BaseModel):
     """Request to create a new match job.
 
     All data is passed directly from Next.js - no callbacks needed.
+
+    `job_id` is optional. When set (current Next.js behaviour), the row
+    identity is owned by the caller — Next.js inserts the Postgres row
+    BEFORE dispatching here so its partial-unique single-flight index
+    fires before any LOTUS work spawns. When unset (legacy / direct
+    callers), workflows-api falls back to generating its own UUID.
     """
 
+    job_id: Optional[str] = None
     user_id: str
     instance_id: str
     target_type: MatchTargetType

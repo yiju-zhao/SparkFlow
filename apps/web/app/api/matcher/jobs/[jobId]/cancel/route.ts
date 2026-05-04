@@ -13,7 +13,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
+// Server-side only: prefer WORKFLOWS_API_URL, fall back to the public
+// form for backwards-compat. See app/api/matcher/jobs/route.ts.
+const WORKFLOWS_API_URL =
+  process.env.WORKFLOWS_API_URL ||
+  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
+  "http://localhost:2027";
 
 export async function POST(
   _request: NextRequest,
@@ -52,12 +57,26 @@ export async function POST(
       console.warn("[Matcher Cancel] workflows-api forward failed:", err);
     }
 
-    const updated = await prisma.matchJob.update({
-      where: { id: jobId },
+    // Terminal-status race guard: between the read at line 35 and this
+    // write, the workflows-api callback can flip the row to COMPLETED
+    // (and trigger Excel-to-disk). Without `updateMany` + status filter
+    // we'd un-complete a finished job, nuke completedAt, and orphan the
+    // on-disk Excel. The filtered update is a no-op if the row already
+    // settled — we then re-read and return whatever it landed on.
+    const result = await prisma.matchJob.updateMany({
+      where: {
+        id: jobId,
+        userId: session.user.id,
+        status: { in: ["PENDING", "PROCESSING"] },
+      },
       data: {
         status: "CANCELLED",
         completedAt: new Date(),
       },
+    });
+
+    const fresh = await prisma.matchJob.findUnique({
+      where: { id: jobId },
       include: {
         instance: {
           select: { name: true, venue: { select: { name: true } } },
@@ -65,7 +84,21 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(updated);
+    if (!fresh) {
+      // Row was deleted out from under us between the check and the
+      // update. Vanishingly rare but cheap to handle.
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    if (result.count === 0) {
+      // The row was already terminal when we tried to flip it. Surface
+      // what it actually became so the client transitions cleanly.
+      console.log(
+        `[Matcher Cancel] job ${jobId} settled to ${fresh.status} before cancel could land`,
+      );
+    }
+
+    return NextResponse.json(fresh);
   } catch (error) {
     console.error("Cancel job error:", error);
     return NextResponse.json({ error: "Failed to cancel job" }, { status: 500 });

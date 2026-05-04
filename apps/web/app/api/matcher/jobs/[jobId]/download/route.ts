@@ -5,10 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { createReadStream } from "fs";
 import path from "path";
+import { requireOwnedJob } from "@/lib/matcher/auth";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 
@@ -17,24 +16,15 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { jobId } = await params;
-
-    // Verify user owns the job via database
-    const job = await prisma.matchJob.findFirst({
-      where: {
-        id: jobId,
-        userId: session.user.id,
-      },
+    const ownerCheck = await requireOwnedJob(jobId, {
+      status: true,
+      resultFileKey: true,
     });
-
-    if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    if (!ownerCheck.ok) {
+      return NextResponse.json({ error: ownerCheck.error }, { status: ownerCheck.status });
     }
+    const job = ownerCheck.job as { status: string; resultFileKey: string | null };
 
     // Check job is completed
     if (job.status !== "COMPLETED") {

@@ -11,7 +11,7 @@ import { RunningStep } from "./steps/running-step";
 import { ResultsStep } from "./steps/results-step";
 import { useJobProgress, useMatchJob } from "@/lib/matcher/hooks";
 import { cancelJob, downloadJobResult, getJob, InflightJobError } from "@/lib/matcher/client";
-import type { ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
+import type { JobProgress, ParsedQuery, MatchTargetType } from "@/lib/matcher/types";
 
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 
@@ -76,6 +76,10 @@ export function MatcherWizard() {
     completedJob: null,
   });
   const [inflightError, setInflightError] = useState<string | null>(null);
+  // Seed progress from the initial getJob snapshot so the running step
+  // doesn't flash "Waiting / 0%" for 1-3s while the first SSE message
+  // is in flight.
+  const [initialProgress, setInitialProgress] = useState<JobProgress | null>(null);
   const hydratedJobIdRef = useRef<string | null>(null);
 
   // Hydrate from `?jobId=…` so refreshing or reopening the page snaps the
@@ -109,6 +113,15 @@ export function MatcherWizard() {
             },
           });
         } else {
+          setInitialProgress({
+            id: job.id,
+            status: job.status,
+            progress: job.progress,
+            errorMessage: job.errorMessage,
+            queryCount: job.queryCount,
+            matchCount: job.matchCount,
+            topK: job.topK,
+          });
           setState({
             kind: "running",
             config: null,
@@ -118,8 +131,14 @@ export function MatcherWizard() {
           });
         }
       } catch (err) {
-        // Stale/invalid jobId in URL — clear it and start fresh.
-        console.error("[Wizard] Failed to hydrate job from URL:", err);
+        // Stale/invalid jobId in URL or job belongs to another user.
+        // Surface a one-shot banner before clearing — without this the
+        // user clicking a shared link sees only the fresh upload modal
+        // with zero explanation.
+        console.warn("[Wizard] Failed to hydrate job from URL:", err);
+        setInflightError(
+          "That match link doesn't exist or isn't accessible to your account.",
+        );
         hydratedJobIdRef.current = null;
         router.replace("/explore/toolbox/matcher");
       }
@@ -157,9 +176,47 @@ export function MatcherWizard() {
     };
   }, [urlJobId, router]);
 
+  // Watchdog: while showing the running step, poll getJob every 90s as
+  // a fallback for SSE going silent without errors. EventSource will
+  // auto-reconnect indefinitely if workflows-api is unreachable, with
+  // no signal to the user — the GET endpoint's stale-row recovery
+  // flips workflows-api-unreachable rows to FAILED after 30 min, so
+  // this lets the wizard discover that and transition out of the
+  // frozen-progress state without requiring the user to refresh.
+  useEffect(() => {
+    if (state.kind !== "running" || !state.jobId) return;
+    const jobId = state.jobId;
+    const interval = setInterval(async () => {
+      try {
+        const job = await getJob(jobId);
+        if (!TERMINAL_STATUSES.has(job.status)) return;
+        setState((prev) => {
+          if (prev.kind !== "running" || prev.jobId !== jobId) return prev;
+          return {
+            ...prev,
+            kind: "results",
+            completedJob: {
+              id: job.id,
+              status: job.status,
+              queryCount: job.queryCount,
+              matchCount: job.matchCount,
+              topK: job.topK,
+              resultFileKey: job.resultFileKey,
+              errorMessage: job.errorMessage,
+            },
+          };
+        });
+      } catch (err) {
+        console.warn("[Wizard] Watchdog poll failed:", err);
+      }
+    }, 90_000);
+    return () => clearInterval(interval);
+  }, [state.kind, state.jobId]);
+
   const { createJob } = useMatchJob();
 
   const { progress } = useJobProgress(state.kind === "running" ? state.jobId : null, {
+    initialProgress,
     onComplete: (job) => {
       console.log("[Wizard] Job completed:", job);
       setState((prev) => ({
@@ -271,8 +328,10 @@ export function MatcherWizard() {
   // in-memory status flips to CANCELLED, then surfaces the cancelled row
   // at the results step. Distinct from "Run in Background" which just
   // navigates away while the job continues server-side.
+  const [isCancelling, setIsCancelling] = useState(false);
   const handleCancelJob = useCallback(async () => {
-    if (!state.jobId) return;
+    if (!state.jobId || isCancelling) return;
+    setIsCancelling(true);
     try {
       const job = await cancelJob(state.jobId);
       setState((prev) => ({
@@ -290,12 +349,22 @@ export function MatcherWizard() {
       }));
     } catch (err) {
       console.warn("[Wizard] Failed to cancel job:", err);
+      // Surface the failure so the user knows clicking again won't
+      // double-fire. inflightError is the generic error channel for
+      // the wizard's transient failures.
+      setInflightError(
+        err instanceof Error ? err.message : "Failed to cancel job. Try again or refresh.",
+      );
+    } finally {
+      setIsCancelling(false);
     }
-  }, [state.jobId]);
+  }, [state.jobId, isCancelling]);
 
   // Running — leave the job running server-side, just navigate away.
+  // Lands on the History page where the live row is visible (with %),
+  // not the Toolbox grid where the job is invisible.
   const handleRunInBackground = useCallback(() => {
-    router.push("/explore/toolbox");
+    router.push("/explore/toolbox/matcher/history");
   }, [router]);
 
   // Results — Download
@@ -370,6 +439,7 @@ export function MatcherWizard() {
             progress={progress}
             onCancel={handleCancelJob}
             onRunInBackground={handleRunInBackground}
+            isCancelling={isCancelling}
           />
         );
       case "results":

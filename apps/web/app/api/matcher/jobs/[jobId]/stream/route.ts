@@ -1,13 +1,21 @@
 /**
  * Job Progress SSE Stream Proxy
  *
- * Proxies SSE stream from matcher service to frontend.
+ * Proxies SSE stream from matcher service to frontend. Authorization is
+ * mandatory: any logged-in user could otherwise subscribe to any other
+ * user's stream by guessing/leaking the cuid.
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Agent } from "undici";
+import { requireOwnedJob } from "@/lib/matcher/auth";
 
-const WORKFLOWS_API_URL = process.env.NEXT_PUBLIC_WORKFLOWS_API_URL || "http://localhost:2027";
+// Server-side only: prefer WORKFLOWS_API_URL, fall back to the public
+// form for backwards-compat. See app/api/matcher/jobs/route.ts.
+const WORKFLOWS_API_URL =
+  process.env.WORKFLOWS_API_URL ||
+  process.env.NEXT_PUBLIC_WORKFLOWS_API_URL ||
+  "http://localhost:2027";
 
 // Matcher rank stages can run 10+ minutes on CPU with no progress events
 // in between. Node 22 / undici default `bodyTimeout` is 5 minutes — the
@@ -26,6 +34,13 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   const { jobId } = await params;
+
+  // Authorization gate. Without this, any logged-in user could open
+  // any other user's progress stream by knowing/guessing the cuid.
+  const ownerCheck = await requireOwnedJob(jobId, { id: true });
+  if (!ownerCheck.ok) {
+    return NextResponse.json({ error: ownerCheck.error }, { status: ownerCheck.status });
+  }
 
   // Connect to matcher service SSE endpoint
   const response = await fetch(`${WORKFLOWS_API_URL}/v1/workflows/matcher/jobs/${jobId}/stream`, {
