@@ -135,6 +135,12 @@ services:
     container_name: sparkflow-digest-worker
     command: ["arq", "workflows.digest_worker.WorkerSettings"]
     env_file: ./.env
+    # The worker forwards arq jobs to the workflows-api over HTTP — see
+    # apps/langgraph/workflows/digest_tasks.py. Pin the URL inline so it
+    # doesn't depend on .env being current; on this network the API is
+    # always reachable as http://workflows-api:2027.
+    environment:
+      WORKFLOWS_API_URL: http://workflows-api:2027
     volumes:
       - ./ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
@@ -142,6 +148,8 @@ services:
         condition: service_healthy
       semops:
         condition: service_healthy
+      workflows-api:
+        condition: service_started
     restart: unless-stopped
 
   # ── Production-only services (opt-in via --profile prod) ──────────────────
