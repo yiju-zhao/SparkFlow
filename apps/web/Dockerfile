@@ -44,8 +44,10 @@ COPY prisma.config.ts ./
 # Pulling it explicitly via the configured npm registry (the same one
 # `npm ci` just used) guarantees the binary is in node_modules before
 # `next build` looks for it. `--no-save` keeps package.json clean.
+ARG TARGETARCH
 RUN npm ci && \
-    npm install --no-save --no-audit @next/swc-linux-x64-gnu && \
+    if [ "$TARGETARCH" = "arm64" ]; then SWC=arm64; else SWC=x64; fi && \
+    npm install --no-save --no-audit "@next/swc-linux-${SWC}-gnu" && \
     NODE_TLS_REJECT_UNAUTHORIZED=0 npx prisma generate
 
 COPY . .
