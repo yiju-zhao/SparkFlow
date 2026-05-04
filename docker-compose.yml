@@ -120,11 +120,14 @@ services:
     env_file:
       - ./apps/web/.env             # shared: INTERNAL_CALLBACK_TOKEN, SPARKFLOW_API_URL
       - ./apps/langgraph/.env       # langgraph-only: DIGEST_WORKER_CONCURRENCY, LANGSMITH_*
-    # Local-dev override: in-docker hostname for redis + semops.
+    # Local-dev override: in-docker hostname for redis + semops, host.docker.internal
+    # for the workflows-api (which the worker forwards arq jobs to over HTTP — see
+    # apps/langgraph/workflows/digest_tasks.py).
     environment:
       REDIS_URL: redis://redis:6379
       SEMOPS_API_URL: http://semops:2025
-      SPARKFLOW_API_URL: http://host.docker.internal:3001  # web runs on host in dev mode
+      SPARKFLOW_API_URL: http://host.docker.internal:3001    # web runs on host in dev mode
+      WORKFLOWS_API_URL: http://host.docker.internal:2027    # workflows-api runs on host in dev mode
     depends_on:
       redis:
         condition: service_healthy
