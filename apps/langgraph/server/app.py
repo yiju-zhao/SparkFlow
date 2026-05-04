@@ -6,6 +6,7 @@ routes are stateless; each request carries its own config + model settings.
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
@@ -26,7 +27,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from arq import create_pool  # noqa: E402
 from arq.connections import ArqRedis  # noqa: E402
 from fastapi import FastAPI, HTTPException, Request  # noqa: E402
-from workflows.daily_digest import GenerateSectionRequest  # noqa: E402
+from workflows.daily_digest import GenerateSectionRequest, generate_section  # noqa: E402
 from workflows.digest_worker import WorkerSettings  # noqa: E402
 from workflows.search import SearchRequest, search  # noqa: E402
 
@@ -63,6 +64,33 @@ async def healthz() -> dict[str, bool]:
 async def search_route(req: SearchRequest) -> dict[str, Any]:
     result = await search(req)
     return {"items": result.items, "reasons": result.reasons}
+
+
+def _require_internal_token(request: Request) -> None:
+    """Guard internal-only routes. The token must be configured (no silent
+    bypass on missing config) so dev mistakes fail loud rather than leaving
+    an expensive endpoint open."""
+    expected = os.getenv("INTERNAL_CALLBACK_TOKEN", "")
+    if not expected:
+        raise HTTPException(status_code=500, detail="INTERNAL_CALLBACK_TOKEN not configured")
+    if request.headers.get("X-Internal-Token", "") != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+@app.post("/v1/workflows/daily_digest/sections/{section_id}/run")
+async def daily_digest_run(
+    section_id: str,
+    req: GenerateSectionRequest,
+    request: Request,
+):
+    """Execute a digest section synchronously. Internal-only — invoked by
+    the digest-worker after it picks up its arq job. Lets the worker stay
+    a thin arq+httpx shim with no langgraph/langchain runtime."""
+    _require_internal_token(request)
+    if req.section_id != section_id:
+        raise HTTPException(status_code=400, detail="section_id mismatch")
+    result = await generate_section.ainvoke(req)
+    return {"ok": True, "result": result}
 
 
 @app.post("/v1/workflows/daily_digest/sections/{section_id}/generate", status_code=202)
