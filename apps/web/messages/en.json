@@ -609,5 +609,31 @@
         "body": "Click any row for full text plus extracted images."
       }
     }
+  },
+  "feedback": {
+    "openButton": "Send feedback",
+    "title": "Send feedback",
+    "subtitle": "Report a bug, suggest a new feature, or tell us what to improve.",
+    "typeLabel": "What's this about?",
+    "type": {
+      "bug": "Bug",
+      "feature": "Feature",
+      "improvement": "Improvement"
+    },
+    "titleLabel": "Title",
+    "optional": "optional",
+    "titlePlaceholder": "Short summary",
+    "messageLabel": "Details",
+    "messagePlaceholderBug": "What happened? What did you expect? Steps to reproduce, if you can…",
+    "messagePlaceholderFeature": "Describe the feature and the problem it would solve for you.",
+    "messagePlaceholderImprovement": "Which feature, and what would make it better?",
+    "hintMinChars": "At least 5 characters",
+    "submit": "Send",
+    "submitting": "Sending…",
+    "cancel": "Cancel",
+    "done": "Done",
+    "successTitle": "Thanks for the feedback!",
+    "successBody": "We read every submission. We'll follow up if we need more details.",
+    "errorGeneric": "Something went wrong. Please try again."
   }
 }

@@ -53,6 +53,7 @@ model User {
   settings     UserSettings?
   memories     UserMemory[]
   dailyDigests DailyDigest[]
+  feedback     Feedback[]
 
   @@map("users")
 }
@@ -469,7 +470,6 @@ model MatchJob {
   topK           Int             @default(50)
   searchK        Int             @default(350)
   includeReasons Boolean         @default(true)
-  queryFileKey   String // S3 key for uploaded Excel
   queryData      Json? // Parsed queries (cached)
   resultFileKey  String? // S3 key for result Excel
   status         MatchJobStatus  @default(PENDING)
@@ -555,4 +555,42 @@ model DigestSection {
 
   @@unique([digestId, sourceType])
   @@map("digest_section")
+}
+
+// ============================================
+// User Feedback
+// ============================================
+
+enum FeedbackType {
+  BUG
+  FEATURE
+  IMPROVEMENT
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_REVIEW
+  PLANNED
+  RESOLVED
+  CLOSED
+}
+
+model Feedback {
+  id        String         @id @default(cuid())
+  userId    String
+  type      FeedbackType
+  title     String?
+  message   String         @db.Text
+  status    FeedbackStatus @default(OPEN)
+  pageUrl   String? // Page where the feedback was submitted (optional context)
+  userAgent String? // Browser UA snapshot to help reproduce bugs
+  adminNote String?        @db.Text
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("feedback")
 }

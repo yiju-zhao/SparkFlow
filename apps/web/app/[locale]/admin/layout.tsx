@@ -51,6 +51,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Users
           </Link>
           <Link
+            href="/admin/feedback"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Feedback
+          </Link>
+          <Link
             href="/admin/mineru"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
