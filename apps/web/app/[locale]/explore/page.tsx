@@ -22,6 +22,10 @@ interface ExplorePageProps {
   params: Promise<{ locale: string }>;
 }
 
+// Hub landing — content rotates on a slow cadence. Cache the rendered RSC
+// for 5 minutes so tab-switch navigations from sub-pages return instantly.
+export const revalidate = 300;
+
 // ─────────────────────────────────────────────────────────────
 // Hero — editorial display block
 // ─────────────────────────────────────────────────────────────
