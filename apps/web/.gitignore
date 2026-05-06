@@ -48,3 +48,5 @@ ca-certificates.crt
 *.tsbuildinfo
 next-env.d.ts
 
+# Local runtime output (e.g. matcher xlsx exports)
+/data/

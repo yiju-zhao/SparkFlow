@@ -380,6 +380,10 @@ model Publication {
 
   @@index([instanceId])
   @@index([researchTopic])
+  @@index([status])
+  @@index([instanceId, status])
+  @@index([instanceId, researchTopic])
+  @@index([rating(sort: Desc)])
   @@map("publications")
 }
 
@@ -430,6 +434,7 @@ model ConferenceSession {
 
   @@index([instanceId])
   @@index([type])
+  @@index([date])
   @@map("conference_sessions")
 }
 

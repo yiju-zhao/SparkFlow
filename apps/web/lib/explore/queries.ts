@@ -3,7 +3,7 @@
 import { cache } from "react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { filterOptionsCache, statsCache } from "./cache";
+import { filterOptionsCache, listCache, statsCache } from "./cache";
 import {
   PAGE_SIZE,
   type PublicationFilters,
@@ -387,6 +387,10 @@ export const getFilteredPublicationOptions = cache(
 
 export const getConferences = cache(
   async (filters: ConferenceFilters): Promise<ConferenceCard[]> => {
+    const cacheKey = `conferences-${filters.venue ?? ""}-${filters.year ?? ""}`;
+    const cached = listCache.get(cacheKey) as ConferenceCard[] | undefined;
+    if (cached) return cached;
+
     const where: Prisma.InstanceWhereInput = {};
 
     if (filters.venue) {
@@ -420,34 +424,55 @@ export const getConferences = cache(
       orderBy: [{ year: "desc" }, { name: "asc" }],
     });
 
-    // Get top topics for each conference (simplified - just get first 3 unique topics)
-    const results: ConferenceCard[] = await Promise.all(
-      instances.map(async (inst) => {
-        const topTopicsResult = await prisma.publication.findMany({
-          where: { instanceId: inst.id, researchTopic: { not: null } },
-          select: { researchTopic: true },
-          distinct: ["researchTopic"],
-          take: 3,
-        });
+    if (instances.length === 0) return [];
 
-        return {
-          id: inst.id,
-          name: inst.name,
-          year: inst.year,
-          venue: inst.venue,
-          startDate: inst.startDate,
-          endDate: inst.endDate,
-          location: inst.location,
-          publicationCount: inst._count.publications,
-          sessionCount: inst._count.sessions,
-          topTopics: topTopicsResult
-            .map((t) => t.researchTopic)
-            .filter((t): t is string => t !== null),
-        };
-      }),
-    );
+    // Top 3 research topics per instance — fetched in ONE query instead of
+    // one-per-instance (was N+1). Uses a window function to rank topics by
+    // popularity within each instance, then picks the top 3.
+    const instanceIds = instances.map((i) => i.id);
+    const topicRows = await prisma.$queryRaw<
+      { instanceId: string; researchTopic: string }[]
+    >`
+      SELECT "instanceId", "researchTopic"
+      FROM (
+        SELECT
+          "instanceId",
+          "researchTopic",
+          ROW_NUMBER() OVER (
+            PARTITION BY "instanceId"
+            ORDER BY COUNT(*) DESC, "researchTopic" ASC
+          ) AS rn
+        FROM "publications"
+        WHERE "instanceId" IN (${Prisma.join(instanceIds)})
+          AND "researchTopic" IS NOT NULL
+          AND "researchTopic" <> ''
+        GROUP BY "instanceId", "researchTopic"
+      ) ranked
+      WHERE rn <= 3
+    `;
 
-    return results;
+    const topicsByInstance = new Map<string, string[]>();
+    for (const row of topicRows) {
+      const arr = topicsByInstance.get(row.instanceId) ?? [];
+      arr.push(row.researchTopic);
+      topicsByInstance.set(row.instanceId, arr);
+    }
+
+    const result: ConferenceCard[] = instances.map((inst) => ({
+      id: inst.id,
+      name: inst.name,
+      year: inst.year,
+      venue: inst.venue,
+      startDate: inst.startDate,
+      endDate: inst.endDate,
+      location: inst.location,
+      publicationCount: inst._count.publications,
+      sessionCount: inst._count.sessions,
+      topTopics: topicsByInstance.get(inst.id) ?? [],
+    }));
+
+    listCache.set(cacheKey, result);
+    return result;
   },
 );
 
@@ -884,7 +909,11 @@ export const getSessions = cache(
 
 export const getConferenceSessions = cache(
   async (instanceId: string): Promise<CalendarSessionItem[]> => {
-    return prisma.conferenceSession.findMany({
+    const cacheKey = `conf-sessions-${instanceId}`;
+    const cached = listCache.get(cacheKey) as CalendarSessionItem[] | undefined;
+    if (cached) return cached;
+
+    const result = await prisma.conferenceSession.findMany({
       where: { instanceId },
       select: {
         id: true,
@@ -902,6 +931,9 @@ export const getConferenceSessions = cache(
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
+
+    listCache.set(cacheKey, result);
+    return result;
   },
 );
 
@@ -954,6 +986,10 @@ export const getSession = cache(async (id: string): Promise<SessionDetail | null
 // ============ CHART DATA ============
 
 export const getYearTrendData = cache(async () => {
+  const cacheKey = "year-trend";
+  const cached = statsCache.get(cacheKey) as { year: number; conferences: number }[] | undefined;
+  if (cached) return cached;
+
   const data = await prisma.instance.findMany({
     select: {
       year: true,
@@ -961,19 +997,24 @@ export const getYearTrendData = cache(async () => {
     orderBy: { year: "asc" },
   });
 
-  // Aggregate conference instances by year.
   const byYear = new Map<number, number>();
   for (const item of data) {
     byYear.set(item.year, (byYear.get(item.year) || 0) + 1);
   }
 
-  return Array.from(byYear.entries()).map(([year, count]) => ({
+  const result = Array.from(byYear.entries()).map(([year, count]) => ({
     year,
     conferences: count,
   }));
+  statsCache.set(cacheKey, result);
+  return result;
 });
 
 export const getTopicsChartData = cache(async () => {
+  const cacheKey = "topics-chart";
+  const cached = statsCache.get(cacheKey) as { topic: string; count: number }[] | undefined;
+  if (cached) return cached;
+
   const data = await prisma.publication.groupBy({
     by: ["researchTopic"],
     where: { researchTopic: { not: null } },
@@ -982,8 +1023,10 @@ export const getTopicsChartData = cache(async () => {
     take: 10,
   });
 
-  return data.map((item) => ({
+  const result = data.map((item) => ({
     topic: item.researchTopic as string,
     count: item._count.researchTopic,
   }));
+  statsCache.set(cacheKey, result);
+  return result;
 });

@@ -15,6 +15,11 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+// Conference detail aggregates 11 raw-SQL stats queries. The underlying
+// publications/sessions only change when admins ingest new data, so a 30 min
+// page-level cache is safe and turns most tab/back navigations into cache hits.
+export const revalidate = 1800;
+
 import { PublicationStatsSection } from "@/components/explore/conferences/publication-stats-section";
 
 async function SessionsSection({ conferenceId }: { conferenceId: string }) {
