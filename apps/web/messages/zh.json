@@ -609,5 +609,31 @@
         "body": "点任一行,阅读全文 + 提取的图片。"
       }
     }
+  },
+  "feedback": {
+    "openButton": "发送反馈",
+    "title": "发送反馈",
+    "subtitle": "报告 Bug、提议新功能,或告诉我们哪里可以改进。",
+    "typeLabel": "反馈类型",
+    "type": {
+      "bug": "Bug",
+      "feature": "新功能",
+      "improvement": "改进建议"
+    },
+    "titleLabel": "标题",
+    "optional": "可选",
+    "titlePlaceholder": "一句话概括",
+    "messageLabel": "详细说明",
+    "messagePlaceholderBug": "发生了什么?你期望的结果?如果能复现,请描述步骤……",
+    "messagePlaceholderFeature": "描述这个功能,以及它能为你解决什么问题。",
+    "messagePlaceholderImprovement": "针对哪个功能?怎样改进会更好?",
+    "hintMinChars": "至少 5 个字符",
+    "submit": "发送",
+    "submitting": "发送中……",
+    "cancel": "取消",
+    "done": "完成",
+    "successTitle": "感谢反馈!",
+    "successBody": "我们会认真阅读每一条反馈,如需更多信息会主动联系你。",
+    "errorGeneric": "出错了,请稍后重试。"
   }
 }
