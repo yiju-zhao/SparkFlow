@@ -24,6 +24,7 @@ is only a fallback when the caller didn't.
 
 from __future__ import annotations
 
+import httpx
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -47,6 +48,22 @@ def _is_openai_compatible(provider: str) -> bool:
     )
 
 
+def _build_http_clients(provider: str) -> dict:
+    """Per-provider httpx client overrides forwarded to ChatOpenAI.
+
+    AI4News lives behind Huawei's internal CA and must bypass the
+    corporate HIS proxy — both are properties of the network, not the
+    user's BYOK credentials. Mirrors the canonical AI4News example
+    (verify=False, trust_env=False).
+    """
+    if provider == "cari-ai4news":
+        return {
+            "http_client": httpx.Client(verify=False, trust_env=False),
+            "http_async_client": httpx.AsyncClient(verify=False, trust_env=False),
+        }
+    return {}
+
+
 def init_byok_chat_model(
     *,
     provider: str,
@@ -61,7 +78,12 @@ def init_byok_chat_model(
             raise ValueError(
                 f"OpenAI-compatible provider {provider!r} requires base_url"
             )
-        return init_chat_model(f"openai:{model}", api_key=api_key, base_url=base_url)
+        return init_chat_model(
+            f"openai:{model}",
+            api_key=api_key,
+            base_url=base_url,
+            **_build_http_clients(provider),
+        )
     aliased = _PROVIDER_ALIASES.get(provider, provider)
     kwargs: dict = {"api_key": api_key}
     if api_base:
