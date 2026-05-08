@@ -115,8 +115,8 @@ export async function fetchProviderModels(
   signal?: AbortSignal,
 ): Promise<string[]> {
   let resolvedBaseUrl = baseUrl;
+  const provider = PROVIDER_MAP.get(providerId);
   if (!resolvedBaseUrl) {
-    const provider = PROVIDER_MAP.get(providerId);
     if (!provider) {
       throw new FetchModelsError(
         "PROVIDER_UNKNOWN",
@@ -127,6 +127,13 @@ export async function fetchProviderModels(
     resolvedBaseUrl = provider.baseUrl;
   } else {
     assertSafeUrl(resolvedBaseUrl, providerId);
+  }
+
+  // Short-circuit for providers that don't expose a /v1/models endpoint
+  // (e.g. CARI AI4News). We still need a non-empty key to be saved, but
+  // the dropdown is populated from the hand-curated fallback list.
+  if (provider?.noModelsEndpoint) {
+    return provider.fallbackModels ?? [];
   }
 
   const ctrl = new AbortController();

@@ -17,6 +17,7 @@
  *   GLM_API_KEY               (or ZHIPU_API_KEY)
  *   MINIMAX_API_KEY            (no /v1/models endpoint — script reports skip)
  *   KIMI_API_KEY              (or MOONSHOT_API_KEY)
+ *   CARI_AI4NEWS_API_KEY       (Huawei internal Green Zone — `ak-...`)
  *
  * Loads `.env` via dotenv if present so a normal dev `.env` works.
  */
@@ -76,6 +77,12 @@ const PROVIDERS: ProviderProbe[] = [
     baseUrl: "https://api.moonshot.cn/v1",
     apiKey: process.env.KIMI_API_KEY ?? process.env.MOONSHOT_API_KEY,
   },
+  {
+    id: "cari-ai4news",
+    label: "CARI AI4News",
+    baseUrl: "https://ai4news.rnd.huawei.com/model/v1",
+    apiKey: process.env.CARI_AI4NEWS_API_KEY,
+  },
 ];
 
 async function fetchRemoteModels(probe: ProviderProbe): Promise<string[]> {
@@ -103,6 +110,11 @@ async function auditProvider(probe: ProviderProbe): Promise<void> {
 
   if (probe.id === "minimax") {
     console.log("  (minimax has no /v1/models endpoint — skipping live probe)");
+    return;
+  }
+
+  if (probe.id === "cari-ai4news") {
+    console.log("  (cari-ai4news has no /v1/models endpoint — skipping live probe)");
     return;
   }
 

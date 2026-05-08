@@ -119,6 +119,12 @@ const API_KEY_PROVIDERS: {
   { id: "glm", label: "GLM (Zhipu)", description: "GLM-4, GLM-4-Air", placeholder: "..." },
   { id: "minimax", label: "Minimax", description: "MiniMax-ABAB, Text", placeholder: "..." },
   { id: "kimi", label: "Kimi (Moonshot)", description: "Moonshot v1", placeholder: "sk-..." },
+  {
+    id: "cari-ai4news",
+    label: "CARI AI4News",
+    description: "Huawei internal Green Zone LLM gateway",
+    placeholder: "ak-...",
+  },
 ];
 
 const NAV_ITEMS: { id: SectionId; label: string; icon: typeof Cpu }[] = [

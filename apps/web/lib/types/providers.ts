@@ -70,6 +70,21 @@ export const PROVIDERS: ProviderConfig[] = [
     baseUrl: "https://api.moonshot.cn/v1",
     sdkType: "openai-compatible",
   },
+  {
+    id: "cari-ai4news",
+    label: "CARI AI4News",
+    baseUrl: "https://ai4news.rnd.huawei.com/model/v1",
+    sdkType: "openai-compatible",
+    // The AI4News gateway does not expose /v1/models — the only way
+    // to discover available models is the wiki page. Keep this list
+    // in sync with https://ai4news.rnd.huawei.com.
+    noModelsEndpoint: true,
+    fallbackModels: [
+      "MiniMaxAI/MiniMax-M2.5",
+      "zai-org/GLM-5.1-FP8",
+      "zai-org/GLM-4.6V",
+    ],
+  },
   { id: "custom", label: "Custom", sdkType: "openai-compatible" },
 ];
 
