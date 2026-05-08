@@ -180,6 +180,15 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
     };
   }, [registerGuideAction, handleSelect]);
 
+  // Re-fetch /api/models. Used both at bootstrap and after a key
+  // is saved/removed in the API Keys section, so the AI Models
+  // dropdowns reflect newly-configured providers without a hard
+  // page refresh.
+  const refreshModelsConfig = useCallback(async () => {
+    const res = await fetch("/api/models", { cache: "no-store" });
+    if (res.ok) setConfig(await res.json());
+  }, []);
+
   // Bootstrap: fetch model config + settings + wechat sources
   useEffect(() => {
     (async () => {
@@ -254,7 +263,11 @@ export function SettingsWorkspace({ initialSettings, user }: SettingsWorkspacePr
               />
             )}
             {active === "api-keys" && (
-              <ApiKeysSection apiKeyStatus={apiKeyStatus} setApiKeyStatus={setApiKeyStatus} />
+              <ApiKeysSection
+                apiKeyStatus={apiKeyStatus}
+                setApiKeyStatus={setApiKeyStatus}
+                refreshModelsConfig={refreshModelsConfig}
+              />
             )}
             {active === "account" && <AccountSection user={user} />}
           </div>
@@ -760,9 +773,11 @@ function SaveFooter({
 function ApiKeysSection({
   apiKeyStatus,
   setApiKeyStatus,
+  refreshModelsConfig,
 }: {
   apiKeyStatus: Record<string, ApiKeyStatus>;
   setApiKeyStatus: React.Dispatch<React.SetStateAction<Record<string, ApiKeyStatus>>>;
+  refreshModelsConfig: () => Promise<void>;
 }) {
   return (
     <>
@@ -797,20 +812,26 @@ function ApiKeysSection({
                   const data = await res.json();
                   setApiKeyStatus(data.apiKeyStatus || {});
                 }
+                await refreshModelsConfig();
               }}
-              onRemoved={() => {
+              onRemoved={async () => {
                 setApiKeyStatus((prev) => {
                   const next = { ...prev };
                   delete next[provider.id];
                   return next;
                 });
+                await refreshModelsConfig();
               }}
             />
           </div>
         ))}
       </div>
 
-      <CustomEndpointsSection apiKeyStatus={apiKeyStatus} setApiKeyStatus={setApiKeyStatus} />
+      <CustomEndpointsSection
+        apiKeyStatus={apiKeyStatus}
+        setApiKeyStatus={setApiKeyStatus}
+        refreshModelsConfig={refreshModelsConfig}
+      />
     </>
   );
 }
@@ -829,9 +850,11 @@ interface CustomEndpointDraft {
 function CustomEndpointsSection({
   apiKeyStatus,
   setApiKeyStatus,
+  refreshModelsConfig,
 }: {
   apiKeyStatus: Record<string, ApiKeyStatus>;
   setApiKeyStatus: React.Dispatch<React.SetStateAction<Record<string, ApiKeyStatus>>>;
+  refreshModelsConfig: () => Promise<void>;
 }) {
   // Existing endpoints come from the server — filter apiKeyStatus by id prefix.
   const saved = useMemo(() => {
@@ -849,6 +872,7 @@ function CustomEndpointsSection({
       const data = await res.json();
       setApiKeyStatus(data.apiKeyStatus || {});
     }
+    await refreshModelsConfig();
   }
 
   return (
@@ -871,12 +895,13 @@ function CustomEndpointsSection({
             initialModelNames={entry.modelNames ?? []}
             maskedKey={entry.maskedKey}
             onSaved={refreshStatus}
-            onRemoved={() => {
+            onRemoved={async () => {
               setApiKeyStatus((prev) => {
                 const next = { ...prev };
                 delete next[entry.id];
                 return next;
               });
+              await refreshModelsConfig();
             }}
           />
         ))}

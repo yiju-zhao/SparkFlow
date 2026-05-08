@@ -208,6 +208,7 @@ function ExploreShellInner({ children, user }: ExploreShellProps) {
           model_provider: modelSettings.modelProvider,
           model_name: modelSettings.modelName,
           api_key: resolvedKey.apiKey,
+          api_base: resolvedKey.baseUrl ?? null,
           user_id: user.id,
           session_id: threadId,
           page_context: pageContext,

@@ -53,6 +53,27 @@ interface AgentState {
   messages: Message[];
 }
 
+/**
+ * Turn raw stream errors into something a human can act on. The most
+ * common ugly case: an outbound LLM call goes through the Huawei HIS
+ * proxy, gets blocked, and the proxy returns its full HTML notification
+ * page — which then ends up wrapped in a PermissionDeniedError. Detect
+ * that and surface a one-line explanation instead of dumping HTML.
+ */
+function humanizeChatError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  if (
+    raw.includes("HIS Proxy Notification") ||
+    raw.includes("his.huawei.com") ||
+    (raw.includes("PermissionDeniedError") && raw.includes("<!DOCTYPE html"))
+  ) {
+    return "The Huawei corporate proxy blocked the outbound LLM request. Switch to the CARI AI4News provider in Settings → AI Models, or ask IT to allow your provider's API host in no_proxy.";
+  }
+  // Strip a wrapping ErrorClass(...) and trim very long messages.
+  const stripped = raw.replace(/^[A-Za-z]+Error\(['"]?/, "").replace(/['"]?\)$/, "");
+  return stripped.length > 500 ? `${stripped.slice(0, 500)}…` : stripped;
+}
+
 // User model settings
 interface ModelSettings {
   modelProvider: string;
@@ -533,6 +554,7 @@ export function ChatPanel({
             session_id: targetSessionId!,
             notebook_id: notebookId,
             api_key: (resolvedKey !== "pending" && resolvedKey?.apiKey) || null,
+            api_base: (resolvedKey !== "pending" && resolvedKey?.baseUrl) || null,
           },
         },
       );
@@ -832,9 +854,9 @@ export function ChatPanel({
         {/* Error display */}
         {stream.error ? (
           <div className="flex justify-start">
-            <div className="rounded-[10px] bg-sf-danger-soft text-sf-danger px-3 py-2 border border-sf-danger/20">
-              <p className="text-sm">
-                Error: {stream.error instanceof Error ? stream.error.message : String(stream.error)}
+            <div className="rounded-[10px] bg-sf-danger-soft text-sf-danger px-3 py-2 border border-sf-danger/20 max-w-full">
+              <p className="text-sm whitespace-pre-wrap break-words">
+                Error: {humanizeChatError(stream.error)}
               </p>
             </div>
           </div>
