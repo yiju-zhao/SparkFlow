@@ -80,9 +80,9 @@ export const PROVIDERS: ProviderConfig[] = [
     // in sync with https://ai4news.rnd.huawei.com.
     noModelsEndpoint: true,
     fallbackModels: [
-      "Gemma-4-31B",
       "MiniMaxAI/MiniMax-M2.5",
       "zai-org/GLM-5.1-FP8",
+      "zai-org/GLM-4.6V",
     ],
   },
   { id: "custom", label: "Custom", sdkType: "openai-compatible" },
