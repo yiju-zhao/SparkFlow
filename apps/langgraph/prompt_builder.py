@@ -26,6 +26,7 @@ OPENAI_HINT_FAMILIES = {
     "minimax",
     "kimi",
     "moonshot",
+    "cari-ai4news",
     "custom",
 }
 GEMINI_HINT_FAMILIES = {"google", "gemini"}

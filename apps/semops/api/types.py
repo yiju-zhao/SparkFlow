@@ -35,9 +35,9 @@ class OperatorModelConfig(BaseModel):
     Node layer before the request ever reaches this endpoint.
 
     ``provider`` is the BYOK provider id ("openai", "google", "deepseek",
-    "glm", "minimax", "kimi", "custom"). ``api_base`` is only needed for
-    OpenAI-compatible endpoints that aren't api.openai.com (deepseek, glm,
-    minimax, kimi, custom).
+    "glm", "minimax", "kimi", "cari-ai4news", "custom"). ``api_base`` is only
+    needed for OpenAI-compatible endpoints that aren't api.openai.com
+    (deepseek, glm, minimax, kimi, cari-ai4news, custom).
     """
 
     provider: str
