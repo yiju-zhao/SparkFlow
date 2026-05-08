@@ -554,6 +554,7 @@ export function ChatPanel({
             session_id: targetSessionId!,
             notebook_id: notebookId,
             api_key: (resolvedKey !== "pending" && resolvedKey?.apiKey) || null,
+            api_base: (resolvedKey !== "pending" && resolvedKey?.baseUrl) || null,
           },
         },
       );

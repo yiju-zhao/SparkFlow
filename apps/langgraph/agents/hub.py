@@ -16,7 +16,7 @@ import json
 from dataclasses import dataclass
 
 import _reasoning_patch  # noqa: F401  — preserves DeepSeek reasoning_content across turns
-from langchain.chat_models import init_chat_model
+from chat_model import init_byok_chat_model as init_chat_model
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.runtime import Runtime
@@ -41,6 +41,7 @@ class Ctx:
     session_id: str
     notebook_id: str | None = None
     page_context: str | None = None
+    api_base: str | None = None
 
 
 def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[BaseMessage]]:
@@ -57,7 +58,12 @@ def llm_call(state: MessagesState, runtime: Runtime[Ctx]) -> dict[str, list[Base
         user_id=ctx.user_id,
         page_context=ctx.page_context,
     )
-    model = init_chat_model(f"{ctx.model_provider}:{ctx.model_name}", api_key=ctx.api_key)
+    model = init_chat_model(
+        provider=ctx.model_provider,
+        model=ctx.model_name,
+        api_key=ctx.api_key,
+        api_base=ctx.api_base,
+    )
     bound = model.bind_tools(TOOLS)
     response = bound.invoke([SystemMessage(content=system), *state["messages"]])
     return {"messages": [response]}
