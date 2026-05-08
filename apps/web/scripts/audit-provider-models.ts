@@ -113,6 +113,11 @@ async function auditProvider(probe: ProviderProbe): Promise<void> {
     return;
   }
 
+  if (probe.id === "cari-ai4news") {
+    console.log("  (cari-ai4news has no /v1/models endpoint — skipping live probe)");
+    return;
+  }
+
   let remoteIds: string[];
   try {
     remoteIds = await fetchRemoteModels(probe);

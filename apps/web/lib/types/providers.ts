@@ -75,6 +75,15 @@ export const PROVIDERS: ProviderConfig[] = [
     label: "CARI AI4News",
     baseUrl: "https://ai4news.rnd.huawei.com/model/v1",
     sdkType: "openai-compatible",
+    // The AI4News gateway does not expose /v1/models — the only way
+    // to discover available models is the wiki page. Keep this list
+    // in sync with https://ai4news.rnd.huawei.com.
+    noModelsEndpoint: true,
+    fallbackModels: [
+      "Gemma-4-31B",
+      "MiniMaxAI/MiniMax-M2.5",
+      "zai-org/GLM-5.1-FP8",
+    ],
   },
   { id: "custom", label: "Custom", sdkType: "openai-compatible" },
 ];
