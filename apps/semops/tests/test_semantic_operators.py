@@ -143,6 +143,47 @@ def test_run_rank_configures_lotus_and_resets(monkeypatch):
     assert result == [{"id": "x", "recommendation_reason": "ok"}]
 
 
+def test_run_rank_routes_custom_provider_through_openai_with_api_base(monkeypatch):
+    """Custom / non-litellm providers (e.g. ``cari-ai4news``, ``minimax``,
+    ``custom-…``) must be pinned to litellm's ``openai/`` prefix when an
+    ``api_base`` is supplied — otherwise litellm raises
+    ``BadRequestError: LLM Provider NOT provided``.
+    """
+    calls: list = []
+    _install_fake_lotus(monkeypatch, calls)
+
+    from services import _lotus_worker
+    from services._lotus_worker import run_rank
+
+    monkeypatch.setattr(
+        _lotus_worker, "_default_pipeline", lambda **_: [{"id": "a"}]
+    )
+
+    run_rank(
+        lm_config={
+            "provider": "cari-ai4news",
+            "model": "MiniMaxAI/MiniMax-M2.5",
+            "api_key": "sk-test",
+            "api_base": "https://ai4news.example.com/v1",
+        },
+        candidates=[{"id": "a", "match_text": "x"}],
+        query_text="q",
+        top_k=5,
+        search_k=20,
+        include_reasons=False,
+    )
+
+    lm_calls = [c for c in calls if c[0] == "LM"]
+    assert len(lm_calls) == 1
+    # The non-litellm provider id is replaced by the ``openai/`` prefix so
+    # litellm dispatches through its OpenAI-compatible client. The original
+    # model path (including any slashes like ``MiniMaxAI/...``) is preserved
+    # verbatim after the prefix.
+    assert lm_calls[0][1]["model"] == "openai/MiniMaxAI/MiniMax-M2.5"
+    assert lm_calls[0][1]["api_base"] == "https://ai4news.example.com/v1"
+    assert lm_calls[0][1]["api_key"] == "sk-test"
+
+
 def test_run_rank_resets_lotus_on_pipeline_exception(monkeypatch):
     """Even when the pipeline raises, the finally block resets lotus.settings.lm=None.
 
