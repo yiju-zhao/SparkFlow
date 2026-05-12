@@ -12,6 +12,7 @@ breaks CUDA context on Linux).
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -143,6 +144,17 @@ def run_rank(
     if api_base:
         lm_kwargs["api_base"] = api_base
 
+    # Visibility: emit the *resolved* model / api_base on every rank
+    # request. Without this, custom-endpoint failures look identical to
+    # rate limits in the openai SDK retry loop. Caller's api_key is NOT
+    # logged.
+    logger.info(
+        "lotus rank dispatch (pid=%s, lm_model=%s, api_base=%s)",
+        os.getpid(),
+        lm_kwargs["model"],
+        api_base or "<none>",
+    )
+
     lotus.settings.configure(lm=LM(**lm_kwargs))
     try:
         try:
@@ -164,6 +176,20 @@ def run_rank(
             cls_name = type(exc).__name__
             msg = str(exc) or cls_name
             lower = f"{cls_name}:{msg}".lower()
+
+            # Log the raw exception class + message before normalization.
+            # The lotus pipeline can mask the real error chain (sub-batches
+            # surface as ValueError("No content in response: ...") instead
+            # of the upstream 4xx) — having the original class name in the
+            # log is the only way to tell "auth rejected" apart from
+            # "endpoint returned 422 on max_tokens=4096".
+            logger.warning(
+                "lotus rank failed (lm_model=%s, api_base=%s, exc_cls=%s, exc_msg=%s)",
+                lm_kwargs["model"],
+                api_base or "<none>",
+                cls_name,
+                msg[:500],
+            )
 
             if cls_name.endswith("AuthenticationError") or "authenticationerror" in lower:
                 raise SemopsAuthError(msg) from None
@@ -191,10 +217,9 @@ def run_rank(
         try:
             lotus.settings.configure(lm=None)
         except Exception as reset_exc:  # noqa: BLE001
-            import os as _os
             logger.error(
                 "lotus.settings.configure(lm=None) raised during reset (pid=%s): %s",
-                _os.getpid(),
+                os.getpid(),
                 reset_exc,
             )
 
