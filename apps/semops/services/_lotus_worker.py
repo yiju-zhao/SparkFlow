@@ -17,6 +17,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Providers whose gateways are signed by a private corp CA the public bundle
+# doesn't carry. Mirrors `_build_http_clients` in apps/langgraph/chat_model.py
+# (the chat path uses verify=False for these); semops goes through litellm and
+# lotus.LM doesn't expose a custom httpx client knob, so we flip litellm's
+# module-level ssl_verify flag per-request instead.
+_TLS_INSECURE_PROVIDERS = frozenset({"cari-ai4news"})
+
 
 def init_worker() -> None:
     """Warm-up called once per subprocess at pool creation.
@@ -108,6 +115,7 @@ def run_rank(
     Tests that need to exercise the worker without the real LOTUS pipeline
     monkeypatch ``services._lotus_worker._default_pipeline`` directly.
     """
+    import litellm  # type: ignore
     import lotus  # type: ignore
     from lotus.models import LM  # type: ignore
 
@@ -144,15 +152,26 @@ def run_rank(
     if api_base:
         lm_kwargs["api_base"] = api_base
 
+    # Per-request TLS toggle for corp-CA providers. litellm reads
+    # `litellm.ssl_verify` when it constructs its internal httpx clients on
+    # each completion call, so flipping it before LM(...) is built is enough.
+    # Captured + restored in `finally` to keep other providers in the same
+    # subprocess on normal TLS verification.
+    _orig_ssl_verify = getattr(litellm, "ssl_verify", True)
+    tls_insecure = provider in _TLS_INSECURE_PROVIDERS
+    if tls_insecure:
+        litellm.ssl_verify = False
+
     # Visibility: emit the *resolved* model / api_base on every rank
     # request. Without this, custom-endpoint failures look identical to
     # rate limits in the openai SDK retry loop. Caller's api_key is NOT
     # logged.
     logger.info(
-        "lotus rank dispatch (pid=%s, lm_model=%s, api_base=%s)",
+        "lotus rank dispatch (pid=%s, lm_model=%s, api_base=%s, tls_insecure=%s)",
         os.getpid(),
         lm_kwargs["model"],
         api_base or "<none>",
+        tls_insecure,
     )
 
     lotus.settings.configure(lm=LM(**lm_kwargs))
@@ -222,6 +241,9 @@ def run_rank(
                 os.getpid(),
                 reset_exc,
             )
+        # Always restore ssl_verify so the next request on this subprocess
+        # (which may be a different provider) gets normal TLS verification.
+        litellm.ssl_verify = _orig_ssl_verify
 
 
 def _default_pipeline(
