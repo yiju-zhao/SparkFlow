@@ -118,13 +118,28 @@ def run_rank(
         SemopsRateLimitError,
     )
 
+    # Every BYOK provider we ship (openai, gemini, deepseek, glm, minimax,
+    # kimi, custom-*) is reached through an OpenAI-compatible endpoint —
+    # the user's stored `api_base` (or PROVIDER_MAP default) points at one.
+    # litellm's native provider prefixes (`gemini/`, `deepseek/`, ...) bypass
+    # `api_base` and dispatch through provider-specific SDK paths, and any
+    # non-litellm id (`glm`, `minimax`, `kimi`, `custom-*`, user-typed ids
+    # like `cari-ai4news`) raises "LLM Provider NOT provided".
+    #
+    # Whenever an `api_base` is supplied, pin litellm to its OpenAI client
+    # by prefixing the model with `openai/`. That keeps every BYOK provider
+    # on a single, well-tested path. Without `api_base` (legacy tests only)
+    # fall back to the historical `provider/model` form.
+    provider = lm_config["provider"]
+    model = lm_config["model"]
+    api_base = lm_config.get("api_base")
+
     lm_kwargs: dict[str, Any] = {
-        "model": f"{lm_config['provider']}/{lm_config['model']}",
+        "model": f"openai/{model}" if api_base else f"{provider}/{model}",
         "api_key": lm_config["api_key"],
         "max_batch_size": 5,
         "max_tokens": 4096,
     }
-    api_base = lm_config.get("api_base")
     if api_base:
         lm_kwargs["api_base"] = api_base
 
