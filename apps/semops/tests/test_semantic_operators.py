@@ -15,9 +15,23 @@ from __future__ import annotations
 
 import os
 import sys
+import types
 from unittest.mock import MagicMock
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _fake_litellm(monkeypatch):
+    """The worker imports ``litellm`` to toggle ``ssl_verify`` per request.
+    Production has litellm as a transitive dep of lotus-ai; the test env
+    keeps lotus stubbed and so doesn't carry litellm either. Inject a
+    minimal stand-in with a real (mutable) ``ssl_verify`` attr so the
+    worker's read-modify-restore is observable.
+    """
+    fake = types.SimpleNamespace(ssl_verify=True)
+    monkeypatch.setitem(sys.modules, "litellm", fake)
+    return fake
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +81,8 @@ def test_rank_rejects_missing_lm_config():
 def _install_fake_lotus(monkeypatch, calls: list | None = None):
     """Install a fake ``lotus`` + ``lotus.models`` into ``sys.modules``.
 
-    Returns nothing; tests inspect ``calls`` (if passed) to verify the
+    The fake ``litellm`` is supplied by the autouse ``_fake_litellm``
+    fixture above. Tests inspect ``calls`` (if passed) to verify the
     ``configure(lm=...)`` ceremony fired in the right order.
     """
     fake_settings = MagicMock()
@@ -182,6 +197,120 @@ def test_run_rank_routes_custom_provider_through_openai_with_api_base(monkeypatc
     assert lm_calls[0][1]["model"] == "openai/MiniMaxAI/MiniMax-M2.5"
     assert lm_calls[0][1]["api_base"] == "https://ai4news.example.com/v1"
     assert lm_calls[0][1]["api_key"] == "sk-test"
+
+
+def test_run_rank_disables_ssl_verify_for_cari_ai4news(monkeypatch, _fake_litellm):
+    """``cari-ai4news`` is signed by Huawei BPIT Root CA which no public bundle
+    ships. The worker flips ``litellm.ssl_verify=False`` for the duration of
+    the request and restores it after, matching the chat path's verify=False.
+    """
+    _install_fake_lotus(monkeypatch)
+
+    from services import _lotus_worker
+    from services._lotus_worker import run_rank
+
+    observed: dict = {}
+
+    def capture_then_succeed(**_):
+        observed["ssl_verify_during_call"] = _fake_litellm.ssl_verify
+        return [{"id": "a"}]
+
+    monkeypatch.setattr(_lotus_worker, "_default_pipeline", capture_then_succeed)
+
+    assert _fake_litellm.ssl_verify is True  # baseline
+    run_rank(
+        lm_config={
+            "provider": "cari-ai4news",
+            "model": "MiniMaxAI/MiniMax-M2.5",
+            "api_key": "sk-test",
+            "api_base": "https://ai4news.example.com/v1",
+        },
+        candidates=[{"id": "a", "match_text": "x"}],
+        query_text="q",
+        top_k=5,
+        search_k=20,
+        include_reasons=False,
+    )
+
+    assert observed["ssl_verify_during_call"] is False
+    # Restored after the call returns so other providers on this subprocess
+    # keep their normal TLS verification.
+    assert _fake_litellm.ssl_verify is True
+
+
+def test_run_rank_leaves_ssl_verify_untouched_for_regular_providers(
+    monkeypatch, _fake_litellm
+):
+    """Public-CA providers like ``openai`` must keep ``ssl_verify`` at its
+    original value through the entire request — toggling it off would silently
+    weaken TLS for every other tenant in the same subprocess.
+    """
+    _install_fake_lotus(monkeypatch)
+
+    from services import _lotus_worker
+    from services._lotus_worker import run_rank
+
+    observed: dict = {}
+
+    def capture_then_succeed(**_):
+        observed["ssl_verify_during_call"] = _fake_litellm.ssl_verify
+        return [{"id": "a"}]
+
+    monkeypatch.setattr(_lotus_worker, "_default_pipeline", capture_then_succeed)
+
+    _fake_litellm.ssl_verify = "sentinel"  # any non-False, non-True value
+    run_rank(
+        lm_config={
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "sk-test",
+            "api_base": None,
+        },
+        candidates=[{"id": "a", "match_text": "x"}],
+        query_text="q",
+        top_k=5,
+        search_k=20,
+        include_reasons=False,
+    )
+
+    assert observed["ssl_verify_during_call"] == "sentinel"
+    assert _fake_litellm.ssl_verify == "sentinel"
+
+
+def test_run_rank_restores_ssl_verify_on_pipeline_exception(monkeypatch, _fake_litellm):
+    """If the rank pipeline raises while ``ssl_verify`` is flipped, the finally
+    block must still restore it — otherwise the next request reusing this
+    subprocess (potentially a different tenant / provider) would inherit
+    weakened TLS verification.
+    """
+    _install_fake_lotus(monkeypatch)
+
+    from services import _lotus_worker
+    from services._lotus_worker import run_rank
+    from services.errors import SemopsProviderError
+
+    def boom(**_):
+        raise RuntimeError("upstream exploded")
+
+    monkeypatch.setattr(_lotus_worker, "_default_pipeline", boom)
+
+    assert _fake_litellm.ssl_verify is True
+    with pytest.raises(SemopsProviderError):
+        run_rank(
+            lm_config={
+                "provider": "cari-ai4news",
+                "model": "m",
+                "api_key": "sk-test",
+                "api_base": "https://ai4news.example.com/v1",
+            },
+            candidates=[{"id": "a", "match_text": "x"}],
+            query_text="q",
+            top_k=5,
+            search_k=20,
+            include_reasons=False,
+        )
+
+    assert _fake_litellm.ssl_verify is True
 
 
 def test_run_rank_resets_lotus_on_pipeline_exception(monkeypatch):
